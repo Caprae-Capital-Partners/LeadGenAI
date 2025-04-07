@@ -26,6 +26,7 @@ from transformers import pipeline
 
 try:
     nltk.download('punkt', quiet=True)
+    nltk.download('punkt_tab', quiet=True)
 except:
     logging.warning("Failed to download NLTK punkt. Sentence tokenization may be limited.")
 
@@ -2016,14 +2017,16 @@ def find_decision_makers(driver, business_name, company_website, company_linkedi
     
     return decision_makers
 # Function to scrape decision makers from LinkedIn
+# Updated function to find decision makers using direct company page URL
+
 def find_top_decision_maker(driver, company_name, company_linkedin_url):
     """
-    Find the top decision maker (CEO or Founder) using direct LinkedIn search
+    Find the top decision maker (CEO or Founder) using the company's people page with keywords
     
     Args:
         driver: Selenium WebDriver instance
         company_name: Name of the company
-        company_linkedin_url: LinkedIn URL of the company page (optional)
+        company_linkedin_url: LinkedIn URL of the company page
         
     Returns:
         Dictionary containing top decision maker details or None if not found
@@ -2031,217 +2034,167 @@ def find_top_decision_maker(driver, company_name, company_linkedin_url):
     logging.info(f"Searching for top decision maker at {company_name}")
     print(f"Searching for top decision maker at {company_name}...")
     
+    # Priority list of titles to search for
+    search_titles = [
+        "CEO", 
+        "Chief Executive Officer", 
+        "Founder", 
+        "Co-Founder", 
+        "President", 
+        "Owner", 
+        "Chairman"
+    ]
+    
     try:
-        # Extract company ID and official name if company URL is available
-        official_company_name = company_name
+        # Extract company ID from URL if available
+        company_id = None
         if company_linkedin_url:
-            try:
-                # Visit company page to get official name
-                driver.get(company_linkedin_url)
-                time.sleep(1 + random.random() * 0.5)
-                
-                # Try to extract official company name
-                name_selectors = [
-                    "//h1[contains(@class, 'org-top-card-summary__title')]",
-                    "//span[contains(@class, 'org-top-card-summary__title')]",
-                    "//h1[contains(@class, 'org-top-card__title')]"
-                ]
-                
-                for selector in name_selectors:
-                    try:
-                        name_element = driver.find_element(By.XPATH, selector)
-                        if name_element:
-                            official_name = name_element.text.strip()
-                            if official_name:
-                                official_company_name = official_name
-                                logging.info(f"Found official company name: {official_company_name}")
+            match = re.search(r'/company/([^/]+)', company_linkedin_url)
+            if match:
+                company_id = match.group(1)
+                logging.info(f"Extracted company ID: {company_id}")
+            else:
+                logging.warning(f"Could not extract company ID from URL: {company_linkedin_url}")
+        
+        # If no company ID, try to find the company first
+        if not company_id:
+            logging.info(f"No company ID, searching for company: {company_name}")
+            company_search_url = f"https://www.linkedin.com/search/results/companies/?keywords={company_name.replace(' ', '%20')}"
+            
+            driver.get(company_search_url)
+            time.sleep(1.5 + random.random() * 0.5)
+            
+            # Look for company in results
+            company_link_selectors = [
+                "//a[contains(@class, 'app-aware-link') and contains(@href, '/company/')]",
+                "//span[contains(@class, 'entity-result__title-text')]/a[contains(@href, '/company/')]"
+            ]
+            
+            for selector in company_link_selectors:
+                try:
+                    company_links = driver.find_elements(By.XPATH, selector)
+                    if company_links and len(company_links) > 0:
+                        company_url = company_links[0].get_attribute('href')
+                        if company_url:
+                            match = re.search(r'/company/([^/]+)', company_url)
+                            if match:
+                                company_id = match.group(1)
+                                logging.info(f"Found company ID: {company_id}")
                                 break
-                    except:
-                        pass
-            except Exception as e:
-                logging.warning(f"Error getting official company name: {e}")
+                except Exception as e:
+                    logging.warning(f"Error finding company links: {e}")
+            
+            if not company_id:
+                logging.warning(f"Could not find company ID for {company_name}")
+                return None
         
-        # Priority list of titles to search for
-        search_titles = [
-            "CEO", 
-            "Chief Executive Officer", 
-            "Founder", 
-            "Co-Founder", 
-            "President", 
-            "Owner", 
-            "Chairman"
-        ]
-        
-        # Try each title in order
+        # Now that we have a company ID, search for each title
         for title in search_titles:
             try:
-                # Format search query with exact company name in quotes for better matching
-                search_query = f'{title} "{official_company_name}"'
-                search_url = f"https://www.linkedin.com/search/results/people/?keywords={search_query.replace(' ', '%20')}&origin=GLOBAL_SEARCH_HEADER"
+                # Construct direct URL to company's people page with keyword search
+                people_search_url = f"https://www.linkedin.com/company/{company_id}/people/?keywords={title.replace(' ', '%20')}"
                 
-                logging.info(f"Trying direct search for: {search_query}")
-                print(f"Searching for {title} of {official_company_name}...")
+                logging.info(f"Searching for {title} at company/{company_id}")
+                print(f"Searching for {title} at company...")
                 
-                driver.get(search_url)
-                time.sleep(1.5 + random.random() * 0.5)
+                # Navigate to the search URL
+                driver.get(people_search_url)
+                for i in range(3):
+                    driver.execute_script("window.scrollBy(0, 500)")
+                    time.sleep(0.5 + 0.5 * random.random())
                 
-                # Check if we have results
-                # First look for "no results" indicators
+                # Take screenshot for debugging
+                screenshot_path = os.path.join(DEBUG_FOLDER, f"people_search_{company_id}_{title.replace(' ', '_')}.png")
                 try:
-                    no_results_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'search-no-results')]")
-                    if no_results_elements and len(no_results_elements) > 0:
-                        logging.info(f"No results found for {search_query}")
-                        continue  # Try next title
-                except:
-                    pass
+                    driver.save_screenshot(screenshot_path)
+                    logging.info(f"Saved people search screenshot to {screenshot_path}")
+                except Exception as ss_error:
+                    logging.warning(f"Failed to save screenshot: {ss_error}")
                 
-                # Selectors for result items
-                result_selectors = [
-                    # Profile link selectors
-                    "//span[contains(@class, 'entity-result__title-text')]/a[contains(@href, '/in/')]",
-                    "//a[contains(@class, 'app-aware-link') and contains(@href, '/in/')]",
-                    "//ul[contains(@class, 'reusable-search__entity-result-list')]//a[contains(@href, '/in/')]",
-                    # Fallback to any result item
-                    "//li[contains(@class, 'reusable-search__result-container')]"
+                # Look for employee results
+                # These are the profile cards in the employee list
+                profile_selectors = [
+                    "//li[contains(@class, 'org-people-profiles-module__profile-item')]",
+                    "//li[contains(@class, 'org-people-profile-card')]",
+                    "//div[contains(@class, 'org-people-profile-card__profile-info')]"
                 ]
                 
-                # Try each selector
-                for selector in result_selectors:
+                for selector in profile_selectors:
                     try:
-                        results = driver.find_elements(By.XPATH, selector)
-                        if results and len(results) > 0:
-                            logging.info(f"Found {len(results)} results with selector: {selector}")
+                        profile_cards = driver.find_elements(By.XPATH, selector)
+                        if profile_cards and len(profile_cards) > 0:
+                            logging.info(f"Found {len(profile_cards)} profile cards with selector: {selector}")
                             
-                            # Check each result (up to first 3) to find the best match
-                            for i, result in enumerate(results[:min(3, len(results))]):
+                            # Process each profile card to extract information
+                            for i, card in enumerate(profile_cards[:min(3, len(profile_cards))]):
                                 try:
-                                    # Get profile URL
-                                    profile_url = result.get_attribute('href')
-                                    if not profile_url or '/in/' not in profile_url:
-                                        # If we don't have a direct link, try to find it within this result
-                                        try:
-                                            link_element = result.find_element(By.XPATH, ".//a[contains(@href, '/in/')]")
-                                            profile_url = link_element.get_attribute('href')
-                                        except:
-                                            continue  # Skip this result if no profile URL
+                                    # Extract name
+                                    name_element = card.find_element(By.XPATH, ".//div[contains(@class, 'org-people-profile-card__profile-title')] | .//span[contains(@class, 'org-people-profile-card__profile-title')]")
+                                    name = name_element.text.strip()
                                     
-                                    # Get name and title based on result structure
-                                    name = ""
-                                    position = ""
-                                    company = ""
+                                    # Extract title
+                                    title_element = card.find_element(By.XPATH, ".//div[contains(@class, 'artdeco-entity-lockup__subtitle')] | .//div[contains(@class, 'org-people-profile-card__profile-info')]//div[2]")
+                                    position = title_element.text.strip()
                                     
-                                    # Different approaches to extract info based on result structure
-                                    try:
-                                        # First try: look for name in the clicked element
-                                        if selector.endswith("a[contains(@href, '/in/')]"):
-                                            name = result.text.strip()
-                                            
-                                            # Try to find parent container for more info
-                                            parent = result.find_element(By.XPATH, "./ancestor::li[contains(@class, 'reusable-search__result-container')]")
-                                            
-                                            # Look for subtitle (usually contains title + company)
-                                            try:
-                                                subtitle_element = parent.find_element(By.XPATH, ".//div[contains(@class, 'entity-result__primary-subtitle') or contains(@class, 'search-result__subtitle')]")
-                                                subtitle_text = subtitle_element.text.strip()
-                                                
-                                                # Usually format is "Title at Company"
-                                                if " at " in subtitle_text:
-                                                    position_parts = subtitle_text.split(" at ", 1)
-                                                    position = position_parts[0].strip()
-                                                    company = position_parts[1].strip() if len(position_parts) > 1 else ""
-                                                else:
-                                                    position = subtitle_text
-                                            except:
-                                                pass
-                                        else:
-                                            # Second approach: scan the container for specific elements
-                                            parent = result if selector.endswith("result-container')]") else result.find_element(By.XPATH, "./ancestor::li[contains(@class, 'reusable-search__result-container')]")
-                                            
-                                            # Look for name
-                                            try:
-                                                name_element = parent.find_element(By.XPATH, ".//span[contains(@class, 'entity-result__title-text')] | .//span[contains(@class, 'actor-name')]")
-                                                name = name_element.text.strip()
-                                            except:
-                                                name = f"Person {i+1}"
-                                            
-                                            # Look for position/title
-                                            try:
-                                                position_element = parent.find_element(By.XPATH, ".//div[contains(@class, 'entity-result__primary-subtitle') or contains(@class, 'search-result__subtitle')]")
-                                                position_text = position_element.text.strip()
-                                                
-                                                # Usually format is "Title at Company"
-                                                if " at " in position_text:
-                                                    position_parts = position_text.split(" at ", 1)
-                                                    position = position_parts[0].strip()
-                                                    company = position_parts[1].strip() if len(position_parts) > 1 else ""
-                                                else:
-                                                    position = position_text
-                                            except:
-                                                position = f"{title} (assumed)"
-                                    except Exception as e:
-                                        logging.warning(f"Error parsing result {i+1}: {e}")
-                                        name = f"Person {i+1}"
-                                        position = f"{title} at {official_company_name}"
+                                    # Find LinkedIn profile link
+                                    profile_link = card.find_element(By.XPATH, ".//a[contains(@href, '/in/')]")
+                                    profile_url = profile_link.get_attribute('href')
                                     
-                                    # Verify this is really for our target company
-                                    # Only accept if the company name appears in their title/position
-                                    # or if this was a very specific search with the exact company name
-                                    is_match = False
+                                    logging.info(f"Found decision maker: {name}, {position}")
+                                    print(f"Found decision maker: {name}, {position}")
                                     
-                                    # If company string contains our company name
-                                    if company and official_company_name.lower() in company.lower():
-                                        is_match = True
-                                        logging.info(f"Company match found in position: {company}")
+                                    # Verify this is a relevant title (contains the search term or other executive terms)
+                                    position_lower = position.lower()
                                     
-                                    # If position contains our company name
-                                    elif official_company_name.lower() in position.lower():
-                                        is_match = True
-                                        logging.info(f"Company match found in position: {position}")
+                                    relevant_title = False
+                                    # Check for the specific title we searched for
+                                    if title.lower() in position_lower:
+                                        relevant_title = True
+                                    # Check for other executive terms
+                                    elif any(term.lower() in position_lower for term in [
+                                        'ceo', 'chief executive', 'founder', 'co-founder', 
+                                        'president', 'owner', 'chairman', 'managing director',
+                                        'director', 'executive'
+                                    ]):
+                                        relevant_title = True
                                     
-                                    # If this was a specific CEO/Founder search with exact company name
-                                    elif title in ["CEO", "Founder", "Co-Founder", "Owner"] and i == 0:
-                                        is_match = True
-                                        logging.info(f"Accepting first result for specific {title} search")
-                                    
-                                    if is_match:
+                                    if relevant_title:
                                         # Create decision maker entry
-                                        top_decision_maker = {
+                                        decision_maker = {
                                             'name': name,
-                                            'title': position if position else f"{title} at {official_company_name}",
+                                            'title': position,
                                             'linkedin_url': profile_url,
                                             'email': "Not found",
                                             'phone': "Not found",
                                             'search_term': title
                                         }
                                         
-                                        logging.info(f"Found potential top decision maker: {name}, {position}")
-                                        
                                         # Try to get contact information
                                         try:
                                             contact_info = get_contact_information(driver, profile_url)
                                             if contact_info:
-                                                top_decision_maker['email'] = contact_info.get('email', "Not found")
-                                                top_decision_maker['phone'] = contact_info.get('phone', "Not found")
+                                                decision_maker['email'] = contact_info.get('email', "Not found")
+                                                decision_maker['phone'] = contact_info.get('phone', "Not found")
                                         except Exception as e:
                                             logging.warning(f"Error getting contact info: {e}")
                                         
-                                        return top_decision_maker
+                                        return decision_maker
                                     else:
-                                        logging.info(f"Skipping result as company doesn't match: {company}")
+                                        logging.info(f"Skipping {name} as position '{position}' doesn't match criteria")
                                 
-                                except Exception as e:
-                                    logging.warning(f"Error processing result {i+1}: {e}")
+                                except Exception as card_error:
+                                    logging.warning(f"Error processing profile card {i}: {card_error}")
                             
-                            # If we get here, we found results but none matched our company
-                            logging.info(f"Found results but none matched our target company")
-                            break  # Break out of selector loop, try next title
+                            # If we get here, we found cards but none matched our criteria
+                            # Continue to next title search
+                            break
                     
-                    except Exception as e:
-                        logging.warning(f"Error with result selector {selector}: {e}")
+                    except Exception as selector_error:
+                        logging.warning(f"Error with selector {selector}: {selector_error}")
                 
-                # If we get here with no result, try next title
-                logging.info(f"No suitable match found for {search_query}")
-            
+                # If we got profile cards but couldn't find a good match, try next title
+                continue
+                
             except Exception as e:
                 logging.warning(f"Error searching for {title}: {e}")
         
@@ -2252,7 +2205,6 @@ def find_top_decision_maker(driver, company_name, company_linkedin_url):
     except Exception as e:
         logging.error(f"Error in find_top_decision_maker: {e}")
         return None
-
 
 
 def get_contact_information(driver, profile_url):
