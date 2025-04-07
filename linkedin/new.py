@@ -127,7 +127,7 @@ def wait_for_manual_intervention(driver, message):
     
     input("Press Enter when you have completed the security verification...")
     logging.info("User confirmed manual intervention completed")
-    time.sleep(2)  # Give a moment for page to settle after manual action
+    time.sleep(1)  # Give a moment for page to settle after manual action
     return True
 
 # Function to log in to LinkedIn
@@ -136,7 +136,7 @@ def login_to_linkedin(driver, username, password):
     
     # First check if we're already logged in by visiting LinkedIn homepage
     driver.get('https://www.linkedin.com/')
-    time.sleep(2 + random.random())
+    time.sleep(0.5 + 0.5 * random.random())
     
     current_url = driver.current_url
     logging.info(f"Current URL: {current_url}")
@@ -165,7 +165,7 @@ def login_to_linkedin(driver, username, password):
     print("Not logged in. Attempting to log in to LinkedIn...")
     
     driver.get('https://www.linkedin.com/login')
-    time.sleep(2 + random.random())  # Reduced from 5 seconds
+    time.sleep(0.5 + 0.5 * random.random())  # Reduced from 5 seconds
     
     try:
         # Wait for the username and password fields to be present
@@ -189,11 +189,11 @@ def login_to_linkedin(driver, username, password):
         login_button = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.XPATH, '//button[@type="submit"]'))
         )
-        time.sleep(1 + random.random())  # Reduced from 2 seconds
+        time.sleep(0.5 + 0.5 * random.random())  # Reduced from 2 seconds
         login_button.click()
         
         # Wait longer after login to ensure page loads
-        time.sleep(4)  # Updated to exactly 4 seconds
+        time.sleep(1)  
         
         # Check for security checkpoint or CAPTCHA
         max_retries = 3
@@ -221,7 +221,7 @@ def login_to_linkedin(driver, username, password):
                     "LinkedIn security checkpoint or CAPTCHA detected. Please complete the verification in the browser window.")
                 
                 # After manual intervention, check if we're logged in
-                time.sleep(3)  # Wait a bit for page to update
+                time.sleep(1)  # Wait a bit for page to update
                 
                 if "feed" in driver.current_url or "mynetwork" in driver.current_url:
                     logging.info("Successfully logged in after manual intervention")
@@ -268,9 +268,9 @@ def scrape_linkedin(driver, business_name, expected_city=None, expected_state=No
             logging.warning(f"Page load timed out: {timeout_error}")
             # Try to refresh the page
             driver.refresh()
-            time.sleep(2)
+            time.sleep(1)
             
-        time.sleep(2 + random.random())  # Reduced from 5 seconds
+        time.sleep(0.5 + 0.5 * random.random())  # Reduced from 5 seconds
         
         # Check the current URL to see if we were redirected to a captcha page
         current_url = driver.current_url
@@ -494,7 +494,7 @@ def scrape_linkedin(driver, business_name, expected_city=None, expected_state=No
                                 driver.get(company_link)
                         
                         # Wait for the page to load
-                        time.sleep(2 + random.random())
+                        time.sleep(0.5 + 0.5 * random.random())
                         
                         # Try to find the headquarters or location information
                         try:
@@ -624,18 +624,18 @@ def scrape_linkedin(driver, business_name, expected_city=None, expected_state=No
                                 
                             # If not found, go back to search results
                             driver.get(search_results_url)
-                            time.sleep(1 + random.random())
+                            time.sleep(0.5 + 0.5 * random.random())
                             
                         except Exception as e:
                             logging.warning(f"Error checking location on company page: {e}")
                             driver.get(search_results_url)
-                            time.sleep(1 + random.random())
+                            time.sleep(0.5 + 0.5 * random.random())
                             
                     except Exception as e:
                         logging.warning(f"Error checking company {i+1}: {e}")
                         # Try to return to search results
                         driver.get(search_results_url)
-                        time.sleep(1 + random.random())
+                        time.sleep(0.5 + 0.5 * random.random())
         
         # If we didn't find a matching location but need to select a company
         if expected_city and expected_state and not matched_company:
@@ -669,14 +669,14 @@ def scrape_linkedin(driver, business_name, expected_city=None, expected_state=No
                 driver.get(company_link)
                 
         # Wait for the page to load
-        time.sleep(2 + random.random())
+        time.sleep(0.5 + 0.5 * random.random())
         
         # Check if we're on the "about" page, if not, navigate to it
         if '/about/' not in driver.current_url:
             about_url = company_link.rstrip('/') + '/about/'
             logging.info(f"Navigating to about page: {about_url}")
             driver.get(about_url)
-            time.sleep(2 + random.random())
+            time.sleep(0.5 + 0.5 * random.random())
         
         # Take screenshot of the about page
         screenshot_path = os.path.join(DEBUG_FOLDER, f"about_page_{business_name.replace(' ', '_')}.png")
@@ -1268,6 +1268,693 @@ def scrape_linkedin(driver, business_name, expected_city=None, expected_state=No
             'Location Match': f"Error: {error_msg}"
         }
 
+# Function to scrape decision makers from LinkedIn
+# Function to scrape decision makers from LinkedIn
+def find_decision_makers(driver, company_name, company_linkedin_url, limit=3):
+    """
+    Find decision makers for a company on LinkedIn using multiple methods:
+    1. Company's "People" page to find employees
+    2. Search for key personnel using company name + leadership titles
+    
+    Args:
+        driver: Selenium WebDriver instance
+        company_name: Name of the company
+        company_linkedin_url: LinkedIn URL of the company page
+        limit: Maximum number of decision makers to find
+        
+    Returns:
+        List of dictionaries containing decision maker details
+    """
+    logging.info(f"Searching for decision makers at {company_name}")
+    print(f"Searching for decision makers at {company_name}...")
+    
+    decision_makers = []
+    
+    try:
+        # Extract the company ID from the URL
+        company_id = None
+        if company_linkedin_url:
+            match = re.search(r'company/([^/]+)', company_linkedin_url)
+            if match:
+                company_id = match.group(1)
+                logging.info(f"Extracted company ID: {company_id}")
+        
+        if not company_id:
+            logging.warning(f"Could not extract company ID from URL: {company_linkedin_url}")
+            return decision_makers
+        
+        # Navigate to the company's people page
+        people_url = f"https://www.linkedin.com/company/{company_id}/people/"
+        logging.info(f"Navigating to company people page: {people_url}")
+        
+        try:
+            driver.get(people_url)
+            time.sleep(1.5 + random.random())  # Wait for page to load
+        except Exception as e:
+            logging.warning(f"Error navigating to people page: {e}")
+            return decision_makers
+        
+        # Take a screenshot of the people page
+        screenshot_path = os.path.join(DEBUG_FOLDER, f"people_page_{company_name.replace(' ', '_')}.png")
+        driver.save_screenshot(screenshot_path)
+        logging.info(f"Saved screenshot of People page to {screenshot_path}")
+        
+        # Scroll down to load more profiles
+        for _ in range(5):  # Scroll a few times to load more profiles
+            driver.execute_script("window.scrollBy(0, 800)")
+            time.sleep(1 + random.random())
+        
+        # Find key leadership profiles
+        # Look for leadership titles (C-level, VP, Director, Manager, etc.)
+        try:
+            logging.info("Scanning for leadership profiles...")
+            
+            # Selectors for employee cards/sections
+            employee_selectors = [
+                "//li[contains(@class, 'org-people-profiles-module__profile-item')]",
+                "//li[contains(@class, 'org-people-profile-card')]",
+                "//div[contains(@class, 'org-people-profile-card__profile-info')]",
+                "//div[contains(@class, 'org-grid__content-height-enforcer')]"
+            ]
+            
+            employee_elements = []
+            for selector in employee_selectors:
+                try:
+                    elements = driver.find_elements(By.XPATH, selector)
+                    if elements:
+                        logging.info(f"Found {len(elements)} employee elements with selector: {selector}")
+                        employee_elements = elements
+                        break
+                except Exception as e:
+                    logging.warning(f"Error with employee selector {selector}: {e}")
+            
+            if not employee_elements:
+                logging.warning("Could not find employee elements on the page")
+                
+                # Last resort: try to find profile links directly
+                profile_links = driver.find_elements(By.XPATH, "//a[contains(@href, '/in/')]")
+                if profile_links:
+                    logging.info(f"Found {len(profile_links)} profile links directly")
+                    
+                    for i, link in enumerate(profile_links[:min(limit, len(profile_links))]):
+                        try:
+                            profile_url = link.get_attribute('href')
+                            if profile_url and '/in/' in profile_url:
+                                # Check if we can find the name and title near this link
+                                try:
+                                    parent = link.find_element(By.XPATH, "./ancestor::div[contains(@class, 'org-people-profile-card') or position() <= 3]")
+                                    name_element = parent.find_element(By.XPATH, ".//div[contains(@class, 'org-people-profile-card__profile-title') or contains(@class, 'name')]")
+                                    title_element = parent.find_element(By.XPATH, ".//div[contains(@class, 'org-people-profile-card__profile-position') or contains(@class, 'title')]")
+                                    
+                                    name = name_element.text.strip()
+                                    title = title_element.text.strip()
+                                except:
+                                    name = f"Person {i+1}"
+                                    title = "Unknown Title"
+                                
+                                decision_maker = {
+                                    'name': name,
+                                    'title': title,
+                                    'linkedin_url': profile_url,
+                                    'email': "Not found",
+                                    'phone': "Not found"
+                                }
+                                
+                                decision_makers.append(decision_maker)
+                                logging.info(f"Added decision maker from direct link: {name}, {title}")
+                        except Exception as e:
+                            logging.warning(f"Error processing profile link {i}: {e}")
+                
+                return decision_makers
+            
+            # Process each employee element to find leaders
+            # Order by leadership importance
+            leadership_titles = [
+                # C-suite (top priority)
+                'ceo', 'chief executive officer', 
+                'cfo', 'chief financial officer',
+                'cto', 'chief technology officer',
+                'coo', 'chief operating officer',
+
+                # Executive leadership
+                'president', 'founder', 'co-founder', 'owner'
+            ]
+            
+            for element in employee_elements:
+                try:
+                    element_text = element.text.lower()
+                    
+                    # First check if this seems to be a leadership role
+                    # Prioritize higher-level titles by checking in order
+                    is_leadership = False
+                    leadership_score = 0
+                    
+                    for index, title in enumerate(leadership_titles):
+                        if title in element_text:
+                            is_leadership = True
+                            # Assign a score inversely proportional to position in list
+                            # Lower index = higher priority title = higher score
+                            leadership_score = len(leadership_titles) - index
+                            break
+                    
+                    if is_leadership or len(decision_makers) < limit:
+                        # Try to extract the profile information
+                        try:
+                            # Look for name, title, and profile link
+                            name = "Unknown"
+                            title = "Unknown Title"
+                            profile_url = None
+                            
+                            # Try different selectors for name
+                            name_selectors = [
+                                ".//div[contains(@class, 'org-people-profile-card__profile-title')]",
+                                ".//div[contains(@class, 'artdeco-entity-lockup__title')]",
+                                ".//span[contains(@class, 'name')]",
+                                ".//a[contains(@data-control-name, 'people_profile')]"
+                            ]
+                            
+                            for selector in name_selectors:
+                                try:
+                                    name_element = element.find_element(By.XPATH, selector)
+                                    if name_element:
+                                        name = name_element.text.strip()
+                                        if name:
+                                            break
+                                except:
+                                    pass
+                            
+                            # Try different selectors for title
+                            title_selectors = [
+                                ".//div[contains(@class, 'org-people-profile-card__profile-position')]",
+                                ".//div[contains(@class, 'artdeco-entity-lockup__subtitle')]",
+                                ".//span[contains(@class, 'title')]"
+                            ]
+                            
+                            for selector in title_selectors:
+                                try:
+                                    title_element = element.find_element(By.XPATH, selector)
+                                    if title_element:
+                                        title = title_element.text.strip()
+                                        if title:
+                                            break
+                                except:
+                                    pass
+                            
+                            # Look for the profile link
+                            link_selectors = [
+                                ".//a[contains(@href, '/in/')]",
+                                ".//a[contains(@data-control-name, 'people_profile')]"
+                            ]
+                            
+                            for selector in link_selectors:
+                                try:
+                                    link_element = element.find_element(By.XPATH, selector)
+                                    if link_element:
+                                        profile_url = link_element.get_attribute('href')
+                                        if profile_url:
+                                            break
+                                except:
+                                    pass
+                            
+                            # If we found the necessary information, add it to the list
+                            if name != "Unknown" and profile_url:
+                                decision_maker = {
+                                    'name': name,
+                                    'title': title,
+                                    'linkedin_url': profile_url,
+                                    'email': "Not found",
+                                    'phone': "Not found",
+                                    'leadership_score': leadership_score
+                                }
+                                
+                                decision_makers.append(decision_maker)
+                                logging.info(f"Added decision maker: {name}, {title}, score: {leadership_score}")
+                                
+                                # Stop if we've reached the limit
+                                if len(decision_makers) >= limit:
+                                    break
+                        
+                        except Exception as e:
+                            logging.warning(f"Error extracting profile information: {e}")
+                
+                except Exception as e:
+                    logging.warning(f"Error processing employee element: {e}")
+            
+            logging.info(f"Found {len(decision_makers)} decision makers before sorting")
+            
+            # Sort decision makers by leadership score (higher score first)
+            decision_makers.sort(key=lambda x: x.get('leadership_score', 0), reverse=True)
+            
+            # Limit to top 3 (or specified limit)
+            if len(decision_makers) > limit:
+                decision_makers = decision_makers[:limit]
+                logging.info(f"Limited to top {limit} decision makers by leadership score")
+            
+            # If we don't have enough decision makers from the company page,
+            # try a second method: direct search for key titles at the company
+            if len(decision_makers) < limit:
+                try:
+                    logging.info(f"Not enough decision makers found. Trying direct search.")
+                    print(f"Searching for additional leadership personnel...")
+                    
+                    # Save current URL to return to later
+                    current_url = driver.current_url
+                    
+                    # Key leadership titles to search for
+                    search_titles = ["CEO", "Chief Executive Officer", "CTO", "CFO", "President", "Founder"]
+                    
+                    # Only search for enough titles to reach our limit
+                    remaining_slots = limit - len(decision_makers)
+                    titles_to_search = search_titles[:remaining_slots]
+                    
+                    for title in titles_to_search:
+                        try:
+                            # Format the search query
+                            search_query = f"{title} {company_name}"
+                            search_url = f"https://www.linkedin.com/search/results/people/?keywords={search_query.replace(' ', '%20')}"
+                            
+                            logging.info(f"Searching for: {search_query}")
+                            driver.get(search_url)
+                            time.sleep(2 + random.random())
+                            
+                            # Look for profile results
+                            profile_selectors = [
+                                "//span[contains(@class, 'entity-result__title-text')]/a[contains(@href, '/in/')]",
+                                "//a[contains(@class, 'app-aware-link') and contains(@href, '/in/')]",
+                                "//ul[contains(@class, 'reusable-search__entity-result-list')]//a[contains(@href, '/in/')]"
+                            ]
+                            
+                            profile_links = None
+                            for selector in profile_selectors:
+                                try:
+                                    profile_links = driver.find_elements(By.XPATH, selector)
+                                    if profile_links:
+                                        logging.info(f"Found {len(profile_links)} profile links with selector: {selector}")
+                                        break
+                                except:
+                                    pass
+                            
+                            if profile_links and len(profile_links) > 0:
+                                # Just take the first result
+                                first_profile = profile_links[0]
+                                profile_url = first_profile.get_attribute('href')
+                                
+                                # Try to get the name and current title
+                                try:
+                                    # Look for parent element containing name and title
+                                    parent = first_profile.find_element(By.XPATH, "./ancestor::div[contains(@class, 'entity-result__item') or contains(@class, 'search-result')]")
+                                    
+                                    # Try to get name
+                                    name_element = first_profile
+                                    name = name_element.text.strip()
+                                    
+                                    # Try to get title (may be in a different element)
+                                    title_selectors = [
+                                        ".//div[contains(@class, 'entity-result__primary-subtitle')]",
+                                        ".//p[contains(@class, 'subline-level-1')]"
+                                    ]
+                                    
+                                    found_title = None
+                                    for title_selector in title_selectors:
+                                        try:
+                                            title_element = parent.find_element(By.XPATH, title_selector)
+                                            found_title = title_element.text.strip()
+                                            if found_title:
+                                                break
+                                        except:
+                                            pass
+                                    
+                                    if not found_title:
+                                        found_title = f"{title} at {company_name}"
+                                        
+                                except Exception as e:
+                                    logging.warning(f"Error extracting name/title from search result: {e}")
+                                    name = f"Found {title}"
+                                    found_title = f"at {company_name}"
+                                
+                                # Create decision maker entry
+                                decision_maker = {
+                                    'name': name,
+                                    'title': found_title,
+                                    'linkedin_url': profile_url,
+                                    'email': "Not found",
+                                    'phone': "Not found",
+                                    'leadership_score': len(search_titles) - search_titles.index(title)  # Higher score for more important titles
+                                }
+                                
+                                # Add to list if not already present
+                                if not any(dm['linkedin_url'] == profile_url for dm in decision_makers):
+                                    decision_makers.append(decision_maker)
+                                    logging.info(f"Added decision maker from search: {name}, {found_title}")
+                        
+                        except Exception as e:
+                            logging.warning(f"Error searching for {title}: {e}")
+                        
+                        # Add a short delay between searches
+                        time.sleep(1 + random.random())
+                    
+                    # Return to original page
+                    driver.get(current_url)
+                    time.sleep(1)
+                    
+                    # Re-sort decision makers by leadership score
+                    decision_makers.sort(key=lambda x: x.get('leadership_score', 0), reverse=True)
+                    
+                    # Limit to the requested number
+                    if len(decision_makers) > limit:
+                        decision_makers = decision_makers[:limit]
+                
+                except Exception as e:
+                    logging.error(f"Error in direct search for leaders: {e}")
+            
+            # If we have decision makers, try to get their contact information
+            if decision_makers:
+                logging.info("Attempting to get contact information for decision makers...")
+                
+                for i, dm in enumerate(decision_makers):
+                    try:
+                        if dm['linkedin_url']:
+                            # Get contact information from their profile
+                            contact_info = get_contact_information(driver, dm['linkedin_url'])
+                            
+                            # Update the decision maker with any found contact information
+                            if contact_info:
+                                dm['email'] = contact_info.get('email', "Not found")
+                                dm['phone'] = contact_info.get('phone', "Not found")
+                                logging.info(f"Updated contact info for {dm['name']}: Email: {dm['email']}, Phone: {dm['phone']}")
+                            
+                            # Add randomized delay between profile views to avoid detection
+                            if i < len(decision_makers) - 1:  # No need to wait after the last one
+                                wait_time = 1.5 + 1.5 * random.random()
+                                time.sleep(wait_time)
+                    
+                    except Exception as e:
+                        logging.warning(f"Error getting contact information for {dm['name']}: {e}")
+            
+        except Exception as e:
+            logging.error(f"Error finding decision makers: {e}")
+        
+        return decision_makers
+    
+    except Exception as e:
+        logging.error(f"Error in find_decision_makers function: {e}")
+        return decision_makers
+
+
+def get_contact_information(driver, profile_url):
+    """
+    Extracts contact information from a LinkedIn profile
+    
+    Args:
+        driver: Selenium WebDriver instance
+        profile_url: URL of the LinkedIn profile
+    
+    Returns:
+        Dictionary containing contact information (email, phone)
+    """
+    contact_info = {
+        'email': "Not found",
+        'phone': "Not found"
+    }
+    
+    try:
+        logging.info(f"Getting contact information from {profile_url}")
+        
+        # First navigate to the profile
+        try:
+            current_url = driver.current_url
+            driver.get(profile_url)
+            time.sleep(2 + random.random())
+        except Exception as e:
+            logging.warning(f"Error navigating to profile: {e}")
+            return contact_info
+        
+        # Now navigate to contact info page
+        try:
+            # Construct the contact info URL
+            contact_url = profile_url.rstrip('/') + '/overlay/contact-info/'
+            logging.info(f"Navigating to contact info: {contact_url}")
+            
+            driver.get(contact_url)
+            time.sleep(2 + random.random())
+            
+            # Take a screenshot for debugging
+            profile_id = profile_url.split('/in/')[-1].rstrip('/')
+            screenshot_path = os.path.join(DEBUG_FOLDER, f"contact_info_{profile_id.replace('/', '_')}.png")
+            driver.save_screenshot(screenshot_path)
+            
+            # Look for email addresses
+            email_patterns = [
+                r'[\w\.-]+@[\w\.-]+\.\w+',  # Basic email pattern
+                r'[\w\.-]+\s+@\s+[\w\.-]+\.\w+',  # Email with spaces around @
+                r'[\w\.-]+\s+\[at\]\s+[\w\.-]+\.\w+',  # [at] instead of @
+                r'[\w\.-]+\s+\(at\)\s+[\w\.-]+\.\w+'   # (at) instead of @
+            ]
+            
+            # Get the text from the contact info section
+            contact_section_selectors = [
+                "//div[contains(@class, 'pv-contact-info')]",
+                "//div[contains(@class, 'artdeco-modal__content')]",
+                "//div[contains(@class, 'pv-profile-section__section-info')]"
+            ]
+            
+            contact_text = ""
+            for selector in contact_section_selectors:
+                try:
+                    elements = driver.find_elements(By.XPATH, selector)
+                    for element in elements:
+                        contact_text += element.text + "\n"
+                except:
+                    pass
+            
+            logging.info(f"Contact text: {contact_text[:200]}...")  # Log first 200 chars
+            
+            # Process page source for email
+            page_source = driver.page_source
+            
+            # Look for emails in contact text
+            for pattern in email_patterns:
+                emails = re.findall(pattern, contact_text)
+                if emails:
+                    # Clean up the found email
+                    email = emails[0].replace('[at]', '@').replace('(at)', '@').replace(' ', '')
+                    contact_info['email'] = email
+                    logging.info(f"Found email in contact text: {email}")
+                    break
+            
+            # If not found in text, try in source
+            if contact_info['email'] == "Not found":
+                for pattern in email_patterns:
+                    emails = re.findall(pattern, page_source)
+                    if emails:
+                        # Clean up the found email
+                        email = emails[0].replace('[at]', '@').replace('(at)', '@').replace(' ', '')
+                        contact_info['email'] = email
+                        logging.info(f"Found email in page source: {email}")
+                        break
+            
+            # Look for phone numbers in the contact text
+            phone_patterns = [
+                r'\+\d{1,3}\s*\d{3}\s*\d{3}\s*\d{4}',  # International format
+                r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}',       # US format
+                r'\(\d{3}\)\s*\d{3}[-.\s]?\d{4}'        # US format with parentheses
+            ]
+            
+            for pattern in phone_patterns:
+                phones = re.findall(pattern, contact_text)
+                if phones:
+                    contact_info['phone'] = phones[0]
+                    logging.info(f"Found phone: {phones[0]}")
+                    break
+            
+            # If still not found, try once more with the whole page source
+            if contact_info['phone'] == "Not found":
+                for pattern in phone_patterns:
+                    phones = re.findall(pattern, page_source)
+                    if phones:
+                        contact_info['phone'] = phones[0]
+                        logging.info(f"Found phone in page source: {phones[0]}")
+                        break
+        
+        except Exception as e:
+            logging.warning(f"Error extracting contact information: {e}")
+        
+        return contact_info
+    
+    except Exception as e:
+        logging.error(f"Error in get_contact_information: {e}")
+        return contact_info
+
+
+    
+def find_company_by_name(driver, company_name):
+    """
+    Search for company LinkedIn page by name
+    
+    Args:
+        driver: Selenium WebDriver instance
+        company_name: Name of the company
+        
+    Returns:
+        Company LinkedIn URL or None if not found
+    """
+    try:
+        # Format the search query
+        search_query = f"{company_name} company"
+        search_url = f"https://www.linkedin.com/search/results/companies/?keywords={search_query.replace(' ', '%20')}"
+        
+        logging.info(f"Searching for company page: {search_query}")
+        driver.get(search_url)
+        time.sleep(1.5 + random.random() * 0.5)
+        
+        # Look for company results
+        company_selectors = [
+            "//a[contains(@class, 'app-aware-link') and contains(@href, '/company/')]",
+            "//div[contains(@class, 'search-results')]//*[contains(@href, '/company/')]",
+            "//span[contains(@class, 'entity-result__title')]/a[contains(@href, '/company/')]"
+        ]
+        
+        for selector in company_selectors:
+            try:
+                company_links = driver.find_elements(By.XPATH, selector)
+                if company_links and len(company_links) > 0:
+                    # Get the first result URL
+                    company_url = company_links[0].get_attribute('href')
+                    if company_url:
+                        logging.info(f"Found company page: {company_url}")
+                        return company_url
+            except:
+                pass
+        
+        return None
+    except Exception as e:
+        logging.error(f"Error in find_company_by_name: {e}")
+        return None
+
+def get_contact_information(driver, profile_url):
+    """
+    Extracts contact information from a LinkedIn profile
+    
+    Args:
+        driver: Selenium WebDriver instance
+        profile_url: URL of the LinkedIn profile
+    
+    Returns:
+        Dictionary containing contact information (email, phone)
+    """
+    contact_info = {
+        'email': "Not found",
+        'phone': "Not found"
+    }
+    
+    try:
+        logging.info(f"Getting contact information from {profile_url}")
+        
+        # First navigate to the profile
+        try:
+            current_url = driver.current_url
+            driver.get(profile_url)
+            time.sleep(0.5 + 0.5 * random.random())
+        except Exception as e:
+            logging.warning(f"Error navigating to profile: {e}")
+            return contact_info
+        
+        # Now navigate to contact info page
+        try:
+            # Construct the contact info URL
+            contact_url = profile_url.rstrip('/') + '/overlay/contact-info/'
+            logging.info(f"Navigating to contact info: {contact_url}")
+            
+            driver.get(contact_url)
+            time.sleep(0.5 + 0.5 * random.random())
+            
+            # Take a screenshot for debugging
+            profile_id = profile_url.split('/in/')[-1].rstrip('/')
+            screenshot_path = os.path.join(DEBUG_FOLDER, f"contact_info_{profile_id.replace('/', '_')}.png")
+            driver.save_screenshot(screenshot_path)
+            
+            # Look for email addresses
+            email_patterns = [
+                r'[\w\.-]+@[\w\.-]+\.\w+',  # Basic email pattern
+                r'[\w\.-]+\s+@\s+[\w\.-]+\.\w+',  # Email with spaces around @
+                r'[\w\.-]+\s+\[at\]\s+[\w\.-]+\.\w+',  # [at] instead of @
+                r'[\w\.-]+\s+\(at\)\s+[\w\.-]+\.\w+'   # (at) instead of @
+            ]
+            
+            # Get the text from the contact info section
+            contact_section_selectors = [
+                "//div[contains(@class, 'pv-contact-info')]",
+                "//div[contains(@class, 'artdeco-modal__content')]",
+                "//div[contains(@class, 'pv-profile-section__section-info')]"
+            ]
+            
+            contact_text = ""
+            for selector in contact_section_selectors:
+                try:
+                    elements = driver.find_elements(By.XPATH, selector)
+                    for element in elements:
+                        contact_text += element.text + "\n"
+                except:
+                    pass
+            
+            logging.info(f"Contact text: {contact_text[:200]}...")  # Log first 200 chars
+            
+            # Process page source for email
+            page_source = driver.page_source
+            
+            # Look for emails in contact text
+            for pattern in email_patterns:
+                emails = re.findall(pattern, contact_text)
+                if emails:
+                    # Clean up the found email
+                    email = emails[0].replace('[at]', '@').replace('(at)', '@').replace(' ', '')
+                    contact_info['email'] = email
+                    logging.info(f"Found email in contact text: {email}")
+                    break
+            
+            # If not found in text, try in source
+            if contact_info['email'] == "Not found":
+                for pattern in email_patterns:
+                    emails = re.findall(pattern, page_source)
+                    if emails:
+                        # Clean up the found email
+                        email = emails[0].replace('[at]', '@').replace('(at)', '@').replace(' ', '')
+                        contact_info['email'] = email
+                        logging.info(f"Found email in page source: {email}")
+                        break
+            
+            # Look for phone numbers in the contact text
+            phone_patterns = [
+                r'\+\d{1,3}\s*\d{3}\s*\d{3}\s*\d{4}',  # International format
+                r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}',       # US format
+                r'\(\d{3}\)\s*\d{3}[-.\s]?\d{4}'        # US format with parentheses
+            ]
+            
+            for pattern in phone_patterns:
+                phones = re.findall(pattern, contact_text)
+                if phones:
+                    contact_info['phone'] = phones[0]
+                    logging.info(f"Found phone: {phones[0]}")
+                    break
+            
+            # If still not found, try once more with the whole page source
+            if contact_info['phone'] == "Not found":
+                for pattern in phone_patterns:
+                    phones = re.findall(pattern, page_source)
+                    if phones:
+                        contact_info['phone'] = phones[0]
+                        logging.info(f"Found phone in page source: {phones[0]}")
+                        break
+        
+        except Exception as e:
+            logging.warning(f"Error extracting contact information: {e}")
+        
+        return contact_info
+    
+    except Exception as e:
+        logging.error(f"Error in get_contact_information: {e}")
+        return contact_info
+    
 # Helper functions for state name/abbreviation conversion
 def state_abbreviation_to_full(abbr):
     state_dict = {
@@ -1448,7 +2135,7 @@ def state_in_text(expected_state, text):
     return False
 
 # Main function
-def main(csv_file, output_file, username, password, keep_browser_open=True):
+def main(csv_file, output_file, username, password, keep_browser_open=True, find_decision_makers_flag=True):
     global global_driver
     
     # Check if required parameters are present
@@ -1623,6 +2310,65 @@ def main(csv_file, output_file, username, password, keep_browser_open=True):
             try:
                 result = scrape_linkedin(driver, business_name, city, state)
                 result['Business Name'] = business_name
+                
+                # calling find_decision_makers:
+                # In the main function, here's the corrected version of the code
+# where we call find_top_decision_maker:
+
+                if find_decision_makers_flag:
+                    print("\n" + "-" * 40)
+                    print(f"🔍 Searching for top decision maker (CEO/Founder) at {business_name}...")
+                    print("-" * 40)
+                    
+                    # Try to find decision maker directly by company name
+                    company_url = result.get('LinkedIn Link')
+                    if not company_url:
+                        print("No LinkedIn company page found. Searching for company first...")
+                        company_url = find_company_by_name(driver, business_name)
+                    
+                    # Find the top decision maker
+                    top_dm = find_decision_makers(driver, business_name, company_url, limit=3)
+                    
+                    if top_dm:
+                        print("\n" + "✓" * 40)
+                        print(f"✅ Found top decision maker: {top_dm['name']} - {top_dm['title']}")
+                        if top_dm['email'] != "Not found" or top_dm['phone'] != "Not found":
+                            contact_info = []
+                            if top_dm['email'] != "Not found":
+                                contact_info.append(f"Email: {top_dm['email']}")
+                            if top_dm['phone'] != "Not found":
+                                contact_info.append(f"Phone: {top_dm['phone']}")
+                            if contact_info:
+                                print(f"   Contact: {', '.join(contact_info)}")
+                        print("✓" * 40 + "\n")
+                        
+                        # Add to result
+                        result['Decision Maker Name'] = top_dm['name']
+                        result['Decision Maker Title'] = top_dm['title']
+                        result['Decision Maker LinkedIn'] = top_dm['linkedin_url']
+                        result['Decision Maker Email'] = top_dm['email']
+                        result['Decision Maker Phone'] = top_dm['phone']
+                    else:
+                        print("\n" + "-" * 40)
+                        print(f"❌ No top decision maker found for {business_name}")
+                        print("-" * 40 + "\n")
+                        
+                        # Add empty fields
+                        result['Decision Maker Name'] = "Not found"
+                        result['Decision Maker Title'] = "Not found"
+                        result['Decision Maker LinkedIn'] = "Not found"
+                        result['Decision Maker Email'] = "Not found"
+                        result['Decision Maker Phone'] = "Not found"
+                else:
+                    # If search is disabled
+                    logging.info(f"Decision maker search is disabled. Skipping for {business_name}")
+                    
+                    # Add empty fields
+                    result['Decision Maker Name'] = "Not searched"
+                    result['Decision Maker Title'] = "Not searched"
+                    result['Decision Maker LinkedIn'] = "Not searched" 
+                    result['Decision Maker Email'] = "Not searched"
+                    result['Decision Maker Phone'] = "Not searched"
                 results.append(result)
                 
                 # Cancel timeout timer if successful
@@ -1641,7 +2387,7 @@ def main(csv_file, output_file, username, password, keep_browser_open=True):
                     try:
                         # Try to navigate to LinkedIn home to reset state
                         driver.get("https://www.linkedin.com/feed/")
-                        time.sleep(2)
+                        time.sleep(1)
                         print("Navigated to LinkedIn feed to reset state")
                     except:
                         print("Could not navigate to LinkedIn feed")
@@ -1711,15 +2457,95 @@ def main(csv_file, output_file, username, password, keep_browser_open=True):
             time.sleep(sleep_time)
             
             # Periodically save intermediate results
+            # 1. In the `main()` function, find where it creates the temporary dataframe for intermediate results 
+# (around line 1850-1860) and modify it to include the decision maker columns:
+
             if (i + 1) % 5 == 0 or (i + 1) == len(df['Company']):
                 intermediate_df = pd.DataFrame(results)
                 if not intermediate_df.empty and 'Business Name' in intermediate_df.columns:
-                    cols = ['Business Name', 'LinkedIn Link', 'Company Website', 'Company Size', 'Industry', 'Headquarters', 'Founded', 'Specialties', 'Location Match']
-                    intermediate_df = intermediate_df[cols]
+                    cols = ['Business Name', 'LinkedIn Link', 'Company Website', 'Company Size', 
+                            'Industry', 'Headquarters', 'Founded', 'Specialties', 'Location Match']
+                    
+                    # Add decision maker columns if they exist in the results
+                    decision_maker_cols = []
+                    for j in range(1, 4):  # For 3 decision makers
+                        for field in ['Name', 'Title', 'LinkedIn', 'Email', 'Phone']:
+                            col = f'Decision Maker {j} {field}'
+                            if any(col in result for result in results):
+                                decision_maker_cols.append(col)
+                    
+                    # Combine all columns
+                    all_cols = cols + decision_maker_cols
+                    
+                    # Only include columns that exist in the data
+                    available_cols = [col for col in all_cols if col in intermediate_df.columns]
+                    intermediate_df = intermediate_df[available_cols]
                 intermediate_file = os.path.join(DEBUG_FOLDER, f"intermediate_results_{i+1}.csv")
                 intermediate_df.to_csv(intermediate_file, index=False, quoting=csv.QUOTE_ALL)
                 logging.info(f"Saved intermediate results to {intermediate_file}")
                 print(f"Progress: {i+1}/{len(df['Company'])} companies processed.")
+
+            # add decsion maker columns:
+
+            results_df = pd.DataFrame(results)
+            # Reorder columns to have Business Name first
+            if not results_df.empty and 'Business Name' in results_df.columns:
+                # Base columns
+                cols = ['Business Name', 'LinkedIn Link', 'Company Website', 'Company Size', 
+                        'Industry', 'Headquarters', 'Founded', 'Specialties', 'Location Match']
+                
+                # Add decision maker columns (top 3)
+                for i in range(1, 4):
+                    cols.extend([
+                        f'Decision Maker {i} Name', 
+                        f'Decision Maker {i} Title', 
+                        f'Decision Maker {i} LinkedIn',
+                        f'Decision Maker {i} Email', 
+                        f'Decision Maker {i} Phone'
+                    ])
+                
+                # Only include columns that exist in the data
+                available_cols = [col for col in cols if col in results_df.columns]
+                results_df = results_df[available_cols]
+
+            results_df.to_csv(output_file, index=False, quoting=csv.QUOTE_ALL)
+            logging.info(f"Results saved to {output_file}")
+
+            # 3. Update the error handling for when scraping fails (around line 1730-1750)
+            # to include empty decision maker fields:
+
+            failed_businesses.append(business_name)
+                                
+            # Extract just the main error message without the stack trace
+            error_msg = str(e)
+            # Get only the first line or a shorter version of the error message
+            if '\n' in error_msg:
+                error_msg = error_msg.split('\n')[0]
+            # Limit the length of the error message
+            if len(error_msg) > 100:
+                error_msg = error_msg[:97] + "..."
+                
+            result = {
+                'Business Name': business_name,
+                'LinkedIn Link': None,
+                'Company Website': None,
+                'Company Size': None,
+                'Industry': None,
+                'Headquarters': None,
+                'Founded': None,
+                'Specialties': None,
+                'Location Match': f"Error: {error_msg}"
+            }
+
+            # Add empty fields for decision makers
+            for i in range(1, 4):
+                result[f'Decision Maker {i} Name'] = "Error"
+                result[f'Decision Maker {i} Title'] = "Error"
+                result[f'Decision Maker {i} LinkedIn'] = "Error"
+                result[f'Decision Maker {i} Email'] = "Error"
+                result[f'Decision Maker {i} Phone'] = "Error"
+
+            results.append(result)
     
     except Exception as e:
         logging.error(f"Critical error in main execution: {e}")
@@ -1803,7 +2629,7 @@ if __name__ == "__main__":
     
     try:
         print("Starting main process...")
-        main(file_path, output_file, username, password, keep_browser_open=True)
+        main(file_path, output_file, username, password, keep_browser_open=True, find_decision_makers_flag=True)
         print("Process completed successfully!")
         
         # Check if we have a Chrome session running

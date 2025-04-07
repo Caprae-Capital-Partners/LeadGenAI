@@ -5,7 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
-
+chrome_user_data/
 # Distribution / packaging
 .Python
 build/
