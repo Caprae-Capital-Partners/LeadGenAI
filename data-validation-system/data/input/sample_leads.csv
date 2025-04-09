@@ -1,0 +1,6 @@
+Business Name,Company,Industry,Company Size,Founded,Headquarters,estimated_revenue,source,Decision Maker 1 Name,Decision Maker 1 Title,Decision Maker 1 Source,Decision Maker 2 Name,Decision Maker 2 Title,Decision Maker 2 Source
+Acme Corp,,Technology,100-500 employees,1985,New York NY,$25M,crunchbase,Jane Smith,CEO,linkedin_profile,John Doe,CTO,linkedin_profile
+,TechSolutions Inc,Software,51-200 employees,2010,San Francisco CA,$8.5M,zoominfo,Michael Johnson,Founder & CEO,company_website,,,,
+Globex Corporation,,Manufacturing,1001-5000 employees,1960,Chicago IL,$120M,crunchbase,Robert Brown,President,linkedin_profile,Sarah Lee,CFO,linkedin_profile
+,Pacific Northwest Trust,Finance,201-500 employees,1978,Seattle WA,$45M,third_party_aggregator,William Chen,Managing Director,news_article,,,,
+Stark Industries,,Technology,5001-10000 employees,1940,Los Angeles CA,$1.2B,company_website,Tony Stark,CEO,company_website,Pepper Potts,COO,company_website
