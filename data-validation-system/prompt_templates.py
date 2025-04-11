@@ -204,3 +204,101 @@ Return your assessment in this JSON format:
 Replace 'data_point_1_name', etc. with the actual data point names.
 """
         return prompt
+
+    @staticmethod
+    def ceo_validation_prompt(company_info, ceo_data):
+        """Template for validating CEO information"""
+        company_name = company_info.get('name', company_info.get('Business Name', 'Unknown Company'))
+        
+        # Format company context
+        context_parts = []
+        fields = {
+            'Industry': company_info.get('Industry', 'Not specified'),
+            'Company Size': company_info.get('Company Size', 'Not specified'),
+            'Founded': company_info.get('Founded', 'Not specified'),
+            'Headquarters': company_info.get('Headquarters', 'Not specified')
+        }
+        
+        for field, value in fields.items():
+            if value and value != 'Not specified' and value != 'Not found':
+                context_parts.append(f"{field}: {value}")
+        
+        context = "\n".join(context_parts)
+        
+        # Format CEO data
+        name = ceo_data.get('name', ceo_data.get('Name', 'Not available'))
+        title = ceo_data.get('title', ceo_data.get('Title', 'Not available'))
+        source = ceo_data.get('source', ceo_data.get('Source', 'Unknown source'))
+        
+        prompt = f"""Please validate the following company CEO data:
+
+Company: {company_name}
+{context}
+
+CEO Information:
+- Name: {name}
+- Title: {title}
+Source: {source}
+
+Based on your knowledge of businesses and industry patterns, please:
+1. Provide a confidence score from 0.0 to 1.0 (where 1.0 is highly confident in the data's accuracy)
+2. Briefly explain your reasoning
+3. Identify any potential issues or flags with this CEO information
+
+Return your assessment in this JSON format:
+{{
+  "confidence": 0.0,
+  "explanation": "Your explanation here",
+  "flags": ["Flag 1", "Flag 2"]
+}}
+"""
+        return prompt
+
+    @staticmethod
+    def contact_validation_prompt(company_info, contact_data):
+        """Template for validating contact information (email and phone)"""
+        company_name = company_info.get('name', company_info.get('Business Name', 'Unknown Company'))
+        
+        # Format company context
+        context_parts = []
+        fields = {
+            'Industry': company_info.get('Industry', 'Not specified'),
+            'Company Size': company_info.get('Company Size', 'Not specified'),
+            'Founded': company_info.get('Founded', 'Not specified'),
+            'Headquarters': company_info.get('Headquarters', 'Not specified')
+        }
+        
+        for field, value in fields.items():
+            if value and value != 'Not specified' and value != 'Not found':
+                context_parts.append(f"{field}: {value}")
+        
+        context = "\n".join(context_parts)
+        
+        # Format contact data
+        email = contact_data.get('email', contact_data.get('Email', 'Not available'))
+        phone = contact_data.get('phone', contact_data.get('Phone', 'Not available'))
+        source = contact_data.get('source', contact_data.get('Source', 'Unknown source'))
+        
+        prompt = f"""Please validate the following company contact information:
+
+Company: {company_name}
+{context}
+
+Contact Information:
+- Email: {email}
+- Phone: {phone}
+Source: {source}
+
+Based on your knowledge of businesses and industry patterns, please:
+1. Provide a confidence score from 0.0 to 1.0 (where 1.0 is highly confident in the data's accuracy)
+2. Briefly explain your reasoning
+3. Identify any potential issues or flags with this contact information
+
+Return your assessment in this JSON format:
+{{
+  "confidence": 0.0,
+  "explanation": "Your explanation here",
+  "flags": ["Flag 1", "Flag 2"]
+}}
+"""
+        return prompt

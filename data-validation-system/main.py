@@ -61,10 +61,19 @@ def main():
         
         # Generate summary if requested
         if args.summary:
-            import pandas as pd
-            df = pd.read_csv(output_file)
-            summary = save_validation_summary(df, args.summary)
-            print(f"Validation summary saved to {args.summary}")
+            try:
+                import pandas as pd
+                if os.path.exists(output_file):
+                    df = pd.read_csv(output_file)
+                    if not df.empty:
+                        summary = save_validation_summary(df, args.summary)
+                        print(f"Validation summary saved to {args.summary}")
+                    else:
+                        print("Output file is empty, skipping summary generation")
+                else:
+                    print("Output file not found, skipping summary generation")
+            except Exception as e:
+                print(f"Error generating summary: {e}")
         
         # Clean up
         validator.close()
