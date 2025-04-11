@@ -33,6 +33,7 @@ class BatchProcessor:
         self.validator = validator
         self.batch_mode = batch_mode
         self.batch_size = batch_size
+        self.prompt_templates = PromptTemplates()  # Initialize prompt templates
     
     def process_file(self, input_file: str, output_file: str) -> str:
         """Process a file in batches"""
@@ -132,13 +133,13 @@ class BatchProcessor:
     
     def _process_company_single_mode(self, company_info):
         """Process a single company's data points one at a time"""
-        results = []
+        result = {}  # Initialize as dictionary instead of list
         
         # Extract company name
         company_name = company_info.get('Business Name', company_info.get('Company', ''))
         if not company_name:
             logger.warning("Skipping row with no company name")
-            return results
+            return result
         
         # Process each data point
         data_points = {
@@ -166,29 +167,29 @@ class BatchProcessor:
                 # Get validation result
                 validation_result = self.validator.validate_data_point(prompt)
                 
-                # Add to results
-                result = {
-                    'Business Name': company_name,
-                    'Data Point': point_name,
-                    'Validation Result': validation_result
-                }
-                results.append(result)
+                # Add to result dictionary
+                result[f'{point_name}_validation'] = validation_result
                 
             except Exception as e:
                 logger.error(f"Error processing {point_name} for {company_name}: {e}")
-                continue
+                result[f'{point_name}_validation'] = {
+                    'error': str(e),
+                    'confidence': 0.0,
+                    'explanation': f'Error during validation: {str(e)}',
+                    'flags': ['Validation error']
+                }
         
-        return results
+        return result
     
     def _process_company_batch_mode(self, company_info):
         """Process multiple data points for a company in a single request"""
-        results = []
+        result = {}  # Initialize as dictionary instead of list
         
         # Extract company name
         company_name = company_info.get('Business Name', company_info.get('Company', ''))
         if not company_name:
             logger.warning("Skipping row with no company name")
-            return results
+            return result
         
         # Prepare data points for batch validation
         data_points = {
@@ -211,15 +212,16 @@ class BatchProcessor:
             prompt = self.prompt_templates.batch_validation_prompt(company_info, data_points)
             validation_result = self.validator.validate_data_point(prompt)
             
-            # Add to results
-            result = {
-                'Business Name': company_name,
-                'Data Points': data_points,
-                'Validation Result': validation_result
-            }
-            results.append(result)
+            # Add to result dictionary
+            result['batch_validation'] = validation_result
             
         except Exception as e:
             logger.error(f"Error processing batch for {company_name}: {e}")
+            result['batch_validation'] = {
+                'error': str(e),
+                'confidence': 0.0,
+                'explanation': f'Error during validation: {str(e)}',
+                'flags': ['Validation error']
+            }
         
-        return results
+        return result

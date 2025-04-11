@@ -1,0 +1,2 @@
+@echo off
+python main.py --input ../linkedin/scraped_results.csv --output validation_results.csv --email vanessamae23@gmail.com --password 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 --batch-size 5 --batch-mode single --summary validation_summary.json 
