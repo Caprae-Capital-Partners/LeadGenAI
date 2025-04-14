@@ -1,103 +1,60 @@
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import quote
-import re
+# RUN THIS
+from backend.scraper.nameCleaner import clean_company_name_variants
+from backend.scraper.growjo.growjoFallbackSearch import get_growjo_company_list
+from backend.scraper.growjo.growjoRevenueExtractor import get_revenue_from_direct_page
+from backend.scraper.cacheStore import get_cached_match, set_cached_match
+from backend.scraper.loggerConfig import setup_logger
+import logging
 
-# ✅ Import fallback Growjo search
-from growjo_list_scraper import get_growjo_company_list
-
-def clean_company_name_variants(name):
-    variants = []
-
-    original = name.strip()
-    variants.append(original)
-
-    if "&" in original:
-        variants.append(original.replace("&", "and"))
-
-    if "-" in original:
-        variants.append(original.replace("-", " "))
-
-    no_special = re.sub(r"[^\w\s\-&]", "", original)
-    if no_special != original:
-        variants.append(no_special)
-
-    normalized_space = " ".join(original.split())
-    if normalized_space != original:
-        variants.append(normalized_space)
-
-    return list(dict.fromkeys(variants))
+setup_logger()
 
 def get_company_revenue_from_growjo(company_name, depth=0):
-    base_url = "https://growjo.com/company/"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    }
-
+    source = "growjo"
     name_variants = clean_company_name_variants(company_name)
 
-    for name_variant in name_variants:
-        company_url = base_url + quote(name_variant)
+    logging.info(f"Starting revenue scrape for '{company_name}'")
+    logging.debug(f"Name variants: {name_variants}")
 
-        try:
-            res = requests.get(company_url, headers=headers, timeout=10)
-            res.raise_for_status()
-            soup = BeautifulSoup(res.text, "html.parser")
+    # Check source-based cache
+    cached_match = get_cached_match(source, company_name)
+    if cached_match:
+        logging.info(f"Found cached match for '{company_name}': '{cached_match}'")
+        return get_company_revenue_from_growjo(cached_match, depth=1)
 
-            page_text = soup.get_text().lower()
-
-            if (
-                "page not found" in page_text or 
-                "company not found" in page_text or 
-                "rank not available" in page_text or 
-                "estimated annual revenue" not in page_text
-            ):
-                continue  # Not a real match
-
-            revenue = "<$5M"
-            for li in soup.find_all("li"):
-                text = li.get_text(strip=True)
-                if "estimated annual revenue" in text.lower():
-                    match = re.search(r"\$\d[\d\.]*[MB]?", text)
-                    if match:
-                        revenue = match.group(0)
-                        break
-
+    # Attempt direct scraping
+    for variant in name_variants:
+        result = get_revenue_from_direct_page(variant)
+        if result:
+            logging.info(f"✅ Direct scrape successful for variant '{variant}'")
             return {
                 "company": company_name,
-                "matched_variant": name_variant,
-                "estimated_revenue": revenue,
-                "url": company_url
+                **result
             }
 
-
-        except requests.exceptions.Timeout:
-            return {
-                "company": company_name,
-                "url": company_url,
-                "error": "Request timed out"
-            }
-        except Exception:
-            continue
-
-    # ✅ Fallback: search Growjo and retry with top result
+    # Fallback search if direct scraping failed
     if depth == 0:
-        for variant in clean_company_name_variants(company_name):
+        for variant in name_variants:
             fallback_names = get_growjo_company_list(variant)
-            print(f"🔎 Fallback search for variant '{variant}' returned: {fallback_names}")
+            logging.info(f"Fallback search for variant '{variant}' returned: {fallback_names}")
 
             if fallback_names:
                 top_result = fallback_names[0]
-                print(f"🔁 Retrying with top Growjo match: '{top_result}'")
+                logging.info(f"Retrying with top Growjo match: '{top_result}'")
+
+                # Save to cache
+                set_cached_match(source, company_name, top_result)
+
                 return get_company_revenue_from_growjo(top_result, depth=1)
 
+    # All attempts failed
+    logging.warning(f"Revenue not found for '{company_name}' after all fallbacks.")
     return {
         "company": company_name,
         "error": "Not found in Growjo after variants + fallback search",
         "attempted_variants": name_variants
     }
 
-# Example test
+# Example CLI test
 if __name__ == "__main__":
-    result = get_company_revenue_from_growjo("Louis Dreyfus")
+    result = get_company_revenue_from_growjo("Louis-Dreyfus")
     print(result)

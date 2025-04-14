@@ -5,8 +5,14 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import unquote
 import time
+import logging
+from backend.scraper.loggerConfig import setup_logger
+
+setup_logger()
 
 def get_growjo_company_list(search_term):
+    logging.info(f"🔍 Performing Growjo fallback search for: '{search_term}'")
+
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--disable-gpu")
@@ -32,14 +38,17 @@ def get_growjo_company_list(search_term):
                     slug = href.split("/company/")[-1]
                     name = unquote(slug.replace("_", " ")).strip()
                     results.append(name)
-            except:
+            except Exception as inner_e:
+                logging.debug(f"⚠️ Could not parse a row: {inner_e}")
                 continue
 
+        logging.info(f"✅ Found {len(results)} result(s) from Growjo search.")
         return results
 
     except Exception as e:
-        print(f"❌ Growjo fallback error: {e}")
+        logging.error(f"❌ Growjo fallback error for '{search_term}': {e}")
         return []
+
     finally:
         driver.quit()
 
