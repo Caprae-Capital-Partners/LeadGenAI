@@ -15,6 +15,9 @@ import ollama
 from config.browser_config import PlaywrightManager
 from datetime import datetime
 import google_maps_scraper as gms
+import httpx
+from gradio_client import Client
+from huggingface_hub import login
 
 class AsyncCompanyScraper:
     def __init__(self):
@@ -24,6 +27,9 @@ class AsyncCompanyScraper:
         self.sources = ["Name", "Overview", "Products & Services", "Revenue Zoominfo", "Revenue RocketReach", "General Revenue", "Employee", "Year Founded", "Business Type"]
         self.google_search = "https://www.bing.com/search?q="
         self.manager = PlaywrightManager(headless=False)
+        # login(token = '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')
+        # self.client = Client("Fatmagician/caprae_scraper")
+        self.client = Client.duplicate("Fatmagician/caprae_scraper", hf_token='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')
 
         if sys.platform == "win32":
             asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -47,19 +53,13 @@ class AsyncCompanyScraper:
         urls = [
             f'https://www.bing.com/search?q={company_name}+LinkedIn',
             f'https://www.bing.com/search?q={company_name}+Products+Services',
-            f'https://www.bing.com/search?q={company_name}+Revenue+Zoominfo',
-            f'https://www.bing.com/search?q={company_name}+Revenue+RocketReach',
-            f'https://www.bing.com/search?q={company_name}+Revenue+"{current_year}"',
-            f'https://www.bing.com/search?q={company_name}+Founder',
-            f'https://www.bing.com/search?q=How+much+employee+works+in+{company_name}',
-            f'https://www.bing.com/search?q=When+is+{company_name}+Founded',
+            # f'https://www.bing.com/search?q={company_name}+Revenue+Zoominfo',
+            # f'https://www.bing.com/search?q={company_name}+Revenue+RocketReach',
+            # f'https://www.bing.com/search?q={company_name}+Revenue+"{current_year}"',
+            # f'https://www.bing.com/search?q={company_name}+Founder',
+            # f'https://www.bing.com/search?q=How+much+employee+works+in+{company_name}',
+            # f'https://www.bing.com/search?q=When+is+{company_name}+Founded',
         ]
-        
-        # urls = [
-        #     f'https://www.duckduckgo.com/?t=h_&q={company_name}+Company+LinkedIn&ia=web',
-        #     f'https://www.duckduckgo.com/?t=h_&q={company_name}+Company+Products+Services&ia=web',
-            
-        # ]
         
         def extract_revenue(text):
             pattern = re.compile(
@@ -133,50 +133,38 @@ class AsyncCompanyScraper:
             # Menghindari IndexError
             overview_text = texts[0] if len(texts) > 0 else "No overview data"
             services_text = texts[1] if len(texts) > 1 else "No services data"
-            zoominfo_text = texts[2] if len(texts) > 2 else "No services data"
-            rocket_text = texts[3] if len(texts) > 3 else "No services data"
-            revenue_text = texts[4] if len(texts) > 4 else "No services data"
-            founder_text = texts[5] if len(texts) > 5 else "No services data"
-            employee_text = texts[6] if len(texts) > 6 else "No services data"
-            year_text = texts[7] if len(texts) > 7 else "No services data"
-
-            # prompts = [
-            #     f"Re-explain about {company_name} using this info: {overview_text}. Explain in about 250 words.",
-            #     f"Re-expplain about the products & services of {company_name} using this info: {services_text}. Explain in about 250 words.",
-            # ]
-            
-            print("Overview Text: ", overview_text)
-            print("Services Text: ", services_text)
-            print("Revenue Text: ", revenue_text)
-            print("Founder Text: ", founder_text)
+            # zoominfo_text = texts[2] if len(texts) > 2 else "No services data"
+            # rocket_text = texts[3] if len(texts) > 3 else "No services data"
+            # revenue_text = texts[4] if len(texts) > 4 else "No services data"
+            # founder_text = texts[5] if len(texts) > 5 else "No services data"
+            # employee_text = texts[6] if len(texts) > 6 else "No services data"
+            # year_text = texts[7] if len(texts) > 7 else "No services data"
             
             prompts = [
                 f"Explain in brief about {company_name} using the info provided: {overview_text}. Explain in about 50 words. Only answer by using the given information.",
                 f"Explain what {company_name} offers in terms of its products or the services they provide using this info: {services_text}. Provide a overview of around 100 words. Only answer by using the given information.",
-                f"Please tell me the provided revenue of {company_name} based on this info: {zoominfo_text}. Please give a number & the unit to represent the revenue based on provided information. Only answer by a number with its unit. (Shortest answer as possible). If not sure then answer with Not Found",
-                f"Please tell me the provided revenue of {company_name} based on this info: {rocket_text}. Please give a number & the unit to represent the revenue based on provided information. Only answer by a number with its unit. (Shortest answer as possible). If not sure then answer with Not Found",
-                f"Please tell me the provided revenue of {company_name} based on this info: {revenue_text}. Please give a number & the unit to represent the revenue based on provided information in {current_year} (if possible). Only answer by a number with its unit. (Shortest answer as possible). if not sure then answer with Not Found",
-                f"Please tell me the full name of founder or owner of {company_name} company based on this info: {founder_text}. Only give the name of the individual. (Shortest answer as possible)",
-                f"Based on using this information: {employee_text}. How much employee works in {company_name}? Only answer with a number, if not sure then answer with Not Found",
-                f"Based on using this information: {year_text}. What year/when is {company_name} founded? Just answer with the most possible year number. (Shortest answer as possible)",
-                f"Based on using this information: {overview_text + services_text}. What type of business is {company_name}? Is it Business to Customers (B2C) or Business to Businesses (B2B)? Only answer with either B2B or B2C or B2B, B2C (if both) (Shortest answer as possible)"
+                # f"Please tell me the provided revenue of {company_name} based on this info: {zoominfo_text}. Just return give a number & the unit to represent the revenue based on provided information. Only answer by a number with its unit. (Shortest answer as possible). If not sure then answer with Not Found",
+                # f"Please tell me the provided revenue of {company_name} based on this info: {rocket_text}. Just return give a number & the unit to represent the revenue based on provided information. Only answer by a number with its unit. (Shortest answer as possible). If not sure then answer with Not Found",
+                # f"Please tell me the provided revenue of {company_name} based on this info: {revenue_text}. Just return give a number & the unit to represent the revenue based on provided information in {current_year} (if possible). Only answer by a number with its unit. (Shortest answer as possible). if not sure then answer with Not Found",
+                # f"Please tell me the full name of founder or owner of {company_name} company based on this info: {founder_text}. Only return the name of the individual. (Shortest answer as possible)",
+                # f"Based on using this information: {employee_text}. How much employee works in {company_name}? Only return with a number, if not sure then answer with Not Found",
+                # f"Based on using this information: {year_text}. What year/when is {company_name} founded? Just return with the most possible year number. (Shortest answer as possible)",
+                # f"Based on using this information: {overview_text + services_text}. What type of business is {company_name}? Is it Business to Customers (B2C) or Business to Businesses (B2B)? Only return with either B2B or B2C or B2B, B2C (if both) (Shortest answer as possible)"
             ]
-
-            # answers = await asyncio.gather(*[self.ask_ollama(prompt) for prompt in prompts])
-            # answers = await asyncio.gather(*[
-            #     asyncio.to_thread(lambda prompt=prompt:
-            #         ollama.chat(model='phi', messages=[{'role': 'user', 'content': prompt}])['message']['content'])
-            #     for prompt in prompts
-            # ])
             
             answers = []
             with open('base_knowledge.txt', 'r', encoding='utf-8') as f:
                 base_knowledge = f.read()
             for prompt in prompts:
-                # response = ollama.chat(model='phi3', messages=[{'role': 'system', 'content': base_knowledge},
-                #                                                {'role': 'user', 'content': prompt}])
-                response = ollama.chat(model='phi3', messages=[{'role': 'user', 'content': prompt}])
-                answers.append(response['message']['content'])
+                response = self.client.predict(
+                        message=prompt,
+                        system_message = base_knowledge,
+                        max_tokens=200,
+                        temperature=0.4,
+                        top_p=0.9,
+                        api_name="/chat"
+                )
+                answers.append(response)
 
             await self.manager.stop_browser()
             
@@ -188,13 +176,13 @@ class AsyncCompanyScraper:
             "Name": company_name,
             "Overview": answers[0] if len(answers) > 0 else "Not Found",
             "Products & Services": answers[1] if len(answers) > 1 else "Not Found",
-            "Zoominfo Revenue": answers[2] if len(answers) > 2 else "Not Found",
-            "RocketReach Revenue": answers[3] if len(answers) > 3 else "Not Found",
-            "General Revenue": answers[4] if len(answers) > 4 else "Not Found",
-            "Founder/CEO": answers[5] if len(answers) > 5 else "Not Found",
-            "Employee": answers[6] if len(answers) > 6 else "Not Found",
-            "Year Founded": answers[7] if len(answers) > 7 else "Not Found",
-            "Business Type": answers[8] if len(answers) > 8 else "Not Found",
+            # "Zoominfo Revenue": answers[2] if len(answers) > 2 else "Not Found",
+            # "RocketReach Revenue": answers[3] if len(answers) > 3 else "Not Found",
+            # "General Revenue": answers[4] if len(answers) > 4 else "Not Found",
+            # "Founder/CEO": answers[5] if len(answers) > 5 else "Not Found",
+            # "Employee": answers[6] if len(answers) > 6 else "Not Found",
+            # "Year Founded": answers[7] if len(answers) > 7 else "Not Found",
+            # "Business Type": answers[8] if len(answers) > 8 else "Not Found",
         }
 
     async def save(self, df, folder='../data'):
@@ -249,7 +237,7 @@ class AsyncCompanyScraper:
         
 if __name__ == "__main__":
     scraper = AsyncCompanyScraper()
-    result = asyncio.run(scraper.process_company("Bluestone Equity Partners"))
+    result = asyncio.run(scraper.process_company("Terra Capital Partners"))
     # result = asyncio.get_event_loop().run_until_complete(scraper.process_company("Born Again Construction LLC"))
     asyncio.run(scraper.save(result))
     asyncio.run(scraper.combine_leads('overview_and_products_services.csv', 'leads_private equity firms_New York.csv'))

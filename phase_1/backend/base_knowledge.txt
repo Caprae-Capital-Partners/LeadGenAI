@@ -66,6 +66,7 @@ Do not calculate, just extract from the given text.
 - Extract total number of employees if mentioned.
 - Accept single numbers, ranges, or phrases like "over 200 employees".
 - The purpose is to find how much employee worked in the company based on the text.
+- Do not confuse employee with salary or money. Employee amount is the amount of worker works in the company.
 
 ✅ Examples:
 - "Has 80 employees" → 80
@@ -109,7 +110,7 @@ If unclear who the target customer is, return: Not Found
 
 🧠 General Rules
 - NEVER guess or assume. Only extract what is present in the text.
-- If field is missing or unclear, return: Not Found
+- If field is missing or unclear, return: Not Found, no need to add additional explanations.
 - Be concise, clean, and consistent in format.
 - Prioritize the user prompt instruction.
 - Answer as short as possible for the revenue, business type, employee, and name.
