@@ -3,8 +3,26 @@ import pandas as pd
 import asyncio
 import sys
 
-sys.path.append("../backend")  # Adjust if needed
-from google_maps_scraper import scrape_lead_by_industry  # No need to change your scraper!
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+sys.path.append("phase_1")  # Adjust if needed
+from backend.main import fetch_and_merge_data  # No need to change your scraper!
+
+async def run_scraper(industry: str, location: str):
+    return await fetch_and_merge_data(industry, location)
+
+def run_async(func, *args):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        return asyncio.ensure_future(func(*args))  # Await later if needed
+    else:
+        return asyncio.run(func(*args))
+
 
 st.set_page_config(page_title="Lead Scraper", layout="wide")
 st.title("🔍 LeadGenAI Scraper")
@@ -18,7 +36,9 @@ if st.button("🚀 Run Scraper"):
     if industry and location:
         with st.spinner("Scraping leads..."):
             try:
-                leads = asyncio.run(scrape_lead_by_industry(industry, location))
+                leads = run_async(run_scraper, industry, location)
+                if asyncio.isfuture(leads):  # We’re inside an async loop
+                    leads = asyncio.run(leads)  # Wait for it
                 if not leads:
                     st.warning("No leads found.")
                 else:
