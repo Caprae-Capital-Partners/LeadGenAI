@@ -3,7 +3,8 @@ import os
 from typing import Dict, List
 import sys
 sys.path.append("backend")
-from ..config.browser_config import PlaywrightManager
+from config.browser_config import PlaywrightManager
+from google_maps_scraper import save_to_csv
 
 FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
 
@@ -11,6 +12,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
     industry = industry.replace(" ", "+")
     location = location.replace(", ", "%2C")
     BASE_URL = f"https://www.bbb.org/search?find_country=USA&find_loc={location}&find_text={industry}"
+    lead_list = []
    
     try:
         browser_manager = PlaywrightManager(headless=False)
@@ -21,7 +23,6 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
             await page.wait_for_selector("div.stack.stack-space-20", timeout=5000)
             count = await page.locator("div.card.result-card").count()
                        
-            business_list = []
             for i in range(3, count): # Skip the first 3 cards (ads)
                 details = {}
                 try:
@@ -62,11 +63,11 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                         "Business_phone": details['Business_phone'],
                         "BBB_rating": details['BBB_rating']
                     })
-                    business_list.append(details)
+                    lead_list.append(details)
                     
                 except Exception as e:
                     print(f"Error extracting data for card {i}: {e}")
-            
+                
             # Go to next page if available
             next_page_btn = page.locator("a[rel='next']")
             if await next_page_btn.count() > 0:
@@ -76,7 +77,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
             else:
                 break
                 
-        return business_list
+        return lead_list
         
     except Exception as e:
         print(f"Error during search: {e}")
@@ -87,6 +88,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
     
 # if __name__ == "__main__":
 #     query = "swimming pool contractors"
-#     location = "Glendale, AZ"
-#     asyncio.run(scrape_bbb(query, location))
-    
+#     location = "carmel, in"
+#     FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
+#     result = asyncio.run(scrape_bbb(query, location))
+#     save_to_csv(result, "data/example.csv", FIELDNAMES)
