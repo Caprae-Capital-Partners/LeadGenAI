@@ -3,17 +3,14 @@ import os
 from typing import Dict, List
 import sys
 sys.path.append("backend")
-from urllib.parse import quote_plus
 from ..config.browser_config import PlaywrightManager
 
 FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
 
 async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:  
-    # industry = industry.replace(" ", "+")
-    # location = location.replace(", ", "%2C")
-    # BASE_URL = f"https://www.bbb.org/search?find_country=USA&find_loc={location}&find_text={industry}"
-    query = quote_plus(f"find_country=USA&find_loc={location}&find_text{industry}")
-    BASE_URL = f"https://www.bbb.org/search?{query}"
+    industry = industry.replace(" ", "+")
+    location = location.replace(", ", "%2C")
+    BASE_URL = f"https://www.bbb.org/search?find_country=USA&find_loc={location}&find_text={industry}"
    
     try:
         browser_manager = PlaywrightManager(headless=False)
@@ -88,8 +85,8 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
     finally:
         await browser_manager.stop_browser()
     
-if __name__ == "__main__":
-    query = "swimming pool contractors"
-    location = "Glendale, AZ"
-    asyncio.run(scrape_bbb(query, location))
+# if __name__ == "__main__":
+#     query = "swimming pool contractors"
+#     location = "Glendale, AZ"
+#     asyncio.run(scrape_bbb(query, location))
     
