@@ -1,4 +1,5 @@
 from playwright.async_api import async_playwright
+from playwright_stealth import stealth_async
 
 class PlaywrightManager:
     def __init__(self, headless: bool = True):
@@ -8,12 +9,19 @@ class PlaywrightManager:
         self.context = None
         self.page = None
         
-    async def start_browser(self):
+    async def start_browser(self, stealth_on: bool):
         """Initialize the Playwright session and start the browser."""
         self.playwright = await async_playwright().start()
         self.browser = await self.playwright.chromium.launch(headless=self.headless)
-        self.context = await self.browser.new_context()
+        self.context = await self.browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            java_script_enabled=True,
+            ignore_https_errors=True,
+        )
         self.page = await self.context.new_page()
+        if stealth_on:
+            await stealth_async(self.page)
         return self.page
     
     async def stop_browser(self):

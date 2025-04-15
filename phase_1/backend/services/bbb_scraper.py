@@ -1,0 +1,95 @@
+import asyncio
+import os
+from typing import Dict, List
+import sys
+sys.path.append("backend")
+from urllib.parse import quote_plus
+from ..config.browser_config import PlaywrightManager
+
+FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
+
+async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:  
+    # industry = industry.replace(" ", "+")
+    # location = location.replace(", ", "%2C")
+    # BASE_URL = f"https://www.bbb.org/search?find_country=USA&find_loc={location}&find_text={industry}"
+    query = quote_plus(f"find_country=USA&find_loc={location}&find_text{industry}")
+    BASE_URL = f"https://www.bbb.org/search?{query}"
+   
+    try:
+        browser_manager = PlaywrightManager(headless=False)
+        page = await browser_manager.start_browser(stealth_on=False)
+        await page.goto(BASE_URL)
+        
+        while True:
+            await page.wait_for_selector("div.stack.stack-space-20", timeout=5000)
+            count = await page.locator("div.card.result-card").count()
+                       
+            business_list = []
+            for i in range(3, count): # Skip the first 3 cards (ads)
+                details = {}
+                try:
+                    card = page.locator("div.card.result-card").nth(i)
+                    
+                    business_name_selector = "h3.result-business-name a"
+                    business_element = await card.locator(business_name_selector).count()
+                    details['Name'] = await card.locator(business_name_selector).inner_text() if business_element > 0 else "NA"
+
+                    # Scrape industry
+                    industry_selector = "p.bds-body.text-size-4.text-gray-70"
+                    industry_element = await card.locator(industry_selector).count()
+                    details['Industry'] = await card.locator(industry_selector).inner_text() if industry_element > 0 else "NA"
+
+                    # Scrape phone number
+                    phone_number_selector = "a.text-black[href^='tel:']"
+                    phone_number_element = await card.locator(phone_number_selector).count()
+                    details['Business_phone'] = await card.locator(phone_number_selector).inner_text() if phone_number_element > 0 else "NA"
+
+                    # Scrape address
+                    address_selector = "p.bds-body.text-size-5.text-gray-70"
+                    address_element = await card.locator(address_selector).count()
+                    details['Address'] = await card.locator(address_selector).inner_text() if address_element > 0 else "NA"
+                    
+                    # BBB rating
+                    bbb_selector = "span.result-rating"
+                    bbb_rating_element = await card.locator(bbb_selector).count()
+                    if bbb_rating_element > 0:
+                        rating_text = await card.locator(bbb_selector).inner_text()
+                        details['BBB_rating'] = rating_text.split()[-1] 
+                    else:
+                        details['BBB_rating'] = "NA"
+                    
+                    details.update({
+                        "Name": details['Name'],
+                        "Industry": details['Industry'],
+                        "Address": details['Address'],
+                        "Business_phone": details['Business_phone'],
+                        "BBB_rating": details['BBB_rating']
+                    })
+                    business_list.append(details)
+                    
+                except Exception as e:
+                    print(f"Error extracting data for card {i}: {e}")
+            
+            # Go to next page if available
+            next_page_btn = page.locator("a[rel='next']")
+            if await next_page_btn.count() > 0:
+                await next_page_btn.click()
+                # await page.wait_for_load_state("domcontentloaded")
+                await asyncio.sleep(1)
+            else:
+                break
+                
+        return business_list
+        
+    except Exception as e:
+        print(f"Error during search: {e}")
+        return None
+    
+    finally:
+        await browser_manager.stop_browser()
+    
+if __name__ == "__main__":
+    query = "swimming pool contractors"
+    location = "Glendale, AZ"
+    asyncio.run(scrape_bbb(query, location))
+    
