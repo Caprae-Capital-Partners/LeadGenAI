@@ -132,9 +132,9 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
                 # Extract phone number
                 try:
                     phone_element = listing.locator(".phones")
-                    business_info["Phone"] = await phone_element.inner_text() if await phone_element.count() > 0 else "NA"
+                    business_info["Business_phone"] = await phone_element.inner_text() if await phone_element.count() > 0 else "NA"
                 except:
-                    business_info["Phone"] = "NA"
+                    business_info["Business_phone"] = "NA"
 
                 # Extract website
                 try:
