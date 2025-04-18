@@ -4,7 +4,7 @@ from typing import Dict, List
 import sys
 sys.path.append("backend")
 from config.browser_config import PlaywrightManager
-from google_maps_scraper import save_to_csv
+# from google_maps_scraper import save_to_csv
 
 FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
 
@@ -15,7 +15,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
     lead_list = []
    
     try:
-        browser_manager = PlaywrightManager(headless=False)
+        browser_manager = PlaywrightManager(headless=True)
         page = await browser_manager.start_browser(stealth_on=False)
         await page.goto(BASE_URL)
         
@@ -77,6 +77,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
             else:
                 break
                 
+        print(f"Found {len(lead_list)} leads in BBB")
         return lead_list
         
     except Exception as e:
