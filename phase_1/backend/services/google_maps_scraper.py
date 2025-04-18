@@ -3,14 +3,14 @@ import asyncio
 import csv
 from typing import List, Dict
 import sys
-sys.path.append("backend")
-from ..config.browser_config import PlaywrightManager
+sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+from config.browser_config import PlaywrightManager
 from playwright.async_api import Locator
 
 BASE_URL = "https://www.google.com/maps"
 OUTPUT_DIR = "../data"
 
-def save_to_csv(data: List[Dict[str, str]], file_path: str) -> None:
+def save_to_csv(data: List[Dict[str, str]], file_path: str, fieldnames: List[str]):
     """Saves a list of dictionaries to a CSV file."""
     if not data:
         print("Error: No data provided to save.")
@@ -18,9 +18,6 @@ def save_to_csv(data: List[Dict[str, str]], file_path: str) -> None:
     
     # Ensure the directory exists
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-    # Define CSV field names
-    fieldnames = ["Name", "Industry", "Address", "Rating", "Business_phone", "Website"]
 
     try:
         with open(file_path, mode="w", newline="", encoding="utf-8") as csv_file:
@@ -96,7 +93,7 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
 
 async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str, str]]:
     """Scrape multiple leads by industry and location from Google Maps."""
-    manager = PlaywrightManager(headless=False)
+    manager = PlaywrightManager(headless=True)
     try:
         page = await manager.start_browser(stealth_on=False)
         await page.goto(BASE_URL)
@@ -109,7 +106,6 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
         await page.wait_for_selector("div.ecceSd", timeout=10000)  # Wait for the scrollable container to load
         
         scrollable_container = page.locator("div.ecceSd").nth(1)
-        previous_count = 0
 
         while True:
             # Scroll to the bottom of the container
@@ -117,23 +113,20 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
                 "(container) => container.scrollBy(0, container.scrollHeight)", 
                 await scrollable_container.element_handle()
             )
-            # Need to change this harcoded wait time
-            await asyncio.sleep(2)  # Wait for lazy-loaded content to load
-
-            # Count the number of loaded business containers
-            business_containers = page.locator("div.bfdHYd.Ppzolf.OFBs3e")
-            current_count = await business_containers.count()
-
-            # Break the loop if no new elements are loaded
-            if current_count == previous_count:
+            await asyncio.sleep(0.5)
+            if await page.locator("div.eKbjU").count() > 0:
+                # print("Bottom reached")
                 break
-            previous_count = current_count
-            
+
+        # Count the number of loaded business containers
+        business_containers = page.locator("div.bfdHYd.Ppzolf.OFBs3e")
+        current_count = await business_containers.count()
+
         if current_count == 0:
-            print("No businesses found.")
+            print("No businesses found on google maps")
             return []
         else:
-            print(f"Found {current_count} businesses for {industry} in {location}.")
+            print(f"Found {current_count} leads for {industry}, {location} on google maps")
             business_list = []
                 
             for i in range(current_count):
@@ -150,5 +143,4 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
         await manager.stop_browser()
 
 if __name__ == "__main__":
-    # asyncio.run(scrape_lead_by_industry("construction companies", "glendale,az"))
-    save_to_csv(asyncio.run(scrape_lead_by_industry("construction companies", "glendale,az")), os.path.abspath('../data/test.csv'))
+    asyncio.run(scrape_lead_by_industry("plumbing services", "carmel, in"))

@@ -24,6 +24,7 @@ def save_to_csv(data: List[Dict[str, str]], headers: List[str], filename: str = 
 
 def merge_data_sources(data1: List[Dict[str, str]],
                        data2: List[Dict[str, str]],
+                       data3: List[Dict[str, str]],
                        fieldnames: List[str]) -> List[Dict[str, str]]:
     merged = []
     seen_keys = set()  # Used to track unique records by Name or Address
@@ -51,6 +52,9 @@ def merge_data_sources(data1: List[Dict[str, str]],
 
     for record in data2:
         # Map Rating from data2, keep as is
+        add_record(record)
+        
+    for record in data3:
         add_record(record)
         
     print(f"Duplicates found: {duplicate_count}")

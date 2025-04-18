@@ -2,9 +2,10 @@ import asyncio
 from typing import List, Dict
 # import sys
 # sys.path.append("backend")
-from services.bbb_scraper import scrape_bbb
-from services.google_maps_scraper import scrape_lead_by_industry
-from services.merge_sources import merge_data_sources, save_to_csv
+from .services.yellowpages_scraper import scrape_yellowpages
+from .services.bbb_scraper import scrape_bbb
+from .services.google_maps_scraper import scrape_lead_by_industry
+from .services.merge_sources import merge_data_sources, save_to_csv
 
 FIELDNAMES = [
     "Name",
@@ -18,13 +19,13 @@ FIELDNAMES = [
 
 async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, str]]:
     # Running parallel
-    bbb_data, google_maps_data = await asyncio.gather(
+    bbb_data, google_maps_data, yp_data = await asyncio.gather(
         scrape_bbb(industry, location),
-        scrape_lead_by_industry(industry, location)
-        # yellow page
+        scrape_lead_by_industry(industry, location),
+        scrape_yellowpages(industry, location)
     )
     # Merge the results using the merger function
-    merged_data = merge_data_sources(bbb_data, google_maps_data, fieldnames=FIELDNAMES)
+    merged_data = merge_data_sources(bbb_data, google_maps_data, yp_data, fieldnames=FIELDNAMES)
     
     return merged_data
 
@@ -58,8 +59,7 @@ async def fetch_and_merge_seq(industry: str, location: str) -> List[Dict[str,str
         print(f"Error merging data: {e}")
         return []
 
-# Example usage
-if __name__ == "__main__":
-    # Run the async function in an event loop
-    result = asyncio.run(fetch_and_merge_data("general contractors", "Carmel, IN"))
-    save_to_csv(result, filename="data/merged_output.csv", headers=FIELDNAMES)
+# if __name__ == "__main__":
+#     # Run the async function in an event loop
+#     result = asyncio.run(fetch_and_merge_data("plumbing services", "Carmel, IN"))
+#     save_to_csv(result, filename="merged_output.csv", headers=FIELDNAMES)
