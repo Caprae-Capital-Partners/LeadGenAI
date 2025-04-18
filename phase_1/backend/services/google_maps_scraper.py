@@ -93,7 +93,7 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
 
 async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str, str]]:
     """Scrape multiple leads by industry and location from Google Maps."""
-    manager = PlaywrightManager(headless=False)
+    manager = PlaywrightManager(headless=True)
     try:
         page = await manager.start_browser(stealth_on=False)
         await page.goto(BASE_URL)
