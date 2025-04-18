@@ -150,4 +150,5 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
         await manager.stop_browser()
 
 if __name__ == "__main__":
-    asyncio.run(scrape_lead_by_industry("construction companies", "glendale,az"))
+    # asyncio.run(scrape_lead_by_industry("construction companies", "glendale,az"))
+    save_to_csv(asyncio.run(scrape_lead_by_industry("construction companies", "glendale,az")), os.path.abspath('../data/test.csv'))

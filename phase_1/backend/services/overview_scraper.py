@@ -18,19 +18,21 @@ import google_maps_scraper as gms
 import httpx
 from gradio_client import Client
 from huggingface_hub import login
+from openai import OpenAI
 
 class AsyncCompanyScraper:
     def __init__(self):
         self.df = pd.DataFrame(columns=[
             'Overview', 'Product Services', 'Revenue'
         ])
-        self.sources = ["Name", "Overview", "Products & Services", "Revenue Zoominfo", "Revenue RocketReach", "General Revenue", "Employee", "Year Founded", "Business Type"]
+        # self.sources = ["Name", "Overview", "Products & Services", "Revenue Zoominfo", "Revenue RocketReach", "General Revenue", "Employee", "Year Founded", "Business Type"]
+        self.sources = ["Name", "Overview", "Products & Services"]
         self.google_search = "https://www.bing.com/search?q="
-        self.manager = PlaywrightManager(headless=False)
-        # login(token = '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')
+        self.manager = PlaywrightManager(headless=True)
         # self.client = Client("Fatmagician/caprae_scraper")
-        self.client = Client.duplicate("Fatmagician/caprae_scraper", hf_token='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')
-
+        # self.client = Client.duplicate("Fatmagician/caprae_scraper", hf_token='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')
+        self.client = OpenAI(api_key="sk-b37194c5c44e4653ac21eee3c20f2ee1", base_url="https://api.deepseek.com")
+        
         if sys.platform == "win32":
             asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
@@ -38,6 +40,18 @@ class AsyncCompanyScraper:
         try:
             await page.goto(url)
             await page.wait_for_load_state("domcontentloaded")
+            
+            await page.evaluate("""
+            () => {
+                const all = document.querySelectorAll('*');
+                all.forEach(el => {
+                    const style = window.getComputedStyle(el);
+                    if (style.display === 'none') el.style.display = 'block';
+                    if (style.visibility === 'hidden') el.style.visibility = 'visible';
+                    if (style.opacity === '0') el.style.opacity = '1';
+                });
+            }
+            """)
 
             texts = []
             for tag in tags_to_find:
@@ -84,7 +98,7 @@ class AsyncCompanyScraper:
             return None
 
         async with async_playwright() as p:
-            await self.manager.start_browser()  # start once
+            await self.manager.start_browser(stealth_on = False)  # start once
             context = await self.manager.browser.new_context()
             
             #Get real URLS for Overview
@@ -128,7 +142,7 @@ class AsyncCompanyScraper:
             texts = await asyncio.gather(*tasks)
             await self.manager.stop_browser()
 
-            print(f"Total texts extracted: {len(texts)}")  # Debugging
+            print(f"Total texts extracted: {len(texts)}")
 
             # Menghindari IndexError
             overview_text = texts[0] if len(texts) > 0 else "No overview data"
@@ -156,15 +170,17 @@ class AsyncCompanyScraper:
             with open('base_knowledge.txt', 'r', encoding='utf-8') as f:
                 base_knowledge = f.read()
             for prompt in prompts:
-                response = self.client.predict(
-                        message=prompt,
-                        system_message = base_knowledge,
-                        max_tokens=200,
-                        temperature=0.4,
-                        top_p=0.9,
-                        api_name="/chat"
+                response = self.client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[
+                        {"role": "system", "content": "You are an intelligent extraction agent. Your job is to analyze raw text (scraped from search engines) and extract accurate company information, **based only on what's actually in the text**. If the required info is missing or uncertain, return: Not Found."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    stream=False
                 )
-                answers.append(response)
+                
+                # print(response.choices[0].message.content)
+                answers.append(response.choices[0].message.content)
 
             await self.manager.stop_browser()
             
@@ -237,7 +253,7 @@ class AsyncCompanyScraper:
         
 if __name__ == "__main__":
     scraper = AsyncCompanyScraper()
-    result = asyncio.run(scraper.process_company("Terra Capital Partners"))
+    result = asyncio.run(scraper.process_company("Veritas Capital Fund Management LLC"))
     # result = asyncio.get_event_loop().run_until_complete(scraper.process_company("Born Again Construction LLC"))
     asyncio.run(scraper.save(result))
     asyncio.run(scraper.combine_leads('overview_and_products_services.csv', 'leads_private equity firms_New York.csv'))
