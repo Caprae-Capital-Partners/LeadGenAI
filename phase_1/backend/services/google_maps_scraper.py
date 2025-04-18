@@ -3,7 +3,7 @@ import asyncio
 import csv
 from typing import List, Dict
 import sys
-# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
 from config.browser_config import PlaywrightManager
 from playwright.async_api import Locator
 
@@ -113,8 +113,9 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
                 "(container) => container.scrollBy(0, container.scrollHeight)", 
                 await scrollable_container.element_handle()
             )
+            await asyncio.sleep(0.5)
             if await page.locator("div.eKbjU").count() > 0:
-                print("Bottom reached")
+                # print("Bottom reached")
                 break
 
         # Count the number of loaded business containers
@@ -141,5 +142,5 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
     finally:
         await manager.stop_browser()
 
-# if __name__ == "__main__":
-#     asyncio.run(scrape_lead_by_industry("plumbing services", "carmel, in"))
+if __name__ == "__main__":
+    asyncio.run(scrape_lead_by_industry("plumbing services", "carmel, in"))
