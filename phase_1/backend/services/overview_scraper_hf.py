@@ -1,29 +1,16 @@
 import sys
-import time
-import random
 import pandas as pd
 import os
 import asyncio
 import re
-# import yfinance as yf
-import platform
-import subprocess
 import matplotlib.pyplot as plt
 from playwright.async_api import async_playwright
-from playwright_stealth import stealth_async
-import ollama
 import os
+from openai import OpenAI
+from urllib.parse import quote_plus
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config.browser_config import PlaywrightManager
-
-# from config.browser_config import PlaywrightManager
-from datetime import datetime
-import google_maps_scraper as gms
-import httpx
-from gradio_client import Client
-from huggingface_hub import login
-from openai import OpenAI
 
 class AsyncCompanyScraper:
     def __init__(self):
@@ -69,14 +56,14 @@ class AsyncCompanyScraper:
         except Exception as e:
             return f"Error loading page: {e}"
 
-    async def process_company(self, company_name):
-        current_year = datetime.now().year
+    async def process_company(self, company_name: str, location: str):
         company_temp = company_name.replace(" ", "+")
         company_temp = re.sub(r"[^a-zA-Z0-9+]", "", company_temp)
+        query = quote_plus(f"{company_name} {location}")
         urls = [
-            f'https://www.bing.com/search?q={company_temp}+Website',
-            f'https://www.bing.com/search?q={company_temp}+LinkedIn',
-            f'https://www.bing.com/search?q={company_temp}+Products+Services',
+            f'https://www.bing.com/search?q={query}+Website',
+            f'https://www.bing.com/search?q={query}+LinkedIn',
+            f'https://www.bing.com/search?q={query}+Products+Services',
             # f'https://www.bing.com/search?q={company_name}+Revenue+Zoominfo',
             # f'https://www.bing.com/search?q={company_name}+Revenue+RocketReach',
             # f'https://www.bing.com/search?q={company_name}+Revenue+"{current_year}"',
@@ -168,8 +155,8 @@ class AsyncCompanyScraper:
             print('Services Text: ', services_text)
             
             prompts = [
-                f"Explain in brief about {company_name} using the info provided: {overview_text}. Explain in about 50 words. Only answer by using the given information.",
-                f"Explain what {company_name} offers in terms of its products or the services they provide using this info: {services_text}. Provide a overview of around 100 words. Only answer by using the given information.",
+                f"Explain in brief about {company_name} in {location} using the info provided: {overview_text}. Explain in about 50 words. Only answer by using the given information.",
+                f"Explain what {company_name} in {location} offers in terms of its products or the services they provide using this info: {services_text}. Provide a overview of around 100 words. Only answer by using the given information.",
                 # f"Please tell me the provided revenue of {company_name} based on this info: {zoominfo_text}. Just return give a number & the unit to represent the revenue based on provided information. Only answer by a number with its unit. (Shortest answer as possible). If not sure then answer with Not Found",
                 # f"Please tell me the provided revenue of {company_name} based on this info: {rocket_text}. Just return give a number & the unit to represent the revenue based on provided information. Only answer by a number with its unit. (Shortest answer as possible). If not sure then answer with Not Found",
                 # f"Please tell me the provided revenue of {company_name} based on this info: {revenue_text}. Just return give a number & the unit to represent the revenue based on provided information in {current_year} (if possible). Only answer by a number with its unit. (Shortest answer as possible). if not sure then answer with Not Found",
@@ -180,8 +167,6 @@ class AsyncCompanyScraper:
             ]
             
             answers = []
-            with open('base_knowledge.txt', 'r', encoding='utf-8') as f:
-                base_knowledge = f.read()
             for prompt in prompts:
                 response = self.client.chat.completions.create(
                     model="deepseek-chat",
@@ -266,7 +251,7 @@ class AsyncCompanyScraper:
         
 if __name__ == "__main__":
     scraper = AsyncCompanyScraper()
-    result = asyncio.run(scraper.process_company("G & S Carpet Cleaning"))
+    result = asyncio.run(scraper.process_company("Gonzalez Certified", "San Deigo, CA"))
     # result = asyncio.get_event_loop().run_until_complete(scraper.process_company("Born Again Construction LLC"))
     # asyncio.run(scraper.save(result))
     # asyncio.run(scraper.combine_leads('overview_and_products_services.csv', 'leads_private equity firms_New York.csv'))
