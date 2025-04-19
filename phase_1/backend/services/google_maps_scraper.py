@@ -3,7 +3,11 @@ import asyncio
 import csv
 from typing import List, Dict
 import sys
-sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+
+# Uncomment below lines if running this only this file for debugging
+# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# from config.browser_config import PlaywrightManager
+
 from backend.config.browser_config import PlaywrightManager
 from playwright.async_api import Locator
 
@@ -110,10 +114,12 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
         while True:
             # Scroll to the bottom of the container
             await page.evaluate(
-                "(container) => container.scrollBy(0, container.scrollHeight)", 
-                await scrollable_container.element_handle()
+            """(container) => {
+                container.scrollBy({ top: 500, behavior: 'smooth' });
+            }""",
+            await scrollable_container.element_handle()
             )
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1)
             if await page.locator("div.eKbjU").count() > 0:
                 # print("Bottom reached")
                 break
@@ -126,7 +132,7 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
             print("No businesses found on google maps")
             return []
         else:
-            print(f"Found {current_count} leads for {industry}, {location} on google maps")
+            # print(f"Found {current_count} leads for {industry}, {location} on google maps")
             business_list = []
                 
             for i in range(current_count):
@@ -142,5 +148,5 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
     finally:
         await manager.stop_browser()
 
-if __name__ == "__main__":
-    asyncio.run(scrape_lead_by_industry("plumbing services", "carmel, in"))
+# if __name__ == "__main__":
+#     asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca"))
