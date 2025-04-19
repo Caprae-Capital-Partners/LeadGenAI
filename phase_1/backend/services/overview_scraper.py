@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from playwright.async_api import async_playwright
 from playwright_stealth import stealth_async
 import ollama
-from config.browser_config import PlaywrightManager
+from backend.config.browser_config import PlaywrightManager
 from datetime import datetime
 import google_maps_scraper as gms
 
