@@ -3,7 +3,6 @@ import pandas as pd
 import os
 import asyncio
 import re
-import matplotlib.pyplot as plt
 from playwright.async_api import async_playwright
 import os
 from openai import OpenAI
@@ -34,24 +33,11 @@ class AsyncCompanyScraper:
             await page.goto(url)
             await page.wait_for_load_state("domcontentloaded")
             await asyncio.sleep(2)
-            
-            # await page.evaluate("""
-            # () => {
-            #     const all = document.querySelectorAll('*');
-            #     all.forEach(el => {
-            #         const style = window.getComputedStyle(el);
-            #         if (style.display === 'none') el.style.display = 'block';
-            #         if (style.visibility === 'hidden') el.style.visibility = 'visible';
-            #         if (style.opacity === '0') el.style.opacity = '1';
-            #     });
-            # }
-            # """)
-            
             await page.evaluate("""
-                const contentDiv = document.querySelector('#b_content');
-                if (contentDiv && contentDiv.style.visibility === 'hidden') {
-                    contentDiv.style.visibility = 'visible';
-                }
+            const contentDiv = document.querySelector('#b_content');
+            if (contentDiv && contentDiv.style.visibility === 'hidden') {
+                contentDiv.style.visibility = 'visible';
+            }
             """)
 
             texts = []
@@ -64,8 +50,6 @@ class AsyncCompanyScraper:
             return f"Error loading page: {e}"
 
     async def process_company(self, company_name: str, location: str):
-        company_temp = company_name.replace(" ", "+")
-        company_temp = re.sub(r"[^a-zA-Z0-9+]", "", company_temp)
         query = quote_plus(f"{company_name} {location}")
         urls = [
             f'https://www.bing.com/search?q={query}+Website',
@@ -163,7 +147,7 @@ class AsyncCompanyScraper:
             
             prompts = [
                 f"Explain in brief about {company_name} in {location} using the info provided: {overview_text}. Explain in about 50 words. Only answer by using the given information.",
-                f"Explain what {company_name} in {location} offers in terms of its products or the services they provide using this info: {services_text}. Provide a overview of around 100 words. Only answer by using the given information.",
+                f"Explain what {company_name} in {location} offers in terms of its products or the services they provide using this info: {services_text}. Provide a overview of around 50 words. Only answer by using the given information.",
                 # f"Please tell me the provided revenue of {company_name} based on this info: {zoominfo_text}. Just return give a number & the unit to represent the revenue based on provided information. Only answer by a number with its unit. (Shortest answer as possible). If not sure then answer with Not Found",
                 # f"Please tell me the provided revenue of {company_name} based on this info: {rocket_text}. Just return give a number & the unit to represent the revenue based on provided information. Only answer by a number with its unit. (Shortest answer as possible). If not sure then answer with Not Found",
                 # f"Please tell me the provided revenue of {company_name} based on this info: {revenue_text}. Just return give a number & the unit to represent the revenue based on provided information in {current_year} (if possible). Only answer by a number with its unit. (Shortest answer as possible). if not sure then answer with Not Found",
@@ -178,7 +162,7 @@ class AsyncCompanyScraper:
                 response = self.client.chat.completions.create(
                     model="deepseek-chat",
                     messages=[
-                        {"role": "system", "content": "You are an intelligent extraction agent. Your job is to analyze raw text (scraped from search engines) and extract accurate company information, **based only on what's actually in the text**. If the required info is missing or uncertain, return: Not Found."},
+                        {"role": "system", "content": "You are an intelligent extraction agent. Your job is to analyze raw text (scraped from search engines) and extract accurate company information, **based only on what's actually in the text**. If the required info is missing or uncertain, return only the text: Not Found."},
                         {"role": "user", "content": prompt},
                     ],
                     stream=False
@@ -258,7 +242,7 @@ class AsyncCompanyScraper:
         
 if __name__ == "__main__":
     scraper = AsyncCompanyScraper()
-    result = asyncio.run(scraper.process_company("Gonzalez Certified", "San Deigo, CA"))
+    result = asyncio.run(scraper.process_company("City Plumber", "San Deigo, CA"))
     # result = asyncio.get_event_loop().run_until_complete(scraper.process_company("Born Again Construction LLC"))
     # asyncio.run(scraper.save(result))
     # asyncio.run(scraper.combine_leads('overview_and_products_services.csv', 'leads_private equity firms_New York.csv'))
