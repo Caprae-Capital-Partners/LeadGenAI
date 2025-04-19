@@ -43,6 +43,7 @@ class AsyncCompanyScraper:
 
     async def fetch_page_text(self, page, url, tags_to_find):
         try:
+            await asyncio.sleep(1)
             await page.goto(url)
             await page.wait_for_load_state("domcontentloaded")
             await asyncio.sleep(2)
@@ -70,10 +71,12 @@ class AsyncCompanyScraper:
 
     async def process_company(self, company_name):
         current_year = datetime.now().year
+        company_temp = company_name.replace(" ", "+")
+        company_temp = re.sub(r"[^a-zA-Z0-9+]", "", company_temp)
         urls = [
-            f'https://www.bing.com/search?q={company_name}+Website',
-            f'https://www.bing.com/search?q={company_name}+LinkedIn',
-            f'https://www.bing.com/search?q={company_name}+Products+Services',
+            f'https://www.bing.com/search?q={company_temp}+Website',
+            f'https://www.bing.com/search?q={company_temp}+LinkedIn',
+            f'https://www.bing.com/search?q={company_temp}+Products+Services',
             # f'https://www.bing.com/search?q={company_name}+Revenue+Zoominfo',
             # f'https://www.bing.com/search?q={company_name}+Revenue+RocketReach',
             # f'https://www.bing.com/search?q={company_name}+Revenue+"{current_year}"',
@@ -153,7 +156,7 @@ class AsyncCompanyScraper:
 
             # Menghindari IndexError
             overview_text = texts[0]+texts[1] if len(texts) > 0 else "No overview data"
-            services_text = texts[2] if len(texts) > 1 else "No services data"
+            services_text = texts[2] if len(texts) > 2 else "No services data"
             # zoominfo_text = texts[2] if len(texts) > 2 else "No services data"
             # rocket_text = texts[3] if len(texts) > 3 else "No services data"
             # revenue_text = texts[4] if len(texts) > 4 else "No services data"
@@ -263,7 +266,7 @@ class AsyncCompanyScraper:
         
 if __name__ == "__main__":
     scraper = AsyncCompanyScraper()
-    result = asyncio.run(scraper.process_company("Absolute Carpet Care"))
+    result = asyncio.run(scraper.process_company("G & S Carpet Cleaning"))
     # result = asyncio.get_event_loop().run_until_complete(scraper.process_company("Born Again Construction LLC"))
     # asyncio.run(scraper.save(result))
     # asyncio.run(scraper.combine_leads('overview_and_products_services.csv', 'leads_private equity firms_New York.csv'))
