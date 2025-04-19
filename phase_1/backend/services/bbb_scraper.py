@@ -4,8 +4,8 @@ from typing import Dict, List
 import sys
 sys.path.append("backend")
 # from config.browser_config import PlaywrightManager
-from ..config.browser_config import PlaywrightManager
-from google_maps_scraper import save_to_csv
+from backend.config.browser_config import PlaywrightManager
+from backend.services.google_maps_scraper import save_to_csv
 from config.browser_config import PlaywrightManager
 # from google_maps_scraper import save_to_csv
 

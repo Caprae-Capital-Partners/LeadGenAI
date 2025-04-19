@@ -2,10 +2,10 @@ import asyncio
 from typing import List, Dict
 # import sys
 # sys.path.append("backend")
-from .services.yellowpages_scraper import scrape_yellowpages
-from .services.bbb_scraper import scrape_bbb
-from .services.google_maps_scraper import scrape_lead_by_industry
-from .services.merge_sources import merge_data_sources, save_to_csv
+from backend.services.yellowpages_scraper import scrape_yellowpages
+from backend.services.bbb_scraper import scrape_bbb
+from backend.services.google_maps_scraper import scrape_lead_by_industry
+from backend.services.merge_sources import merge_data_sources, save_to_csv
 
 FIELDNAMES = [
     "Name",
@@ -24,7 +24,13 @@ async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, s
         scrape_lead_by_industry(industry, location),
         scrape_yellowpages(industry, location)
     )
+    bbb_data = bbb_data or []
+    google_maps_data = google_maps_data or []
+    yp_data = yp_data or []
     # Merge the results using the merger function
+    print(f"Fetched: BBB={len(bbb_data)}, GMaps={len(google_maps_data)}, YP={len(yp_data)}")
+
+
     merged_data = merge_data_sources(bbb_data, google_maps_data, yp_data, fieldnames=FIELDNAMES)
     
     return merged_data

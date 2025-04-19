@@ -2,9 +2,9 @@ import asyncio
 from typing import List, Dict
 # import sys
 # sys.path.append("backend")
-from services.bbb_scraper import scrape_bbb
-from services.google_maps_scraper import scrape_lead_by_industry
-from services.merge_sources import merge_data_sources, save_to_csv
+from backend.services.bbb_scraper import scrape_bbb
+from backend.services.google_maps_scraper import scrape_lead_by_industry
+from backend.services.merge_sources import merge_data_sources, save_to_csv
 
 FIELDNAMES = [
     "Name",
