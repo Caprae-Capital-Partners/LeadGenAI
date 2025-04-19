@@ -129,7 +129,23 @@ def parse_address(address, data):
 
     return places
 
+def parse_number(raw):
+    # Remove country code and keep digits
+    digits_only = re.sub(r"[^\d]", "", raw)  # Keep only digits
+
+    if len(digits_only) < 10:
+        return raw
+
+    local = digits_only[-10:]
+
+    area = local[:3]
+    mid = local[3:6]
+    last = local[6:]
+    
+    return f"({area})-{mid}-{last}"
+
 if __name__ == "__main__":
     data = pd.read_csv('normalized_city_state_dataset.csv')
     data.dropna(inplace=True)
     print(parse_address('1300 E 86th St Ste 14 Box 130, Indianapolis, IN 46240-1910', data))
+    print(parse_number('+1 317-241-4327'))

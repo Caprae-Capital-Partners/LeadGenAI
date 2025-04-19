@@ -35,16 +35,23 @@ class AsyncCompanyScraper:
             await page.wait_for_load_state("domcontentloaded")
             await asyncio.sleep(2)
             
+            # await page.evaluate("""
+            # () => {
+            #     const all = document.querySelectorAll('*');
+            #     all.forEach(el => {
+            #         const style = window.getComputedStyle(el);
+            #         if (style.display === 'none') el.style.display = 'block';
+            #         if (style.visibility === 'hidden') el.style.visibility = 'visible';
+            #         if (style.opacity === '0') el.style.opacity = '1';
+            #     });
+            # }
+            # """)
+            
             await page.evaluate("""
-            () => {
-                const all = document.querySelectorAll('*');
-                all.forEach(el => {
-                    const style = window.getComputedStyle(el);
-                    if (style.display === 'none') el.style.display = 'block';
-                    if (style.visibility === 'hidden') el.style.visibility = 'visible';
-                    if (style.opacity === '0') el.style.opacity = '1';
-                });
-            }
+                const contentDiv = document.querySelector('#b_content');
+                if (contentDiv && contentDiv.style.visibility === 'hidden') {
+                    contentDiv.style.visibility = 'visible';
+                }
             """)
 
             texts = []
