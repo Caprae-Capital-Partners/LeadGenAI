@@ -6,7 +6,7 @@ sys.path.append("backend")
 # from config.browser_config import PlaywrightManager
 from backend.config.browser_config import PlaywrightManager
 from backend.services.google_maps_scraper import save_to_csv
-from config.browser_config import PlaywrightManager
+# from config.browser_config import PlaywrightManager
 # from google_maps_scraper import save_to_csv
 
 FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
@@ -23,8 +23,11 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
         await page.goto(BASE_URL)
         
         while True:
-            await page.wait_for_selector("div.stack.stack-space-20", timeout=5000)
-            count = await page.locator("div.card.result-card").count()
+            try:
+                await page.wait_for_selector("div.stack.stack-space-20", timeout=5000)
+                count = await page.locator("div.card.result-card").count()
+            except:
+                break
                        
             for i in range(3, count): # Skip the first 3 cards (ads)
                 details = {}
@@ -38,7 +41,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                     # Scrape industry
                     industry_selector = "p.bds-body.text-size-4.text-gray-70"
                     industry_element = await card.locator(industry_selector).count()
-                    details['Industry'] = await card.locator(industry_selector).inner_text() if industry_element > 0 else "NA"
+                    details['Industry'] = str(await card.locator(industry_selector).inner_text()).split(",")[0] if industry_element > 0 else "NA"
 
                     # Scrape phone number
                     phone_number_selector = "a.text-black[href^='tel:']"
@@ -80,12 +83,12 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
             else:
                 break
                 
-        print(f"Found {len(lead_list)} leads in BBB")
+        # print(f"Found {len(lead_list)} leads in BBB")
         return lead_list
         
     except Exception as e:
         print(f"Error during search: {e}")
-        return None
+        return []
     
     finally:
         await browser_manager.stop_browser()
