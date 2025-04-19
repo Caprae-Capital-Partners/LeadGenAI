@@ -12,7 +12,12 @@ import matplotlib.pyplot as plt
 from playwright.async_api import async_playwright
 from playwright_stealth import stealth_async
 import ollama
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config.browser_config import PlaywrightManager
+
+# from config.browser_config import PlaywrightManager
 from datetime import datetime
 import google_maps_scraper as gms
 import httpx
@@ -40,6 +45,7 @@ class AsyncCompanyScraper:
         try:
             await page.goto(url)
             await page.wait_for_load_state("domcontentloaded")
+            await asyncio.sleep(2)
             
             await page.evaluate("""
             () => {
@@ -65,6 +71,7 @@ class AsyncCompanyScraper:
     async def process_company(self, company_name):
         current_year = datetime.now().year
         urls = [
+            f'https://www.bing.com/search?q={company_name}+Website',
             f'https://www.bing.com/search?q={company_name}+LinkedIn',
             f'https://www.bing.com/search?q={company_name}+Products+Services',
             # f'https://www.bing.com/search?q={company_name}+Revenue+Zoominfo',
@@ -98,7 +105,7 @@ class AsyncCompanyScraper:
             return None
 
         async with async_playwright() as p:
-            await self.manager.start_browser(stealth_on = False)  # start once
+            await self.manager.start_browser(stealth_on = True)  # start once
             context = await self.manager.browser.new_context()
             
             #Get real URLS for Overview
@@ -145,14 +152,17 @@ class AsyncCompanyScraper:
             print(f"Total texts extracted: {len(texts)}")
 
             # Menghindari IndexError
-            overview_text = texts[0] if len(texts) > 0 else "No overview data"
-            services_text = texts[1] if len(texts) > 1 else "No services data"
+            overview_text = texts[0]+texts[1] if len(texts) > 0 else "No overview data"
+            services_text = texts[2] if len(texts) > 1 else "No services data"
             # zoominfo_text = texts[2] if len(texts) > 2 else "No services data"
             # rocket_text = texts[3] if len(texts) > 3 else "No services data"
             # revenue_text = texts[4] if len(texts) > 4 else "No services data"
             # founder_text = texts[5] if len(texts) > 5 else "No services data"
             # employee_text = texts[6] if len(texts) > 6 else "No services data"
             # year_text = texts[7] if len(texts) > 7 else "No services data"
+            
+            print('Overview Text: ', overview_text)
+            print('Services Text: ', services_text)
             
             prompts = [
                 f"Explain in brief about {company_name} using the info provided: {overview_text}. Explain in about 50 words. Only answer by using the given information.",
@@ -253,8 +263,8 @@ class AsyncCompanyScraper:
         
 if __name__ == "__main__":
     scraper = AsyncCompanyScraper()
-    result = asyncio.run(scraper.process_company("Veritas Capital Fund Management LLC"))
+    result = asyncio.run(scraper.process_company("Absolute Carpet Care"))
     # result = asyncio.get_event_loop().run_until_complete(scraper.process_company("Born Again Construction LLC"))
-    asyncio.run(scraper.save(result))
-    asyncio.run(scraper.combine_leads('overview_and_products_services.csv', 'leads_private equity firms_New York.csv'))
+    # asyncio.run(scraper.save(result))
+    # asyncio.run(scraper.combine_leads('overview_and_products_services.csv', 'leads_private equity firms_New York.csv'))
     print(result)
