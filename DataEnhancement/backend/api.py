@@ -3,18 +3,49 @@ from dotenv import load_dotenv
 import os
 import pandas as pd
 import asyncio
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 from scraper.revenueScraper import get_company_revenue_from_growjo
 from scraper.websiteNameScraper import find_company_website
 from scraper.apollo_scraper import enrich_single_company
 from scraper.linkedinScraper.scraping.scraper import scrape_linkedin
 from scraper.linkedinScraper.scraping.login import login_to_linkedin
-from scraper.linkedinScraper.utils.chromeUtils import get_chrome_driver
-
+from security import generate_token, token_required, VALID_USERS
 
 app = Flask(__name__)
 load_dotenv()
 
+
+# New Login Endpoint
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({"error": "Missing credentials"}), 400
+
+    if VALID_USERS.get(username) != password:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    return jsonify({
+        "message": "Login successful",
+        "token": generate_token(username),
+        "username": username
+    }), 200
+
+# Protected Test Endpoint
+@app.route('/api/protected-test', methods=['GET'])
+@token_required
+def protected_test():
+    return jsonify({"message": "This is a protected route"}), 200
+
+# Existing endpoints with protection added where needed
 @app.route("/api/find-website", methods=["GET"])
+@token_required
 def get_website():
     company = request.args.get("company")
     if not company:
@@ -28,6 +59,7 @@ def get_website():
         return jsonify({"error": "Website not found"}), 404
 
 @app.route("/api/get-revenue", methods=["GET"])
+@token_required
 def get_revenue():
     company = request.args.get("company")
     if not company:
@@ -37,6 +69,7 @@ def get_revenue():
     return jsonify(data)
 
 @app.route("/api/apollo-info", methods=["POST"])
+@token_required
 def get_apollo_info_batch():
     try:
         data = request.get_json()
@@ -61,21 +94,28 @@ def get_apollo_info_batch():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/linkedin-info-batch", methods=["POST"])
+@token_required
 def get_linkedin_info_batch():
     try:
-        from scraper.linkedinScraper.utils.chromeUtils import get_chrome_driver
-        from scraper.linkedinScraper.scraping.login import login_to_linkedin
-        from scraper.linkedinScraper.scraping.scraper import scrape_linkedin
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+
+        driver = webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()),
+            options=chrome_options
+        )
 
         data_list = request.get_json()
 
         if not isinstance(data_list, list):
             return jsonify({"error": "Expected a list of objects"}), 400
 
-        driver = get_chrome_driver(headless=False)
-
-        # 🧠 (Optional): Use env vars for username/password
-        login_to_linkedin(driver, "", "")  # Replace with session/cookies in production
+        # Use environment variables for LinkedIn credentials
+        linkedin_user = os.getenv('LINKEDIN_USER')
+        linkedin_pass = os.getenv('LINKEDIN_PASS')
+        login_to_linkedin(driver, linkedin_user, linkedin_pass)
 
         results = []
         for entry in data_list:
@@ -89,7 +129,7 @@ def get_linkedin_info_batch():
                 continue
 
             result = scrape_linkedin(driver, company, city, state, website)
-            result["company"] = company  # So frontend can map it
+            result["company"] = company
             results.append(result)
 
         driver.quit()
@@ -98,6 +138,5 @@ def get_linkedin_info_batch():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 if __name__ == "__main__":
-    app.run(debug=True,use_reloader=False, port=5000)
+    app.run(debug=True, use_reloader=False, port=5000)
