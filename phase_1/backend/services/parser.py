@@ -9,17 +9,6 @@ def remove_last_word(text, word):
         start, end = last_match.span()
         text = text[:start] + text[end:]
     return re.sub(r'(,\s*)+', ', ', text.strip())
-
-def parse_address(address, data):
-    places = pd.DataFrame()
-    places['Address'] = [address]
-    places['Street'] = pd.NA
-    places['City'] = pd.NA
-    places['State'] = pd.NA
-    
-    if pd.isna(address):
-        return places
-
     
 def parse_address(address, data):
     places = pd.DataFrame()
@@ -36,14 +25,13 @@ def parse_address(address, data):
         places['Address'] = [address]
         places['Street'] = [address[0]]
         places['City'] = [address[1].replace(" ", "")]
-        match = data[data['city_ori'] == address[1].replace(" ", "")]
-        places['State'] = match['state_ori'].iloc[0] if not match.empty else None
+        places['State'] = re.sub(r'[\d\s\-]', '', address[2])
 
     if len(address) == 2:
         places['Address'] = [address]
         places['City'] = [address[0].replace(" ", "")]
         match = data[data['city_ori'] == address[0].replace(" ", "")]
-        places['State'] = match['state_ori'].iloc[0] if not match.empty else None
+        places['State'] = re.sub(r'[\d\s\-]', '', address[1])
 
     else:
         places['Street'] = [address[0]]
@@ -98,7 +86,21 @@ def parse_data(scraped, data):
     scraped['Business_phone'] = scraped['Business_phone'].apply(parse_number)
 
     # Merge parsed address data
-    scraped = pd.concat([scraped.reset_index(drop=True), address_df.reset_index(drop=True)], axis=1)
+    scraped = pd.concat([scraped.reset_index(drop=True), address_df.drop(columns='Address').reset_index(drop=True)], axis=1)
+    
+    cols = list(scraped.columns)
+    extra_cols = [col for col in ['Street', 'City', 'State'] if col in cols]
+
+    if 'Address' in cols:
+        addr_idx = cols.index('Address')
+        reordered = (
+            cols[:addr_idx + 1] +
+            extra_cols +
+            [col for col in cols if col not in extra_cols and col != 'Address'][addr_idx + 1:]
+        )
+        scraped = scraped[reordered]
+        
+    scraped = scraped.drop(columns='Address')
 
     # Save output
     scraped.to_csv('../data/Parsed_output.csv', index=False)
