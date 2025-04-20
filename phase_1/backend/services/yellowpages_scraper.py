@@ -51,7 +51,7 @@ from backend.config.browser_config import PlaywrightManager
     # return browser, context, page
 # ----------------------------------------------------------------------------------------
 
-async def scrape_yellowpages(industry: str, location: str, max_pages: int = 2) -> List[Dict[str, str]]:
+async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -> List[Dict[str, str]]:
     """
     Scrapes Yellow Pages using PlaywrightManager.
 
@@ -64,7 +64,7 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 2) -
         List[Dict[str, str]]: List of dictionaries containing business information.
     """
     businesses = []
-    manager = PlaywrightManager(headless=False)
+    manager = PlaywrightManager(headless=True)
 
     try:
         page = await manager.start_browser(stealth_on=True)
@@ -94,7 +94,7 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 2) -
                 print(f"No business listings found on page {page_num}.")
                 continue
 
-            print(f"Found {len(listings)} leads on yellowpage.")
+            # print(f"Found {len(listings)} leads on yellowpage.")
 
             for listing in listings:
                 business_info = {}
