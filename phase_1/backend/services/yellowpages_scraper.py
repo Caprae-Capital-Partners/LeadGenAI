@@ -4,7 +4,9 @@ from typing import Dict, List
 import random
 import sys
 
-sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# from config.browser_config import PlaywrightManager
+
 from backend.config.browser_config import PlaywrightManager
 
 # def setup_browser(playwright):
@@ -49,7 +51,7 @@ from backend.config.browser_config import PlaywrightManager
     # return browser, context, page
 # ----------------------------------------------------------------------------------------
 
-async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -> List[Dict[str, str]]:
+async def scrape_yellowpages(industry: str, location: str, max_pages: int = 2) -> List[Dict[str, str]]:
     """
     Scrapes Yellow Pages using PlaywrightManager.
 
@@ -62,14 +64,14 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
         List[Dict[str, str]]: List of dictionaries containing business information.
     """
     businesses = []
-    manager = PlaywrightManager(headless=True)
+    manager = PlaywrightManager(headless=False)
 
     try:
-        page = await manager.start_browser(stealth_on=False)
+        page = await manager.start_browser(stealth_on=True)
         
         # Construct the URL for the current page
         url = f"https://www.yellowpages.com/search?search_terms={industry}&geo_location_terms={location}"
-        await page.goto(url, wait_until="domcontentloaded", timeout=7000)
+        await page.goto(url)
 
         for page_num in range(1, max_pages + 1):
             # print(f"Scraping page {page_num}...")
@@ -152,8 +154,8 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
                 if await next_button.count() > 0:
                     # print(f"Clicking 'Next' button to go to page {page_num + 1}...")
                     await next_button.click()
-                    await page.wait_for_load_state("domcontentloaded")
                     await asyncio.sleep(2)  # Add a short delay to allow the page to load
+                    await page.wait_for_selector(".main-content")
                 else:
                     print("No 'Next' button found. Stopping pagination.")
                     break
@@ -171,5 +173,11 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
         await manager.stop_browser()
         
 
-# if __name__ == "__main__":
-#     businesses = asyncio.run(scrape_yellowpages("Plumbing services", "New York, NY"))
+if __name__ == "__main__":
+    businesses = [
+        ("Plumbing services", "glendale, az"),
+        ("HVAC", "Glendale, AZ"),
+        ("Pool contractors", "Glendale, AZ"),
+    ]
+    for idx, (name,loc) in enumerate(businesses):
+        asyncio.run(scrape_yellowpages(name, loc))
