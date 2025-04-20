@@ -16,6 +16,39 @@ def normalize_address(address):
     address = address.lower().strip()
     return address
 
+def combine_phone_numbers(existing_phone, new_phone):
+    """
+    Combine phone numbers if they are different.
+    
+    Args:
+        existing_phone (str): Current phone number(s), possibly comma-separated
+        new_phone (str): New phone number to potentially add
+        
+    Returns:
+        str: Combined phone numbers if different, otherwise the existing phone
+    """
+    if not new_phone:
+        return existing_phone
+    
+    if not existing_phone:
+        return new_phone
+    
+    clean_new_phone = clean_phone(new_phone)
+    
+    # If existing phone has multiple numbers
+    if ',' in existing_phone:
+        existing_phones = [clean_phone(p.strip()) for p in existing_phone.split(',')]
+        # Only add if not already in the list
+        if clean_new_phone not in existing_phones:
+            return existing_phone + ',' + new_phone
+        return existing_phone
+    else:
+        # If single existing phone, combine if different
+        clean_existing_phone = clean_phone(existing_phone)
+        if clean_new_phone != clean_existing_phone:
+            return existing_phone + ',' + new_phone
+        return existing_phone
+
 def deduplicate_businesses(businesses_list):
     """
     Remove duplicate businesses from a list of business dictionaries and
@@ -90,15 +123,9 @@ def deduplicate_businesses(businesses_list):
                 # 1. Same name and same phone (regardless of address), OR
                 # 2. Same name and similar address
                 if (phones_match or address_match):
-                    # If both entries have phone numbers, combine them if they're different
+                    # Use the separate function to combine phone numbers
                     if phone and unique_phone and not phones_match:
-                        if ',' in unique_phone:
-                            # Only add the phone if it's not already in the list
-                            unique_phones = [clean_phone(p.strip()) for p in unique_phone.split(',')]
-                            if clean_current_phone not in unique_phones:
-                                unique_business[phone_field] = unique_phone + ',' + phone
-                        else:
-                            unique_business[phone_field] = unique_phone + ',' + phone
+                        unique_business[phone_field] = combine_phone_numbers(unique_phone, phone)
                     
                     # If only the new entry has a phone number, add it
                     elif phone and not unique_phone:
