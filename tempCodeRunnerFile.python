@@ -1,0 +1,131 @@
+import requests
+import pandas as pd
+import time
+import os
+from dotenv import load_dotenv
+
+# Load environment variables (for API key)
+load_dotenv()
+
+class ApolloRetriever:
+    def __init__(self, api_key=None):
+        """Initialize the Apollo retriever with your API key."""
+        self.api_key = api_key or os.getenv("APOLLO_API_KEY")
+        if not self.api_key:
+            raise ValueError("Apollo API key is required. Set it as APOLLO_API_KEY environment variable or pass it directly.")
+        self.base_url = "https://api.apollo.io/v1"
+        self.headers = {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache"
+        }
+    
+    def search_company(self, company_name):
+        """Search for a company by name."""
+        endpoint = f"{self.base_url}/organizations/search"
+        payload = {
+            "api_key": self.api_key,
+            "q_organization_name": company_name,
+            "page": 1,
+            "per_page": 1  # Just get the top match
+        }
+        
+        response = requests.post(endpoint, json=payload, headers=self.headers)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('organizations') and len(data['organizations']) > 0:
+                return data['organizations'][0]
+            return None
+        else:
+            print(f"Error searching for company {company_name}: {response.status_code}")
+            return None
+    
+    def get_ceo(self, organization_id):
+        """Find the CEO of a company based on organization ID."""
+        endpoint = f"{self.base_url}/people/search"
+        payload = {
+            "api_key": self.api_key,
+            "organization_ids": [organization_id],
+            "page": 1,
+            "per_page": 10,
+            "q_titles": ["CEO", "Chief Executive Officer", "Founder & CEO", "Co-founder & CEO"]
+        }
+        
+        response = requests.post(endpoint, json=payload, headers=self.headers)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('people') and len(data['people']) > 0:
+                # Return the first person matching CEO criteria
+                return data['people'][0]
+            return None
+        else:
+            print(f"Error finding CEO for org ID {organization_id}: {response.status_code}")
+            return None
+    
+    def get_company_ceo_info(self, company_name):
+        """Get CEO information for a given company name."""
+        # Search for the company
+        company = self.search_company(company_name)
+        if not company:
+            return {
+                "company_name": company_name,
+                "status": "Company not found"
+            }
+        
+        # Find the CEO
+        time.sleep(1)  # Rate limiting to avoid hitting API limits
+        ceo = self.get_ceo(company['id'])
+        
+        if not ceo:
+            return {
+                "company_name": company_name,
+                "company_website": company.get('website_url'),
+                "company_linkedin": company.get('linkedin_url'),
+                "status": "CEO not found"
+            }
+        
+        return {
+            "company_name": company_name,
+            "company_website": company.get('website_url'),
+            "company_linkedin": company.get('linkedin_url'),
+            "ceo_name": f"{ceo.get('first_name')} {ceo.get('last_name')}",
+            "ceo_title": ceo.get('title'),
+            "ceo_email": ceo.get('email'),
+            "ceo_linkedin": ceo.get('linkedin_url'),
+            "status": "Success"
+        }
+
+def main():
+    # List of companies to search
+    companies = [
+        "Lumious", 
+        "Kwik Brain",
+        "Quimbee",
+        "Canopy Ed",
+        "CustomGuide",
+        "AdaptedMind",
+        "SafetySkills",
+        "Digital Marketer",
+        "Explore Learning",
+        "Lawline",
+        "Instructing.com"
+    ]
+    
+    # Create the API client
+    api_key = input("Enter your Apollo.io API key: ")
+    retriever = ApolloRetriever(api_key)
+    
+    # Process each company
+    results = []
+    for company in companies:
+        print(f"Processing {company}...")
+        result = retriever.get_company_ceo_info(company)
+        results.append(result)
+        time.sleep(2)  # Rate limiting to avoid hitting API limits
+    
+    # Convert to DataFrame and save to CSV
+    df = pd.DataFrame(results)
+    df.to_csv("company_ceo_data.csv", index=False)
+    print(f"Data saved to company_ceo_data.csv")
+
+if __name__ == "__main__":
+    main()
