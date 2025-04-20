@@ -5,10 +5,10 @@ from typing import Dict, List, Tuple
 from urllib.parse import quote_plus
 from playwright.async_api import Page
 
-sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
-from config.browser_config import PlaywrightManager
+# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# from config.browser_config import PlaywrightManager
 
-# from backend.config.browser_config import PlaywrightManager
+from backend.config.browser_config import PlaywrightManager
 
 async def handle_tabs(page: Page, query: str, url: str):
     """Handles the initial tab navigation and returns the new tab or current tab."""
