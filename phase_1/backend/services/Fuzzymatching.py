@@ -3,77 +3,113 @@ import re
 
 def clean_phone(phone):
     """Extract only digits from phone number."""
-    if not phone or not isinstance(phone, str):
+    if not phone:
         return ""
-    return re.sub(r'\D', '', phone)
+    return re.sub(r'\D', '', str(phone))
+
+def normalize_address(address):
+    """Standardize address format."""
+    if not address:
+        return ""
+    # Remove common terms and punctuation
+    address = re.sub(r'\s+', ' ', str(address))
+    address = address.lower().strip()
+    return address
 
 def deduplicate_businesses(businesses_list):
     """
-    Remove duplicate businesses from a list of business dictionaries.
+    Remove duplicate businesses from a list of business dictionaries and
+    combine phone numbers for businesses with the same name.
     
     Deduplication logic:
-    - If companies have same name AND same phone number, treat as duplicates (even if addresses differ)
-    - If companies have same name but different phone numbers, treat as different branches (not duplicates)
+    - If companies have same name AND same phone, consider them duplicates
+    - If companies have same name AND similar address, consider them duplicates
+    - When duplicates are found, combine their phone numbers
     
     Args:
-        businesses_list: List[Dict[str, str]] containing business information
+        businesses_list (List[Dict[str, str]]): List of dictionaries containing business information
         
     Returns:
-        List[Dict[str, str]]: List of dictionaries with duplicates removed
+        List[Dict[str, str]]: List of dictionaries with duplicates removed and phone numbers combined
     """
     if not businesses_list or len(businesses_list) == 0:
         return []
     
     # Initialize with first business
-    unique_businesses = [businesses_list[0]]
+    unique_businesses = [businesses_list[0].copy()]  # Use copy to avoid modifying original
     
     for business in businesses_list[1:]:
-        is_duplicate = False
+        # Find name, address, and phone fields
+        name_field = 'Name' if 'Name' in business else next((f for f in business if 'name' in f.lower() or 'company' in f.lower()), None)
+        address_field = 'Address' if 'Address' in business else next((f for f in business if 'address' in f.lower()), None)
+        phone_field = next((f for f in business if 'phone' in f.lower()), None)
+        
+        # Skip if essential fields are missing
+        if not name_field:
+            unique_businesses.append(business.copy())
+            continue
+        
+        # Get current business info
+        name = str(business.get(name_field, '')).lower().strip()
+        address = normalize_address(business.get(address_field, '')) if address_field else ""
+        phone = business.get(phone_field, '') if phone_field else ''
+        clean_current_phone = clean_phone(phone)
+        
+        # Check if this business can be merged with an existing one
+        merged = False
         
         for unique_business in unique_businesses:
-            # Find name fields (may vary in different datasets)
-            name_field = 'Name' if 'Name' in business else next((f for f in business if 'name' in f.lower() or 'company' in f.lower()), None)
+            # Compare name
+            unique_name = str(unique_business.get(name_field, '')).lower().strip()
+            name_similarity = fuzz.token_sort_ratio(name, unique_name)
             
-            # If no name field found, can't compare
-            if not name_field:
-                continue
-                
-            # Get names and convert to lowercase for comparison
-            name1 = str(business.get(name_field, '')).lower().strip()
-            name2 = str(unique_business.get(name_field, '')).lower().strip()
-            
-            # If either name is empty, they're not duplicates
-            if not name1 or not name2:
-                continue
-                
-            # Use fuzzy matching to compare names
-            name_similarity = fuzz.token_sort_ratio(name1, name2)
-            
-            # Only consider as potential duplicates if names are similar enough
+            # Only consider merging if names are similar enough
             if name_similarity >= 85:
-                # Find phone number fields (may vary in different datasets)
-                phone_field = next((f for f in business if 'phone' in f.lower()), None)
+                # Get unique business phone and address
+                unique_phone = unique_business.get(phone_field, '') if phone_field else ''
+                unique_address = normalize_address(unique_business.get(address_field, '')) if address_field else ""
                 
-                # If phone field exists, compare phone numbers
-                if phone_field:
-                    phone1 = clean_phone(business.get(phone_field, ''))
-                    phone2 = clean_phone(unique_business.get(phone_field, ''))
+                # Check if phones are the same
+                phones_match = False
+                if clean_current_phone and unique_phone:
+                    clean_unique_phone = clean_phone(unique_phone)
+                    # Check if phone numbers match (either exact or contained in comma-separated list)
+                    if ',' in unique_phone:
+                        unique_phones = [clean_phone(p.strip()) for p in unique_phone.split(',')]
+                        phones_match = clean_current_phone in unique_phones
+                    else:
+                        phones_match = clean_current_phone == clean_unique_phone
+                
+                # Check if addresses are similar
+                address_match = False
+                if address and unique_address:
+                    address_similarity = fuzz.token_set_ratio(address, unique_address)
+                    address_match = address_similarity >= 75
+                
+                # Duplicate found if:
+                # 1. Same name and same phone (regardless of address), OR
+                # 2. Same name and similar address
+                if (phones_match or address_match):
+                    # If both entries have phone numbers, combine them if they're different
+                    if phone and unique_phone and not phones_match:
+                        if ',' in unique_phone:
+                            # Only add the phone if it's not already in the list
+                            unique_phones = [clean_phone(p.strip()) for p in unique_phone.split(',')]
+                            if clean_current_phone not in unique_phones:
+                                unique_business[phone_field] = unique_phone + ',' + phone
+                        else:
+                            unique_business[phone_field] = unique_phone + ',' + phone
                     
-                    # If both phone numbers exist and are the same, it's a duplicate
-                    if phone1 and phone2 and phone1 == phone2:
-                        is_duplicate = True
-                        break
-                    # If both phone numbers exist but are different, these are different branches
-                    elif phone1 and phone2 and phone1 != phone2:
-                        continue
-                
-                # If phone numbers don't exist or one is missing, use very high name similarity
-                if name_similarity >= 95:
-                    is_duplicate = True
+                    # If only the new entry has a phone number, add it
+                    elif phone and not unique_phone:
+                        unique_business[phone_field] = phone
+                    
+                    # Mark as merged
+                    merged = True
                     break
         
-        # Add to unique businesses if it's not a duplicate
-        if not is_duplicate:
-            unique_businesses.append(business)
+        # If not merged with any existing one, add as new unique business
+        if not merged:
+            unique_businesses.append(business.copy())
     
     return unique_businesses
