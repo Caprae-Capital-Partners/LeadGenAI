@@ -6,15 +6,6 @@ import os
 import subprocess
 
 os.system('playwright install --with-deps')
-# with open('phase_1/frontend/packages.txt', 'r') as f:
-#     content = f.read()
-
-
-# packages = ' '.join(content.split())
-
-# command = f"sudo apt-get install -y {packages}"
-# os.system(command)
-
 
 # Import backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
