@@ -3,9 +3,19 @@ import pandas as pd
 import asyncio
 import sys
 import os
+import subprocess
 
 os.system('playwright install')
-os.system('sudo playwright install-deps')
+with open('phase_1/frontend/packages.txt', 'r') as f:
+    content = f.read()
+
+packages = content.split()
+
+# Build the apt-get command
+command = ['sudo', 'apt-get', 'install', '-y'] + packages
+
+# Run the command
+subprocess.run(command, check=True)
 
 # Import backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
