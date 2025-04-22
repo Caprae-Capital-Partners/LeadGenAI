@@ -3,7 +3,9 @@ import pandas as pd
 import asyncio
 import sys
 import os
-import subprocess
+
+os.system('playwright install')
+os.system('playwright install-deps')
 
 subprocess.run(["playwright", "install", "chromium"], check=True)
 # Import backend
