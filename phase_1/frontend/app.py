@@ -3,9 +3,8 @@ import pandas as pd
 import asyncio
 import sys
 import os
-import subprocess
 
-os.system('playwright install --with-deps')
+os.system('playwright install')
 
 # Import backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
