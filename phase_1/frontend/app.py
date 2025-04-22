@@ -3,7 +3,9 @@ import pandas as pd
 import asyncio
 import sys
 import os
+import subprocess
 
+subprocess.run(["playwright", "install", "chromium"], check=True)
 # Import backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from backend.main import fetch_and_merge_data
@@ -62,7 +64,7 @@ if not st.session_state.raw_data.empty:
         "<style>div[data-baseweb=select] { max-height: 100px; overflow-y: auto; }</style>",
         unsafe_allow_html=True
     )
-    
+
     selected_industries = st.multiselect(
         label="Filter by Industry",
         options=industry_options,
