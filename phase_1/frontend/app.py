@@ -9,13 +9,12 @@ os.system('playwright install')
 with open('phase_1/frontend/packages.txt', 'r') as f:
     content = f.read()
 
-packages = content.split()
 
-# Build the apt-get command
-command = ['sudo', 'apt-get', 'install', '-y'] + packages
+packages = ' '.join(content.split())
 
-# Run the command
-subprocess.run(command, check=True)
+command = f"sudo apt-get install -y {packages}"
+os.system(command)
+
 
 # Import backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
