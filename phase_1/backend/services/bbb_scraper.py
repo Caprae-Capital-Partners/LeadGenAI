@@ -37,7 +37,8 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                     business_name_selector = "h3.result-business-name a"
                     business_element = await card.locator(business_name_selector).count()
                     details['Name'] = await card.locator(business_name_selector).inner_text() if business_element > 0 else "NA"
-
+                    details["Name"] = details["Name"].replace("advertisement:\n", "").strip()
+                        
                     # Scrape industry
                     industry_selector = "p.bds-body.text-size-4.text-gray-70"
                     industry_element = await card.locator(industry_selector).count()

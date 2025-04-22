@@ -83,7 +83,7 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
 
             # Wait for the business listings to load
             try:
-                await page.wait_for_selector(".result", timeout=5000)
+                await page.wait_for_selector(".scrollable-pane", timeout=3000)
             except Exception as e:
                 print(f"Could not find business listings with .result: {e}")
                 continue
@@ -108,8 +108,12 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
 
                 # Extract industry/category
                 try:
-                    category_element = listing.locator(".categories")
-                    business_info["Industry"] = await category_element.inner_text() if await category_element.count() > 0 else "NA"
+                    category_elements = listing.locator(".categories a")
+                    if await category_elements.count() > 0:
+                        categories = [await category.inner_text() for category in await category_elements.all()]
+                        business_info["Industry"] = " ".join(categories)
+                    else:
+                        business_info["Industry"] = "NA"
                 except:
                     business_info["Industry"] = "NA"
 
@@ -146,7 +150,7 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
                     business_info["Website"] = "NA"
 
                 businesses.append(business_info)
-                # print(f"Added business: {business_info['Name']}")
+                # print(f"Added business: {business_info['Industry']}")
 
             # Random delay between pages
             try:
@@ -155,7 +159,6 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
                     # print(f"Clicking 'Next' button to go to page {page_num + 1}...")
                     await next_button.click()
                     await asyncio.sleep(2)  # Add a short delay to allow the page to load
-                    await page.wait_for_selector(".main-content")
                 else:
                     print("No 'Next' button found. Stopping pagination.")
                     break
