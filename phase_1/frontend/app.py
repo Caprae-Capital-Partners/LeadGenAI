@@ -4,7 +4,7 @@ import asyncio
 import sys
 import os
 
-os.system('playwright install')
+os.system('playwright install chromium')
 
 # Import backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
