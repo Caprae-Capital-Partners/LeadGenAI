@@ -1,4 +1,4 @@
-from fuzzywuzzy import fuzz
+from rapidfuzz import fuzz
 import re
 
 def clean_phone(phone):
