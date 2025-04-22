@@ -177,6 +177,11 @@ class AsyncCompanyScraper:
             # answers[3] = extract_revenue(answers[3])
             # answers[4] = extract_revenue(answers[4])
 
+        print({
+            "Name": company_name,
+            "Overview": answers[0] if len(answers) > 0 else "Not Found",
+            "Products & Services": answers[1] if len(answers) > 1 else "Not Found"
+        })
         return {
             "Name": company_name,
             "Overview": answers[0] if len(answers) > 0 else "Not Found",
@@ -230,7 +235,8 @@ class AsyncCompanyScraper:
         
         combined_leads.to_csv(csv_path, index=False)
         combined_leads.to_excel(excel_path, index=False)
-    
+
+        return combined_leads
         # if os.path.exists(csv_path):
         #     data = pd.read_csv(csv_path)
         #     data = pd.concat([data, df], axis=0).reset_index(drop=True)

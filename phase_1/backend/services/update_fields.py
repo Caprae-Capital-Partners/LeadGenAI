@@ -115,7 +115,7 @@ async def add_management_details(page, company_name: str, location: str) -> List
         
 
 async def update_websites(data: List[Dict[str,str]], location) -> List[Dict[str,str]]:
-    manager = PlaywrightManager(headless=False)
+    manager = PlaywrightManager(headless=True)
     try:
         page = await manager.start_browser(stealth_on=True)
         for idx, company in enumerate(data):
