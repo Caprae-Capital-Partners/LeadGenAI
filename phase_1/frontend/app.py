@@ -5,7 +5,7 @@ import sys
 import os
 
 os.system('playwright install')
-os.system('playwright install-deps')
+os.system('sudo playwright install-deps')
 
 # Import backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
