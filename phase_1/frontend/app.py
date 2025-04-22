@@ -7,7 +7,6 @@ import os
 os.system('playwright install')
 os.system('playwright install-deps')
 
-subprocess.run(["playwright", "install", "chromium"], check=True)
 # Import backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from backend.main import fetch_and_merge_data
