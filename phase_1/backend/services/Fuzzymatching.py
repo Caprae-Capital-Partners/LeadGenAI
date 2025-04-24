@@ -49,21 +49,53 @@ def combine_phone_numbers(existing_phone, new_phone):
             return existing_phone + ',' + new_phone
         return existing_phone
 
+def combine_addresses(existing_address, new_address):
+    """
+    Combine addresses if they are different.
+    
+    Args:
+        existing_address (str): Current address(es), possibly comma-separated
+        new_address (str): New address to potentially add
+        
+    Returns:
+        str: Combined addresses if different, otherwise the existing address
+    """
+    if not new_address:
+        return existing_address
+    
+    if not existing_address:
+        return new_address
+    
+    norm_new_address = normalize_address(new_address)
+    
+    # If existing address has multiple addresses
+    if ',' in existing_address:
+        existing_addresses = [normalize_address(a.strip()) for a in existing_address.split(',')]
+        # Only add if not already in the list
+        if norm_new_address not in existing_addresses:
+            return existing_address + ', ' + new_address  # Note: using comma+space for readability
+        return existing_address
+    else:
+        # If single existing address, combine if different
+        norm_existing_address = normalize_address(existing_address)
+        if norm_new_address != norm_existing_address:
+            return existing_address + ', ' + new_address  # Note: using comma+space for readability
+        return existing_address
+
 def deduplicate_businesses(businesses_list):
     """
     Remove duplicate businesses from a list of business dictionaries and
-    combine phone numbers for businesses with the same name.
+    combine phone numbers and addresses for businesses with the same name.
     
     Deduplication logic:
-    - If companies have same name AND same phone, consider them duplicates
-    - If companies have same name AND similar address, consider them duplicates
-    - When duplicates are found, combine their phone numbers
+    - If companies have similar names, consider them potential duplicates
+    - When duplicates are found, combine their phone numbers and addresses
     
     Args:
         businesses_list (List[Dict[str, str]]): List of dictionaries containing business information
         
     Returns:
-        List[Dict[str, str]]: List of dictionaries with duplicates removed and phone numbers combined
+        List[Dict[str, str]]: List of dictionaries with duplicates removed and info combined
     """
     if not businesses_list or len(businesses_list) == 0:
         return []
@@ -84,9 +116,8 @@ def deduplicate_businesses(businesses_list):
         
         # Get current business info
         name = str(business.get(name_field, '')).lower().strip()
-        address = normalize_address(business.get(address_field, '')) if address_field else ""
+        address = business.get(address_field, '') if address_field else ""
         phone = business.get(phone_field, '') if phone_field else ''
-        clean_current_phone = clean_phone(phone)
         
         # Check if this business can be merged with an existing one
         merged = False
@@ -100,40 +131,19 @@ def deduplicate_businesses(businesses_list):
             if name_similarity >= 85:
                 # Get unique business phone and address
                 unique_phone = unique_business.get(phone_field, '') if phone_field else ''
-                unique_address = normalize_address(unique_business.get(address_field, '')) if address_field else ""
+                unique_address = unique_business.get(address_field, '') if address_field else ""
                 
-                # Check if phones are the same
-                phones_match = False
-                if clean_current_phone and unique_phone:
-                    clean_unique_phone = clean_phone(unique_phone)
-                    # Check if phone numbers match (either exact or contained in comma-separated list)
-                    if ',' in unique_phone:
-                        unique_phones = [clean_phone(p.strip()) for p in unique_phone.split(',')]
-                        phones_match = clean_current_phone in unique_phones
-                    else:
-                        phones_match = clean_current_phone == clean_unique_phone
+                # Combine phone numbers
+                if phone:
+                    unique_business[phone_field] = combine_phone_numbers(unique_phone, phone)
                 
-                # Check if addresses are similar
-                address_match = False
-                if address and unique_address:
-                    address_similarity = fuzz.token_set_ratio(address, unique_address)
-                    address_match = address_similarity >= 75
+                # Combine addresses
+                if address:
+                    unique_business[address_field] = combine_addresses(unique_address, address)
                 
-                # Duplicate found if:
-                # 1. Same name and same phone (regardless of address), OR
-                # 2. Same name and similar address
-                if (phones_match or address_match):
-                    # Use the separate function to combine phone numbers
-                    if phone and unique_phone and not phones_match:
-                        unique_business[phone_field] = combine_phone_numbers(unique_phone, phone)
-                    
-                    # If only the new entry has a phone number, add it
-                    elif phone and not unique_phone:
-                        unique_business[phone_field] = phone
-                    
-                    # Mark as merged
-                    merged = True
-                    break
+                # Mark as merged
+                merged = True
+                break
         
         # If not merged with any existing one, add as new unique business
         if not merged:
