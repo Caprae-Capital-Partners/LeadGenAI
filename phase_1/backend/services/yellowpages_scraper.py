@@ -4,7 +4,9 @@ from typing import Dict, List
 import random
 import sys
 
-sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# from config.browser_config import PlaywrightManager
+
 from backend.config.browser_config import PlaywrightManager
 
 # def setup_browser(playwright):
@@ -65,11 +67,11 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
     manager = PlaywrightManager(headless=True)
 
     try:
-        page = await manager.start_browser(stealth_on=False)
+        page = await manager.start_browser(stealth_on=True)
         
         # Construct the URL for the current page
         url = f"https://www.yellowpages.com/search?search_terms={industry}&geo_location_terms={location}"
-        await page.goto(url, wait_until="domcontentloaded", timeout=7000)
+        await page.goto(url)
 
         for page_num in range(1, max_pages + 1):
             # print(f"Scraping page {page_num}...")
@@ -81,7 +83,7 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
 
             # Wait for the business listings to load
             try:
-                await page.wait_for_selector(".result", timeout=5000)
+                await page.wait_for_selector(".scrollable-pane", timeout=3000)
             except Exception as e:
                 print(f"Could not find business listings with .result: {e}")
                 continue
@@ -92,7 +94,7 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
                 print(f"No business listings found on page {page_num}.")
                 continue
 
-            print(f"Found {len(listings)} leads on yellowpage.")
+            # print(f"Found {len(listings)} leads on yellowpage.")
 
             for listing in listings:
                 business_info = {}
@@ -106,8 +108,12 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
 
                 # Extract industry/category
                 try:
-                    category_element = listing.locator(".categories")
-                    business_info["Industry"] = await category_element.inner_text() if await category_element.count() > 0 else "NA"
+                    category_elements = listing.locator(".categories a")
+                    if await category_elements.count() > 0:
+                        categories = [await category.inner_text() for category in await category_elements.all()]
+                        business_info["Industry"] = " ".join(categories)
+                    else:
+                        business_info["Industry"] = "NA"
                 except:
                     business_info["Industry"] = "NA"
 
@@ -144,7 +150,7 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
                     business_info["Website"] = "NA"
 
                 businesses.append(business_info)
-                # print(f"Added business: {business_info['Name']}")
+                # print(f"Added business: {business_info['Industry']}")
 
             # Random delay between pages
             try:
@@ -152,7 +158,6 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
                 if await next_button.count() > 0:
                     # print(f"Clicking 'Next' button to go to page {page_num + 1}...")
                     await next_button.click()
-                    await page.wait_for_load_state("domcontentloaded")
                     await asyncio.sleep(2)  # Add a short delay to allow the page to load
                 else:
                     print("No 'Next' button found. Stopping pagination.")
@@ -171,5 +176,11 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
         await manager.stop_browser()
         
 
-# if __name__ == "__main__":
-#     businesses = asyncio.run(scrape_yellowpages("Plumbing services", "New York, NY"))
+if __name__ == "__main__":
+    businesses = [
+        ("Plumbing services", "glendale, az"),
+        ("HVAC", "Glendale, AZ"),
+        ("Pool contractors", "Glendale, AZ"),
+    ]
+    for idx, (name,loc) in enumerate(businesses):
+        asyncio.run(scrape_yellowpages(name, loc))
