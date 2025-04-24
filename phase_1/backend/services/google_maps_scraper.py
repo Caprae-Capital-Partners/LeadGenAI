@@ -151,5 +151,5 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
     finally:
         await manager.stop_browser()
 
-# if __name__ == "__main__":
-#     asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca"))
+if __name__ == "__main__":
+    print(asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca")))
