@@ -1,11 +1,9 @@
 import asyncio
-from hmac import new
-from operator import is_
 import os
 import sys
-from turtle import update
-from typing import Dict, List, Tuple, final
+from typing import Dict, List, Tuple
 from urllib.parse import quote_plus, parse_qs, unquote, urlparse
+import pandas as pd
 from playwright.async_api import Page, BrowserContext
 
 # sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
@@ -13,103 +11,7 @@ from playwright.async_api import Page, BrowserContext
 
 from backend.config.browser_config import PlaywrightManager
 
-# async def handle_bbb_tabs(page: Page):
-#     """Handles the initial tab navigation and returns the new tab or current tab."""
-#     try:
-#         # await page.goto(url)
-#         # await page.evaluate("""
-#         #     const contentDiv = document.querySelector('#b_content');
-#         #     if (contentDiv && contentDiv.style.visibility === 'hidden') {
-#         #         contentDiv.style.visibility = 'visible';
-#         #     }
-#         # """)
-#         # await asyncio.sleep(1)
-
-#         bbb_link_elem = await page.query_selector('li.b_algo a[href*="bbb.org"]')
-#         if not bbb_link_elem:
-#             # print(f"BBB element not found for query: {query}")
-#             return None
-#         # print(f"BBB link element found: {bbb_link_elem}")
-
-#         await bbb_link_elem.click()
-#         # print("Clicked on BBB link")
-
-#         try:
-#             new_tab = await page.wait_for_event('popup', timeout=3000)
-#             # print("Opened BBB link in new tab")
-#         except Exception:
-#             # print("No new tab opened, using current tab")
-#             new_tab = page
-
-#         return new_tab
-#     except Exception as e:
-#         print(f"Error in handle_tabs: {e}")
-#         return None
-
-# 
-# async def add_management_details(page, company_name: str, location: str) -> List[str]:
-#     state = location.split(",")[1].strip()
-#     query = quote_plus(f"{company_name} {state} bbb")
-#     url = f"https://www.bing.com/search?q={query}"
-#     new_tab = await handle_bbb_tabs(page, query, url)
-
-#     if not new_tab:
-#         return []
-
-#     try:
-#         await new_tab.wait_for_selector("div.bpr-details-section", timeout=3000)
-#         management_divs = await new_tab.query_selector_all('.bpr-details-dl-data[data-type="on-separate-lines"]')
-
-#         management_data = []
-#         for div in management_divs:
-#             dt_elem = await div.query_selector('dt')
-#             if dt_elem:
-#                 dt_text = await dt_elem.inner_text()
-#                 if "Business Management" in dt_text:
-#                     dd_elems = await div.query_selector_all('dd')
-#                     for dd_elem in dd_elems:
-#                         dd_text = await dd_elem.inner_text()
-#                         if dd_text:
-#                             try:
-#                                 name, title = dd_text.split(",", 1)
-#                                 management_data.append({"name": name.strip(), "title": title.strip()})
-#                             except ValueError as e:
-#                                 print(f"Error splitting dd text '{dd_text}': {e}")
-#                                 management_data.append("NA")
-#                     break
-#         return management_data
-#     except Exception as e:
-#         print(f"Error in add_management_details: {e}")
-#         return ["NA"]
-#     finally:
-#         if new_tab and new_tab != page:
-#             await new_tab.close()
-#         await page.bring_to_front()
-        
-
-# # async def get_management_details(data: List[Tuple[str,str]]) -> List[str]:
-#     manager = PlaywrightManager(headless=False)
-#     results = []
-
-#     try:
-#         page = await manager.start_browser(stealth_on=True)
-#         for idx, (name, loc) in enumerate(data):
-#             if idx > 0:
-#                 await asyncio.sleep(2)  # Add 2 sec delay between tabs
-#             management = await add_management_details(page, name, loc)
-#             print(f"Management for {name}: {management}")
-#             results.append(management)
-            
-#         return results
-    
-#     except Exception as e:
-#         print(f"Error occured when fetching details: {e}")
-#         return []
-    
-#     finally:
-#         await manager.stop_browser()
-        
-
+''' --------------------- MANAGEMENT DETAILS ------------------------------- '''
 async def get_management_details(page: Page, company_name: str, state: str) -> List[str]:
     """Fetches management details from BBB page."""
     query = f"{company_name} {state} BBB profile"
@@ -134,7 +36,7 @@ async def get_management_details(page: Page, company_name: str, state: str) -> L
             
             # print(f"BBB link element found: {bbb_link_elem} {company_name}")
             await bbb_link_elem.click()
-            await page.wait_for_selector("div.bpr-details-section", timeout=3000)
+            await page.wait_for_selector("div.bpr-details-section", timeout=5000)
             management_divs = await page.query_selector_all('.bpr-details-dl-data[data-type="on-separate-lines"]')
 
             management_data = []
@@ -160,6 +62,46 @@ async def get_management_details(page: Page, company_name: str, state: str) -> L
         print(f"Error in get_management_details: {e}")
         return ["NA"]
     
+async def fetch_management(data: List[Tuple[str, str]], context: BrowserContext, batch_size: int = 5) -> List[str]:
+    """Processes companies in batches to fetch management details in parallel."""
+    
+    async def process_company(page: Page, name: str, location: str) -> str:
+        return await get_management_details(page, name, location)
+
+    results = []
+    for i in range(0, len(data), batch_size):
+        batch = data[i:i + batch_size]
+        pages = [await context.new_page() for _ in batch]
+
+        tasks = [
+            process_company(pages[j], name, location)
+            for j, (name, location) in enumerate(batch)
+        ]
+
+        batch_results = await asyncio.gather(*tasks)
+
+        # Collect results from the batch
+        results.extend(batch_results)
+
+        await asyncio.gather(*[p.close() for p in pages])
+
+    return results
+
+async def enrich_management(data: List[Tuple[str,str]]) -> List[str]:
+    """Enriches lead data with website and management details."""
+    manager = PlaywrightManager(headless=False)
+    await manager.start_browser(stealth_on=True)
+    try:
+        results = await fetch_management(data, manager.context)
+        return results
+    except Exception as e:
+        print(f"Error in enriching managment: {e}")
+        return []
+    finally:
+        await manager.stop_browser()
+
+
+''' --------------------- BBB RATING AND WEBSITE ------------------------------- '''
 async def get_rating_and_website(page: Page, company_name: str, state: str) -> Tuple[str, str]:
     query = f"{company_name} {state} BBB profile"
     url = f"https://www.bing.com/search?q={quote_plus(query)}"
@@ -268,7 +210,7 @@ async def update_data(data: List[Dict[str, str]], state: str, context: BrowserCo
 
     return data
 
-async def enrich_lead(data, location) -> List[Dict[str, str]]:
+async def enrich_contect(data: List[Dict[str,str]], location: str) -> List[Dict[str, str]]:
     """Enriches lead data with website and management details."""
     manager = PlaywrightManager(headless=True)
     await manager.start_browser(stealth_on=True)
@@ -281,6 +223,26 @@ async def enrich_lead(data, location) -> List[Dict[str, str]]:
         return data
     finally:
         await manager.stop_browser()    
+
+
+''' --------------------- COMBINED ------------------------------- '''
+async def enrich_leads(df: pd.DataFrame, location: str) -> pd.DataFrame:
+    records = df.to_dict(orient="records")
+    updated_records = await enrich_contect(records, location)
+
+    company_tuples = [(rec["Name"], rec.get("Address", location)) for rec in updated_records]
+    management_info = await get_management_details(company_tuples)
+
+    for i, rec in enumerate(updated_records):
+        people = management_info[i] if i < len(management_info) else []
+        if isinstance(people, list):
+            rec["Management"] = "; ".join(
+                [f'{p["name"]} ({p["title"]})' for p in people if isinstance(p, dict)]
+            ) if people else "NA"
+        else:
+            rec["Management"] = "NA"
+            
+    return pd.DataFrame(updated_records)
 
 # if __name__ == "__main__":
 #     companies = [
@@ -337,5 +299,5 @@ async def enrich_lead(data, location) -> List[Dict[str, str]]:
 #         }
 #     ]
     
-#     asyncio.run(enrich_lead(test0, "San Diego, CA"))
+#     print(asyncio.run(enrich_management(companies)))
 #     asyncio.run(enrich_lead(test1, "Carmel, IN"))
