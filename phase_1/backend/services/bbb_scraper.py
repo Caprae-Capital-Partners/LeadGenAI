@@ -1,15 +1,15 @@
 import asyncio
 import os
+import time
 from typing import Dict, List
 import sys
-sys.path.append("backend")
-# from config.browser_config import PlaywrightManager
-from backend.config.browser_config import PlaywrightManager
-from backend.services.google_maps_scraper import save_to_csv
-# from config.browser_config import PlaywrightManager
-# from google_maps_scraper import save_to_csv
 
-FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
+# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# from config.browser_config import PlaywrightManager
+
+from backend.config.browser_config import PlaywrightManager
+
+# FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
 
 async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:  
     industry = industry.replace(" ", "+")
@@ -76,7 +76,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                     print(f"Error extracting data for card {i}: {e}")
                 
             # Go to next page if available
-            next_page_btn = page.locator("a[rel='next']")
+            next_page_btn = page.locator('a[rel="next"]', has_text="Next")
             if await next_page_btn.count() > 0:
                 await next_page_btn.click()
                 # await page.wait_for_load_state("domcontentloaded")
@@ -97,6 +97,5 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
 # if __name__ == "__main__":
 #     query = "swimming pool contractors"
 #     location = "carmel, in"
-#     FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
 #     result = asyncio.run(scrape_bbb(query, location))
-#     save_to_csv(result, "data/example.csv", FIELDNAMES)
+#     print(len(result))
