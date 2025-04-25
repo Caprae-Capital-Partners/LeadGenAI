@@ -51,7 +51,7 @@ from backend.config.browser_config import PlaywrightManager
     # return browser, context, page
 # ----------------------------------------------------------------------------------------
 
-async def scrape_yellowpages(industry: str, location: str, max_pages: int = 2) -> List[Dict[str, str]]:
+async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -> List[Dict[str, str]]:
     """
     Scrapes Yellow Pages using PlaywrightManager.
 
@@ -176,12 +176,12 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 2) -
         await manager.stop_browser()
         
 
-if __name__ == "__main__":
-    businesses = [
-        # ("Plumbing services", "glendale, az"),
-        # ("HVAC", "Glendale, AZ"),
-        # ("Pool contractors", "Glendale, AZ"),
-        ("Senior relocation service", "Chicago, IL"),
-    ]
-    for idx, (name,loc) in enumerate(businesses):
-        asyncio.run(scrape_yellowpages(name, loc))
+# if __name__ == "__main__":
+#     businesses = [
+#         ("Plumbing services", "glendale, az"),
+#         ("HVAC", "Glendale, AZ"),
+#         ("Pool contractors", "Glendale, AZ"),
+#         ("Senior relocation service", "Chicago, IL"),
+#     ]
+#     for idx, (name,loc) in enumerate(businesses):
+#         asyncio.run(scrape_yellowpages(name, loc))

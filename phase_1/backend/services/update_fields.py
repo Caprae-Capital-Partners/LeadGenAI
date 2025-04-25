@@ -54,7 +54,7 @@ async def get_management_details(page: Page, company_name: str, state: str) -> L
                                     management_data.append({"name": name.strip(), "title": title.strip()})
                                 except ValueError as e:
                                     print(f"Error splitting dd text '{dd_text}': {e}")
-                                    management_data.append("NA")
+                                    management_data.append({"name": dd_text.strip(), "title": "NA"})
                         break
             
         return management_data
