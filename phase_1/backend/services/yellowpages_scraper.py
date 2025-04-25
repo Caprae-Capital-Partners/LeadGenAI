@@ -4,10 +4,10 @@ from typing import Dict, List
 import random
 import sys
 
-# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
-# from config.browser_config import PlaywrightManager
+sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+from config.browser_config import PlaywrightManager
 
-from backend.config.browser_config import PlaywrightManager
+# from backend.config.browser_config import PlaywrightManager
 
 # def setup_browser(playwright):
 #     """Set up and return a configured Playwright browser instance."""
@@ -51,7 +51,7 @@ from backend.config.browser_config import PlaywrightManager
     # return browser, context, page
 # ----------------------------------------------------------------------------------------
 
-async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -> List[Dict[str, str]]:
+async def scrape_yellowpages(industry: str, location: str, max_pages: int = 2) -> List[Dict[str, str]]:
     """
     Scrapes Yellow Pages using PlaywrightManager.
 
@@ -64,7 +64,7 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
         List[Dict[str, str]]: List of dictionaries containing business information.
     """
     businesses = []
-    manager = PlaywrightManager(headless=True)
+    manager = PlaywrightManager(headless=False)
 
     try:
         page = await manager.start_browser(stealth_on=True)
@@ -178,9 +178,10 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
 
 if __name__ == "__main__":
     businesses = [
-        ("Plumbing services", "glendale, az"),
-        ("HVAC", "Glendale, AZ"),
-        ("Pool contractors", "Glendale, AZ"),
+        # ("Plumbing services", "glendale, az"),
+        # ("HVAC", "Glendale, AZ"),
+        # ("Pool contractors", "Glendale, AZ"),
+        ("Senior relocation service", "Chicago, IL"),
     ]
     for idx, (name,loc) in enumerate(businesses):
         asyncio.run(scrape_yellowpages(name, loc))
