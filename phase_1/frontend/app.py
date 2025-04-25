@@ -17,12 +17,6 @@ st.title("📊 LeadGen AI Tool")
 st.markdown("#### Welcome to Caprae Capital's LeadGenAI Tool! 🐐")
 st.markdown("Add your target industry and location to the sidebar, and hit '🚀 Fetch Leads'. Then, filter, edit, and download your leads!")
 
-# --- Sidebar Inputs ---
-st.sidebar.header("🔍 Search Criteria")
-industry = st.sidebar.text_input("Industry", placeholder="e.g. dentist")
-location = st.sidebar.text_input("Location", placeholder="e.g. San Diego, CA")
-fetch_button = st.sidebar.button("🚀 Fetch Leads")
-
 # --- State Initialization ---
 if 'raw_data' not in st.session_state:
     st.session_state.raw_data = pd.DataFrame()
@@ -32,15 +26,30 @@ if "edited_data" not in st.session_state:
     st.session_state.edited_data = pd.DataFrame()
 if "enriched_data" not in st.session_state:
     st.session_state.enriched_data = pd.DataFrame()
+if "is_scraping" not in st.session_state:
+    st.session_state.is_scraping = False
+
+
+# --- Sidebar Inputs ---
+st.sidebar.header("🔍 Search Criteria")
+industry = st.sidebar.text_input("Industry", placeholder="e.g. dentist")
+location = st.sidebar.text_input("Location", placeholder="e.g. San Diego, CA")
+fetch_button = st.sidebar.button("🚀 Fetch Leads", disabled = st.session_state.is_scraping)
+
 
 # --- Fetch Leads ---
-if fetch_button:
+if fetch_button and not st.session_state.is_scraping:
+    st.session_state.is_scraping = True  # Immediately set before any other logic
+    st.rerun()
+if st.session_state.is_scraping and not fetch_button:
     with st.spinner("Scraping and merging data..."):
         raw_data = asyncio.run(fetch_and_merge_data(industry, location))
         df = pd.DataFrame(raw_data)
         st.session_state.raw_data = df
         st.session_state.enriched_data = pd.DataFrame()  # Reset enrichment
         st.session_state.industry_filter_selection = df["Industry"].dropna().unique().tolist()
+    st.session_state.is_scraping = False
+    st.rerun()
 
 # --- Display Leads + Filters ---
 if not st.session_state.raw_data.empty:
@@ -107,71 +116,98 @@ if not st.session_state.raw_data.empty:
     if st.button("📄 Get Overviews"):
         if edited_df.empty:
             st.warning("No leads to enrich.")
+        elif len(edited_df) > 50:
+            st.session_state.confirm_overview = True
         else:
-            st.info("Scraping overviews...")
+            st.session_state.confirm_overview = False
+            st.session_state.proceed_overview = True
 
-            async def enrich_selected(df):
-                from backend.services.overview_scraper_hf import AsyncCompanyScraper
-                scraper = AsyncCompanyScraper()
-                enriched_rows = []
+    # Handle Confirmation Popup
+    if st.session_state.get("confirm_overview", False):
+        st.warning(f"You are trying to scrape {len(edited_df)} leads. This will take some time. Are you sure you wish to continue?")
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("✅ Yes, continue"):
+                st.session_state.confirm_overview = False
+                st.session_state.proceed_overview = True
+        with col2:
+            if st.button("❌ No, cancel"):
+                st.session_state.confirm_overview = False
+                st.info("Action cancelled.")
+                st.rerun()
 
-                for _, row in df.iterrows():
-                    name = row.get("Name", "")
-                    location = row.get("Address") or row.get("City", "")
-                    row_dict = row.to_dict()
-                    try:
-                        enriched = await scraper.process_company(name, location)
-                        row_dict.update(enriched)
-                    except Exception as e:
-                        row_dict["Overview"] = "Error"
-                        row_dict["Products & Services"] = "Error"
-                        print(f"Overview error for {name}: {e}")
-                    enriched_rows.append(row_dict)
-                return pd.DataFrame(enriched_rows)
+    # Proceed if confirmed
+    if st.session_state.get("proceed_overview", False):
+        st.session_state.proceed_overview = False  # Reset after action
+        st.info("Scraping overviews...")
 
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            enriched_df = loop.run_until_complete(enrich_selected(edited_df))
-            loop.close()
+        async def enrich_selected(df):
+            from backend.services.overview_scraper import AsyncCompanyScraper
+            scraper = AsyncCompanyScraper()
+            enriched_rows = []
 
-            st.session_state.enriched_data = enriched_df
-            st.success("✅ Overviews added successfully!")
-            st.rerun()
+            for _, row in df.iterrows():
+                name = row.get("Name", "")
+                location = row.get("Address") or row.get("City", "")
+                row_dict = row.to_dict()
+                try:
+                    enriched = await scraper.process_company(name, location)
+                    row_dict.update(enriched)
+                except Exception as e:
+                    row_dict["Overview"] = "Error"
+                    row_dict["Products & Services"] = "Error"
+                    print(f"Overview error for {name}: {e}")
+                enriched_rows.append(row_dict)
+            return pd.DataFrame(enriched_rows)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        enriched_df = loop.run_until_complete(enrich_selected(edited_df))
+        loop.close()
+
+        st.session_state.enriched_data = enriched_df
+        st.success("✅ Overviews added successfully!")
+        st.rerun()
 
     # --- Enrich Contact Info (Website + Management) ---
     if st.button("🔍 Enrich Contact Info"):
         if edited_df.empty:
             st.warning("No leads to enrich.")
+        elif len(edited_df) > 50:
+            st.session_state.confirm_contact = True
         else:
-            st.info("Searching for contact info...")
+            st.session_state.confirm_contact = False
+            st.session_state.proceed_contact = True
 
-            async def enrich_contact_info(df, loc):
-                from backend.services.update_fields import update_websites, get_management_details
-                records = df.to_dict(orient="records")
-                updated_records = await update_websites(records, loc)
+    # Handle Confirmation Popup for Contact Info
+    if st.session_state.get("confirm_contact", False):
+        st.warning(f"You are trying to enrich contact info for {len(edited_df)} leads. This will take some time. Are you sure you wish to continue?")
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("✅ Yes, continue"):
+                st.session_state.confirm_contact = False
+                st.session_state.proceed_contact = True
+        with col2:
+            if st.button("❌ No, cancel"):
+                st.session_state.confirm_contact = False
+                st.info("Action cancelled.")
+                st.rerun()
 
-                company_tuples = [(rec["Name"], rec.get("Address", loc)) for rec in updated_records]
-                management_info = await get_management_details(company_tuples)
+    # Proceed if confirmed
+    if st.session_state.get("proceed_contact", False):
+        st.session_state.proceed_contact = False  # Reset after action
+        st.info("Enriching website, rating, and management info...")
 
-                for i, rec in enumerate(updated_records):
-                    people = management_info[i] if i < len(management_info) else []
-                    if isinstance(people, list):
-                        rec["Management"] = "; ".join(
-                            [f'{p["name"]} ({p["title"]})' for p in people if isinstance(p, dict)]
-                        ) if people else "NA"
-                    else:
-                        rec["Management"] = "NA"
-                return pd.DataFrame(updated_records)
+        # Run the enrichment
+        from backend.services.update_fields import enrich_leads
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        enriched_df = loop.run_until_complete(enrich_leads(edited_df, location))
+        loop.close()
 
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            enriched_df = loop.run_until_complete(enrich_contact_info(edited_df, location))
-            loop.close()
-
-            st.session_state.enriched_data = enriched_df
-            st.success("✅ Contact info enriched!")
-            st.rerun()
-
+        st.session_state.enriched_data = enriched_df
+        st.success("✅ Contact info enriched!")
+        st.rerun()
     # --- Download ---
     st.download_button(
         "📥 Download as CSV",

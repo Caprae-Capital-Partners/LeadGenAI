@@ -89,7 +89,7 @@ async def fetch_management(data: List[Tuple[str, str]], context: BrowserContext,
 
 async def enrich_management(data: List[Tuple[str,str]]) -> List[str]:
     """Enriches lead data with website and management details."""
-    manager = PlaywrightManager(headless=False)
+    manager = PlaywrightManager(headless=True)
     await manager.start_browser(stealth_on=True)
     try:
         results = await fetch_management(data, manager.context)
@@ -231,7 +231,7 @@ async def enrich_leads(df: pd.DataFrame, location: str) -> pd.DataFrame:
     updated_records = await enrich_contect(records, location)
 
     company_tuples = [(rec["Name"], rec.get("Address", location)) for rec in updated_records]
-    management_info = await get_management_details(company_tuples)
+    management_info = await enrich_management(company_tuples)
 
     for i, rec in enumerate(updated_records):
         people = management_info[i] if i < len(management_info) else []
