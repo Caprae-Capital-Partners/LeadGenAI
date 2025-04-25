@@ -4,10 +4,10 @@ from typing import Dict, List
 import random
 import sys
 
-sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
-from config.browser_config import PlaywrightManager
+# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# from config.browser_config import PlaywrightManager
 
-# from backend.config.browser_config import PlaywrightManager
+from backend.config.browser_config import PlaywrightManager
 
 # def setup_browser(playwright):
 #     """Set up and return a configured Playwright browser instance."""
