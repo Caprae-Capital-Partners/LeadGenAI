@@ -28,7 +28,7 @@ async def get_management_details(page: Page, company_name: str, state: str) -> L
     management_data = []
     
     try:
-        bbb_link_elem = await page.query_selector('li.b_algo a[href*="bbb.org/us/"]')
+        bbb_link_elem = await page.query_selector('li.b_algo a[href*="bbb.org/us/"]:has-text("Profile")')
         if bbb_link_elem:
             has_target = await bbb_link_elem.get_attribute("target")
             if has_target:
@@ -89,7 +89,7 @@ async def fetch_management(data: List[Tuple[str, str]], context: BrowserContext,
 
 async def enrich_management(data: List[Tuple[str,str]]) -> List[str]:
     """Enriches lead data with website and management details."""
-    manager = PlaywrightManager(headless=False)
+    manager = PlaywrightManager(headless=True)
     await manager.start_browser(stealth_on=True)
     try:
         results = await fetch_management(data, manager.context)
@@ -203,14 +203,14 @@ async def update_data(data: List[Dict[str, str]], state: str, context: BrowserCo
         # Update the data
         for idx, website, rating in results:
             data[idx]["Website"] = website
-            data[idx]["Rating"] = rating
+            data[idx]["BBB_rating"] = rating
 
         # Close all pages
         await asyncio.gather(*[p.close() for p in pages])
 
     return data
 
-async def enrich_contect(data: List[Dict[str,str]], location: str) -> List[Dict[str, str]]:
+async def enrich_contact(data: List[Dict[str,str]], location: str) -> List[Dict[str, str]]:
     """Enriches lead data with website and management details."""
     manager = PlaywrightManager(headless=True)
     await manager.start_browser(stealth_on=True)
@@ -228,10 +228,10 @@ async def enrich_contect(data: List[Dict[str,str]], location: str) -> List[Dict[
 ''' --------------------- COMBINED ------------------------------- '''
 async def enrich_leads(df: pd.DataFrame, location: str) -> pd.DataFrame:
     records = df.to_dict(orient="records")
-    updated_records = await enrich_contect(records, location)
+    updated_records = await enrich_contact(records, location)
 
     company_tuples = [(rec["Name"], rec.get("Address", location)) for rec in updated_records]
-    management_info = await get_management_details(company_tuples)
+    management_info = await enrich_management(company_tuples)
 
     for i, rec in enumerate(updated_records):
         people = management_info[i] if i < len(management_info) else []
