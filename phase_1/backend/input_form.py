@@ -5,8 +5,7 @@ app = Flask(__name__)
 # Using PostgreSQL as database with local user for testing
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://ghaly@localhost:5432/lead_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Secret key for flash messages
-app.config['SECRET_KEY'] = 'your_secret_key'
+
 db.init_app(app)
 
 # Flask 2.0+ uses this instead of before_first_request

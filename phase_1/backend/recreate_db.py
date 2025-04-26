@@ -2,7 +2,6 @@ from flask import Flask
 from models.lead_model import db
 import input_form
 
-# Use the same app configuration from input_form.py
 app = input_form.app
 
 with app.app_context():
