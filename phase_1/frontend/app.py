@@ -111,7 +111,7 @@ if not st.session_state.raw_data.empty:
             st.info("Scraping overviews...")
 
             async def enrich_selected(df):
-                from backend.services.overview_scraper_hf import AsyncCompanyScraper
+                from backend.services.overview_scraper import AsyncCompanyScraper
                 scraper = AsyncCompanyScraper()
                 enriched_rows = []
 
