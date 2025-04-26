@@ -4,7 +4,9 @@ import asyncio
 import sys
 import os
 
-os.system('playwright install chromium')
+# os.system('playwright install chromium')
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # Import backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -143,7 +145,7 @@ if not st.session_state.raw_data.empty:
 
         async def enrich_selected(df):
             from backend.services.overview_scraper import AsyncCompanyScraper
-            scraper = AsyncCompanyScraper()
+            scraper = AsyncCompanyScraper(api_key=st.secrets["OPENAI_API_KEY"])
             enriched_rows = []
 
             for _, row in df.iterrows():
