@@ -64,7 +64,7 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
         List[Dict[str, str]]: List of dictionaries containing business information.
     """
     businesses = []
-    manager = PlaywrightManager(headless=False)
+    manager = PlaywrightManager(headless=True)
 
     try:
         page = await manager.start_browser(stealth_on=True)
