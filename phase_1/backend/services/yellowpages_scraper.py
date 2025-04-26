@@ -176,11 +176,12 @@ async def scrape_yellowpages(industry: str, location: str, max_pages: int = 1) -
         await manager.stop_browser()
         
 
-if __name__ == "__main__":
-    businesses = [
-        ("Plumbing services", "glendale, az"),
-        ("HVAC", "Glendale, AZ"),
-        ("Pool contractors", "Glendale, AZ"),
-    ]
-    for idx, (name,loc) in enumerate(businesses):
-        asyncio.run(scrape_yellowpages(name, loc))
+# if __name__ == "__main__":
+#     businesses = [
+#         ("Plumbing services", "glendale, az"),
+#         ("HVAC", "Glendale, AZ"),
+#         ("Pool contractors", "Glendale, AZ"),
+#         ("Senior relocation service", "Chicago, IL"),
+#     ]
+#     for idx, (name,loc) in enumerate(businesses):
+#         asyncio.run(scrape_yellowpages(name, loc))

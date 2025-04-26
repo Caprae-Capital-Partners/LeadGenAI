@@ -17,14 +17,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config.browser_config import PlaywrightManager
 
 class AsyncCompanyScraper:
-    def __init__(self):
+    def __init__(self, api_key: str):
+        self.api_key = api_key
         self.df = pd.DataFrame(columns=[
             'Overview', 'Product Services', 'Revenue'
         ])
         self.sources = ["Name", "Overview", "Products & Services"]
         self.google_search = "https://www.bing.com/search?q="
         self.manager = PlaywrightManager(headless=True)
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url="https://api.deepseek.com")
+        self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
         
         if sys.platform == "win32":
             asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
