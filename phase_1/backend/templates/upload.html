@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload Leads CSV</title>
+</head>
+<body>
+    <h1>Upload Leads CSV</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <label>Select CSV File:</label><br>
+        <input type="file" name="file" accept=".csv" required><br><br>
+
+        <label>Field Mapping (use exact CSV headers):</label><br>
+        Name Column: <input type="text" name="name_column" value="Name" required><br>
+        Email Column: <input type="text" name="email_column" value="Email" required><br>
+        Phone Column: <input type="text" name="phone_column" value="Phone" required><br><br>
+
+        <input type="submit" value="Upload CSV">
+    </form>
+</body>
+</html>
