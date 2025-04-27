@@ -1,10 +1,14 @@
 from flask import Flask, render_template, request, redirect, jsonify, flash, url_for
 from models.lead_model import db, Lead
 
+import os
+
 app = Flask(__name__)
 # Using PostgreSQL as database with local user for testing
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://ghaly@localhost:5432/lead_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:ZqxqhrXPZGiULnFToDzVjItstlSBLgIo@tramway.proxy.rlwy.net:22825/railway'
+#postgresql://postgres:ZqxqhrXPZGiULnFToDzVjItstlSBLgIo@tramway.proxy.rlwy.net:22825/railway
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.secret_key = 'your_secret_key_here'
 
 db.init_app(app)
 
