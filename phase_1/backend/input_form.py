@@ -4,7 +4,6 @@ from models.lead_model import db, Lead
 import os
 
 app = Flask(__name__)
-# Using PostgreSQL as database with local user for testing
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:ZqxqhrXPZGiULnFToDzVjItstlSBLgIo@tramway.proxy.rlwy.net:22825/railway'
 #postgresql://postgres:ZqxqhrXPZGiULnFToDzVjItstlSBLgIo@tramway.proxy.rlwy.net:22825/railway
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
