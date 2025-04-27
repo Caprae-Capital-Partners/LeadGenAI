@@ -14,9 +14,15 @@ from scraper.linkedinScraper.utils.chromeUtils import get_chrome_driver
 from scraper.linkedinScraper.main import run_batches
 from scraper.growjoScraper import GrowjoScraper
 from security import generate_token, token_required, VALID_USERS
-
+from flask import Flask
+from flask_cors import CORS
+from dotenv import load_dotenv
 
 app = Flask(__name__)
+# Allow all origins for development; restrict in production
+CORS(app)
+
+# Load environment variables before importing modules that use them
 load_dotenv()
 
 @app.route('/api/login', methods=['POST'])
