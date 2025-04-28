@@ -41,28 +41,28 @@ fetch_button = st.sidebar.button("🚀 Fetch Leads", disabled = st.session_state
 if fetch_button and not st.session_state.is_scraping:
     st.session_state.is_scraping = True  # Immediately set before any other logic
     st.rerun()
-# if st.session_state.is_scraping and not fetch_button:
-#     with st.spinner("Scraping and merging data..."):
-#         raw_data = asyncio.run(fetch_and_merge_data(industry, location))
-#         df = pd.DataFrame(raw_data)
-#         st.session_state.raw_data = df
-#         st.session_state.enriched_data = pd.DataFrame()  # Reset enrichment
-#         st.session_state.industry_filter_selection = df["Industry"].dropna().unique().tolist()
-#     st.session_state.is_scraping = False
-#     st.rerun()
+if st.session_state.is_scraping and not fetch_button:
+    with st.spinner("Scraping and merging data..."):
+        raw_data = asyncio.run(fetch_and_merge_data(industry, location))
+        df = pd.DataFrame(raw_data)
+        st.session_state.raw_data = df
+        st.session_state.enriched_data = pd.DataFrame()  # Reset enrichment
+        st.session_state.industry_filter_selection = df["Industry"].dropna().unique().tolist()
+    st.session_state.is_scraping = False
+    st.rerun()
 
-import gc
-import objgraph
+# import gc
+# import objgraph
 
-if st.button("🧹 Check for Memory Leaks"):
-    for o in gc.get_objects():
-        if 'session_state.SessionState' in str(type(o)) and o is not st.session_state:
-            st.write("SessionState reference retained by: ", type(o))
+# if st.button("🧹 Check for Memory Leaks"):
+#     for o in gc.get_objects():
+#         if 'session_state.SessionState' in str(type(o)) and o is not st.session_state:
+#             st.write("SessionState reference retained by: ", type(o))
             
-            chain = objgraph.find_backref_chain(o, objgraph.is_proper_module)
-            st.write("Backref chain:")
-            for item in chain:
-                st.write(f"→ {type(item)}")
+#             chain = objgraph.find_backref_chain(o, objgraph.is_proper_module)
+#             st.write("Backref chain:")
+#             for item in chain:
+#                 st.write(f"→ {type(item)}")
 
 # --- Display Leads + Filters ---
 if not st.session_state.raw_data.empty:
