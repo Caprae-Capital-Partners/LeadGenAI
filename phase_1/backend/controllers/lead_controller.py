@@ -1,5 +1,6 @@
 from flask import request, redirect, render_template, flash, url_for, jsonify
-from ..models.lead_model import db, Lead
+from models.lead_model import db, Lead
+from sqlalchemy.exc import IntegrityError
 
 class LeadController:
     @staticmethod
@@ -15,6 +16,7 @@ class LeadController:
     @staticmethod
     def create_lead(form_data):
         """Create new lead from form data"""
+        # Create lead with basic information
         lead = Lead(
             # Basic contact info
             first_name=form_data.get('first_name', ''),
@@ -35,10 +37,30 @@ class LeadController:
             additional_notes=form_data.get('notes', '')
         )
         
+        # Handle dynamic fields if provided
+        if form_data.getlist('dynamic_field_name[]') and form_data.getlist('dynamic_field_value[]'):
+            field_names = form_data.getlist('dynamic_field_name[]')
+            field_values = form_data.getlist('dynamic_field_value[]')
+            
+            for i in range(len(field_names)):
+                if field_names[i] and field_values[i]:
+                    # Set attribute if it exists on Lead model
+                    field_name = field_names[i]
+                    if hasattr(lead, field_name):
+                        setattr(lead, field_name, field_values[i])
+        
         try:
             db.session.add(lead)
             db.session.commit()
             return True, "Lead added successfully!"
+        except IntegrityError as e:
+            db.session.rollback()
+            if "lead_email_key" in str(e):
+                return False, f"Error: Email address '{lead.email}' is already in use. Please use a different email."
+            elif "lead_phone_key" in str(e):
+                return False, f"Error: Phone number '{lead.phone}' is already in use. Please use a different phone number."
+            else:
+                return False, f"Error adding lead: {str(e)}"
         except Exception as e:
             db.session.rollback()
             return False, f"Error adding lead: {str(e)}"
@@ -47,6 +69,10 @@ class LeadController:
     def update_lead(lead_id, form_data):
         """Update existing lead"""
         lead = Lead.query.get_or_404(lead_id)
+        
+        # Store original email and phone for comparison
+        original_email = lead.email
+        original_phone = lead.phone
         
         lead.first_name = form_data.get('first_name', '')
         lead.last_name = form_data.get('last_name', '')
@@ -59,9 +85,34 @@ class LeadController:
         lead.website = form_data.get('website', '')
         lead.business_type = form_data.get('business_type', '')
         
+        # Handle dynamic fields if provided
+        if form_data.getlist('dynamic_field_name[]') and form_data.getlist('dynamic_field_value[]'):
+            field_names = form_data.getlist('dynamic_field_name[]')
+            field_values = form_data.getlist('dynamic_field_value[]')
+            
+            for i in range(len(field_names)):
+                if field_names[i] and field_values[i]:
+                    # Set attribute if it exists on Lead model
+                    field_name = field_names[i]
+                    if hasattr(lead, field_name):
+                        setattr(lead, field_name, field_values[i])
+        
         try:
-            db.session.commit()
+            # Only commit if email or phone has changed
+            if lead.email != original_email or lead.phone != original_phone:
+                db.session.commit()
+            else:
+                # If no change to unique fields, this should be safe
+                db.session.commit() 
             return True, "Lead updated successfully!"
+        except IntegrityError as e:
+            db.session.rollback()
+            if "lead_email_key" in str(e):
+                return False, f"Error: Email address '{lead.email}' is already used by another lead. Please use a different email."
+            elif "lead_phone_key" in str(e):
+                return False, f"Error: Phone number '{lead.phone}' is already used by another lead. Please use a different phone number."
+            else:
+                return False, f"Error updating lead: {str(e)}"
         except Exception as e:
             db.session.rollback()
             return False, f"Error updating lead: {str(e)}"

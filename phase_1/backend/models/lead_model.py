@@ -24,8 +24,8 @@ class Lead(db.Model):
     # Contact Information
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
-    email = db.Column(db.String(120))
-    phone = db.Column(db.String(30))
+    email = db.Column(db.String(120), unique=True)
+    phone = db.Column(db.String(30), unique=True)
     title = db.Column(db.String(100))
     
     # Owner Information
@@ -51,6 +51,11 @@ class Lead(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    @property
+    def full_name(self):
+        """Return the full name of the lead"""
+        return f"{self.first_name} {self.last_name}".strip()
+    
     def __repr__(self):
         return f'<Lead {self.company}: {self.first_name} {self.last_name}>'
     
@@ -62,6 +67,7 @@ class Lead(db.Model):
             'company': self.company,
             'first_name': self.first_name,
             'last_name': self.last_name,
+            'full_name': self.full_name,
             'email': self.email,
             'phone': self.phone,
             'title': self.title,
@@ -79,7 +85,6 @@ class Lead(db.Model):
             'year_founded': self.year_founded,
             'owner_linkedin': self.owner_linkedin,
             'owner_age': self.owner_age,
-            'phone': self.phone,
             'additional_notes': self.additional_notes,
             'score': self.score,
             'email_customization_1': self.email_customization_1,

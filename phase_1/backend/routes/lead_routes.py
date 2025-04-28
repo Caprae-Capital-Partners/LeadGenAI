@@ -1,7 +1,7 @@
 from flask import Blueprint, request, redirect, render_template, flash, url_for, jsonify
-from ..controllers.lead_controller import LeadController
-from ..controllers.upload_controller import UploadController
-from ..models.lead_model import db
+from controllers.lead_controller import LeadController
+from controllers.upload_controller import UploadController
+from models.lead_model import db
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)

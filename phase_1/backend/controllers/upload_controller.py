@@ -2,7 +2,7 @@ import pandas as pd
 import io
 import re
 from datetime import datetime
-from ..models.lead_model import db, Lead
+from models.lead_model import db, Lead
 
 class UploadController:
     @staticmethod
