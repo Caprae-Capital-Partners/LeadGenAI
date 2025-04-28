@@ -87,7 +87,7 @@ class AsyncCompanyScraper:
             return response.choices[0].message.content
         return await asyncio.to_thread(sync_chat_request)
 
-    async def process_company(self, company_name: str, location: str, browser=False):
+    async def process_company(self, company_name: str, location: str, context=None):
         query = quote_plus(f"{company_name} {location}")
         
         query_variants = [
@@ -114,43 +114,42 @@ class AsyncCompanyScraper:
         
         urls = [f'https://www.bing.com/search?q={random.choice(group)}' for group in query_variants]
 
-        async with async_playwright() as p:
-            if browser == False:
-                await self.manager.start_browser(stealth_on = True)  # start once
+        # No need to start playwright/browser/context if context is passed
+        created_context = False
+        if context is None:
+            created_context = True
+            await self.manager.start_browser(stealth_on=True)
             context = await self.manager.browser.new_context()
+        
+        tasks = []
+        for url in urls:
+            page = await context.new_page()
+            tasks.append(self.fetch_with_retries(page, url, ['p', 'h1', 'h2', 'h3']))
             
-            tasks = []
-            for url in urls:
-                page = await context.new_page()
-                tasks.append(self.fetch_with_retries(page, url, ['p', 'h1', 'h2', 'h3']))
-                
-            texts = await asyncio.gather(*tasks)
+        texts = await asyncio.gather(*tasks)
+
+        if created_context:
+            await context.close()
             await self.manager.stop_browser()
 
-            print(f"Total texts extracted: {len(texts)}")
+        print(f"Total texts extracted: {len(texts)}")
 
-            # Menghindari IndexError
-            overview_text = texts[0]+texts[1] if len(texts) > 0 else "No overview data"
-            services_text = texts[2] if len(texts) > 2 else "No services data"
-            
-            prompts = [
-                f"Explain in brief about {company_name} in {location} using the info provided: {overview_text}. Explain in about 50 words. Only answer by using the given information.",
-                f"Explain what {company_name} in {location} offers in terms of its products or the services they provide using this info: {services_text}. Provide a overview of around 50 words. Only answer by using the given information.",
-            ]
-            
-            answers = []
-            
-            chat_tasks = [asyncio.create_task(self.get_chat_response(prompt)) for prompt in prompts]
-            answers = await asyncio.gather(*chat_tasks)
-            
-            if browser==False:
-                await self.manager.stop_browser()
-
+        overview_text = texts[0]+texts[1] if len(texts) > 0 else "No overview data"
+        services_text = texts[2] if len(texts) > 2 else "No services data"
+        
+        prompts = [
+            f"Explain in brief about {company_name} in {location} using the info provided: {overview_text}. Explain in about 50 words. Only answer by using the given information.",
+            f"Explain what {company_name} in {location} offers in terms of its products or the services they provide using this info: {services_text}. Provide a overview of around 50 words. Only answer by using the given information.",
+        ]
+        
+        chat_tasks = [asyncio.create_task(self.get_chat_response(prompt)) for prompt in prompts]
+        answers = await asyncio.gather(*chat_tasks)
+    
         return {
             "Name": company_name,
             "Overview": answers[0] if len(answers) > 0 else "Not Found",
             "Products & Services": answers[1] if len(answers) > 1 else "Not Found",
-        }
+    }
 
     async def save(self, df, folder='../data'):
         os.makedirs(folder, exist_ok=True)
@@ -186,20 +185,21 @@ class AsyncCompanyScraper:
     async def process_all_companies(self, companies: list[dict], location: str) -> list[dict]:
         semaphore = asyncio.Semaphore(3)
         processed_companies = []
-        
-        await self.manager.start_browser(stealth_on = True)  # start once
+
+        await self.manager.start_browser(stealth_on=True)
         context = await self.manager.browser.new_context()
 
         async def process_with_semaphore(company):
             async with semaphore:
                 name = company.get("Name", "NA")
-                result = await self.process_company(name, location, browser=True)
+                result = await self.process_company(name, location, context=context)  # pass context
                 return {**company, **result}
-            
+
         tasks = [asyncio.create_task(process_with_semaphore(company)) for company in companies]
         processed_companies = await asyncio.gather(*tasks)
-        
-        await self.manager.stop_browser()
+
+        await context.close()  # Close context properly
+        await self.manager.stop_browser()  # Stop browser properly
 
         return processed_companies
     
