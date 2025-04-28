@@ -51,6 +51,19 @@ if st.session_state.is_scraping and not fetch_button:
     st.session_state.is_scraping = False
     st.rerun()
 
+# import gc
+# import objgraph
+
+# if st.button("🧹 Check for Memory Leaks"):
+#     for o in gc.get_objects():
+#         if 'session_state.SessionState' in str(type(o)) and o is not st.session_state:
+#             st.write("SessionState reference retained by: ", type(o))
+            
+#             chain = objgraph.find_backref_chain(o, objgraph.is_proper_module)
+#             st.write("Backref chain:")
+#             for item in chain:
+#                 st.write(f"→ {type(item)}")
+
 # --- Display Leads + Filters ---
 if not st.session_state.raw_data.empty:
     df = st.session_state.raw_data

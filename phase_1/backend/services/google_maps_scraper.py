@@ -8,11 +8,14 @@ import sys
 # sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
 # from config.browser_config import PlaywrightManager
 
-# from backend.config.browser_config import PlaywrightManager
+from backend.config.browser_config import PlaywrightManager
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config.browser_config import PlaywrightManager
 from playwright.async_api import Locator
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 BASE_URL = "https://www.google.com/maps"
 OUTPUT_DIR = "../data"
