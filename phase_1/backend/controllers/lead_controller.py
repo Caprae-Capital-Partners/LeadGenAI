@@ -1,5 +1,5 @@
 from flask import request, redirect, render_template, flash, url_for, jsonify
-from models.lead_model import db, Lead
+from ..models.lead_model import db, Lead
 
 class LeadController:
     @staticmethod

@@ -1,5 +1,7 @@
 from flask import Blueprint, request, redirect, render_template, flash, url_for, jsonify
-from controllers.lead_controller import LeadController
+from ..controllers.lead_controller import LeadController
+from ..controllers.upload_controller import UploadController
+from ..models.lead_model import db
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -20,6 +22,37 @@ def submit():
         flash(message, 'danger')
         
     return redirect('/')
+
+@lead_bp.route('/upload_page')
+def upload_page():
+    """Display CSV upload page"""
+    return render_template('upload.html')
+
+@lead_bp.route('/upload', methods=['POST'])
+def upload_csv():
+    """Handle CSV file upload"""
+    if 'file' not in request.files:
+        flash('No file part', 'danger')
+        return redirect(url_for('lead.upload_page'))
+
+    file = request.files['file']
+    if file.filename == '':
+        flash('No selected file', 'danger')
+        return redirect(url_for('lead.upload_page'))
+
+    name_col = request.form.get('name_column')
+    email_col = request.form.get('email_column')
+    phone_col = request.form.get('phone_column')
+
+    try:
+        added, skipped_duplicates, errors = UploadController.process_csv_file(file, name_col, email_col, phone_col)
+        db.session.commit()
+        flash(f'Upload Complete! Added: {added}, Skipped: {skipped_duplicates}, Errors: {errors}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error during upload: {str(e)}', 'danger')
+
+    return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/view_leads')
 def view_leads():

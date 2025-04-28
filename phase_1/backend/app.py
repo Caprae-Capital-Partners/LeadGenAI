@@ -1,7 +1,7 @@
 from flask import Flask
-from models.lead_model import db
-from routes.lead_routes import lead_bp
-from config.config import config
+from .models.lead_model import db
+from .routes.lead_routes import lead_bp
+from .config.config import config
 
 def create_app(config_class=config):
     """Create and configure the Flask application"""
@@ -24,4 +24,4 @@ def create_app(config_class=config):
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(debug=True, port=8000) 
