@@ -7,12 +7,12 @@ class LeadController:
     def get_all_leads():
         """Get all leads for view"""
         return Lead.query.all()
-    
+
     @staticmethod
     def get_lead_by_id(lead_id):
         """Get lead by ID"""
         return Lead.query.get_or_404(lead_id)
-    
+
     @staticmethod
     def create_lead(form_data):
         """Create new lead from form data"""
@@ -24,7 +24,7 @@ class LeadController:
             email=form_data.get('email', ''),
             phone=form_data.get('phone', ''),
             title=form_data.get('title', ''),
-            
+
             # Company info
             company=form_data.get('company', ''),
             city=form_data.get('city', ''),
@@ -32,7 +32,7 @@ class LeadController:
             website=form_data.get('website', ''),
             industry=form_data.get('industry', ''),
             business_type=form_data.get('business_type', ''),
-            
+
             # Other fields
             additional_notes=form_data.get('notes', '')
         )
@@ -64,7 +64,7 @@ class LeadController:
         except Exception as e:
             db.session.rollback()
             return False, f"Error adding lead: {str(e)}"
-    
+
     @staticmethod
     def update_lead(lead_id, form_data):
         """Update existing lead"""
@@ -116,12 +116,12 @@ class LeadController:
         except Exception as e:
             db.session.rollback()
             return False, f"Error updating lead: {str(e)}"
-    
+
     @staticmethod
     def delete_lead(lead_id):
         """Delete lead by ID"""
         lead = Lead.query.get_or_404(lead_id)
-        
+
         try:
             db.session.delete(lead)
             db.session.commit()
@@ -129,9 +129,9 @@ class LeadController:
         except Exception as e:
             db.session.rollback()
             return False, f"Error deleting lead: {str(e)}"
-    
+
     @staticmethod
     def get_leads_json():
         """Get all leads as JSON for API"""
         leads = Lead.query.all()
-        return [lead.to_dict() for lead in leads] 
+        return [lead.to_dict() for lead in leads]

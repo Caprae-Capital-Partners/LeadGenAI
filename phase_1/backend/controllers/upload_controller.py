@@ -41,10 +41,10 @@ class UploadController:
             content = file.read()
             if isinstance(content, bytes):
                 content = content.decode("utf-8")
-            
+
             df = pd.read_csv(io.StringIO(content))
             df.columns = df.columns.str.strip()
-            
+
             missing_cols = [col for col in [name_col, email_col, phone_col] if col not in df.columns]
             if missing_cols:
                 raise Exception(f"Missing required columns: {', '.join(missing_cols)}")
@@ -134,4 +134,4 @@ class UploadController:
         except pd.errors.ParserError:
             raise Exception("Invalid CSV format")
         except Exception as e:
-            raise Exception(f"Error processing CSV: {str(e)}") 
+            raise Exception(f"Error processing CSV: {str(e)}")
