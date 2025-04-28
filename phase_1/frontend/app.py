@@ -4,9 +4,6 @@ import asyncio
 import sys
 import os
 
-import gc
-import objgraph
-
 os.system('playwright install chromium')
 
 # Import backend
@@ -54,28 +51,18 @@ if st.session_state.is_scraping and not fetch_button:
     st.session_state.is_scraping = False
     st.rerun()
 
-if st.button("🧹 Check for Memory Leaks"):
-    import gc
-    import objgraph
+import gc
+import objgraph
 
+if st.button("🧹 Check for Memory Leaks"):
     for o in gc.get_objects():
         if 'session_state.SessionState' in str(type(o)) and o is not st.session_state:
+            st.write("SessionState reference retained by: ", type(o))
+            
             chain = objgraph.find_backref_chain(o, objgraph.is_proper_module)
-
-            if chain:  # Only if a meaningful chain exists
-                filename = f'session_state_{hex(id(o))}.png'
-                objgraph.show_chain(
-                    chain,
-                    backrefs=False,
-                    filename=filename
-                )
-
-                with open(filename, "rb") as f:
-                    st.image(f.read())
-
-                st.write("SessionState reference retained by:", type(o))
-            else:
-                st.write("No strong reference chain found for object:", type(o))
+            st.write("Backref chain:")
+            for item in chain:
+                st.write(f"→ {type(item)}")
 
 # --- Display Leads + Filters ---
 if not st.session_state.raw_data.empty:
