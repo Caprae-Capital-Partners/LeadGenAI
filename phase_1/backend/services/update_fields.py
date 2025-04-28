@@ -4,7 +4,7 @@ import sys
 from typing import Dict, List, Tuple
 from urllib.parse import quote_plus, parse_qs, unquote, urlparse
 import pandas as pd
-from playwright.async_api import Page, BrowserContext
+from playwright.async_api import Page, BrowserContext, TimeoutError as PlaywrightTimeoutError
 
 # sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
 # from config.browser_config import PlaywrightManager
@@ -14,7 +14,7 @@ from backend.config.browser_config import PlaywrightManager
 ''' --------------------- MANAGEMENT DETAILS ------------------------------- '''
 async def get_management_details(page: Page, company_name: str, state: str) -> List[str]:
     """Fetches management details from BBB page."""
-    query = f"{company_name} {state} BBB profile"
+    query = f"{company_name} {state} bbb"
     url = f"https://www.bing.com/search?q={quote_plus(query)}"
     await page.goto(url)
     await page.evaluate("""
@@ -28,18 +28,27 @@ async def get_management_details(page: Page, company_name: str, state: str) -> L
     management_data = []
     
     try:
-        bbb_link_elem = await page.query_selector('li.b_algo a[href*="bbb.org/us/"]:has-text("Profile")')
+        bbb_link_elem = await page.query_selector('li.b_algo > h2 > a[href*="bbb.org/us/"]:has-text("BBB")')
         if bbb_link_elem:
-            has_target = await bbb_link_elem.get_attribute("target")
-            if has_target:
-                await page.evaluate('(el) => el.removeAttribute("target")', bbb_link_elem)
+            print(f"BBB link element found for {company_name}")
+            href = await bbb_link_elem.get_attribute("href")
+            if href:
+                try:
+                    print(f"Navigating directly to {href}")
+                    await page.goto(href)
+                    await page.wait_for_selector("div.bpr-details-section", timeout=10000)
+                    
+                except PlaywrightTimeoutError:
+                    print(f"Timeout while waiting for page to load for {company_name}.")
+                    await page.goto(href, timeout=20000)  # Try again, a bit longer
+                    await page.wait_for_url(href, timeout=15000)  # Confirm URL match
+                    await page.wait_for_selector("div.bpr-details-section", timeout=10000)
+                
+            else:
+                print(f"BBB link element has no href for {company_name}.")
+                return ["NA"]
             
-            # print(f"BBB link element found: {bbb_link_elem} {company_name}")
-            await bbb_link_elem.click()
-            await page.wait_for_selector("div.bpr-details-section", timeout=5000)
             management_divs = await page.query_selector_all('.bpr-details-dl-data[data-type="on-separate-lines"]')
-
-            management_data = []
             for div in management_divs:
                 dt_elem = await div.query_selector('dt')
                 if dt_elem:
@@ -59,14 +68,15 @@ async def get_management_details(page: Page, company_name: str, state: str) -> L
             
         return management_data
     except Exception as e:
-        print(f"Error in get_management_details: {e}")
+        print(f"Error in get_management_details for {company_name}: {e}")
         return ["NA"]
     
 async def fetch_management(data: List[Tuple[str, str]], context: BrowserContext, batch_size: int = 5) -> List[str]:
     """Processes companies in batches to fetch management details in parallel."""
     
     async def process_company(page: Page, name: str, location: str) -> str:
-        return await get_management_details(page, name, location)
+        state = location.split(",")[1].strip()
+        return await get_management_details(page, name, state)
 
     results = []
     for i in range(0, len(data), batch_size):
@@ -132,7 +142,7 @@ async def get_rating_and_website(page: Page, company_name: str, state: str) -> T
                 website = unquote(actual_url)
                 # return website, rating
         else:
-            print(f"No website link found in sidebar for {company_name}.")
+            print(f"No sidebar for {company_name}.")
 
     except Exception:
         print(f"Error in Bing sidebar scraping... going to BBB")
@@ -245,59 +255,103 @@ async def enrich_leads(df: pd.DataFrame, location: str) -> pd.DataFrame:
     return pd.DataFrame(updated_records)
 
 # if __name__ == "__main__":
-#     companies = [
-#         ("ASI The White Glove Guys", "San Deigo, CA"),
-#         ("All Valley Pools AZ", "Phoenix, AZ"),
-#         ("Remodel Your Pool", "Glendale, AZ"),
-#         ("Sun State Pools", "Glendale, AZ"),
-#         ("Thunderbird Pools & Spas", "Glendale, AZ")
-#     ]
+    # companies0 = [
+    #     ("ASI The White Glove Guys", "San Deigo, CA"),
+    #     ("All Valley Pools AZ", "Phoenix, AZ"),
+    #     ("Remodel Your Pool", "Glendale, AZ"),
+    #     ("Sun State Pools", "Glendale, AZ"),
+    #     ("Thunderbird Pools & Spas", "Glendale, AZ")
+    # ]
+    # companies1 = [
+    #     ("Atwater Restoration, LLC", "Glendale, AZ"),
+    #     ("Nasco Construction LLC", "Glendale, AZ"),
+    #     ("Service Master All Care Restoration", "Glendale, AZ"),
+    #     ("Servpro of Central Glendale/Thunderbird", "Glendale, AZ"),
+    #     ("Servpro Of Mesa East", "Glendale, AZ"),
+    #     ("Westwind Builders", "Glendale, AZ")
+    # ]
     
-#     test0 = [
-#         {
-#             'Name': 'ASI The White Glove Guys',
-#             'Website': '',
-#             'Rating': ''
-#         },
-#         {
-#             'Name': 'Fast Plumber',
-#             'Website': '',
-#             'Rating': ''
-#         },
-#         {
-#             'Name': 'Pro Plumber San Diego Inc',
-#             'Website': '',
-#             'Rating': ''   
-#         }
-#     ]
+    # companies2 = [
+    #     ("Epic Fire & Water Restoration, LLC", "Glendale, AZ"),
+    #     ("Granite Mountain Restoration", "Carmel, IN"),
+    #     ("K.A.T.N. Enterprises", "Carmel, IN"),
+    #     ("Native Phoenician, LLC", "Glendale, AZ"),
+    #     ("Precision Remodeling and Rennovation, Inc.", "Carmel, IN")
+    # ]
     
-#     test1 = [
-#         {
-#             'Name': 'A and C Sales Company Inc',
-#             'Website': '',
-#             'Rating': ''
-#         },
-#         {
-#             'Name': 'Carrier Ken Heating & Cooling',
-#             'Website': '',
-#             'Rating': ''
-#         },
-#         {
-#             'Name': 'Fellowship Refrigeration Htg',
-#             'Website': '',
-#             'Rating': ''   
-#         },
-#         {
-#             'Name': 'Trane Co',
-#             'Website': '',
-#             'Rating': ''
-#         },
-#         {
-#             'Name': 'True Home Heating/Cooling Inc',
-#             'Website': '',
-#             'Rating': ''
-#         }
-#     ]
+    # test0 = [
+    #     {
+    #         'Name': 'ASI The White Glove Guys',
+    #         'Website': '',
+    #         'Rating': ''
+    #     },
+    #     {
+    #         'Name': 'Fast Plumber',
+    #         'Website': '',
+    #         'Rating': ''
+    #     },
+    #     {
+    #         'Name': 'Pro Plumber San Diego Inc',
+    #         'Website': '',
+    #         'Rating': ''   
+    #     }
+    # ]
     
-#     print(asyncio.run(enrich_management(companies)))
-#     asyncio.run(enrich_lead(test1, "Carmel, IN"))
+    # test1 = [
+    #     {
+    #         'Name': 'A and C Sales Company Inc',
+    #         'Website': '',
+    #         'Rating': ''
+    #     },
+    #     {
+    #         'Name': 'Carrier Ken Heating & Cooling',
+    #         'Website': '',
+    #         'Rating': ''
+    #     },
+    #     {
+    #         'Name': 'Fellowship Refrigeration Htg',
+    #         'Website': '',
+    #         'Rating': ''   
+    #     },
+    #     {
+    #         'Name': 'Trane Co',
+    #         'Website': '',
+    #         'Rating': ''
+    #     },
+    #     {
+    #         'Name': 'True Home Heating/Cooling Inc',
+    #         'Website': '',
+    #         'Rating': ''
+    #     }
+    # ]
+
+    # test2 = [
+    #     {
+    #         "Name": "Epic Fire & Water Restoration, LLC",
+    #         "Website": "",
+    #         "Rating": ""
+    #     },
+    #     {
+    #         "Name": "Granite Mountain Restoration",
+    #         "Website": "",
+    #         "Rating": ""
+    #     },
+    #     {
+    #         "Name": "K.A.T.N. Enterprises",
+    #         "Website": "",
+    #         "Rating": ""
+    #     },
+    #     {
+    #         "Name": "Native Phoenician, LLC",
+    #         "Website": "",
+    #         "Rating": ""
+    #     },
+    #     {
+    #         "Name": "Precision Remodeling and Rennovation, Inc.",
+    #         "Website": "",
+    #         "Rating": ""
+    #     }
+    # ]
+    
+    # print(asyncio.run(enrich_management(companies1)))
+    # asyncio.run(enrich_contact(test2, "Gelndale, AZ"))
