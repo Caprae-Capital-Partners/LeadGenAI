@@ -85,9 +85,9 @@ class UploadController:
 
             # Handle first_name and last_name columns if provided
             if first_name_col and first_name_col in df.columns:
-                df['first_name'] = df[first_name_col].astype(str).fillna("").str.strip()
+                df['first_name'] = df[first_name_col].fillna("").astype(str).str.strip()
             if last_name_col and last_name_col in df.columns:
-                df['last_name'] = df[last_name_col].astype(str).fillna("").str.strip()
+                df['last_name'] = df[last_name_col].fillna("").astype(str).str.strip()
 
             # Only process name if name_col is provided and exists in columns
             if name_col and name_col in df.columns:
