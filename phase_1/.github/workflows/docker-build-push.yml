@@ -1,10 +1,9 @@
 name: Docker Build and Push
 
 on:
-  push:
-    branches: [ main ]
-  # pull_request:
-  #   branches: [ main ]
+  # push:
+    # branches: [ Phase-1-fondation ]
+  workflow_dispatch:
 
 env:
   DOCKER_HUB_USERNAME: ukantjadia
