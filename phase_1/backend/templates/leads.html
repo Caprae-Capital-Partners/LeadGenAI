@@ -399,7 +399,7 @@
                 </thead>
                 <tbody>
                     {% for lead in leads %}
-                    <tr class="animate__animated animate__fadeIn" style="animation-delay: {{ loop.index * 0.03 }}s;">
+                    <tr class="animate__animated animate__fadeIn" data-index="{{ loop.index }}">
                         <td class="sticky-col id-col">{{ lead.id }}</td>
                         <!-- Basic Information -->
                         <td>{{ lead.company or '-' }}</td>
@@ -481,6 +481,12 @@
             });
         });
         
+        // Apply animation delays based on data-index attribute
+        document.querySelectorAll('tr[data-index]').forEach(row => {
+            const index = row.getAttribute('data-index');
+            row.style.animationDelay = `${index * 0.03}s`;
+        });
+        
         function searchTable() {
             const input = document.getElementById('searchInput');
             const filter = input.value.toUpperCase();
@@ -556,12 +562,6 @@
                 row.addEventListener('mouseleave', function() {
                     this.classList.remove('highlight');
                 });
-            });
-            
-            // Add animation to table rows on load
-            const rows = document.querySelectorAll('#leadsTable tbody tr');
-            rows.forEach((row, index) => {
-                row.style.animationDelay = `${index * 0.03}s`;
             });
         });
     </script>

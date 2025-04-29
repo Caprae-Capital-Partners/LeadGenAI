@@ -282,6 +282,76 @@
         align-items: center;
         justify-content: center;
       }
+      
+      /* CSV Headers display */
+      #csvHeadersList {
+        display: none !important;
+      }
+      
+      /* Column Mapping Styling */
+      .column-mapping {
+        margin-bottom: 25px;
+        display: none;
+      }
+      .mapping-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+        background-color: #f8fbfd;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      }
+      .mapping-row:hover {
+        background-color: #f0f7fc;
+      }
+      .csv-column {
+        flex: 1;
+        padding: 8px 12px;
+        font-weight: 500;
+        color: #444;
+        font-size: 16px;
+      }
+      .db-column {
+        flex: 1;
+        padding: 0 10px;
+      }
+      .required-field {
+        background-color: #e8f4fd;
+        border-left: 3px solid var(--primary-color);
+      }
+      .required-field .csv-column {
+        font-weight: 600;
+        color: var(--primary-color);
+      }
+      .mapping-title {
+        font-weight: 600;
+        font-size: 20px;
+        margin-bottom: 20px;
+        color: var(--primary-color);
+        padding-bottom: 10px;
+        border-bottom: 1px solid #dee2e6;
+      }
+      .column-labels {
+        display: flex;
+        margin-bottom: 10px;
+        padding: 0 10px;
+      }
+      .column-label {
+        flex: 1;
+        font-weight: 600;
+        color: #555;
+        font-size: 14px;
+      }
+      
+      /* Adjust form-select style to match the screenshot */
+      .mapping-row .form-select {
+        border-radius: 8px;
+        padding: 10px 15px;
+        border: 1px solid #ced4da;
+        background-color: white;
+        font-size: 16px;
+      }
     </style>
 </head>
 <body>
@@ -332,26 +402,17 @@
                             No file selected
                         </div>
                     </div>
-
-                    <div class="form-group">
-                        <label for="name_column" class="form-label">Name Column</label>
-                        <input type="text" class="form-control" id="name_column" name="name_column" placeholder="Enter the column name for full names" required>
+                    
+                    <div id="csvHeadersList">
+                        <div class="headers-title">Available CSV Headers:</div>
+                        <ul id="headersList"></ul>
                     </div>
 
-                    <div class="form-group">
-                        <label for="email_column" class="form-label">Email Column</label>
-                        <input type="text" class="form-control" id="email_column" name="email_column" placeholder="Enter the column name for emails" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="phone_column" class="form-label">Phone Column</label>
-                        <input type="text" class="form-control" id="phone_column" name="phone_column" placeholder="Enter the column name for phone numbers" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Custom Fields</label>
-                        <div id="customFieldsContainer"></div>
-                        <button type="button" class="btn btn-outline-primary mt-2" id="addCustomFieldBtn">+ Add Custom Field</button>
+                    <div id="columnMapping" class="column-mapping">
+                        <div class="mapping-title">Map CSV Columns to Database Fields</div>
+                        
+                        <!-- Dynamic mappings will be added here -->
+                        <div id="dynamicMappings"></div>
                     </div>
 
                     <div class="button-group">
@@ -396,6 +457,9 @@
                     </svg>
                     Selected file: <strong>${fileInput.files[0].name}</strong> (${(fileInput.files[0].size / 1024).toFixed(2)} KB)
                 `;
+                
+                // Parse CSV and display headers
+                parseCsvHeaders(fileInput.files[0]);
             } else {
                 fileName.innerHTML = `
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -404,50 +468,362 @@
                     </svg>
                     No file selected
                 `;
+                
+                // Hide CSV headers list
+                document.getElementById('csvHeadersList').style.display = 'none';
             }
         }
-
-        document.getElementById('uploadForm').addEventListener('submit', function(e) {
-            const fileInput = document.getElementById('file');
-            if (fileInput.files.length === 0) {
-                e.preventDefault();
-                alert('Please select a file to upload');
-                fileInput.closest('.form-group').classList.add('animate__animated', 'animate__shakeX');
-                setTimeout(() => {
-                    fileInput.closest('.form-group').classList.remove('animate__animated', 'animate__shakeX');
-                }, 1000);
-                return;
+        
+        function parseCsvHeaders(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contents = e.target.result;
+                const lines = contents.split('\n');
+                
+                if (lines.length > 0) {
+                    // Parse the first line to get headers
+                    let headers;
+                    // Check if the file uses quotes for headers
+                    if (lines[0].includes('"')) {
+                        headers = lines[0].match(/(?:\"([^\"]*?)\"(?:,|$)|([^,]*?)(?:,|$))/g)
+                            .map(h => h.replace(/[",\n\r]/g, '').trim())
+                            .filter(h => h !== '');
+                    } else {
+                        headers = lines[0].split(',').map(h => h.trim());
+                    }
+                    
+                    // Update available headers for custom fields
+                    updateAvailableCsvHeaders(headers);
+                    
+                    // Hide csvHeadersList section completely
+                    const csvHeadersList = document.getElementById('csvHeadersList');
+                    if (csvHeadersList) {
+                        csvHeadersList.style.display = 'none';
+                    }
+                    
+                    // Show column mapping interface
+                    document.getElementById('columnMapping').style.display = 'block';
+                    
+                    // Create dynamic mappings for CSV columns
+                    createDynamicMappings(headers);
+                    
+                    // Try to find likely matches
+                    autoMatchColumns(headers);
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        function displayHeaders(headers) {
+            // Function kept for compatibility but we're not displaying the headers list
+            // Update available headers for custom fields
+            updateAvailableCsvHeaders(headers);
+        }
+        
+        function populateColumnSelects(headers) {
+            // Get all column select dropdowns
+            const selects = document.querySelectorAll('#columnMapping select');
+            
+            // Clear and populate each dropdown with all headers
+            selects.forEach(select => {
+                // Keep only the first option (placeholder)
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
+                
+                // Add all headers as options
+                headers.forEach(header => {
+                    const option = document.createElement('option');
+                    option.value = header;
+                    option.textContent = header;
+                    select.appendChild(option);
+                });
+            });
+        }
+        
+        function createDynamicMappings(headers) {
+            const dynamicMappings = document.getElementById('dynamicMappings');
+            dynamicMappings.innerHTML = ''; // Clear existing mappings
+            
+            // Create a mapping row for each CSV header
+            headers.forEach((header, index) => {
+                const row = document.createElement('div');
+                row.className = 'mapping-row';
+                
+                const csvColumn = document.createElement('div');
+                csvColumn.className = 'csv-column';
+                csvColumn.textContent = header;
+                
+                const dbColumn = document.createElement('div');
+                dbColumn.className = 'db-column';
+                
+                const select = document.createElement('select');
+                select.name = `field_mapping_${index}`;
+                select.className = 'form-select';
+                select.setAttribute('data-csv-header', header);
+                
+                // Add default empty option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Select Database Field';
+                select.appendChild(defaultOption);
+                
+                // Add all database fields
+                allLeadFields.forEach(field => {
+                    const option = document.createElement('option');
+                    option.value = field.name;
+                    option.textContent = field.label;
+                    
+                    // Auto-select if the field name matches the CSV header
+                    if (field.name.toLowerCase() === header.toLowerCase() || 
+                        field.label.toLowerCase() === header.toLowerCase()) {
+                        option.selected = true;
+                    }
+                    
+                    select.appendChild(option);
+                });
+                
+                // Special cases for required fields
+                if (header.toLowerCase().includes('name') && !header.toLowerCase().includes('first') && !header.toLowerCase().includes('last')) {
+                    // For full name field
+                    select.value = 'full_name';
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'hidden';
+                    nameInput.name = 'name_column';
+                    nameInput.value = header;
+                    dbColumn.appendChild(nameInput);
+                } else if (header.toLowerCase().includes('email')) {
+                    // For email field
+                    select.value = 'email';
+                    const emailInput = document.createElement('input');
+                    emailInput.type = 'hidden';
+                    emailInput.name = 'email_column';
+                    emailInput.value = header;
+                    dbColumn.appendChild(emailInput);
+                } else if (header.toLowerCase().includes('phone') || header.toLowerCase() === 'ph') {
+                    // For phone field
+                    select.value = 'phone';
+                    const phoneInput = document.createElement('input');
+                    phoneInput.type = 'hidden';
+                    phoneInput.name = 'phone_column';
+                    phoneInput.value = header;
+                    dbColumn.appendChild(phoneInput);
+                }
+                
+                dbColumn.appendChild(select);
+                
+                row.appendChild(csvColumn);
+                row.appendChild(dbColumn);
+                
+                dynamicMappings.appendChild(row);
+                
+                // Add change event listener to update selection and create hidden fields
+                select.addEventListener('change', function() {
+                    updateFieldSelection(this);
+                    updateAvailableOptions();
+                });
+            });
+            
+            // Initialize the selected values and update available options
+            document.querySelectorAll('#dynamicMappings select').forEach(select => {
+                updateFieldSelection(select);
+            });
+            updateAvailableOptions();
+            
+            // Add compatibility inputs to the form
+            addCompatibilityInputs();
+        }
+        
+        function updateFieldSelection(select) {
+            const csvHeader = select.getAttribute('data-csv-header');
+            const selectedValue = select.value;
+            const dbColumn = select.parentNode;
+            
+            // Remove any existing hidden inputs for special fields
+            const existingInputs = dbColumn.querySelectorAll('input[type="hidden"]');
+            existingInputs.forEach(input => {
+                if (input.name === 'name_column' || input.name === 'email_column' || input.name === 'phone_column') {
+                    input.remove();
+                }
+            });
+            
+            // Create hidden inputs for required fields
+            if (selectedValue === 'full_name') {
+                const nameInput = document.createElement('input');
+                nameInput.type = 'hidden';
+                nameInput.name = 'name_column';
+                nameInput.value = csvHeader;
+                dbColumn.appendChild(nameInput);
+            } else if (selectedValue === 'email') {
+                const emailInput = document.createElement('input');
+                emailInput.type = 'hidden';
+                emailInput.name = 'email_column';
+                emailInput.value = csvHeader;
+                dbColumn.appendChild(emailInput);
+            } else if (selectedValue === 'phone') {
+                const phoneInput = document.createElement('input');
+                phoneInput.type = 'hidden';
+                phoneInput.name = 'phone_column';
+                phoneInput.value = csvHeader;
+                dbColumn.appendChild(phoneInput);
             }
-
-            const nameCol = document.getElementById('name_column').value;
-            const emailCol = document.getElementById('email_column').value;
-            const phoneCol = document.getElementById('phone_column').value;
-
-            if (!nameCol || !emailCol || !phoneCol) {
-                e.preventDefault();
-                alert('Please fill in all column names');
-
-                if (!nameCol) {
-                    document.getElementById('name_column').closest('.form-group').classList.add('animate__animated', 'animate__shakeX');
+            
+            // For other fields, we'll collect them on form submit  
+        }
+        
+        function addCompatibilityInputs() {
+            const form = document.getElementById('uploadForm');
+            
+            // Event listener to create the dynamic field inputs before submission
+            form.addEventListener('submit', function(e) {
+                // Create dynamic field inputs for the selections made
+                const dynamicSelects = document.querySelectorAll('#dynamicMappings select');
+                const customFieldsContainer = document.getElementById('customFieldsContainer');
+                customFieldsContainer.innerHTML = ''; // Clear existing fields
+                
+                // Check if we have required field mappings
+                let hasNameMapping = false;
+                let hasEmailMapping = false;
+                let hasPhoneMapping = false;
+                
+                dynamicSelects.forEach(select => {
+                    const selectedValue = select.value;
+                    const csvHeader = select.getAttribute('data-csv-header');
+                    
+                    if (selectedValue === 'full_name') {
+                        // For full name, we need to create a name_column input
+                        const nameInput = document.createElement('input');
+                        nameInput.type = 'hidden';
+                        nameInput.name = 'name_column';
+                        nameInput.value = csvHeader;
+                        customFieldsContainer.appendChild(nameInput);
+                        hasNameMapping = true;
+                    } else if (selectedValue === 'email') {
+                        // For email field
+                        const emailInput = document.createElement('input');
+                        emailInput.type = 'hidden';
+                        emailInput.name = 'email_column';
+                        emailInput.value = csvHeader;
+                        customFieldsContainer.appendChild(emailInput);
+                        hasEmailMapping = true;
+                    } else if (selectedValue === 'phone') {
+                        // For phone field
+                        const phoneInput = document.createElement('input');
+                        phoneInput.type = 'hidden';
+                        phoneInput.name = 'phone_column';
+                        phoneInput.value = csvHeader;
+                        customFieldsContainer.appendChild(phoneInput);
+                        hasPhoneMapping = true;
+                    } else if (selectedValue && 
+                        selectedValue !== 'email' && 
+                        selectedValue !== 'phone' &&
+                        selectedValue !== 'full_name') {
+                        
+                        // For custom fields
+                        const nameInput = document.createElement('input');
+                        nameInput.type = 'hidden';
+                        nameInput.name = 'dynamic_field_name[]';
+                        nameInput.value = selectedValue;
+                        
+                        const valueInput = document.createElement('input');
+                        valueInput.type = 'hidden';
+                        valueInput.name = 'dynamic_field_value[]';
+                        valueInput.value = csvHeader;
+                        
+                        customFieldsContainer.appendChild(nameInput);
+                        customFieldsContainer.appendChild(valueInput);
+                    }
+                });
+                
+                // Validate required fields
+                if (!hasNameMapping || !hasEmailMapping || !hasPhoneMapping) {
+                    e.preventDefault();
+                    alert('Please map the required fields: Full Name, Email, and Phone');
+                    return false;
                 }
-                if (!emailCol) {
-                    document.getElementById('email_column').closest('.form-group').classList.add('animate__animated', 'animate__shakeX');
-                }
-                if (!phoneCol) {
-                    document.getElementById('phone_column').closest('.form-group').classList.add('animate__animated', 'animate__shakeX');
-                }
+            });
+        }
+        
+        function autoMatchColumns(headers) {
+            // Auto-match fields based on name patterns
+            const fieldPatterns = {
+                "full_name": ["name", "full name", "full_name", "customer name", "contact", "name"],
+                "email": ["email", "e-mail", "mail", "contact email", "g-email"],
+                "phone": ["phone", "telephone", "contact number", "mobile", "cell", "ph"],
+                "company": ["company", "business", "organization"],
+                "title": ["title", "job title", "position"],
+                "city": ["city", "town", "location"],
+                "state": ["state", "province", "region"],
+                "website": ["website", "web", "url", "site"],
+                "industry": ["industry", "sector", "field"],
+                "linkedin_url": ["linkedin", "li profile", "linkedin url"],
+                "revenue": ["revenue", "annual revenue", "yearly revenue"],
+                "business_type": ["business type", "company type", "organization type"],
+                "first_name": ["first name", "fname", "first"],
+                "last_name": ["last name", "lname", "last", "surname"]
+            };
+            
+            // Get all select dropdowns
+            const allSelects = document.querySelectorAll('#dynamicMappings select');
+            
+            // For each select dropdown
+            allSelects.forEach(select => {
+                const csvHeader = select.getAttribute('data-csv-header');
+                
+                // Try to find a matching field pattern
+                let matchFound = false;
+                
+                Object.entries(fieldPatterns).forEach(([fieldName, patterns]) => {
+                    if (!matchFound && patterns.some(pattern => 
+                        csvHeader.toLowerCase().includes(pattern.toLowerCase()))) {
+                        select.value = fieldName;
+                        matchFound = true;
+                        updateFieldSelection(select);
+                    }
+                });
+            });
+            
+            // Update available options after auto-matching
+            updateAvailableOptions();
+        }
+        
+        function updateAvailableOptions() {
+            // Get all currently selected values
+            const selects = document.querySelectorAll('#dynamicMappings select');
+            const selectedValues = Array.from(selects)
+                .map(select => select.value)
+                .filter(value => value); // Remove empty values
+            
+            // For each select, disable options that are already selected in other selects
+            selects.forEach(select => {
+                const currentValue = select.value;
+                
+                // Go through all options
+                Array.from(select.options).forEach(option => {
+                    // Skip the empty option and the currently selected option
+                    if (option.value === '' || option.value === currentValue) {
+                        option.disabled = false;
+                        return;
+                    }
+                    
+                    // Disable the option if it's selected in another dropdown
+                    option.disabled = selectedValues.includes(option.value);
+                });
+            });
+        }
 
-                setTimeout(() => {
-                    document.querySelectorAll('.form-group').forEach(el => {
-                        el.classList.remove('animate__animated', 'animate__shakeX');
-                    });
-                }, 1000);
-                return;
-            }
-        });
-
+        // Update available headers for custom fields
+        function updateAvailableCsvHeaders(headers) {
+          availableCsvHeaders = headers || [];
+        }
+        
         // Add dynamic custom fields functionality
         const allLeadFields = [
+          {name: "full_name", label: "Full Name"},
+          {name: "first_name", label: "First Name"},
+          {name: "last_name", label: "Last Name"},
+          {name: "email", label: "Email"},
+          {name: "phone", label: "Phone"},
           {name: "company", label: "Company"},
           {name: "city", label: "City"},
           {name: "state", label: "State"},
@@ -474,27 +850,45 @@
           {name: "linkedin_customization_1", label: "LinkedIn Customization 1"},
           {name: "linkedin_customization_2", label: "LinkedIn Customization 2"}
         ];
-        document.getElementById('addCustomFieldBtn').onclick = function() {
-          const container = document.getElementById('customFieldsContainer');
-          const div = document.createElement('div');
-          div.className = 'row mb-2';
-          div.innerHTML = `
-            <div class="col">
-              <select name="dynamic_field_name[]" class="form-select">
-                <option value="">Select Field</option>
-                ${allLeadFields.map(f => `<option value="${f.name}">${f.label}</option>`).join('')}
-              </select>
-            </div>
-            <div class="col">
-              <input type="text" name="dynamic_field_value[]" class="form-control" placeholder="CSV Column Name">
-            </div>
-            <div class="col-auto">
-              <button type="button" class="btn btn-outline-danger remove-custom-field">X</button>
-            </div>
-          `;
-          div.querySelector('.remove-custom-field').onclick = () => div.remove();
-          container.appendChild(div);
-        };
+        
+        // Keep track of available CSV headers
+        let availableCsvHeaders = [];
+        
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            const fileInput = document.getElementById('file');
+            if (fileInput.files.length === 0) {
+                e.preventDefault();
+                alert('Please select a file to upload');
+                fileInput.closest('.form-group').classList.add('animate__animated', 'animate__shakeX');
+                setTimeout(() => {
+                    fileInput.closest('.form-group').classList.remove('animate__animated', 'animate__shakeX');
+                }, 1000);
+                return;
+            }
+
+            // Check if all required fields are mapped
+            let hasNameMapping = false;
+            let hasEmailMapping = false;
+            let hasPhoneMapping = false;
+            
+            document.querySelectorAll('#dynamicMappings select').forEach(select => {
+                if (select.value === 'full_name') hasNameMapping = true;
+                if (select.value === 'email') hasEmailMapping = true;
+                if (select.value === 'phone') hasPhoneMapping = true;
+            });
+            
+            if (!hasNameMapping || !hasEmailMapping || !hasPhoneMapping) {
+                e.preventDefault();
+                alert('Please map the required fields: Full Name, Email, and Phone');
+                return;
+            }
+        });
+        
+        // Initialize form on document ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add compatibility inputs
+            addCompatibilityInputs();
+        });
     </script>
 </body>
 </html>
