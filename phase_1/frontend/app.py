@@ -42,7 +42,11 @@ st.sidebar.write("3. Filter, edit, and download your leads!")
 st.sidebar.write("4. Click '📄 Get Overviews' to enrich leads with company overviews.")
 st.sidebar.write("5. Click '🔍 Enrich Contact Info' to enrich leads with contact info.")
 st.sidebar.write("6. Click '📥 Download as CSV' to download your leads.")
-st.sidebar.write("Note: Any lead enrichment on a large dataset may take some time.")
+st.sidebar.write("📝 Note:")
+st.sidebar.write("1. Average expected time for fetching leads is 1-2 minutes.")
+st.sidebar.write("2. Any lead enrichment or overview generation on a large dataset (>30 entries at a time) may take some time or crash the website.")
+st.sidebar.write("3. Data may be misleading or incorrect. Please verify before exporting it.")
+st.sidebar.write("4. If any unexpected errors occur, please refresh the page and try again.")
 
 # --- Fetch Leads ---
 if fetch_button and not st.session_state.is_scraping:
