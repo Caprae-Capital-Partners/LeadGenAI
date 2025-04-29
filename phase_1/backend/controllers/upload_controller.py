@@ -6,6 +6,22 @@ from models.lead_model import db, Lead
 
 class UploadController:
     @staticmethod
+    def log_error(filename, row_number, data, reason):
+        log_file = "upload_errors.log"
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with open(log_file, "a", encoding='utf-8') as f:
+            f.write(f"[{timestamp}] {filename} Row {row_number}: {reason} ")
+            f.write(f"Data: {data}\n")
+
+    @staticmethod
+    def write_log_separator(filename):
+        log_file = "upload_errors.log"
+        with open(log_file, "a", encoding='utf-8') as f:
+            f.write("=" * 80 + "\n")
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"New Upload Session - File: {filename} at {timestamp}\n")
+
+    @staticmethod
     def clean_email(email):
         if pd.isna(email):
             return None
@@ -37,6 +53,9 @@ class UploadController:
 
     @staticmethod
     def process_csv_file(file, name_col, email_col, phone_col):
+        filename = file.filename
+        UploadController.write_log_separator(filename)
+
         try:
             content = file.read()
             if isinstance(content, bytes):
@@ -96,6 +115,16 @@ class UploadController:
 
                 if not UploadController.is_valid_row(name, email, phone):
                     errors += 1
+                    UploadController.log_error(
+                        filename,
+                        idx + 2,  # Adding 2 to account for 0-based index and header row
+                        {
+                            'name': name,
+                            'email': email,
+                            'phone': phone
+                        },
+                        "Invalid row: Missing or invalid required fields"
+                    )
                     continue
 
                 existing_lead = Lead.query.filter(
@@ -104,6 +133,16 @@ class UploadController:
 
                 if existing_lead:
                     skipped_duplicates += 1
+                    UploadController.log_error(
+                        filename,
+                        idx + 2,
+                        {
+                            'name': name,
+                            'email': email,
+                            'phone': phone
+                        },
+                        "Duplicate entry found"
+                    )
                     continue
 
                 try:
@@ -125,13 +164,26 @@ class UploadController:
                     added += 1
                 except Exception as e:
                     errors += 1
+                    UploadController.log_error(
+                        filename,
+                        idx + 2,
+                        {
+                            'name': name,
+                            'email': email,
+                            'phone': phone
+                        },
+                        f"Database error: {str(e)}"
+                    )
                     continue
 
             return added, skipped_duplicates, errors
 
         except pd.errors.EmptyDataError:
+            UploadController.log_error(filename, 0, {}, "The CSV file is empty")
             raise Exception("The CSV file is empty")
         except pd.errors.ParserError:
+            UploadController.log_error(filename, 0, {}, "Invalid CSV format")
             raise Exception("Invalid CSV format")
         except Exception as e:
+            UploadController.log_error(filename, 0, {}, f"Error processing CSV: {str(e)}")
             raise Exception(f"Error processing CSV: {str(e)}")
