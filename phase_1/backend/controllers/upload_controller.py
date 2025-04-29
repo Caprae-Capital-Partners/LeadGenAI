@@ -1,6 +1,7 @@
 import pandas as pd
 import io
 import re
+import chardet
 from datetime import datetime
 from models.lead_model import db, Lead
 
@@ -49,67 +50,104 @@ class UploadController:
 
     @staticmethod
     def is_valid_row(name, email, phone):
-        return bool(name and str(name).strip()) and UploadController.is_valid_email(email) and UploadController.is_valid_phone(phone)
+        # Make all fields optional as requested
+        return True
 
     @staticmethod
-    def process_csv_file(file, name_col, email_col, phone_col, dynamic_fields=None):
+    def detect_encoding(content):
+        # Use chardet to detect encoding
+        result = chardet.detect(content)
+        encoding = result['encoding']
+        confidence = result['confidence']
+        
+        # If confidence is low, fall back to reliable encodings
+        if confidence < 0.7:
+            # Try these encodings in order
+            for enc in ['utf-8', 'latin-1', 'iso-8859-1', 'windows-1252', 'cp1252']:
+                try:
+                    content.decode(enc)
+                    return enc
+                except UnicodeDecodeError:
+                    continue
+                
+        return encoding or 'latin-1'  # Fallback to latin-1 which can handle any byte value
+
+    @staticmethod
+    def process_csv_file(file, name_col=None, email_col=None, phone_col=None, dynamic_fields=None):
         filename = file.filename
         UploadController.write_log_separator(filename)
 
         try:
             content = file.read()
-            if isinstance(content, bytes):
-                content = content.decode("utf-8")
-
-            df = pd.read_csv(io.StringIO(content))
+            
+            # Detect encoding
+            encoding = UploadController.detect_encoding(content)
+            
+            # Try multiple encodings if the detected one fails
+            for enc in [encoding, 'latin-1', 'windows-1252', 'utf-8-sig', 'iso-8859-1']:
+                try:
+                    decoded_content = content.decode(enc)
+                    df = pd.read_csv(io.StringIO(decoded_content))
+                    break
+                except (UnicodeDecodeError, pd.errors.ParserError):
+                    if enc == 'iso-8859-1':  # Last resort encoding
+                        # If all encodings fail, try reading directly as bytes with a more permissive parser
+                        df = pd.read_csv(io.BytesIO(content), encoding='latin-1', on_bad_lines='skip', 
+                                        encoding_errors='replace')
+                    continue
+            
             df.columns = df.columns.str.strip()
-
-            missing_cols = [col for col in [name_col, email_col, phone_col] if col not in df.columns]
-            if missing_cols:
-                raise Exception(f"Missing required columns: {', '.join(missing_cols)}")
-
-            df['name'] = df[name_col].astype(str).fillna("").str.strip()
-            df['email'] = df[email_col].apply(UploadController.clean_email)
-            df['phone'] = df[phone_col].apply(UploadController.clean_phone)
-
-            def split_name(name):
-                parts = name.strip().split()
-                if len(parts) == 0:
-                    return "", ""
-                elif len(parts) == 1:
-                    return parts[0], ""
-                else:
-                    return parts[0], " ".join(parts[1:])
-            df['first_name'], df['last_name'] = zip(*df['name'].map(split_name))
+            
+            # Handle optional fields (as requested by user)
+            if name_col and name_col in df.columns:
+                df['full_name'] = df[name_col].astype(str).fillna("").str.strip()
+                # Split name if available
+                def split_name(name):
+                    parts = name.strip().split()
+                    if len(parts) == 0:
+                        return "", ""
+                    elif len(parts) == 1:
+                        return parts[0], ""
+                    else:
+                        return parts[0], " ".join(parts[1:])
+                df['first_name'], df['last_name'] = zip(*df['full_name'].map(split_name))
+            else:
+                df['full_name'] = ""
+                df['first_name'] = ""
+                df['last_name'] = ""
+                
+            if email_col and email_col in df.columns:
+                df['email'] = df[email_col].apply(UploadController.clean_email)
+            else:
+                df['email'] = None
+                
+            if phone_col and phone_col in df.columns:
+                df['phone'] = df[phone_col].apply(UploadController.clean_phone)
+            else:
+                df['phone'] = None
 
             added = 0
             skipped_duplicates = 0
             errors = 0
 
             for idx, row in df.iterrows():
-                name = row['name']
-                email = row['email']
-                phone = row['phone']
-                first_name = row['first_name']
-                last_name = row['last_name']
+                name = row.get('full_name', '')
+                email = row.get('email', None)
+                phone = row.get('phone', None)
+                first_name = row.get('first_name', '')
+                last_name = row.get('last_name', '')
 
-                if not UploadController.is_valid_row(name, email, phone):
-                    errors += 1
-                    UploadController.log_error(
-                        filename,
-                        idx + 2,  # Adding 2 to account for 0-based index and header row
-                        {
-                            'name': name,
-                            'email': email,
-                            'phone': phone
-                        },
-                        "Invalid row: Missing or invalid required fields"
-                    )
-                    continue
-
-                existing_lead = Lead.query.filter(
-                    (Lead.email == email) | (Lead.phone == phone)
-                ).first()
+                # Check for duplicates only if email or phone is provided
+                existing_lead = None
+                if email or phone:
+                    query = []
+                    if email:
+                        query.append(Lead.email == email)
+                    if phone:
+                        query.append(Lead.phone == phone)
+                    
+                    if query:
+                        existing_lead = Lead.query.filter(db.or_(*query)).first()
 
                 if existing_lead:
                     skipped_duplicates += 1
@@ -129,14 +167,17 @@ class UploadController:
                     lead_data = {
                         'first_name': first_name,
                         'last_name': last_name,
+                        'full_name': name,
                         'email': email,
                         'phone': phone
                     }
+                    
                     # Add dynamic fields
                     if dynamic_fields:
                         for db_field, csv_col in dynamic_fields.items():
                             if csv_col in df.columns:
                                 lead_data[db_field] = row[csv_col]
+                    
                     lead = Lead(**lead_data)
                     db.session.add(lead)
                     added += 1
@@ -159,9 +200,9 @@ class UploadController:
         except pd.errors.EmptyDataError:
             UploadController.log_error(filename, 0, {}, "The CSV file is empty")
             raise Exception("The CSV file is empty")
-        except pd.errors.ParserError:
-            UploadController.log_error(filename, 0, {}, "Invalid CSV format")
-            raise Exception("Invalid CSV format")
+        except pd.errors.ParserError as e:
+            UploadController.log_error(filename, 0, {}, f"Invalid CSV format: {str(e)}")
+            raise Exception(f"Invalid CSV format: {str(e)}")
         except Exception as e:
             UploadController.log_error(filename, 0, {}, f"Error processing CSV: {str(e)}")
             raise Exception(f"Error processing CSV: {str(e)}")
