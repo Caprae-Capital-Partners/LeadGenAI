@@ -52,7 +52,7 @@ class UploadController:
         return bool(name and str(name).strip()) and UploadController.is_valid_email(email) and UploadController.is_valid_phone(phone)
 
     @staticmethod
-    def process_csv_file(file, name_col, email_col, phone_col, dynamic_fields=None):
+    def process_csv_file(file, name_col, email_col, phone_col, dynamic_fields=None, first_name_col=None, last_name_col=None):
         filename = file.filename
         UploadController.write_log_separator(filename)
 
@@ -64,23 +64,43 @@ class UploadController:
             df = pd.read_csv(io.StringIO(content))
             df.columns = df.columns.str.strip()
 
-            missing_cols = [col for col in [name_col, email_col, phone_col] if col not in df.columns]
+            missing_cols = [col for col in [email_col, phone_col] if col not in df.columns]
             if missing_cols:
                 raise Exception(f"Missing required columns: {', '.join(missing_cols)}")
 
-            df['name'] = df[name_col].astype(str).fillna("").str.strip()
+            # Handle first_name and last_name columns if provided
+            if first_name_col and first_name_col in df.columns:
+                df['first_name'] = df[first_name_col].astype(str).fillna("").str.strip()
+            if last_name_col and last_name_col in df.columns:
+                df['last_name'] = df[last_name_col].astype(str).fillna("").str.strip()
+
+            # Only process name if name_col is provided and exists in columns
+            if name_col and name_col in df.columns:
+                df[name_col] = df[name_col].fillna("")
+                df['name'] = df[name_col].astype(str).str.strip()
+                def split_name(name):
+                    if not name or pd.isna(name):
+                        return "", ""
+                    parts = name.strip().split()
+                    if len(parts) == 0:
+                        return "", ""
+                    elif len(parts) == 1:
+                        return parts[0], ""
+                    else:
+                        return parts[0], " ".join(parts[1:])
+                df['first_name'], df['last_name'] = zip(*df['name'].map(split_name))
+            else:
+                if 'first_name' not in df.columns:
+                    df['first_name'] = ""
+                if 'last_name' not in df.columns:
+                    df['last_name'] = ""
+                df['name'] = ""
+
+            # Always set name to first_name + last_name if name is empty
+            df['name'] = df.apply(lambda row: row['name'] if 'name' in row and row['name'] else f"{row.get('first_name','')} {row.get('last_name','')}".strip(), axis=1)
+
             df['email'] = df[email_col].apply(UploadController.clean_email)
             df['phone'] = df[phone_col].apply(UploadController.clean_phone)
-
-            def split_name(name):
-                parts = name.strip().split()
-                if len(parts) == 0:
-                    return "", ""
-                elif len(parts) == 1:
-                    return parts[0], ""
-                else:
-                    return parts[0], " ".join(parts[1:])
-            df['first_name'], df['last_name'] = zip(*df['name'].map(split_name))
 
             added = 0
             skipped_duplicates = 0

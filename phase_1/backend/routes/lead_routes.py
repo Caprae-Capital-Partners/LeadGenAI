@@ -43,6 +43,8 @@ def upload_csv():
     name_col = request.form.get('name_column')
     email_col = request.form.get('email_column')
     phone_col = request.form.get('phone_column')
+    first_name_col = request.form.get('first_name_column')
+    last_name_col = request.form.get('last_name_column')
 
     # Collect dynamic field mappings
     dynamic_field_names = request.form.getlist('dynamic_field_name[]')
@@ -55,7 +57,9 @@ def upload_csv():
             name_col,
             email_col,
             phone_col,
-            dynamic_fields
+            dynamic_fields,
+            first_name_col=first_name_col,
+            last_name_col=last_name_col
         )
         db.session.commit()
         flash(f'Upload Complete! Added: {added}, Skipped: {skipped_duplicates}, Errors: {errors}', 'success')

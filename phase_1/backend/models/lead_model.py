@@ -14,10 +14,10 @@ class Lead(db.Model):
     linkedin_url = db.Column(db.String(255))
     industry = db.Column(db.String(100))
     revenue = db.Column(db.String(100))
-    product_service_category = db.Column(db.String(100))
-    business_type = db.Column(db.String(20))  # B2B, B2B2C
+    product_service_category = db.Column(db.Text)
+    business_type = db.Column(db.String(100))  # B2B, B2B2C
     associated_members = db.Column(db.Text)
-    employees_range = db.Column(db.String(50))
+    employees_range = db.Column(db.String(100))
     rev_source = db.Column(db.String(100))
     year_founded = db.Column(db.String(20))
     

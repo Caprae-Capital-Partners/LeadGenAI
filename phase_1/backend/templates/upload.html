@@ -704,12 +704,23 @@
             
             // Create hidden inputs for required fields
             if (selectedValue === 'full_name') {
-                // For name field
                 const nameInput = document.createElement('input');
                 nameInput.type = 'hidden';
                 nameInput.name = 'name_column';
                 nameInput.value = csvHeader;
                 dbColumn.appendChild(nameInput);
+            } else if (selectedValue === 'first_name') {
+                const firstNameInput = document.createElement('input');
+                firstNameInput.type = 'hidden';
+                firstNameInput.name = 'first_name_column';
+                firstNameInput.value = csvHeader;
+                dbColumn.appendChild(firstNameInput);
+            } else if (selectedValue === 'last_name') {
+                const lastNameInput = document.createElement('input');
+                lastNameInput.type = 'hidden';
+                lastNameInput.name = 'last_name_column';
+                lastNameInput.value = csvHeader;
+                dbColumn.appendChild(lastNameInput);
             } else if (selectedValue === 'email') {
                 const emailInput = document.createElement('input');
                 emailInput.type = 'hidden';
@@ -751,6 +762,20 @@
                         nameInput.name = 'name_column';
                         nameInput.value = csvHeader;
                         customFieldsContainer.appendChild(nameInput);
+                    } else if (selectedValue === 'first_name') {
+                        // For first name
+                        const firstNameInput = document.createElement('input');
+                        firstNameInput.type = 'hidden';
+                        firstNameInput.name = 'first_name_column';
+                        firstNameInput.value = csvHeader;
+                        customFieldsContainer.appendChild(firstNameInput);
+                    } else if (selectedValue === 'last_name') {
+                        // For last name
+                        const lastNameInput = document.createElement('input');
+                        lastNameInput.type = 'hidden';
+                        lastNameInput.name = 'last_name_column';
+                        lastNameInput.value = csvHeader;
+                        customFieldsContainer.appendChild(lastNameInput);
                     } else if (selectedValue === 'email') {
                         // For email field
                         const emailInput = document.createElement('input');
