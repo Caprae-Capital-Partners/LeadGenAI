@@ -37,6 +37,8 @@ async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, s
     deduplified_data = deduplicate_businesses(merged_data)
     df = pd.DataFrame(deduplified_data)
     
+    print(f"Total entries after deduplication: {len(deduplified_data)}")
+    
     parsed_data = parse_data(df)
     data = parsed_data.to_dict(orient='records')
     

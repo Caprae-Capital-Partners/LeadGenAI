@@ -57,7 +57,7 @@ def merge_data_sources(data1: List[Dict[str, str]],
     for record in data3:
         add_record(record)
         
-    print(f"Duplicates found: {duplicate_count}")
-    print(f"Total entries after deduplication: {len(merged)}")
+    # print(f"Duplicates found: {duplicate_count}")
+    # print(f"Total entries after deduplication: {len(merged)}")
 
     return merged
