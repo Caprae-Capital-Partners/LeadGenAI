@@ -157,6 +157,8 @@ class UploadController:
                         for db_field, csv_col in dynamic_fields.items():
                             if csv_col in df.columns:
                                 lead_data[db_field] = row[csv_col]
+                    # Truncate only the fields defined in the model
+                    lead_data = Lead.truncate_fields(lead_data)
                     lead = Lead(**lead_data)
                     db.session.add(lead)
                     added += 1

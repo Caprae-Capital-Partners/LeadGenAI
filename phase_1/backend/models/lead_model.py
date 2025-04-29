@@ -51,6 +51,19 @@ class Lead(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Only truncate these fields if needed
+    FIELD_MAX_LENGTHS = {
+        'product_service_category': 100,
+        'business_type': 100,
+    }
+
+    @classmethod
+    def truncate_fields(cls, data):
+        for field, max_len in cls.FIELD_MAX_LENGTHS.items():
+            if field in data and isinstance(data[field], str):
+                data[field] = data[field][:max_len]
+        return data
+    
     @property
     def full_name(self):
         """Return the full name of the lead"""
