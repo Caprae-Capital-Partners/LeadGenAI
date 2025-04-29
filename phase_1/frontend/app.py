@@ -167,9 +167,7 @@ if not st.session_state.raw_data.empty:
 
         # async def enrich_selected(df):
         #     from backend.services.overview_scraper import AsyncCompanyScraper
-        #     api_key = "sk-b37194c5c44e4653ac21eee3c20f2ee1"
-        #     scraper = AsyncCompanyScraper(api_key=api_key)
-        #     # scraper = AsyncCompanyScraper(api_key=st.secrets["OPENAI_API_KEY"])
+        #     scraper = AsyncCompanyScraper(api_key=st.secrets["OPENAI_API_KEY"])
         #     enriched_rows = []
 
         #     for _, row in df.iterrows():
@@ -188,8 +186,7 @@ if not st.session_state.raw_data.empty:
         
         async def enrich_selected(df):
             from backend.services.overview_scraper import AsyncCompanyScraper
-            api_key = "sk-b37194c5c44e4653ac21eee3c20f2ee1"
-            scraper = AsyncCompanyScraper(api_key=api_key)
+            scraper = AsyncCompanyScraper(api_key=st.secrets["OPENAI_API_KEY"])
 
             companies = df.to_dict(orient="records")  # Convert dataframe to list of dicts
             location = ""  # Or you can pull this from elsewhere if you prefer
