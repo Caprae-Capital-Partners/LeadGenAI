@@ -6,3 +6,4 @@ numpy
 SQLAlchemy
 Flask-SQLAlchemy
 python-dotenv
+chardet
