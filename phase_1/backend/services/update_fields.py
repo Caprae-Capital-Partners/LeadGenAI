@@ -30,17 +30,14 @@ async def get_management_details(page: Page, company_name: str, state: str) -> L
     try:
         bbb_link_elem = await page.query_selector('li.b_algo > h2 > a[href*="bbb.org/us/"]:has-text("BBB")')
         if bbb_link_elem:
-            print(f"BBB link element found for {company_name}")
             href = await bbb_link_elem.get_attribute("href")
             if href:
                 try:
-                    print(f"Navigating directly to {href}")
-                    await page.goto(href)
+                    await page.goto(href, wait_until="domcontentloaded")
                     await page.wait_for_selector("div.bpr-details-section", timeout=10000)
                     
                 except PlaywrightTimeoutError:
-                    print(f"Timeout while waiting for page to load for {company_name}.")
-                    await page.goto(href, timeout=20000)  # Try again, a bit longer
+                    await page.goto(href, wait_until="domcontentloaded")
                     await page.wait_for_url(href, timeout=15000)  # Confirm URL match
                     await page.wait_for_selector("div.bpr-details-section", timeout=10000)
                 
@@ -62,7 +59,6 @@ async def get_management_details(page: Page, company_name: str, state: str) -> L
                                     name, title = dd_text.split(",", 1)
                                     management_data.append({"name": name.strip(), "title": title.strip()})
                                 except ValueError as e:
-                                    print(f"Error splitting dd text '{dd_text}': {e}")
                                     management_data.append({"name": dd_text.strip(), "title": "NA"})
                         break
             
@@ -113,7 +109,7 @@ async def enrich_management(data: List[Tuple[str,str]]) -> List[str]:
 
 ''' --------------------- BBB RATING AND WEBSITE ------------------------------- '''
 async def get_rating_and_website(page: Page, company_name: str, state: str) -> Tuple[str, str]:
-    query = f"{company_name} {state} BBB profile"
+    query = f'{company_name} bbb {state} business profile'
     url = f"https://www.bing.com/search?q={quote_plus(query)}"
     await page.goto(url)
     await page.evaluate("""
@@ -141,24 +137,29 @@ async def get_rating_and_website(page: Page, company_name: str, state: str) -> T
                 actual_url = parsed_url.get("url", [""])[0]
                 website = unquote(actual_url)
                 # return website, rating
-        else:
-            print(f"No sidebar for {company_name}.")
+        # else:
+        #     print(f"No sidebar for {company_name}.")
 
     except Exception:
         print(f"Error in Bing sidebar scraping... going to BBB")
 
     # If sidebar didn't help, proceed to open BBB page
     try:
-        bbb_link_elem = await page.query_selector('li.b_algo a[href*="bbb.org/us/"]')
+        bbb_link_elem = await page.query_selector('li.b_algo > h2 > a[href*="bbb.org/us/"]:has-text("Profile")')
         if bbb_link_elem:
-            has_target = await bbb_link_elem.get_attribute("target")
-            if has_target:
-                await page.evaluate('(el) => el.removeAttribute("target")', bbb_link_elem)
-            
-            # print(f"BBB link element found: {bbb_link_elem} {company_name}")
-            await bbb_link_elem.click()
-            await asyncio.sleep(1)
-            await page.wait_for_selector("div.bpr-header-business-info", timeout=5000)
+            href = await bbb_link_elem.get_attribute("href")
+            if href:
+                try:
+                    await page.goto(href, wait_until="domcontentloaded")
+                    await page.wait_for_selector("div.bpr-header", timeout=10000)
+                    
+                except PlaywrightTimeoutError:
+                    print(f"Timeout while waiting for page to load for {company_name}.")
+                    await page.goto(href, wait_until="domcontentloaded")
+                    await page.wait_for_url(href, timeout=15000)  # Confirm URL match
+                    await page.wait_for_selector("div.bpr-header", timeout=10000)
+            # else:
+            #     print(f"BBB link element has no href for {company_name}.")
             
             if website == "NA":
                 try:
@@ -354,4 +355,6 @@ async def enrich_leads(df: pd.DataFrame, location: str) -> pd.DataFrame:
     # ]
     
     # print(asyncio.run(enrich_management(companies1)))
-    # asyncio.run(enrich_contact(test2, "Gelndale, AZ"))
+    # asyncio.run(enrich_contact(test0, "Glendale, AZ"))
+    # asyncio.run(enrich_contact(test1, "Carmel, IN"))
+    # asyncio.run(enrich_contact(test2, "Glendale, AZ"))
