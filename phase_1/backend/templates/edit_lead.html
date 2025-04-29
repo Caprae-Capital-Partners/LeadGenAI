@@ -801,6 +801,8 @@
                 fieldDiv.classList.add('animate__animated', 'animate__fadeOut');
                 setTimeout(() => {
                     fieldDiv.remove();
+                    // Update available options after removing a field
+                    updateAvailableOptions();
                 }, 300);
             };
             
@@ -861,7 +863,17 @@
                 defaultOption.disabled = true;
                 fieldSelect.appendChild(defaultOption);
                 
+                // Get all currently used fields - from both existing and new dynamic fields
+                const existingFields = Array.from(document.querySelectorAll('#existing-fields input[type="hidden"][name="dynamic_field_name[]"]'))
+                    .map(input => input.value);
+                const dynamicFields = Array.from(document.querySelectorAll('#dynamic-fields-container select[name="dynamic_field_name[]"]'))
+                    .map(select => select.value);
+                const usedFields = [...existingFields, ...dynamicFields].filter(f => f); // Remove empty values
+                
                 availableFields.forEach(field => {
+                    // Skip if this field is already used in existing or dynamic fields
+                    if (usedFields.includes(field.name)) return;
+                    
                     const option = document.createElement('option');
                     option.value = field.name;
                     option.text = field.label;
@@ -903,6 +915,9 @@
                         fieldInput.parentNode.replaceChild(input, fieldInput);
                         fieldInput = input;
                     }
+                    
+                    // Update available options in other select dropdowns
+                    updateAvailableOptions();
                 });
                 
                 // Create remove button
@@ -915,6 +930,8 @@
                     fieldContainer.classList.add('animate__animated', 'animate__fadeOut');
                     setTimeout(() => {
                         dynamicFieldsContainer.removeChild(fieldContainer);
+                        // Update available options after removing a field
+                        updateAvailableOptions();
                     }, 300);
                 });
                 
@@ -930,6 +947,47 @@
                 setTimeout(() => {
                     fieldContainer.classList.add('animate__animated', 'animate__fadeIn');
                 }, 10);
+            }
+            
+            // Function to update available options in all select dropdowns
+            function updateAvailableOptions() {
+                const existingFields = Array.from(document.querySelectorAll('#existing-fields input[type="hidden"][name="dynamic_field_name[]"]'))
+                    .map(input => input.value);
+                const selects = document.querySelectorAll('#dynamic-fields-container select[name="dynamic_field_name[]"]');
+                
+                // Get all currently selected values from dynamic fields
+                const selectedValues = Array.from(selects).map(select => select.value);
+                // Combine with existing fields
+                const allUsedFields = [...existingFields, ...selectedValues].filter(f => f);
+                
+                // Update each select's options
+                selects.forEach(select => {
+                    // Save current selection
+                    const currentValue = select.value;
+                    
+                    // Clear all options except the first (default) one
+                    while (select.options.length > 1) {
+                        select.remove(1);
+                    }
+                    
+                    // Add available options, excluding those already selected in other dropdowns or existing fields
+                    availableFields.forEach(field => {
+                        // Skip if this field is already used elsewhere
+                        // but allow the currently selected value in this dropdown
+                        if (allUsedFields.includes(field.name) && field.name !== currentValue) return;
+                        
+                        const option = document.createElement('option');
+                        option.value = field.name;
+                        option.text = field.label;
+                        option.dataset.placeholder = field.placeholder;
+                        select.appendChild(option);
+                    });
+                    
+                    // Restore current selection
+                    if (currentValue) {
+                        select.value = currentValue;
+                    }
+                });
             }
             
             // Add event listener to the add button
