@@ -15,7 +15,7 @@ st.set_page_config(page_title="LeadGenAI", layout="wide")
 st.title("📊 LeadGen AI Tool")
 
 st.markdown("#### Welcome to Caprae Capital's LeadGenAI Tool! 🐐")
-st.markdown("Add your target industry and location to the sidebar, and hit '🚀 Fetch Leads'. Then, filter, edit, and download your leads!")
+st.markdown("Add your target industry and location to the sidebar, and hit '🚀 Fetch Leads'.")
 
 # --- State Initialization ---
 if 'raw_data' not in st.session_state:
@@ -35,7 +35,14 @@ st.sidebar.header("🔍 Search Criteria")
 industry = st.sidebar.text_input("Industry", placeholder="e.g. dentist")
 location = st.sidebar.text_input("Location", placeholder="e.g. San Diego, CA")
 fetch_button = st.sidebar.button("🚀 Fetch Leads", disabled = st.session_state.is_scraping)
-
+st.sidebar.write("⚠️ Instructions:")
+st.sidebar.write("1. Enter your target industry and location.")
+st.sidebar.write("2. Click '🚀 Fetch Leads'.")
+st.sidebar.write("3. Filter, edit, and download your leads!")
+st.sidebar.write("4. Click '📄 Get Overviews' to enrich leads with company overviews.")
+st.sidebar.write("5. Click '🔍 Enrich Contact Info' to enrich leads with contact info.")
+st.sidebar.write("6. Click '📥 Download as CSV' to download your leads.")
+st.sidebar.write("Note: Any lead enrichment on a large dataset may take some time.")
 
 # --- Fetch Leads ---
 if fetch_button and not st.session_state.is_scraping:
