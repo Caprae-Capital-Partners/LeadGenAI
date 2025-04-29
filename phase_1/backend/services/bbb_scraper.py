@@ -75,16 +75,26 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                 except Exception as e:
                     print(f"Error extracting data for card {i}: {e}")
                 
+            await asyncio.sleep(0.5)
             # Go to next page if available
-            next_page_btn = page.locator('a[rel="next"]', has_text="Next")
-            if await next_page_btn.count() > 0:
-                await next_page_btn.click()
-                # await page.wait_for_load_state("domcontentloaded")
-                await asyncio.sleep(1)
-            else:
-                break
+            try:
+                next_page_btn = page.locator('a[rel="next"]', has_text="Next")
+                if await next_page_btn.count() > 0:
+                    try:
+                        await next_page_btn.click(timeout=10000)
+                        # await page.wait_for_load_state("domcontentloaded")
+                        await asyncio.sleep(0.5)
+                    except Exception as e:
+                        print(f"Error clicking 'Next' button: {e}")
+                        return lead_list  # Return the leads collected so far
+                else:
+                    break
                 
-        # print(f"Found {len(lead_list)} leads in BBB")
+            except Exception as e:
+                print(f"Error during pagination: {e}")
+                return lead_list  # Return the leads collected so far
+                
+        print(f"Found {len(lead_list)} leads in BBB")
         return lead_list
         
     except Exception as e:
