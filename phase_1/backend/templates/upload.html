@@ -415,6 +415,9 @@
                         <div id="dynamicMappings"></div>
                     </div>
 
+                    <!-- Hidden container for custom fields -->
+                    <div id="customFieldsContainer" style="display: none;"></div>
+
                     <div class="button-group">
                         <button type="submit" class="btn btn-primary pulse-animation">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -748,6 +751,8 @@
             // Auto-match fields based on name patterns
             const fieldPatterns = {
                 "full_name": ["name", "full name", "full_name", "customer name", "contact", "name"],
+                "first_name": ["first name", "fname", "first"],
+                "last_name": ["last name", "lname", "last", "surname"],
                 "email": ["email", "e-mail", "mail", "contact email", "g-email"],
                 "phone": ["phone", "telephone", "contact number", "mobile", "cell", "ph"],
                 "company": ["company", "business", "organization"],
@@ -759,8 +764,22 @@
                 "linkedin_url": ["linkedin", "li profile", "linkedin url"],
                 "revenue": ["revenue", "annual revenue", "yearly revenue"],
                 "business_type": ["business type", "company type", "organization type"],
-                "first_name": ["first name", "fname", "first"],
-                "last_name": ["last name", "lname", "last", "surname"]
+                "product_service_category": ["product", "service", "category", "product/service", "product category"],
+                "associated_members": ["associated", "member", "associate", "team member"],
+                "employees_range": ["employees", "employee count", "staff", "team size", "headcount"],
+                "rev_source": ["rev source", "revenue source", "income source"],
+                "year_founded": ["founded", "established", "year founded", "start year"],
+                "owner_linkedin": ["owner linkedin", "founder linkedin", "ceo linkedin"],
+                "owner_age": ["owner age", "founder age", "ceo age"],
+                "additional_notes": ["notes", "comment", "additional", "remark", "observation"],
+                "score": ["score", "rating", "rank", "grade"],
+                "reasoning": ["reasoning", "reason", "explanation", "justification"],
+                "email_customization_1": ["email custom", "email template", "email 1", "first email", "email personalization"],
+                "subject_line_1": ["subject 1", "subject line", "email subject", "first subject"],
+                "email_customization_2": ["email custom 2", "follow up email", "second email", "email 2"],
+                "subject_line_2": ["subject 2", "follow up subject", "second subject"],
+                "linkedin_customization_1": ["linkedin message", "linkedin 1", "first linkedin", "linkedin custom"],
+                "linkedin_customization_2": ["linkedin 2", "follow up linkedin", "second linkedin"]
             };
             
             // Get all select dropdowns
