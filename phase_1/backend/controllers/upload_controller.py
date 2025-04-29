@@ -3,6 +3,7 @@ import io
 import re
 from datetime import datetime
 from models.lead_model import db, Lead
+import chardet
 
 class UploadController:
     @staticmethod
@@ -58,8 +59,22 @@ class UploadController:
 
         try:
             content = file.read()
+
+            # Robust encoding detection and decoding
             if isinstance(content, bytes):
-                content = content.decode("utf-8")
+                detection = chardet.detect(content)
+                detected_encoding = detection['encoding']
+                encodings_to_try = [detected_encoding, 'utf-8', 'latin-1', 'windows-1252', 'ISO-8859-1']
+                for encoding in encodings_to_try:
+                    if not encoding:
+                        continue
+                    try:
+                        content = content.decode(encoding)
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    raise Exception("Could not decode the file with any common encoding")
 
             df = pd.read_csv(io.StringIO(content))
             df.columns = df.columns.str.strip()
