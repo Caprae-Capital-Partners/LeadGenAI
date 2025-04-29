@@ -52,7 +52,7 @@ class UploadController:
         return bool(name and str(name).strip()) and UploadController.is_valid_email(email) and UploadController.is_valid_phone(phone)
 
     @staticmethod
-    def process_csv_file(file, name_col, email_col, phone_col):
+    def process_csv_file(file, name_col, email_col, phone_col, dynamic_fields=None):
         filename = file.filename
         UploadController.write_log_separator(filename)
 
@@ -68,19 +68,6 @@ class UploadController:
             if missing_cols:
                 raise Exception(f"Missing required columns: {', '.join(missing_cols)}")
 
-            optional_cols = {
-                'Company': 'company',
-                'City': 'city',
-                'State': 'state',
-                'First Name': 'first_name',
-                'Last Name': 'last_name',
-                'Title': 'title',
-                'Website': 'website',
-                'Industry': 'industry',
-                'Business Type': 'business_type',
-                'Notes': 'additional_notes'
-            }
-
             df['name'] = df[name_col].astype(str).fillna("").str.strip()
             df['email'] = df[email_col].apply(UploadController.clean_email)
             df['phone'] = df[phone_col].apply(UploadController.clean_phone)
@@ -94,13 +81,6 @@ class UploadController:
                 else:
                     return parts[0], " ".join(parts[1:])
             df['first_name'], df['last_name'] = zip(*df['name'].map(split_name))
-
-            for csv_col, db_col in optional_cols.items():
-                if csv_col in df.columns:
-                    df[db_col] = df[csv_col].astype(str).fillna("").str.strip()
-                else:
-                    if db_col not in ['first_name', 'last_name']:
-                        df[db_col] = ""
 
             added = 0
             skipped_duplicates = 0
@@ -146,20 +126,18 @@ class UploadController:
                     continue
 
                 try:
-                    lead = Lead(
-                        first_name=first_name,
-                        last_name=last_name,
-                        email=email,
-                        phone=phone,
-                        company=row['company'],
-                        city=row['city'],
-                        state=row['state'],
-                        title=row['title'],
-                        website=row['website'],
-                        industry=row['industry'],
-                        business_type=row['business_type'],
-                        additional_notes=row['additional_notes']
-                    )
+                    lead_data = {
+                        'first_name': first_name,
+                        'last_name': last_name,
+                        'email': email,
+                        'phone': phone
+                    }
+                    # Add dynamic fields
+                    if dynamic_fields:
+                        for db_field, csv_col in dynamic_fields.items():
+                            if csv_col in df.columns:
+                                lead_data[db_field] = row[csv_col]
+                    lead = Lead(**lead_data)
                     db.session.add(lead)
                     added += 1
                 except Exception as e:
