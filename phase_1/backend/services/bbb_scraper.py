@@ -94,7 +94,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                 print(f"Error during pagination: {e}")
                 return lead_list  # Return the leads collected so far
                 
-        print(f"Found {len(lead_list)} leads in BBB")
+        # print(f"Found {len(lead_list)} leads in BBB")
         return lead_list
         
     except Exception as e:
