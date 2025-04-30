@@ -5,7 +5,7 @@ import pandas as pd
 # import sys
 # sys.path.append("backend")
 from backend.services.Fuzzymatching import deduplicate_businesses
-from backend.services.Yellowpages_scrapper import scrape_yellowpages
+from backend.services.yellowpages_scraper import scrape_yellowpages
 from backend.services.bbb_scraper import scrape_bbb
 from backend.services.google_maps_scraper import scrape_lead_by_industry
 from backend.services.merge_sources import merge_data_sources
