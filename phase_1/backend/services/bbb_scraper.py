@@ -19,7 +19,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
    
     try:
         browser_manager = PlaywrightManager(headless=True)
-        page = await browser_manager.start_browser(stealth_on=False)
+        page = await browser_manager.start_browser(stealth_on=True)
         await page.goto(BASE_URL)
         
         while True:
@@ -75,18 +75,24 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                 except Exception as e:
                     print(f"Error extracting data for card {i}: {e}")
                 
-            await asyncio.sleep(0.5)
             # Go to next page if available
             try:
                 next_page_btn = page.locator('a[rel="next"]', has_text="Next")
                 if await next_page_btn.count() > 0:
                     try:
-                        await next_page_btn.click(timeout=10000)
-                        # await page.wait_for_load_state("domcontentloaded")
-                        await asyncio.sleep(0.5)
-                    except Exception as e:
-                        print(f"Error clicking 'Next' button: {e}")
-                        return lead_list  # Return the leads collected so far
+                        await next_page_btn.click(timeout=5000)
+                        await page.wait_for_load_state("domcontentloaded")
+                    except Exception:
+                        print(f"Error clicking 'Next' button... reloading page and trying again")
+                        try:
+                            await page.goto(page.url)
+                            await asyncio.sleep(2)
+                            await next_page_btn.click(timeout=5000)
+                            await asyncio.sleep(1)
+                        except Exception:
+                            # print(f"Error clicking 'Next' button.")
+                            return lead_list
+                                                
                 else:
                     break
                 
