@@ -53,7 +53,7 @@ class Lead(db.Model):
     
     # Only truncate these fields if needed
     FIELD_MAX_LENGTHS = {
-        'product_service_category': 100,
+        'product_service_category': 2000,
         'business_type': 100,
     }
 
@@ -64,10 +64,10 @@ class Lead(db.Model):
                 data[field] = data[field][:max_len]
         return data
     
-    @property
-    def full_name(self):
-        """Return the full name of the lead"""
-        return f"{self.first_name} {self.last_name}".strip()
+    # @property
+    # def full_name(self):
+    #     """Return the full name of the lead"""
+    #     return f"{self.first_name} {self.last_name}".strip()
     
     def __repr__(self):
         return f'<Lead {self.company}: {self.first_name} {self.last_name}>'
@@ -80,7 +80,7 @@ class Lead(db.Model):
             'company': self.company,
             'first_name': self.first_name,
             'last_name': self.last_name,
-            'full_name': self.full_name,
+            # 'full_name': self.full_name,
             'email': self.email,
             'phone': self.phone,
             'title': self.title,

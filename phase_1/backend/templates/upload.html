@@ -639,15 +639,15 @@
                 });
                 
                 // Special cases for required fields
-                if (header.toLowerCase().includes('name') && !header.toLowerCase().includes('first') && !header.toLowerCase().includes('last')) {
-                    // For full name field
-                    select.value = 'full_name';
-                    const nameInput = document.createElement('input');
-                    nameInput.type = 'hidden';
-                    nameInput.name = 'name_column';
-                    nameInput.value = header;
-                    dbColumn.appendChild(nameInput);
-                } else if (header.toLowerCase().includes('email')) {
+                // if (header.toLowerCase().includes('name') && !header.toLowerCase().includes('first') && !header.toLowerCase().includes('last')) {
+                //     // For full name field
+                //     select.value = 'full_name';
+                    // const nameInput = document.createElement('input');
+                    // nameInput.type = 'hidden';
+                    // nameInput.name = 'name_column';
+                    // nameInput.value = header;
+                    // dbColumn.appendChild(nameInput);
+                if (header.toLowerCase().includes('email')) {
                     // For email field
                     select.value = 'email';
                     const emailInput = document.createElement('input');
@@ -703,13 +703,13 @@
             });
             
             // Create hidden inputs for required fields
-            if (selectedValue === 'full_name') {
-                const nameInput = document.createElement('input');
-                nameInput.type = 'hidden';
-                nameInput.name = 'name_column';
-                nameInput.value = csvHeader;
-                dbColumn.appendChild(nameInput);
-            } else if (selectedValue === 'first_name') {
+            // if (selectedValue === 'full_name') {
+            //     const nameInput = document.createElement('input');
+            //     nameInput.type = 'hidden';
+            //     nameInput.name = 'name_column';
+            //     nameInput.value = csvHeader;
+            //     dbColumn.appendChild(nameInput);
+            if (selectedValue === 'first_name') {
                 const firstNameInput = document.createElement('input');
                 firstNameInput.type = 'hidden';
                 firstNameInput.name = 'first_name_column';
@@ -755,14 +755,14 @@
                     const selectedValue = select.value;
                     const csvHeader = select.getAttribute('data-csv-header');
                     
-                    if (selectedValue === 'full_name') {
-                        // For full name, we need to create a name_column input
-                        const nameInput = document.createElement('input');
-                        nameInput.type = 'hidden';
-                        nameInput.name = 'name_column';
-                        nameInput.value = csvHeader;
-                        customFieldsContainer.appendChild(nameInput);
-                    } else if (selectedValue === 'first_name') {
+                    // if (selectedValue === 'full_name') {
+                    //     // For full name, we need to create a name_column input
+                    //     const nameInput = document.createElement('input');
+                    //     nameInput.type = 'hidden';
+                    //     nameInput.name = 'name_column';
+                    //     nameInput.value = csvHeader;
+                    //     customFieldsContainer.appendChild(nameInput);
+                    if (selectedValue === 'first_name') {
                         // For first name
                         const firstNameInput = document.createElement('input');
                         firstNameInput.type = 'hidden';
@@ -792,8 +792,7 @@
                         customFieldsContainer.appendChild(phoneInput);
                     } else if (selectedValue && 
                         selectedValue !== 'email' && 
-                        selectedValue !== 'phone' &&
-                        selectedValue !== 'full_name') {
+                        selectedValue !== 'phone') {
                         
                         // For custom fields
                         dynamicFields.push({
@@ -831,36 +830,36 @@
         function autoMatchColumns() {
             // Auto-match fields based on name patterns
             const fieldPatterns = {
-                "full_name": ["name", "full name", "full_name", "customer name", "contact", "name"],
-                "first_name": ["first name", "fname", "first"],
-                "last_name": ["last name", "lname", "last", "surname"],
-                "email": ["email", "e-mail", "mail", "contact email", "g-email"],
-                "phone": ["phone", "telephone", "contact number", "mobile", "cell", "ph"],
-                "company": ["company", "business", "organization"],
-                "title": ["title", "job title", "position"],
+                // "full_name": ["name", "full name", "full_name", "customer name", "contact", "name"],
+                "first_name": ["first name", "fname", "first", "first name"],
+                "last_name": ["last name", "lname", "last", "last name"],
+                "email": ["email", "e-mail", "mail", "contact email", "g-mail", "email address"],
+                "phone": ["phone", "telephone", "contact number", "mobile", "cell", "phone number", "phone number"],
+                "company": ["company", "business", "organization", "company name"],
+                "title": ["title", "job title", "position", "job position"],
                 "city": ["city", "town", "location"],
-                "state": ["state", "province", "region"],
+                "state": ["state", "province", "region", "state/province"],
                 "website": ["website", "web", "url", "site"],
-                "industry": ["industry", "sector", "field"],
-                "linkedin_url": ["linkedin", "li profile", "linkedin url"],
-                "revenue": ["revenue", "annual revenue", "yearly revenue"],
-                "business_type": ["business type", "company type", "organization type"],
-                "product_service_category": ["product", "service", "category", "product/service", "product category"],
-                "associated_members": ["associated", "member", "associate", "team member"],
-                "employees_range": ["employees", "employee count", "staff", "team size", "headcount"],
-                "rev_source": ["rev source", "revenue source", "income source"],
+                "industry": ["industry", "sector", "field", "industry sector"],
+                "linkedin_url": ["LinkedIn URL", "linkedin profile", "linkedin url", "linkedin profile"],
+                "revenue": ["revenue", "annual revenue", "yearly revenue", "revenue range"],
+                "business_type": ["business type", "company type", "organization type", "business type"],
+                "product_service_category": ["product", "service", "category", "product/service", "product category", "product/service category"],
+                "associated_members": ["associated", "member", "associate", "team member", "associated members"],
+                "employees_range": ["employees", "employee count", "staff", "team size", "headcount", "employee range"],
+                "rev_source": ["rev source", "revenue source", "income source", "revenue stream"],
                 "year_founded": ["founded", "established", "year founded", "start year"],
-                "owner_linkedin": ["owner linkedin", "founder linkedin", "ceo linkedin"],
+                "owner_linkedin": ["owner's linkedin", "founder linkedin", "ceo linkedin"],
                 "owner_age": ["owner age", "founder age", "ceo age"],
-                "additional_notes": ["notes", "comment", "additional", "remark", "observation"],
+                "additional_notes": ["notes", "comment", "additional notes", "remark", "observation"],
                 "score": ["score", "rating", "rank", "grade"],
                 "reasoning": ["reasoning", "reason", "explanation", "justification"],
-                "email_customization_1": ["email custom", "email template", "email 1", "first email", "email personalization"],
-                "subject_line_1": ["subject 1", "subject line", "email subject", "first subject"],
-                "email_customization_2": ["email custom 2", "follow up email", "second email", "email 2"],
-                "subject_line_2": ["subject 2", "follow up subject", "second subject"],
-                "linkedin_customization_1": ["linkedin message", "linkedin 1", "first linkedin", "linkedin custom"],
-                "linkedin_customization_2": ["linkedin 2", "follow up linkedin", "second linkedin"]
+                "email_customization_1": ["Email customization #1", "email template", "email 1", "first email", "email personalization"],
+                "subject_line_1": ["subject line #1", "subject #1", "email subject", "first subject"],
+                "email_customization_2": ["Email customization #2", "follow up email", "second email", "email 2"],
+                "subject_line_2": ["subject line #2", "subject 2", "follow up subject", "second subject"],
+                "linkedin_customization_1": ["linkedin customization #1", "linkedin message", "linkedin 1", "first linkedin", "linkedin custom"],
+                "linkedin_customization_2": ["linkedin customization #2", "follow up linkedin", "second linkedin", "linkedin 2"]
             };
             
             // Get all select dropdowns
@@ -919,7 +918,7 @@
         
         // Add dynamic custom fields functionality
         const allLeadFields = [
-          {name: "full_name", label: "Full Name"},
+          // {name: "full_name", label: "Full Name"},
           {name: "first_name", label: "First Name"},
           {name: "last_name", label: "Last Name"},
           {name: "email", label: "Email"},
