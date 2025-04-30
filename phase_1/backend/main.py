@@ -5,7 +5,7 @@ import pandas as pd
 # import sys
 # sys.path.append("backend")
 from backend.services.Fuzzymatching import deduplicate_businesses
-from backend.services.yellowpages_scraper import scrape_yellowpages
+from backend.services.Yellowpages_scrapper import scrape_yellowpages
 from backend.services.bbb_scraper import scrape_bbb
 from backend.services.google_maps_scraper import scrape_lead_by_industry
 from backend.services.merge_sources import merge_data_sources
@@ -26,7 +26,7 @@ async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, s
     bbb_data, google_maps_data, yp_data = await asyncio.gather(
         scrape_bbb(industry, location),
         scrape_lead_by_industry(industry, location),
-        scrape_yellowpages(industry, location)
+        scrape_yellowpages(industry, location, max_pages=5)
     )
     print(f"Fetched: BBB={len(bbb_data)}, GMaps={len(google_maps_data)}, YP={len(yp_data)}")
 
