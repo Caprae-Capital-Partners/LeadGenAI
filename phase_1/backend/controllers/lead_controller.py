@@ -14,6 +14,11 @@ class LeadController:
         return Lead.query.get_or_404(lead_id)
 
     @staticmethod
+    def get_leads_by_ids(lead_ids):
+        """Get multiple leads by their IDs"""
+        return Lead.query.filter(Lead.id.in_(lead_ids)).all()
+
+    @staticmethod
     def create_lead(form_data):
         """Create new lead from form data"""
         # Create lead with basic information

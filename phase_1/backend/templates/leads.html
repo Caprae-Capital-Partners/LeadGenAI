@@ -321,6 +321,43 @@
           text-align: center;
         }
       }
+
+      .checkbox-col {
+        width: 40px;
+        text-align: center;
+        position: sticky;
+        left: 0;
+        background-color: #fff;
+        z-index: 2;
+      }
+
+      .export-btn {
+        background-color: var(--success-color);
+        margin-left: 10px;
+      }
+
+      .export-btn:hover {
+        background-color: #3fb861;
+      }
+
+      .select-all-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+      }
+
+      .checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .custom-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
     </style>
 </head>
 <body>
@@ -356,6 +393,7 @@
             <table id="leadsTable">
                 <thead>
                     <tr>
+                        <th class="checkbox-col"></th>
                         <th class="sticky-col id-col">ID</th>
                         <!-- Basic Information -->
                         <th>COMPANY</th>
@@ -400,6 +438,11 @@
                 <tbody>
                     {% for lead in leads %}
                     <tr class="animate__animated animate__fadeIn" data-index="{{ loop.index }}">
+                        <td class="checkbox-col">
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" class="lead-checkbox custom-checkbox" value="{{ lead.id }}" onchange="updateExportButton()">
+                            </div>
+                        </td>
                         <td class="sticky-col id-col">{{ lead.id }}</td>
                         <!-- Basic Information -->
                         <td>{{ lead.company or '-' }}</td>
@@ -461,14 +504,34 @@
                 </tbody>
             </table>
         </div>
-        
-        <a href="{{ url_for('lead.form') }}" class="btn btn-back pulse-animation animate__animated animate__fadeInUp">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12"></line>
-                <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            Back to Form
-        </a>
+
+        <div class="bottom-controls animate__animated animate__fadeInUp" style="display: flex; align-items: center; gap: 15px; margin-top: 20px;">
+            <a href="{{ url_for('lead.form') }}" class="btn btn-back pulse-animation">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Back to Form
+            </a>
+
+            <div class="select-all-container">
+                <label for="selectAll" style="margin: 0; cursor: pointer;">
+                    <input type="checkbox" id="selectAll" class="custom-checkbox" onclick="toggleAllCheckboxes()">
+                    Select All
+                </label>
+            </div>
+
+            <form id="exportForm" action="{{ url_for('lead.export_leads') }}" method="POST" style="margin: 0;">
+                <button type="submit" class="btn export-btn" id="exportBtn" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export Selected
+                </button>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -487,23 +550,57 @@
             row.style.animationDelay = `${index * 0.03}s`;
         });
         
+        function toggleAllCheckboxes() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.lead-checkbox');
+            checkboxes.forEach(checkbox => {
+                if (checkbox.closest('tr').style.display !== 'none') {  // Only select visible rows
+                    checkbox.checked = selectAllCheckbox.checked;
+                }
+            });
+            updateExportButton();
+        }
+
+        function updateExportButton() {
+            const selectedCheckboxes = document.querySelectorAll('.lead-checkbox:checked');
+            const exportBtn = document.getElementById('exportBtn');
+            const exportForm = document.getElementById('exportForm');
+            
+            // Remove any existing hidden inputs
+            const existingInputs = exportForm.querySelectorAll('input[name="selected_leads[]"]');
+            existingInputs.forEach(input => input.remove());
+            
+            // Add new hidden inputs for selected leads
+            selectedCheckboxes.forEach(checkbox => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'selected_leads[]';
+                input.value = checkbox.value;
+                exportForm.appendChild(input);
+            });
+            
+            exportBtn.disabled = selectedCheckboxes.length === 0;
+        }
+
         function searchTable() {
             const input = document.getElementById('searchInput');
             const filter = input.value.toUpperCase();
             const table = document.getElementById('leadsTable');
             const rows = table.getElementsByTagName('tr');
+            const selectAllCheckbox = document.getElementById('selectAll');
+            
+            let visibleCount = 0;
             
             // Skip header rows (index 0)
             for (let i = 1; i < rows.length; i++) {
                 if (rows[i].getElementsByTagName('th').length > 0) {
-                    // This is a header row, skip it
                     continue;
                 }
                 
                 let found = false;
                 const cells = rows[i].getElementsByTagName('td');
                 
-                for (let j = 0; j < cells.length; j++) {
+                for (let j = 1; j < cells.length; j++) {  // Start from 1 to skip checkbox column
                     const cell = cells[j];
                     if (cell) {
                         const textValue = cell.textContent || cell.innerText;
@@ -516,36 +613,23 @@
                 
                 if (found) {
                     rows[i].style.display = '';
-                    rows[i].classList.add('animate__fadeIn');
+                    visibleCount++;
                 } else {
                     rows[i].style.display = 'none';
+                    // Uncheck hidden rows
+                    const checkbox = rows[i].querySelector('.lead-checkbox');
+                    if (checkbox) {
+                        checkbox.checked = false;
+                    }
                 }
             }
             
-            // Update the total count of visible leads
-            updateVisibleLeadsCount();
-        }
-        
-        // Function to update visible leads count
-        function updateVisibleLeadsCount() {
-            const table = document.getElementById('leadsTable');
-            const rows = table.getElementsByTagName('tr');
-            let visibleCount = 0;
-            
-            // Skip header rows, count only visible data rows
-            for (let i = 1; i < rows.length; i++) {
-                if (rows[i].getElementsByTagName('th').length > 0) {
-                    // This is a header row, skip it
-                    continue;
-                }
-                
-                if (rows[i].style.display !== 'none') {
-                    visibleCount++;
-                }
-            }
-            
-            // Update the total element
+            // Update the total count
             document.getElementById('totalCount').textContent = visibleCount;
+            
+            // Update select all checkbox state
+            selectAllCheckbox.checked = false;
+            updateExportButton();
         }
         
         // Initialize search on page load
@@ -563,6 +647,9 @@
                     this.classList.remove('highlight');
                 });
             });
+
+            // Initialize export button state
+            updateExportButton();
         });
     </script>
 </body>

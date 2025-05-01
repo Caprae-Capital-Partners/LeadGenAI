@@ -1,7 +1,11 @@
-from flask import Blueprint, request, redirect, render_template, flash, url_for, jsonify
+from flask import Blueprint, request, redirect, render_template, flash, url_for, jsonify, send_file
 from controllers.lead_controller import LeadController
 from controllers.upload_controller import UploadController
+from controllers.export_controller import ExportController
 from models.lead_model import db
+import csv
+from io import StringIO, BytesIO
+import datetime
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -106,3 +110,26 @@ def delete_lead(lead_id):
 def get_leads():
     """API endpoint to get all leads"""
     return jsonify(LeadController.get_leads_json())
+
+@lead_bp.route('/export_leads', methods=['POST'])
+def export_leads():
+    """Export selected leads to CSV"""
+    selected_leads = request.form.getlist('selected_leads[]')
+    
+    if not selected_leads:
+        flash('Please select at least one lead to export', 'danger')
+        return redirect(url_for('lead.view_leads'))
+    
+    # Use the export controller to generate CSV
+    output, filename = ExportController.export_leads_to_csv(selected_leads)
+    
+    if not output or not filename:
+        flash('No leads found to export', 'danger')
+        return redirect(url_for('lead.view_leads'))
+    
+    return send_file(
+        output,
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=filename
+    )
