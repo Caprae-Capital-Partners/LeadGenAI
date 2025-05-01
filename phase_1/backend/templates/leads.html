@@ -1,4 +1,766 @@
 {% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lead Data</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <style>
+      :root {
+        --primary-color: #4361ee;
+        --secondary-color: #3f37c9;
+        --accent-color: #4cc9f0;
+        --success-color: #4ad66d;
+        --danger-color: #f72585;
+        --light-color: #f8f9fa;
+        --dark-color: #212529;
+        --border-color: #e9ecef;
+        --hover-color: #f8f9fa;
+        --background-color: #F7F9FC;
+        --card-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      }
+      
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: var(--background-color);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .container {
+        flex: 1;
+        max-width: 100%;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      
+      h1 {
+        color: var(--dark-color);
+        margin: 0 0 25px 0;
+        font-size: 24px;
+        font-weight: 600;
+        position: relative;
+        padding-bottom: 10px;
+      }
+      
+      h1::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 40px;
+        height: 3px;
+        background: var(--primary-color);
+        border-radius: 2px;
+      }
+      
+      .filters-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 25px;
+        overflow: hidden;
+        padding: 24px;
+      }
+      
+      .search-wrapper {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto 24px;
+        position: relative;
+      }
+      
+      .search-box {
+        width: 100%;
+        padding: 12px 18px 12px 45px;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        font-size: 15px;
+        transition: all 0.3s ease;
+        background-color: white;
+      }
+      
+      .search-box:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+      }
+      
+      .search-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94A3B8;
+      }
+      
+      .search-options {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        padding: 8px 0;
+      }
+      
+      .search-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+        background: var(--light-color);
+      }
+      
+      .search-option:hover {
+        background-color: #e9ecef;
+      }
+      
+      .search-option input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+      }
+      
+      .search-option-text {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #666;
+        font-size: 14px;
+      }
+      
+      .search-option svg {
+        color: #666;
+      }
+      
+      .search-option:hover .search-option-text,
+      .search-option:hover svg {
+        color: var(--primary-color);
+      }
+      
+      .filters-body {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+      }
+      
+      .filters-section {
+        margin-bottom: 20px;
+      }
+      
+      .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+        width: 100%;
+      }
+      
+      .filter-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .filter-label {
+        font-size: 13px;
+        color: #64748B;
+        font-weight: 500;
+      }
+      
+      .filter-select {
+        padding: 10px 15px;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        font-size: 14px;
+        color: #1E293B;
+        background-color: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 15px center;
+        padding-right: 40px;
+      }
+      
+      .filter-select:hover {
+        border-color: var(--primary-color);
+      }
+      
+      .filter-select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+      }
+      
+      .range-inputs {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      
+      .range-input {
+        flex: 1;
+        padding: 10px 15px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        background-color: white;
+        transition: all 0.2s ease;
+      }
+      
+      .range-input:hover {
+        border-color: var(--primary-color);
+      }
+      
+      .range-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+      }
+      
+      .range-separator {
+        color: #666;
+        font-size: 14px;
+        padding: 0 5px;
+      }
+      
+      .filters-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid #E2E8F0;
+      }
+      
+      .clear-filters {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        background: white;
+        color: #64748B;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .clear-filters:hover {
+        background: #F8FAFC;
+        border-color: #CBD5E1;
+      }
+      
+      .total-counter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #64748B;
+        font-size: 14px;
+      }
+      
+      .total-counter strong {
+        color: var(--primary-color);
+      }
+      
+      .toggle-advanced {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: white;
+        border: 1px solid var(--primary-color);
+        border-radius: 8px;
+        color: var(--primary-color);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .toggle-advanced:hover {
+        background: var(--primary-color);
+        color: white;
+      }
+      
+      .toggle-icon {
+        transition: transform 0.2s ease;
+      }
+      
+      .toggle-advanced[aria-expanded="true"] .toggle-icon {
+        transform: rotate(180deg);
+      }
+      
+      .advanced-filters {
+        padding: 24px;
+        background: white;
+        border-radius: 12px;
+        margin-top: 20px;
+      }
+      
+      .filter-instructions {
+        margin-bottom: 20px;
+        padding: 16px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+      }
+      
+      .filter-instructions p {
+        margin: 0 0 10px 0;
+        color: var(--dark-color);
+        font-weight: 500;
+      }
+      
+      .filter-instructions ol {
+        margin: 0;
+        padding-left: 20px;
+        color: #64748B;
+      }
+      
+      .filter-instructions li {
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      
+      .filter-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 12px;
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+      }
+      
+      .filter-select {
+        min-width: 180px;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 14px;
+        color: var(--dark-color);
+        background-color: white;
+      }
+      
+      .operator-select {
+        min-width: 120px;
+      }
+      
+      .logic-select {
+        min-width: 100px;
+      }
+      
+      .filter-input {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 14px;
+        color: var(--dark-color);
+      }
+      
+      .btn-add-filter, .btn-remove-filter {
+        padding: 8px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+      
+      .btn-add-filter:hover {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        color: white;
+      }
+      
+      .btn-add-filter:hover svg {
+        stroke: white;
+      }
+      
+      .btn-remove-filter {
+        border-color: var(--danger-color);
+      }
+      
+      .btn-remove-filter:hover {
+        background: var(--danger-color);
+        color: white;
+      }
+      
+      .btn-remove-filter:hover svg {
+        stroke: white;
+      }
+      
+      .advanced-filters-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border-color);
+      }
+      
+      .btn-apply-filter, .btn-clear-filter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .btn-apply-filter {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+      }
+      
+      .btn-apply-filter:hover {
+        background: var(--secondary-color);
+      }
+      
+      .btn-clear-filter {
+        background: white;
+        color: var(--danger-color);
+        border: 1px solid var(--danger-color);
+      }
+      
+      .btn-clear-filter:hover {
+        background: var(--danger-color);
+        color: white;
+      }
+      
+      .btn-clear-filter:hover svg {
+        stroke: white;
+      }
+      
+      .column-visibility {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+      }
+      
+      .column-group {
+        background: var(--light-color);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+      }
+      
+      .column-group-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border-color);
+      }
+      
+      .column-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        cursor: pointer;
+        font-size: 13px;
+        color: #666;
+        transition: all 0.2s ease;
+      }
+      
+      .column-toggle:hover {
+        color: var(--primary-color);
+      }
+      
+      .column-toggle input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      
+      @media (max-width: 768px) {
+        .filters-header {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        
+        .search-wrapper {
+          min-width: auto;
+        }
+        
+        .search-options {
+          justify-content: flex-start;
+        }
+        
+        .filters-footer {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        
+        .toggle-advanced {
+          text-align: center;
+          justify-content: center;
+        }
+        
+        .total-counter {
+          text-align: center;
+          justify-content: center;
+        }
+      }
+      
+      .table-container {
+        flex: 1;
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--card-shadow);
+        overflow: auto;
+        margin-bottom: 20px;
+      }
+      
+      table {
+        width: 100%;
+        min-width: max-content;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+      
+      thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa;
+      }
+      
+      th {
+        background: white;
+        padding: 16px;
+        text-align: left;
+        font-weight: 500;
+        color: #64748B;
+        border-bottom: 1px solid #E2E8F0;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      th.actions {
+        position: sticky;
+        right: 0;
+        z-index: 11;
+        background-color: #f8f9fa;
+      }
+      
+      td {
+        padding: 16px;
+        border-bottom: 1px solid #E2E8F0;
+        color: #1E293B;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+      
+      td.actions {
+        position: sticky;
+        right: 0;
+        background-color: white;
+        z-index: 1;
+        box-shadow: -5px 0 5px rgba(255, 255, 255, 0.9);
+      }
+      
+      tr {
+        transition: all 0.3s ease;
+      }
+      
+      tr:hover {
+        background-color: #F8FAFC;
+      }
+      
+      .section-header {
+        background-color: #e7f3ff;
+        color: var(--primary-color);
+        font-weight: bold;
+        text-align: center;
+      }
+      
+      .actions {
+        display: flex;
+        gap: 12px;
+        position: sticky;
+        right: 0;
+        background-color: #fff;
+        box-shadow: -5px 0 5px rgba(255, 255, 255, 0.9);
+        padding-left: 15px;
+      }
+      
+      .sticky-col {
+        position: sticky;
+        left: 0;
+        background-color: #fff;
+        z-index: 1;
+        box-shadow: 5px 0 5px rgba(255, 255, 255, 0.9);
+      }
+      
+      .id-col {
+        width: 70px;
+        text-align: center;
+      }
+      
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+      }
+      
+      .btn:active {
+        transform: translateY(0);
+      }
+      
+      .btn-back {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+      }
+      
+      .btn-back:hover {
+        background: var(--secondary-color);
+      }
+      
+      .btn-edit {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+      }
+      
+      .btn-edit:hover {
+        background: var(--secondary-color);
+      }
+      
+      .btn-delete {
+        background: white;
+        color: var(--danger-color);
+        border: 1px solid var(--danger-color);
+      }
+      
+      .btn-delete:hover {
+        background: var(--danger-color);
+        color: white;
+      }
+      
+      .success-message {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+        padding: 15px;
+        margin-bottom: 25px;
+        border-radius: 8px;
+        border-left: 4px solid #43a047;
+        animation: fadeInDown 0.5s;
+      }
+      
+      .truncate {
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: all 0.2s ease;
+      }
+      
+      .truncate:hover {
+        max-width: 500px;
+        white-space: normal;
+        background-color: #fffde7;
+        z-index: 10;
+        position: relative;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      }
+      
+      .date-col {
+        width: 180px;
+      }
+      
+      .highlight {
+        background-color: #fffde7 !important;
+      }
+      
+      /* Animations */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+      }
+      
+      .pulse-animation {
+        animation: pulse 2s infinite;
+      }
+      
+      /* Responsive adjustments */
+      @media screen and (max-width: 768px) {
+        .search-container {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        
+        .search-box {
+          width: 100%;
+          margin-bottom: 15px;
+        }
+        
+        .total {
+          margin-top: 15px;
+        }
+        
+        .container {
+          padding: 16px;
+        }
+        
+        .btn-back {
+          width: 100%;
+          text-align: center;
+        }
+      }
 
 {% block title %}Lead Data{% endblock %}
 
@@ -359,6 +1121,189 @@
 {% endblock %}
 
 {% block content %}
+      .select-all-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        background: #f8fafc;
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+      }
+
+      .select-all-container:hover {
+        background: #f1f5f9;
+        border-color: var(--primary-color);
+      }
+
+      .select-all-container label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--dark-color);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .checkbox-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .custom-checkbox {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        border: 2px solid #e2e8f0;
+        border-radius: 4px;
+        background-color: white;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s ease;
+      }
+
+      .custom-checkbox:hover {
+        border-color: var(--primary-color);
+        background-color: #f8fafc;
+      }
+
+      .custom-checkbox:checked {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+
+      .custom-checkbox:checked::after {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 2px;
+        width: 6px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+      }
+
+      .custom-checkbox:indeterminate {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+
+      .custom-checkbox:indeterminate::after {
+        content: '';
+        position: absolute;
+        left: 3px;
+        top: 7px;
+        width: 10px;
+        height: 2px;
+        background-color: white;
+      }
+
+      /* Style for the checkbox column */
+      .checkbox-col {
+        width: 40px;
+        text-align: center;
+        background-color: #f8fafc;
+        position: sticky;
+        left: 0;
+        z-index: 2;
+      }
+
+      .checkbox-col .checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 8px;
+      }
+
+      /* Update the select all text style */
+      .select-all-text {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--dark-color);
+      }
+
+      .select-all-text svg {
+        width: 16px;
+        height: 16px;
+        color: var(--primary-color);
+      }
+
+      /* Update the export button style */
+      .export-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background-color: var(--success-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .export-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(74, 214, 109, 0.2);
+      }
+
+      .export-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .export-btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Update the bottom controls container */
+      .bottom-controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 24px;
+        padding: 16px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+      }
+
+      /* Advanced Filters Animation */
+      .advanced-filters {
+        display: none;
+      }
+
+      .advanced-filters.show {
+        display: block;
+        animation: slideDown 0.3s ease-out;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+</head>
+<body>
     <div class="container">
         <h1 class="animate__animated animate__fadeIn">Lead Data</h1>
         
@@ -376,61 +1321,266 @@
             {% endif %}
         {% endwith %}
         
-        <div class="search-container animate__animated animate__fadeIn">
-            <div style="position: relative; width: 100%; max-width: 400px;">
-                <input type="text" id="searchInput" class="search-box" placeholder="Search leads..." onkeyup="searchTable()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
+        <div class="filters-container animate__animated animate__fadeIn">
+            <div class="filters-header">
+                <div class="search-wrapper">
+                    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="searchInput" class="search-box" placeholder="Search across all fields..." onkeyup="searchTable()">
+                </div>
             </div>
-            <div class="total">Total: <span id="totalCount">{{ leads|length }}</span> leads</div>
+
+            <div class="filters-body">
+                <div class="filters-section">
+                    <div class="section-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+                        </svg>
+                        Basic Filters
+                    </div>
+                    <div class="filters-grid">
+                        <div class="filter-item">
+                            <label class="filter-label">Company</label>
+                            <select id="companyFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Companies</option>
+                                {% for company in companies %}
+                                    {% if company %}
+                                    <option value="{{ company }}">{{ company }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="filter-item">
+                            <label class="filter-label">Location</label>
+                            <select id="locationFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Locations</option>
+                                {% for location in locations %}
+                                    {% if location %}
+                                    <option value="{{ location }}">{{ location }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="filter-item">
+                            <label class="filter-label">Role/Title</label>
+                            <select id="roleFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Roles</option>
+                                {% for role in roles %}
+                                    {% if role %}
+                                    <option value="{{ role }}">{{ role }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="filter-item">
+                            <label class="filter-label">Lead Score</label>
+                            <select id="scoreFilter" class="filter-select" onchange="applyFilters()">
+                                <option value="">All Scores</option>
+                                {% for score in scores %}
+                                    {% if score %}
+                                    <option value="{{ score }}">{{ score }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filters-footer">
+                <button class="clear-filters" onclick="clearFilters()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Clear All Filters
+                </button>
+
+                <div class="total-counter">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Total: <strong id="totalCount">{{ leads|length }}</strong> leads
+                </div>
+
+                <button class="toggle-advanced" onclick="toggleAdvancedFilters()" aria-expanded="false">
+                    Advanced Filters
+                    <svg class="toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="advanced-filters" id="advancedFilters">
+                <div class="filters-section">
+                    <div class="section-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        Advanced Filters
+                    </div>
+                    <div class="advanced-filters-container">
+                        <div class="filter-instructions">
+                            <p>Build your filter by:</p>
+                            <ol>
+                                <li>Select a field to filter</li>
+                                <li>Choose an operator (equals, contains, etc.)</li>
+                                <li>Enter a value</li>
+                                <li>Add more conditions with + button if needed</li>
+                                <li>Use AND/OR to combine conditions</li>
+                            </ol>
+                        </div>
+                        <div class="filter-group" id="filterGroup1">
+                            <div class="filter-row">
+                                <select class="filter-select field-select">
+                                    <option value="">Select Field</option>
+                                    <!-- Basic Information -->
+                                    <option value="company">Company</option>
+                                    <option value="first_name">First Name</option>
+                                    <option value="last_name">Last Name</option>
+                                    <option value="email">Email</option>
+                                    <option value="phone">Phone</option>
+                                    <option value="title">Title</option>
+                                    <option value="city">City</option>
+                                    <option value="state">State</option>
+                                    
+                                    <!-- Company Details -->
+                                    <option value="website">Website URL</option>
+                                    <option value="linkedin_url">LinkedIn Profile</option>
+                                    <option value="industry">Industry</option>
+                                    <option value="revenue">Annual Revenue</option>
+                                    <option value="product_service_category">Products/Services</option>
+                                    <option value="business_type">Business Type</option>
+                                    <option value="employees_range">Employee Range</option>
+                                    <option value="rev_source">Revenue Source</option>
+                                    <option value="year_founded">Year Founded</option>
+                                    <option value="associated_members">Associated Members</option>
+                                    
+                                    <!-- Owner Information -->
+                                    <option value="owner_linkedin">Owner's LinkedIn</option>
+                                    <option value="owner_age">Owner's Age Range</option>
+                                    
+                                    <!-- Scoring and Notes -->
+                                    <option value="score">Lead Score</option>
+                                    <option value="reasoning">Score Reasoning</option>
+                                    <option value="additional_notes">Additional Notes</option>
+                                    
+                                    <!-- Email Customization -->
+                                    <option value="subject_line_1">Email Subject (1st)</option>
+                                    <option value="email_customization_1">Email Content (1st)</option>
+                                    <option value="subject_line_2">Email Subject (2nd)</option>
+                                    <option value="email_customization_2">Email Content (2nd)</option>
+                                    
+                                    <!-- LinkedIn Customization -->
+                                    <option value="linkedin_customization_1">LinkedIn Message (1st)</option>
+                                    <option value="linkedin_customization_2">LinkedIn Message (2nd)</option>
+                                    
+                                    <!-- Timestamps -->
+                                    <option value="created_at">Created Date</option>
+                                    <option value="updated_at">Last Updated</option>
+                                </select>
+                                <select class="filter-select operator-select">
+                                    <option value="equals">Equals</option>
+                                    <option value="contains">Contains</option>
+                                    <option value="starts">Starts with</option>
+                                    <option value="ends">Ends with</option>
+                                    <option value="greater">Greater than</option>
+                                    <option value="less">Less than</option>
+                                </select>
+                                <input type="text" class="filter-input value-input" placeholder="Enter value...">
+                                <select class="filter-select logic-select">
+                                    <option value="AND">AND</option>
+                                    <option value="OR">OR</option>
+                                </select>
+                                <button class="btn btn-sm btn-add-filter" onclick="addFilterRow(this)" title="Add another condition">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </button>
+                                <button class="btn btn-sm btn-remove-filter" onclick="removeFilterRow(this)" title="Remove this condition">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="advanced-filters-actions">
+                            <button class="btn btn-apply-filter" onclick="applyFilters()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 11 12 14 22 4"></polyline>
+                                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                                </svg>
+                                Apply Filters
+                            </button>
+                            <button class="btn btn-clear-filter" onclick="clearAdvancedFilters()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                                Clear Advanced Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <div class="table-container animate__animated animate__fadeInUp"> 
             <table id="leadsTable">
                 <thead>
                     <tr>
-                        <th class="checkbox-col"></th>
+                        <th class="checkbox-col">
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" id="selectAll" class="custom-checkbox" onclick="toggleAllCheckboxes()">
+                            </div>
+                        </th>
                         <th class="sticky-col id-col">ID</th>
                         <!-- Basic Information -->
-                        <th>COMPANY</th>
-                        <th>FIRST NAME</th>
-                        <th>LAST NAME</th>
-                        <!-- <th>FULL NAME</th> -->
-                        <th>EMAIL</th>
-                        <th>PHONE</th>
-                        <th>TITLE</th>
-                        <th>LOCATION</th>
+                        <th>Company</th>
+                        <th>First Name</th>
+                        <th>Last Name</th>
+                        <th>Email </th>
+                        <th>Phone Number</th>
+                        <th>Title</th>
+                        <th>Location</th>
                         <!-- Company Details -->
-                        <th>WEBSITE</th>
-                        <th>LINKEDIN URL</th>
-                        <th>INDUSTRY</th>
-                        <th>REVENUE</th>
-                        <th>PRODUCT/SERVICE</th>
-                        <th>BUSINESS TYPE</th>
-                        <th>EMPLOYEES</th>
-                        <th>YEAR FOUNDED</th>
+                        <th>Website URL</th>
+                        <th>LinkedIn Profile</th>
+                        <th>Industry Sector</th>
+                        <th>Annual Revenue</th>
+                        <th>Products/Services</th>
+                        <th>Business Type</th>
+                        <th>Employee</th>
+                        <th>Established Year</th>
                         <!-- Customization -->
-                        <th>OWNER LINKEDIN</th>
-                        <th>OWNER AGE</th>
-                        <th>SCORE</th>
-                        <th>REASONING</th>
-                        <th>NOTES</th>
+                        <th>Owner's LinkedIn</th>
+                        <th>Owner's Age Range</th>
+                        <th>Lead Score</th>
+                        <th>Score Reasoning</th>
+                        <th>Additional Notes</th>
                         <!-- Email 1 -->
-                        <th>SUBJECT 1</th>
-                        <th>CONTENT 1</th>
+                        <th>Email Subject (1st)</th>
+                        <th>Email Content (1st)</th>
                         <!-- Email 2 -->
-                        <th>SUBJECT 2</th>
-                        <th>CONTENT 2</th>
+                        <th>Email Subject (2nd)</th>
+                        <th>Email Content (2nd)</th>
                         <!-- LinkedIn -->
-                        <th>MSG 1</th>
-                        <th>MSG 2</th>
+                        <th>LinkedIn Message (1st)</th>
+                        <th>LinkedIn Message (2nd)</th>
                         <!-- Timestamps -->
-                        <th class="date-col">CREATED AT</th>
-                        <th class="date-col">UPDATED AT</th>
+                        <th class="date-col">Created Date</th>
+                        <th class="date-col">Last Updated</th>
                         <!-- Actions -->
-                        <th class="actions">ACTIONS</th>
+                        <th class="actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -446,7 +1596,6 @@
                         <td>{{ lead.company or '-' }}</td>
                         <td>{{ lead.first_name or '-' }}</td>
                         <td>{{ lead.last_name or '-' }}</td>
-                        <!-- <td>{{ lead.full_name or '-' }}</td> -->
                         <td>{{ lead.email or '-' }}</td>
                         <td>{{ lead.phone or '-' }}</td>
                         <td>{{ lead.title or '-' }}</td>
@@ -513,9 +1662,13 @@
             </a>
 
             <div class="select-all-container">
-                <label for="selectAll" style="margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="selectAll" class="custom-checkbox" onclick="toggleAllCheckboxes()">
-                    Select All
+                <label for="selectAll">
+                    <span class="select-all-text">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 6L9 17l-5-5"/>
+                        </svg>
+                        Select All
+                    </span>
                 </label>
             </div>
 
@@ -526,7 +1679,7 @@
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
-                    Export Selected
+                    <span>Export Selected (0)</span>
                 </button>
             </form>
         </div>
@@ -551,11 +1704,27 @@
         function toggleAllCheckboxes() {
             const selectAllCheckbox = document.getElementById('selectAll');
             const checkboxes = document.querySelectorAll('.lead-checkbox');
-            checkboxes.forEach(checkbox => {
-                if (checkbox.closest('tr').style.display !== 'none') {  // Only select visible rows
+            const visibleRows = Array.from(document.querySelectorAll('#leadsTable tbody tr')).filter(
+                row => row.style.display !== 'none'
+            );
+            
+            // Get all visible checkboxes
+            const visibleCheckboxes = visibleRows.map(row => row.querySelector('.lead-checkbox'));
+            
+            // Set checked state for visible checkboxes
+            visibleCheckboxes.forEach(checkbox => {
+                if (checkbox) {
                     checkbox.checked = selectAllCheckbox.checked;
                 }
             });
+
+            // Update select all checkbox in header
+            const headerCheckbox = document.querySelector('.select-all-container input[type="checkbox"]');
+            if (headerCheckbox) {
+                headerCheckbox.checked = selectAllCheckbox.checked;
+            }
+            
+            // Update export button state
             updateExportButton();
         }
 
@@ -578,56 +1747,266 @@
             });
             
             exportBtn.disabled = selectedCheckboxes.length === 0;
+            exportBtn.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Export Selected (${selectedCheckboxes.length})</span>
+            `;
         }
 
-        function searchTable() {
-            const input = document.getElementById('searchInput');
-            const filter = input.value.toUpperCase();
+        function toggleAdvancedFilters() {
+            const advancedFilters = document.getElementById('advancedFilters');
+            const toggleButton = document.querySelector('.toggle-advanced');
+            const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
+            
+            if (isExpanded) {
+                advancedFilters.classList.remove('show');
+                toggleButton.setAttribute('aria-expanded', 'false');
+            } else {
+                advancedFilters.classList.add('show');
+                toggleButton.setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        function toggleColumn(columnIndex) {
             const table = document.getElementById('leadsTable');
             const rows = table.getElementsByTagName('tr');
-            const selectAllCheckbox = document.getElementById('selectAll');
             
-            let visibleCount = 0;
-            
-            // Skip header rows (index 0)
-            for (let i = 1; i < rows.length; i++) {
-                if (rows[i].getElementsByTagName('th').length > 0) {
-                    continue;
+            // Toggle header and all cells in the column
+            for (let i = 0; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName(i === 0 ? 'th' : 'td');
+                if (cells[columnIndex]) {
+                    cells[columnIndex].style.display = cells[columnIndex].style.display === 'none' ? '' : 'none';
                 }
-                
-                let found = false;
-                const cells = rows[i].getElementsByTagName('td');
-                
-                for (let j = 1; j < cells.length; j++) {  // Start from 1 to skip checkbox column
-                    const cell = cells[j];
-                    if (cell) {
-                        const textValue = cell.textContent || cell.innerText;
-                        if (textValue.toUpperCase().indexOf(filter) > -1) {
+            }
+        }
+
+        function normalizeValue(value) {
+            return value ? value.toString().trim().toLowerCase() : '';
+        }
+
+        function applyFilters() {
+            // Get basic filter values
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const company = document.getElementById('companyFilter').value;
+            const location = document.getElementById('locationFilter').value;
+            const role = document.getElementById('roleFilter').value;
+            const score = document.getElementById('scoreFilter').value;
+
+            // Get advanced filter conditions
+            const advancedFilters = [];
+            document.querySelectorAll('.filter-row').forEach(row => {
+                const field = row.querySelector('.field-select').value;
+                const operator = row.querySelector('.operator-select').value;
+                const value = row.querySelector('.value-input').value.trim();
+                const logic = row.querySelector('.logic-select').value;
+
+                if (field && operator && value) {
+                    advancedFilters.push({ field, operator, value, logic });
+                }
+            });
+
+            const table = document.getElementById('leadsTable');
+            const rows = table.getElementsByTagName('tr');
+            let visibleCount = 0;
+
+            // Column mapping for advanced filters
+            const columnMap = {
+                'company': 2,
+                'first_name': 3,
+                'last_name': 4,
+                'email': 5,
+                'phone': 6,
+                'title': 7,
+                'location': 8,
+                'industry': 11,
+                'revenue': 12,
+                'employees': 15,
+                'score': 20
+            };
+
+            // Skip header row
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                let shouldShow = true;
+
+                // Apply basic filters
+                if (shouldShow && company) {
+                    const companyCell = row.cells[2].textContent.trim().toLowerCase();
+                    shouldShow = companyCell === company.toLowerCase();
+                }
+
+                if (shouldShow && location) {
+                    const locationCell = row.cells[8].textContent.trim().toLowerCase();
+                    shouldShow = locationCell === location.toLowerCase();
+                }
+
+                if (shouldShow && role) {
+                    const roleCell = row.cells[7].textContent.trim().toLowerCase();
+                    shouldShow = roleCell === role.toLowerCase();
+                }
+
+                if (shouldShow && score) {
+                    const scoreCell = row.cells[20].textContent.trim().toLowerCase();
+                    shouldShow = scoreCell === score.toLowerCase();
+                }
+
+                // Apply search text
+                if (shouldShow && searchText) {
+                    let found = false;
+                    const cells = row.getElementsByTagName('td');
+                    for (let cell of cells) {
+                        if (cell.textContent.toLowerCase().includes(searchText)) {
                             found = true;
                             break;
                         }
                     }
+                    shouldShow = found;
                 }
-                
-                if (found) {
-                    rows[i].style.display = '';
-                    visibleCount++;
-                } else {
-                    rows[i].style.display = 'none';
-                    // Uncheck hidden rows
-                    const checkbox = rows[i].querySelector('.lead-checkbox');
-                    if (checkbox) {
-                        checkbox.checked = false;
-                    }
+
+                // Apply advanced filters
+                if (shouldShow && advancedFilters.length > 0) {
+                    let advancedResult = true;
+                    
+                    advancedFilters.forEach((filter, index) => {
+                        const cellValue = row.cells[columnMap[filter.field]].textContent.trim();
+                        const filterValue = filter.value;
+                        let matches = false;
+
+                        switch (filter.operator) {
+                            case 'equals':
+                                matches = cellValue.toLowerCase() === filterValue.toLowerCase();
+                                break;
+                            case 'contains':
+                                matches = cellValue.toLowerCase().includes(filterValue.toLowerCase());
+                                break;
+                            case 'starts':
+                                matches = cellValue.toLowerCase().startsWith(filterValue.toLowerCase());
+                                break;
+                            case 'ends':
+                                matches = cellValue.toLowerCase().endsWith(filterValue.toLowerCase());
+                                break;
+                            case 'greater':
+                                matches = parseFloat(cellValue) > parseFloat(filterValue);
+                                break;
+                            case 'less':
+                                matches = parseFloat(cellValue) < parseFloat(filterValue);
+                                break;
+                        }
+
+                        if (index === 0) {
+                            advancedResult = matches;
+                        } else {
+                            const previousLogic = advancedFilters[index - 1].logic;
+                            advancedResult = previousLogic === 'AND' ? 
+                                (advancedResult && matches) : 
+                                (advancedResult || matches);
+                        }
+                    });
+
+                    shouldShow = advancedResult;
                 }
+
+                // Update row visibility
+                row.style.display = shouldShow ? '' : 'none';
+                if (shouldShow) visibleCount++;
             }
-            
-            // Update the total count
+
+            // Update total count
             document.getElementById('totalCount').textContent = visibleCount;
-            
-            // Update select all checkbox state
-            selectAllCheckbox.checked = false;
+
+            // Update select all checkbox
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+
+            // Update export button state
             updateExportButton();
+        }
+
+        // Remove automatic filter application on input change
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add change event listeners to all filter dropdowns
+            const filters = ['companyFilter', 'locationFilter', 'roleFilter', 'scoreFilter'];
+            filters.forEach(filterId => {
+                const filter = document.getElementById(filterId);
+                if (filter) {
+                    filter.addEventListener('change', applyFilters);
+                }
+            });
+
+            // Add input event listener to search box
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', applyFilters);
+            }
+
+            // Initialize filters
+            populateFilters();
+
+            // Add change event listener to all checkboxes
+            document.querySelectorAll('.lead-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const allCheckboxes = Array.from(document.querySelectorAll('.lead-checkbox'));
+                    const visibleCheckboxes = allCheckboxes.filter(cb => 
+                        cb.closest('tr').style.display !== 'none'
+                    );
+                    const allChecked = visibleCheckboxes.every(cb => cb.checked);
+                    const selectAllCheckbox = document.getElementById('selectAll');
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.checked = allChecked;
+                        selectAllCheckbox.indeterminate = !allChecked && 
+                            visibleCheckboxes.some(cb => cb.checked);
+                    }
+                    updateExportButton();
+                });
+            });
+        });
+
+        function clearFilters() {
+            // Reset all filter dropdowns
+            const filters = ['companyFilter', 'locationFilter', 'roleFilter', 'scoreFilter'];
+            filters.forEach(filterId => {
+                const filter = document.getElementById(filterId);
+                if (filter) {
+                    filter.value = '';
+                }
+            });
+
+            // Clear search input
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+
+            // Show all rows
+            const table = document.getElementById('leadsTable');
+            const rows = table.getElementsByTagName('tr');
+            let totalRows = 0;
+            
+            for (let i = 1; i < rows.length; i++) {
+                rows[i].style.display = '';
+                totalRows++;
+            }
+
+            // Update total count
+            document.getElementById('totalCount').textContent = totalRows;
+
+            // Uncheck select all
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+            }
+
+            // Update export button state
+            updateExportButton();
+        }
+
+        // Update the existing searchTable function to use applyFilters
+        function searchTable() {
+            applyFilters();
         }
         
         // Initialize search on page load
@@ -648,6 +2027,330 @@
 
             // Initialize export button state
             updateExportButton();
+        });
+
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Add animation class to table rows
+        document.addEventListener('DOMContentLoaded', function() {
+            const rows = document.querySelectorAll('table tr');
+            rows.forEach((row, index) => {
+                row.classList.add('animate__animated', 'animate__fadeIn');
+                row.style.animationDelay = `${index * 0.05}s`;
+            });
+        });
+
+        // Add sorting functionality
+        function sortTable(columnIndex) {
+            const table = document.getElementById('leadsTable');
+            const tbody = table.getElementsByTagName('tbody')[0];
+            const rows = Array.from(tbody.getElementsByTagName('tr'));
+            const sortIcon = event.target;
+            const isAscending = !sortIcon.classList.contains('asc');
+            
+            // Reset all sort icons
+            document.querySelectorAll('.sort-icon').forEach(icon => {
+                icon.classList.remove('asc');
+            });
+            
+            if (isAscending) {
+                sortIcon.classList.add('asc');
+            }
+            
+            rows.sort((a, b) => {
+                const aValue = a.cells[columnIndex].textContent.trim();
+                const bValue = b.cells[columnIndex].textContent.trim();
+                
+                // Check if the values are dates
+                const aDate = new Date(aValue);
+                const bDate = new Date(bValue);
+                if (!isNaN(aDate) && !isNaN(bDate)) {
+                    return isAscending ? aDate - bDate : bDate - aDate;
+                }
+                
+                // Check if the values are numbers
+                const aNum = parseFloat(aValue);
+                const bNum = parseFloat(bValue);
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return isAscending ? aNum - bNum : bNum - aNum;
+                }
+                
+                // Sort as strings
+                return isAscending ? 
+                    aValue.localeCompare(bValue) : 
+                    bValue.localeCompare(aValue);
+            });
+            
+            // Reorder the rows
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // Add sort icons to table headers
+        document.addEventListener('DOMContentLoaded', function() {
+            const headers = document.querySelectorAll('#leadsTable th');
+            headers.forEach((header, index) => {
+                // Skip checkbox column (index 0), ID column (index 1), and actions column
+                if (index > 1 && !header.classList.contains('actions')) {
+                    const sortIcon = document.createElement('span');
+                    sortIcon.innerHTML = '↓';
+                    sortIcon.className = 'sort-icon';
+                    sortIcon.onclick = () => sortTable(index);
+                    header.appendChild(sortIcon);
+                }
+            });
+        });
+
+        function clearAdvancedFilters() {
+            // Clear all advanced filter inputs
+            document.querySelectorAll('.filter-row').forEach((row, index) => {
+                if (index === 0) {
+                    // Reset first row to default values
+                    row.querySelector('.field-select').value = '';
+                    row.querySelector('.operator-select').value = 'equals';
+                    row.querySelector('.value-input').value = '';
+                    row.querySelector('.logic-select').value = 'AND';
+                } else {
+                    // Remove additional rows
+                    row.remove();
+                }
+            });
+
+            // Apply filters to update the table
+            applyFilters();
+        }
+
+        function addFilterRow(button) {
+            const filterGroup = document.getElementById('filterGroup1');
+            const newRow = document.createElement('div');
+            newRow.className = 'filter-row';
+            newRow.innerHTML = `
+                <select class="filter-select field-select">
+                    <option value="">Select Field</option>
+                    <!-- Basic Information -->
+                    <option value="company">Company</option>
+                    <option value="first_name">First Name</option>
+                    <option value="last_name">Last Name</option>
+                    <option value="email">Email</option>
+                    <option value="phone">Phone</option>
+                    <option value="title">Title</option>
+                    <option value="city">City</option>
+                    <option value="state">State</option>
+                    
+                    <!-- Company Details -->
+                    <option value="website">Website URL</option>
+                    <option value="linkedin_url">LinkedIn Profile</option>
+                    <option value="industry">Industry</option>
+                    <option value="revenue">Annual Revenue</option>
+                    <option value="product_service_category">Products/Services</option>
+                    <option value="business_type">Business Type</option>
+                    <option value="employees_range">Employee Range</option>
+                    <option value="rev_source">Revenue Source</option>
+                    <option value="year_founded">Year Founded</option>
+                    <option value="associated_members">Associated Members</option>
+                    
+                    <!-- Owner Information -->
+                    <option value="owner_linkedin">Owner's LinkedIn</option>
+                    <option value="owner_age">Owner's Age Range</option>
+                    
+                    <!-- Scoring and Notes -->
+                    <option value="score">Lead Score</option>
+                    <option value="reasoning">Score Reasoning</option>
+                    <option value="additional_notes">Additional Notes</option>
+                    
+                    <!-- Email Customization -->
+                    <option value="subject_line_1">Email Subject (1st)</option>
+                    <option value="email_customization_1">Email Content (1st)</option>
+                    <option value="subject_line_2">Email Subject (2nd)</option>
+                    <option value="email_customization_2">Email Content (2nd)</option>
+                    
+                    <!-- LinkedIn Customization -->
+                    <option value="linkedin_customization_1">LinkedIn Message (1st)</option>
+                    <option value="linkedin_customization_2">LinkedIn Message (2nd)</option>
+                    
+                    <!-- Timestamps -->
+                    <option value="created_at">Created Date</option>
+                    <option value="updated_at">Last Updated</option>
+                </select>
+                <select class="filter-select operator-select">
+                    <option value="equals">Equals</option>
+                    <option value="contains">Contains</option>
+                    <option value="starts">Starts with</option>
+                    <option value="ends">Ends with</option>
+                    <option value="greater">Greater than</option>
+                    <option value="less">Less than</option>
+                </select>
+                <input type="text" class="filter-input value-input" placeholder="Enter value...">
+                <select class="filter-select logic-select">
+                    <option value="AND">AND</option>
+                    <option value="OR">OR</option>
+                </select>
+                <button class="btn btn-sm btn-add-filter" onclick="addFilterRow(this)" title="Add another condition">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+                <button class="btn btn-sm btn-remove-filter" onclick="removeFilterRow(this)" title="Remove this condition">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            `;
+            filterGroup.appendChild(newRow);
+        }
+
+        function removeFilterRow(button) {
+            const row = button.closest('.filter-row');
+            const filterGroup = row.parentElement;
+            if (filterGroup.children.length > 1) {
+                row.remove();
+            }
+        }
+
+        // Pagination functionality
+        let rowsPerPage = 10; 
+        let currentPage = 1;
+
+        function setupPagination() {
+            const table = document.getElementById('leadsTable');
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            const totalPages = Math.ceil(rows.length / rowsPerPage);
+            
+            // Create pagination controls
+            const paginationContainer = document.createElement('div');
+            paginationContainer.className = 'pagination-container';
+            paginationContainer.innerHTML = `
+                <div class="pagination">
+                    <div class="rows-per-page">
+                        <label>Rows per page:</label>
+                        <select class="rows-select" onchange="changeRowsPerPage(this.value)">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="all">All</option>
+                        </select>
+                    </div>
+                    <button onclick="changePage(-1)" class="btn btn-pagination">&laquo; Previous</button>
+                    <span class="page-info">Page <span id="currentPage">1</span> of <span id="totalPages">${totalPages}</span></span>
+                    <button onclick="changePage(1)" class="btn btn-pagination">Next &raquo;</button>
+                </div>
+            `;
+            
+            // Add pagination controls after the table
+            table.parentNode.insertBefore(paginationContainer, table.nextSibling);
+            
+            // Show initial page
+            showPage(currentPage);
+        }
+
+        function changeRowsPerPage(value) {
+            rowsPerPage = value === 'all' ? 'all' : parseInt(value);
+            currentPage = 1; // Reset to first page
+            const table = document.getElementById('leadsTable');
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            const totalPages = rowsPerPage === 'all' ? 1 : Math.ceil(rows.length / rowsPerPage);
+            
+            // Update total pages display
+            document.getElementById('totalPages').textContent = totalPages;
+            
+            // Show first page with new rows per page setting
+            showPage(1);
+        }
+
+        function showPage(page) {
+            const table = document.getElementById('leadsTable');
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            const totalPages = rowsPerPage === 'all' ? 1 : Math.ceil(rows.length / rowsPerPage);
+            
+            // Validate page number
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+            
+            currentPage = page;
+            
+            // Update page info
+            document.getElementById('currentPage').textContent = currentPage;
+            
+            // Show/hide rows for current page
+            for (let i = 0; i < rows.length; i++) {
+                if (rowsPerPage === 'all') {
+                    rows[i].style.display = '';
+                } else if (i >= (page - 1) * rowsPerPage && i < page * rowsPerPage) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+            
+            // Update button states
+            const prevButton = document.querySelector('.btn-pagination:first-child');
+            const nextButton = document.querySelector('.btn-pagination:last-child');
+            prevButton.disabled = page === 1;
+            nextButton.disabled = page === totalPages;
+
+            // Update total count display
+            const visibleRows = rowsPerPage === 'all' ? rows.length : 
+                              Math.min(rowsPerPage, rows.length - (currentPage - 1) * rowsPerPage);
+            const totalRows = rows.length;
+            document.getElementById('rowsInfo').textContent = 
+                `Showing ${(currentPage - 1) * rowsPerPage + 1} to ${(currentPage - 1) * rowsPerPage + visibleRows} of ${totalRows} entries`;
+        }
+
+        function changePage(direction) {
+            showPage(currentPage + direction);
+        }
+
+        // Add pagination styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .pagination-container {
+                margin-top: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .pagination {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 15px;
+            }
+            
+            .btn-pagination {
+                padding: 8px 16px;
+                border: 1px solid var(--border-color);
+                background: white;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+            
+            .btn-pagination:hover:not(:disabled) {
+                background: var(--primary-color);
+                color: white;
+                border-color: var(--primary-color);
+            }
+            
+            .btn-pagination:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            
+            .page-info {
+                color: var(--dark-color);
+                font-size: 14px;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize pagination when document loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setupPagination();
+            // ... existing DOMContentLoaded code ...
         });
     </script>
 {% endblock %}

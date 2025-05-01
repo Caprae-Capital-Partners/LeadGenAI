@@ -84,7 +84,31 @@ def upload_csv():
 def view_leads():
     """View all leads"""
     leads = LeadController.get_all_leads()
-    return render_template('leads.html', leads=leads)
+    
+    # Get unique values for filters
+    companies = sorted(set(lead.company for lead in leads if lead.company))
+    locations = sorted(set(f"{lead.city}, {lead.state}" if lead.city and lead.state else (lead.city or lead.state) for lead in leads if (lead.city or lead.state)))
+    roles = sorted(set(lead.title for lead in leads if lead.title))
+    scores = sorted(set(lead.score for lead in leads if lead.score))
+    
+    # Get additional filter options
+    industries = sorted(set(lead.industry for lead in leads if lead.industry))
+    business_types = sorted(set(lead.business_type for lead in leads if lead.business_type))
+    states = sorted(set(lead.state for lead in leads if lead.state))
+    employee_sizes = sorted(set(lead.employees_range for lead in leads if lead.employees_range))
+    revenue_ranges = sorted(set(lead.revenue for lead in leads if lead.revenue))
+    
+    return render_template('leads.html', 
+                         leads=leads,
+                         companies=companies,
+                         locations=locations,
+                         roles=roles,
+                         scores=scores,
+                         industries=industries,
+                         business_types=business_types,
+                         states=states,
+                         employee_sizes=employee_sizes,
+                         revenue_ranges=revenue_ranges)
 
 @lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
 def edit_lead(lead_id):
