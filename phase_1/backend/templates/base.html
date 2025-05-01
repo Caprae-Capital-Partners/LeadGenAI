@@ -31,7 +31,7 @@
             position: fixed;
             top: 20px;
             left: 20px;
-            z-index: 1050;
+            z-index: 2001;
             background: var(--primary-color);
             color: white;
             border: none;
@@ -86,6 +86,16 @@
             font-weight: 700;
             color: var(--primary-color);
             text-decoration: none;
+            margin-left: 64px;
+            margin-top: 8px;
+            display: inline-block;
+            transition: margin 0.3s;
+        }
+        @media (max-width: 600px) {
+            .logo {
+                margin-left: 56px;
+                margin-top: 6px;
+            }
         }
 
         .navbar-menu {
@@ -256,7 +266,7 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="navbar-brand">
-            <a href="{{ url_for('main.index') }}" class="logo">LeadGenAI</a>
+            <a href="{{ url_for('main.index') }}" class="logo">LeadGen DB</a>
         </div>
         <div class="navbar-menu">
             {% if current_user.is_authenticated %}
