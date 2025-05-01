@@ -12,7 +12,7 @@ from backend.services.merge_sources import merge_data_sources
 from backend.services.parser import parse_data
 
 FIELDNAMES = [
-    "Name",
+    "Company",
     "Industry",
     "Address",
     "Rating",

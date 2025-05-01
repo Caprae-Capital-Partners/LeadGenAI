@@ -67,11 +67,11 @@ async def extract_businesses(page):
         try:
             name_element = await listing.query_selector('.business-name, h2 a, .name, a.business-name')
             if name_element:
-                business_info['Name'] = (await name_element.inner_text()).strip()
+                business_info['Company'] = (await name_element.inner_text()).strip()
             else:
                 alt_name = await listing.query_selector('h2, .title, strong a, h3')
                 if alt_name:
-                    business_info['Name'] = (await alt_name.inner_text()).strip()
+                    business_info['Company'] = (await alt_name.inner_text()).strip()
         except Exception:
             pass
         
@@ -141,7 +141,7 @@ async def extract_businesses(page):
             pass
         
         # Only add businesses where we got at least a name
-        if business_info['Name'] != 'NA':
+        if business_info['Company'] != 'NA':
             businesses.append(business_info)
     
     return businesses

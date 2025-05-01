@@ -111,7 +111,7 @@ if not st.session_state.raw_data.empty:
 
     # Merge in enriched data (if any)
     if not st.session_state.enriched_data.empty:
-        merged = pd.merge(filtered_df, st.session_state.enriched_data, on="Name", how="left", suffixes=('', '_enriched'))
+        merged = pd.merge(filtered_df, st.session_state.enriched_data, on="Company", how="left", suffixes=('', '_enriched'))
 
         for col in ["Overview", "Products & Services", "Management", "Website"]:
             if f"{col}_enriched" in merged.columns:
@@ -124,8 +124,8 @@ if not st.session_state.raw_data.empty:
     st.markdown("### 📋 Leads Table")
     st.markdown(f"Total leads: {len(display_df)}")
 
-    if "Name" in display_df.columns:
-        display_df = display_df.sort_values(by="Name", key=lambda col: col.str.lower(), na_position='last').reset_index(drop=True)
+    if "Company" in display_df.columns:
+        display_df = display_df.sort_values(by="Company", key=lambda col: col.str.lower(), na_position='last').reset_index(drop=True)
 
     edited_df = st.data_editor(
         display_df,

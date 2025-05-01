@@ -105,7 +105,7 @@ def deduplicate_businesses(businesses_list):
     
     for business in businesses_list[1:]:
         # Find name, address, and phone fields
-        name_field = 'Name' if 'Name' in business else next((f for f in business if 'name' in f.lower() or 'company' in f.lower()), None)
+        name_field = 'Company' if 'Company' in business else next((f for f in business if 'name' in f.lower() or 'company' in f.lower()), None)
         address_field = 'Address' if 'Address' in business else next((f for f in business if 'address' in f.lower()), None)
         phone_field = next((f for f in business if 'phone' in f.lower()), None)
         

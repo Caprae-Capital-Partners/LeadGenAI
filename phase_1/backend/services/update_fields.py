@@ -194,7 +194,7 @@ async def get_rating_and_website(page: Page, company_name: str, state: str) -> T
 
 async def update_data(data: List[Dict[str, str]], state: str, context: BrowserContext, batch_size: int = 5) -> List[Dict[str, str]]:
     async def process_company(page, index, company):
-        website, rating = await get_rating_and_website(page, company["Name"], state)
+        website, rating = await get_rating_and_website(page, company["Company"], state)
         return index, website, rating
 
     # Collect companies with missing website
@@ -241,7 +241,7 @@ async def enrich_leads(df: pd.DataFrame, location: str) -> pd.DataFrame:
     records = df.to_dict(orient="records")
     updated_records = await enrich_contact(records, location)
 
-    company_tuples = [(rec["Name"], rec.get("Address", location)) for rec in updated_records]
+    company_tuples = [(rec["Company"], rec.get("Address", location)) for rec in updated_records]
     management_info = await enrich_management(company_tuples)
 
     for i, rec in enumerate(updated_records):

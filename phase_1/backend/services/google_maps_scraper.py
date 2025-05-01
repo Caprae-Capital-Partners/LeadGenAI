@@ -83,7 +83,7 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
             website = f"https://www.googleadservices.com{website}"
 
         return {
-            "Name": company_name,
+            "Company": company_name,
             "Industry": category,
             "Address": address,
             "Rating": rating,
@@ -93,7 +93,7 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
     except Exception as e:
         print(f"Error extracting data for a business: {e}")
         return {
-            "Name": "NA",
+            "Company": "NA",
             "Industry": "NA",
             "Address": "NA",
             "Rating": "NA",

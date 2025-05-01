@@ -32,7 +32,7 @@ def merge_data_sources(data1: List[Dict[str, str]],
     
     def get_key(record: Dict[str, str]) -> str:
         # Use Name or Address as unique identifier
-        return (record.get("Name", "") + record.get("Address", "")).strip().lower()
+        return (record.get("Company", "") + record.get("Address", "")).strip().lower()
 
     # Helper to add record to merged list safely
     def add_record(record: Dict[str, str]):
