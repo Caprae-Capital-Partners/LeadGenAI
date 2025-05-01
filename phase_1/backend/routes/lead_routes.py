@@ -2,6 +2,7 @@ from flask import Blueprint, request, redirect, render_template, flash, url_for,
 from controllers.lead_controller import LeadController
 from controllers.upload_controller import UploadController
 from controllers.export_controller import ExportController
+from controllers.dashboard_controller import DashboardController
 from models.lead_model import db
 import csv
 from io import StringIO, BytesIO
@@ -11,6 +12,12 @@ import datetime
 lead_bp = Blueprint('lead', __name__)
 
 @lead_bp.route('/')
+def index():
+    """Display dashboard as home page"""
+    stats = DashboardController.get_dashboard_stats()
+    return render_template('dashboard.html', **stats)
+
+@lead_bp.route('/form')
 def form():
     """Display form to add new lead"""
     return render_template('form.html')
@@ -133,3 +140,9 @@ def export_leads():
         as_attachment=True,
         download_name=filename
     )
+
+@lead_bp.route('/dashboard')
+def dashboard():
+    """Display dashboard"""
+    stats = DashboardController.get_dashboard_stats()
+    return render_template('dashboard.html', **stats)
