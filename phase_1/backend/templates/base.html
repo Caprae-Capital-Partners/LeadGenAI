@@ -16,10 +16,11 @@
             --light-color: #f8f9fa;
             --dark-color: #212529;
             --sidebar-width: 280px;
+            --border-color: #e2e8f0;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f5f7fa;
             min-height: 100vh;
             position: relative;
@@ -59,12 +60,108 @@
             transform: rotate(180deg);
         }
 
+        /* Navbar Styles */
+        .navbar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            left: 0;
+            height: 70px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 1030;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-link {
+            color: var(--dark-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--primary-color);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .username {
+            font-weight: 500;
+            color: var(--dark-color);
+        }
+
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
         /* Sidebar Styles */
         .sidebar {
             position: fixed;
-            top: 0;
+            top: 70px;
             left: -280px;
-            height: 100vh;
+            height: calc(100vh - 70px);
             width: var(--sidebar-width);
             background: white;
             box-shadow: 2px 0 20px rgba(0,0,0,0.1);
@@ -77,25 +174,9 @@
             transform: translateX(280px);
         }
 
-        .sidebar-header {
-            padding: 25px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 2px solid #f0f0f0;
-            background: white;
-        }
-
-        .sidebar-header .logo {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--primary-color);
-            text-decoration: none;
-        }
-
         .nav-section {
             padding: 20px 0;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .nav-section-title {
@@ -145,8 +226,7 @@
         /* Main Content Styles */
         .main-content {
             min-height: 100vh;
-            padding: 20px;
-            padding-top: 80px;
+            padding: 90px 20px 20px;
             transition: all 0.3s ease;
         }
 
@@ -173,7 +253,31 @@
     {% block additional_styles %}{% endblock %}
 </head>
 <body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="{{ url_for('main.index') }}" class="logo">LeadGenAI</a>
+        </div>
+        <div class="navbar-menu">
+            {% if current_user.is_authenticated %}
+                <div class="user-menu">
+                    <span class="username">{{ current_user.username }}</span>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline">
+                        <i class="bi bi-box-arrow-right"></i>
+                        Logout
+                    </a>
+                </div>
+            {% else %}
+                <div class="auth-buttons">
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline">Login</a>
+                    <a href="{{ url_for('auth.signup') }}" class="btn btn-primary">Sign Up</a>
+                </div>
+            {% endif %}
+        </div>
+    </nav>
+
     <!-- Menu Toggle Button -->
+    {% if current_user.is_authenticated %}
     <button class="menu-toggle" id="menuToggle">
         <i class="bi bi-list"></i>
     </button>
@@ -183,10 +287,6 @@
 
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <a href="{{ url_for('lead.index') }}" class="logo">LeadGen DB</a>
-        </div>
-
         <!-- Main Navigation -->
         <div class="nav-section">
             <div class="nav-section-title">Main</div>
@@ -226,6 +326,7 @@
             </a>
         </div>
     </nav>
+    {% endif %}
 
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
@@ -247,29 +348,16 @@
             }
 
             // Toggle sidebar
-            menuToggle.addEventListener('click', toggleSidebar);
-            
+            if (menuToggle) {
+                menuToggle.addEventListener('click', toggleSidebar);
+            }
+
             // Close sidebar when clicking overlay
-            sidebarOverlay.addEventListener('click', toggleSidebar);
-
-            // Close sidebar when clicking a nav item
-            const navItems = document.querySelectorAll('.nav-item');
-            navItems.forEach(item => {
-                item.addEventListener('click', () => {
-                    if (window.innerWidth < 992) {
-                        toggleSidebar();
-                    }
-                });
-            });
-
-            // Handle window resize
-            window.addEventListener('resize', () => {
-                if (window.innerWidth >= 992) {
-                    document.body.style.overflow = '';
-                }
-            });
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', toggleSidebar);
+            }
         });
     </script>
-    {% block additional_scripts %}{% endblock %}
+    {% block scripts %}{% endblock %}
 </body>
 </html> 

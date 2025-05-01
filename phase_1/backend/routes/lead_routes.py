@@ -3,7 +3,8 @@ from controllers.lead_controller import LeadController
 from controllers.upload_controller import UploadController
 from controllers.export_controller import ExportController
 from controllers.dashboard_controller import DashboardController
-from models.lead_model import db
+from models.lead_model import db, Lead
+from flask_login import login_required
 import csv
 from io import StringIO, BytesIO
 import datetime
@@ -18,11 +19,13 @@ def index():
     return render_template('dashboard.html', **stats)
 
 @lead_bp.route('/form')
+@login_required
 def form():
     """Display form to add new lead"""
     return render_template('form.html')
 
 @lead_bp.route('/submit', methods=['POST'])
+@login_required
 def submit():
     """Submit new lead"""
     success, message = LeadController.create_lead(request.form)
@@ -35,11 +38,13 @@ def submit():
     return redirect('/')
 
 @lead_bp.route('/upload_page')
+@login_required
 def upload_page():
     """Display CSV upload page"""
     return render_template('upload.html')
 
 @lead_bp.route('/upload', methods=['POST'])
+@login_required
 def upload_csv():
     """Handle CSV file upload"""
     if 'file' not in request.files:
@@ -81,6 +86,7 @@ def upload_csv():
     return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/view_leads')
+@login_required
 def view_leads():
     """View all leads"""
     leads = LeadController.get_all_leads()
@@ -111,6 +117,7 @@ def view_leads():
                          revenue_ranges=revenue_ranges)
 
 @lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
+@login_required
 def edit_lead(lead_id):
     """Edit lead"""
     if request.method == 'POST':
@@ -126,23 +133,60 @@ def edit_lead(lead_id):
     return render_template('edit_lead.html', lead=lead)
 
 @lead_bp.route('/delete/<int:lead_id>')
+@login_required
 def delete_lead(lead_id):
     """Delete lead"""
-    success, message = LeadController.delete_lead(lead_id)
-
-    if success:
-        flash(message, 'success')
-    else:
-        flash(message, 'danger')
+    try:
+        lead = Lead.query.get_or_404(lead_id)
+        db.session.delete(lead)
+        db.session.commit()
+        flash('Lead deleted successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting lead: {str(e)}', 'danger')
 
     return redirect(url_for('lead.view_leads'))
 
-@lead_bp.route('/api/leads')
+@lead_bp.route('/api/leads', methods=['GET'])
+@login_required
 def get_leads():
     """API endpoint to get all leads"""
-    return jsonify(LeadController.get_leads_json())
+    leads = Lead.query.all()
+    return jsonify([lead.to_dict() for lead in leads])
+
+@lead_bp.route('/api/leads', methods=['POST'])
+@login_required
+def create_lead():
+    """Create a new lead"""
+    data = request.json
+    lead = Lead(**data)
+    
+    try:
+        db.session.add(lead)
+        db.session.commit()
+        return jsonify({"message": "Lead created successfully", "lead": lead.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+
+@lead_bp.route('/api/leads/<int:lead_id>', methods=['PUT'])
+@login_required
+def update_lead_api(lead_id):
+    """Update a lead via API"""
+    lead = Lead.query.get_or_404(lead_id)
+    data = request.json
+    
+    try:
+        for key, value in data.items():
+            setattr(lead, key, value)
+        db.session.commit()
+        return jsonify({"message": "Lead updated successfully", "lead": lead.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
 
 @lead_bp.route('/export_leads', methods=['POST'])
+@login_required
 def export_leads():
     """Export selected leads to CSV"""
     selected_leads = request.form.getlist('selected_leads[]')
@@ -151,21 +195,23 @@ def export_leads():
         flash('Please select at least one lead to export', 'danger')
         return redirect(url_for('lead.view_leads'))
     
-    # Use the export controller to generate CSV
-    output, filename = ExportController.export_leads_to_csv(selected_leads)
-    
-    if not output or not filename:
-        flash('No leads found to export', 'danger')
+    try:
+        csv_data = ExportController.export_leads_to_csv(selected_leads)
+        
+        # Create response
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        return send_file(
+            BytesIO(csv_data.encode()),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=f'leads_export_{timestamp}.csv'
+        )
+    except Exception as e:
+        flash(f'Error exporting leads: {str(e)}', 'danger')
         return redirect(url_for('lead.view_leads'))
-    
-    return send_file(
-        output,
-        mimetype='text/csv',
-        as_attachment=True,
-        download_name=filename
-    )
 
 @lead_bp.route('/dashboard')
+@login_required
 def dashboard():
     """Display dashboard"""
     stats = DashboardController.get_dashboard_stats()
