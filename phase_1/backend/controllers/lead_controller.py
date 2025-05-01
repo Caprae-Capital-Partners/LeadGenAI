@@ -89,6 +89,7 @@ class LeadController:
         lead.state = form_data.get('state', '')
         lead.website = form_data.get('website', '')
         lead.business_type = form_data.get('business_type', '')
+        lead.status = form_data.get('status', lead.status)
         
         # Handle dynamic fields if provided
         if form_data.getlist('dynamic_field_name[]') and form_data.getlist('dynamic_field_value[]'):

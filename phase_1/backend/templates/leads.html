@@ -1513,6 +1513,7 @@
                             <th>Owner's LinkedIn</th>
                             <th>Owner's Age Range</th>
                             <th>Lead Score</th>
+                            <th>Status</th>
                             <th>Score Reasoning</th>
                             <th>Additional Notes</th>
                             <!-- Email 1 -->
@@ -1561,6 +1562,7 @@
                             <td>{{ lead.owner_linkedin or '-' }}</td>
                             <td>{{ lead.owner_age or '-' }}</td>
                             <td>{{ lead.score or '-' }}</td>
+                            <td>{{ lead.status|capitalize or 'New' }}</td>
                             <td class="truncate" title="{{ lead.reasoning }}">{{ lead.reasoning or '-' }}</td>
                             <td class="truncate" title="{{ lead.additional_notes }}">{{ lead.additional_notes or '-' }}</td>
                             <!-- Email 1 -->

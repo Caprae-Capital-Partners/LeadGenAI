@@ -47,6 +47,7 @@ class ExportController:
                 'Owner LinkedIn': lead.owner_linkedin,
                 'Owner Age': lead.owner_age,
                 'Score': lead.score,
+                'Status': lead.status,
                 'Reasoning': lead.reasoning,
                 'Notes': lead.additional_notes,
                 'Subject Line 1': lead.subject_line_1,

@@ -57,6 +57,8 @@ class Lead(db.Model):
         'business_type': 100,
     }
 
+    status = db.Column(db.String(20), default='new', nullable=False)
+
     @classmethod
     def truncate_fields(cls, data):
         for field, max_len in cls.FIELD_MAX_LENGTHS.items():
@@ -107,6 +109,7 @@ class Lead(db.Model):
             'linkedin_customization_1': self.linkedin_customization_1,
             'linkedin_customization_2': self.linkedin_customization_2,
             'reasoning': self.reasoning,
+            'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         } 

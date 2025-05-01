@@ -384,6 +384,14 @@
                         <option value="B2B2C" {% if lead.business_type == 'B2B2C' %}selected{% endif %}>B2B2C</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" name="status" required>
+                        <option value="new" {% if lead.status == 'new' %}selected{% endif %}>New</option>
+                        <option value="contacted" {% if lead.status == 'contacted' %}selected{% endif %}>Contacted</option>
+                        <option value="closed" {% if lead.status == 'closed' %}selected{% endif %}>Closed</option>
+                    </select>
+                </div>
             </div>
             
             <div class="section-title">
