@@ -188,23 +188,26 @@ def update_lead_api(lead_id):
 @lead_bp.route('/export_leads', methods=['POST'])
 @login_required
 def export_leads():
-    """Export selected leads to CSV"""
+    """Export selected leads to CSV or Excel"""
     selected_leads = request.form.getlist('selected_leads[]')
+    file_format = request.form.get('file_format', 'csv')
     
     if not selected_leads:
         flash('Please select at least one lead to export', 'danger')
         return redirect(url_for('lead.view_leads'))
     
     try:
-        csv_data = ExportController.export_leads_to_csv(selected_leads)
+        output, filename, mimetype = ExportController.export_leads_to_file(selected_leads, file_format)
         
-        # Create response
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        if output is None:
+            flash('No leads found to export', 'danger')
+            return redirect(url_for('lead.view_leads'))
+            
         return send_file(
-            BytesIO(csv_data.encode()),
-            mimetype='text/csv',
+            output,
+            mimetype=mimetype,
             as_attachment=True,
-            download_name=f'leads_export_{timestamp}.csv'
+            download_name=filename
         )
     except Exception as e:
         flash(f'Error exporting leads: {str(e)}', 'danger')
