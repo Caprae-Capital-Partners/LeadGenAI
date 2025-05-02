@@ -35,7 +35,7 @@ def submit():
     else:
         flash(message, 'danger')
 
-    return redirect('/')
+    return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/upload_page')
 @login_required
