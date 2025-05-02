@@ -9,14 +9,24 @@ def remove_last_word(text, word):
         text = text[:start] + text[end:]
     return re.sub(r'(,\s*)+', ', ', text.strip())
     
-def parse_address(address: str) -> pd.DataFrame:
+def parse_address(address: str, location: str) -> pd.DataFrame:
     places = pd.DataFrame()
     places['Address'] = [address]
     places['Street'] = pd.NA
     places['City'] = pd.NA
     places['State'] = pd.NA
+    
+    location_parts = location.split(',')
 
     if pd.isna(address):
+        return places
+    
+    if address.startswith("[GOOGLE]"):
+        places['Address'] = [address.replace("[GOOGLE]", "")]
+        places['Street'] = [address.replace("[GOOGLE]", "")]
+        if len(location_parts) > 1:
+            places['States'] = [location_parts[-1].replace(" ", "")]
+            places['City'] = [location_parts[-2].replace(" ", "")]
         return places
 
     address = address.split(',')
@@ -54,9 +64,9 @@ def parse_number(raw: str) -> str:
     
     return f"({area})-{mid}-{last}"
    
-def parse_data(scraped: pd.DataFrame) -> pd.DataFrame:
+def parse_data(scraped: pd.DataFrame, location: str) -> pd.DataFrame:
     # Apply parse_address to each address and collect into list of DataFrames
-    address_dfs = [parse_address(address) for address in scraped['Address']]
+    address_dfs = [parse_address(address, location) for address in scraped['Address']]
     
     # Combine all address DataFrames at once
     address_df = pd.concat(address_dfs, ignore_index=True)
