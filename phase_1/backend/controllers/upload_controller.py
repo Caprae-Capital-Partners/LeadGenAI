@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from models.lead_model import db, Lead
 import chardet
+from flask import flash
 
 class UploadController:
     @staticmethod
@@ -120,6 +121,7 @@ class UploadController:
             added = 0
             skipped_duplicates = 0
             errors = 0
+            skipped_details = []
 
             for idx, row in df.iterrows():
                 name = row['name']
@@ -130,6 +132,7 @@ class UploadController:
 
                 if not UploadController.is_valid_row(name, email, phone):
                     errors += 1
+                    reason = "Invalid row: Missing or invalid required fields"
                     UploadController.log_error(
                         filename,
                         idx + 2,  # Adding 2 to account for 0-based index and header row
@@ -138,8 +141,9 @@ class UploadController:
                             'email': email,
                             'phone': phone
                         },
-                        "Invalid row: Missing or invalid required fields"
+                        reason
                     )
+                    skipped_details.append(f"Row {idx+2}: {reason}")
                     continue
 
                 existing_lead = Lead.query.filter(
@@ -148,6 +152,7 @@ class UploadController:
 
                 if existing_lead:
                     skipped_duplicates += 1
+                    reason = "Duplicate entry found"
                     UploadController.log_error(
                         filename,
                         idx + 2,
@@ -156,29 +161,39 @@ class UploadController:
                             'email': email,
                             'phone': phone
                         },
-                        "Duplicate entry found"
+                        reason
                     )
+                    skipped_details.append(f"Row {idx+2}: {reason}")
                     continue
 
                 try:
                     lead_data = {
-                        'first_name': first_name,
-                        'last_name': last_name,
-                        'email': email,
-                        'phone': phone
+                        'first_name': str(first_name).strip() if first_name is not None else '',
+                        'last_name': str(last_name).strip() if last_name is not None else '',
+                        'email': str(email).strip() if email is not None else '',
+                        'phone': str(phone).strip() if phone is not None else ''
                     }
                     # Add dynamic fields
                     if dynamic_fields:
                         for db_field, csv_col in dynamic_fields.items():
                             if csv_col in df.columns:
-                                lead_data[db_field] = row[csv_col]
+                                value = row[csv_col]
+                                lead_data[db_field] = str(value).strip() if value is not None else ''
                     # Truncate only the fields defined in the model
                     lead_data = Lead.truncate_fields(lead_data)
-                    lead = Lead(**lead_data)
-                    db.session.add(lead)
-                    added += 1
+
+                    # Use smart add/update logic
+                    from controllers.lead_controller import LeadController
+                    success, msg = LeadController.add_or_update_lead_by_match(lead_data)
+                    if success:
+                        added += 1
+                    else:
+                        skipped_duplicates += 1
+                        skipped_details.append(f"Row {idx+2}: {msg}")
+                    flash(f"Row {idx+2}: {msg}", 'success' if success else 'info')
                 except Exception as e:
                     errors += 1
+                    reason = f"Database error: {str(e)}"
                     UploadController.log_error(
                         filename,
                         idx + 2,
@@ -187,9 +202,14 @@ class UploadController:
                             'email': email,
                             'phone': phone
                         },
-                        f"Database error: {str(e)}"
+                        reason
                     )
+                    skipped_details.append(f"Row {idx+2}: {reason}")
                     continue
+
+            # Flash all skipped details at the end as a single message
+            if skipped_details:
+                flash(' / '.join(skipped_details), 'info')
 
             return added, skipped_duplicates, errors
 
