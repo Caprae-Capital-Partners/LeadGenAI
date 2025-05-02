@@ -113,9 +113,9 @@ if not st.session_state.raw_data.empty:
     if not st.session_state.enriched_data.empty:
         merged = pd.merge(filtered_df, st.session_state.enriched_data, on="Company", how="left", suffixes=('', '_enriched'))
 
-        for col in ["Overview", "Products & Services", "Management", "Website"]:
+        for col in ["Overview", "Products & Services", "Management", "Website", "BBB_rating", "Management"]:
             if f"{col}_enriched" in merged.columns:
-                merged[col] = merged[f"{col}_enriched"]
+                merged[col] = merged[f"{col}_enriched"].fillna("NA")
 
         display_df = merged.drop(columns=[c for c in merged.columns if c.endswith("_enriched")])
     else:
