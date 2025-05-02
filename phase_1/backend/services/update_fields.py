@@ -267,7 +267,7 @@ if __name__ == "__main__":
         # ("Sun State Pools", "Glendale, AZ"),
         # ("Thunderbird Pools & Spas", "Glendale, AZ"),
         ("APEX Firearms", "Glendale, AZ")
-    ]
+    ] 
     # companies1 = [
     #     ("Atwater Restoration, LLC", "Glendale, AZ"),
     #     ("Nasco Construction LLC", "Glendale, AZ"),
