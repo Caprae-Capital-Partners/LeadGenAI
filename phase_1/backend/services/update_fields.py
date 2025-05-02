@@ -6,10 +6,10 @@ from urllib.parse import quote_plus, parse_qs, unquote, urlparse
 import pandas as pd
 from playwright.async_api import Page, BrowserContext, TimeoutError as PlaywrightTimeoutError
 
-# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
-# from config.browser_config import PlaywrightManager
+sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+from config.browser_config import PlaywrightManager
 
-from backend.config.browser_config import PlaywrightManager
+# from backend.config.browser_config import PlaywrightManager
 
 ''' --------------------- MANAGEMENT DETAILS ------------------------------- '''
 async def get_management_details(page: Page, company_name: str, state: str) -> List[str]:
@@ -54,15 +54,18 @@ async def get_management_details(page: Page, company_name: str, state: str) -> L
                         dd_elems = await div.query_selector_all('dd')
                         for dd_elem in dd_elems:
                             dd_text = await dd_elem.inner_text()
-                            if dd_text:
+                            if dd_text.strip():
                                 try:
                                     name, title = dd_text.split(",", 1)
                                     management_data.append({"name": name.strip(), "title": title.strip()})
                                 except ValueError as e:
                                     management_data.append({"name": dd_text.strip(), "title": "NA"})
                         break
-            
+        
+        if not management_data:
+            return ["NA"]
         return management_data
+    
     except Exception as e:
         print(f"Error in get_management_details for {company_name}: {e}")
         return ["NA"]
@@ -85,7 +88,8 @@ async def fetch_management(data: List[Tuple[str, str]], context: BrowserContext,
         ]
 
         batch_results = await asyncio.gather(*tasks)
-
+        
+        # print(batch_results)
         # Collect results from the batch
         results.extend(batch_results)
 
@@ -95,7 +99,7 @@ async def fetch_management(data: List[Tuple[str, str]], context: BrowserContext,
 
 async def enrich_management(data: List[Tuple[str,str]]) -> List[str]:
     """Enriches lead data with website and management details."""
-    manager = PlaywrightManager(headless=True)
+    manager = PlaywrightManager(headless=False)
     await manager.start_browser(stealth_on=True)
     try:
         results = await fetch_management(data, manager.context)
@@ -210,7 +214,7 @@ async def update_data(data: List[Dict[str, str]], state: str, context: BrowserCo
             *[process_company(pages[j], idx, company) for j, (idx, company) in enumerate(batch)]
         )
 
-        print(results)    
+        # print(results)    
         # Update the data
         for idx, website, rating in results:
             data[idx]["Website"] = website
@@ -245,8 +249,8 @@ async def enrich_leads(df: pd.DataFrame, location: str) -> pd.DataFrame:
     management_info = await enrich_management(company_tuples)
 
     for i, rec in enumerate(updated_records):
-        people = management_info[i] if i < len(management_info) else []
-        if isinstance(people, list):
+        people = management_info[i] if i < len(management_info) else "NA"
+        if isinstance(people, list) and people and people != ["NA"]:
             rec["Management"] = "; ".join(
                 [f'{p["name"]} ({p["title"]})' for p in people if isinstance(p, dict)]
             ) if people else "NA"
@@ -255,14 +259,15 @@ async def enrich_leads(df: pd.DataFrame, location: str) -> pd.DataFrame:
             
     return pd.DataFrame(updated_records)
 
-# if __name__ == "__main__":
-    # companies0 = [
-    #     ("ASI The White Glove Guys", "San Deigo, CA"),
-    #     ("All Valley Pools AZ", "Phoenix, AZ"),
-    #     ("Remodel Your Pool", "Glendale, AZ"),
-    #     ("Sun State Pools", "Glendale, AZ"),
-    #     ("Thunderbird Pools & Spas", "Glendale, AZ")
-    # ]
+if __name__ == "__main__":
+    companies0 = [
+        # ("ASI The White Glove Guys", "San Deigo, CA"),
+        # ("All Valley Pools AZ", "Phoenix, AZ"),
+        # ("Remodel Your Pool", "Glendale, AZ"),
+        # ("Sun State Pools", "Glendale, AZ"),
+        # ("Thunderbird Pools & Spas", "Glendale, AZ"),
+        ("APEX Firearms", "Glendale, AZ")
+    ]
     # companies1 = [
     #     ("Atwater Restoration, LLC", "Glendale, AZ"),
     #     ("Nasco Construction LLC", "Glendale, AZ"),
@@ -354,7 +359,7 @@ async def enrich_leads(df: pd.DataFrame, location: str) -> pd.DataFrame:
     #     }
     # ]
     
-    # print(asyncio.run(enrich_management(companies1)))
+    print(asyncio.run(enrich_management(companies0)))
     # asyncio.run(enrich_contact(test0, "Glendale, AZ"))
     # asyncio.run(enrich_contact(test1, "Carmel, IN"))
     # asyncio.run(enrich_contact(test2, "Glendale, AZ"))
