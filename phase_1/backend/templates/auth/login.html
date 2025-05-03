@@ -66,6 +66,35 @@
         box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
     }
 
+    .password-field {
+        position: relative;
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: #64748b;
+        padding: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        transition: color 0.2s ease;
+    }
+
+    .password-toggle:hover {
+        color: var(--primary-color);
+    }
+
+    .password-toggle:focus {
+        outline: none;
+    }
+
     .btn-auth {
         width: 100%;
         padding: 12px;
@@ -152,15 +181,43 @@
 
             <div class="form-group">
                 <label class="form-label" for="password">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required>
+                <div class="password-field">
+                    <input type="password" class="form-control" id="password" name="password" required>
+                    <button type="button" class="password-toggle">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
             </div>
 
             <button type="submit" class="btn-auth">Sign In</button>
         </form>
 
         <div class="auth-footer">
-            Don't have an account? <a href="{{ url_for('auth.signup') }}">Sign up</a>
+            Contact an administrator if you need an account
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const passwordField = document.getElementById('password');
+        const toggleButton = document.querySelector('.password-toggle');
+        const toggleIcon = toggleButton.querySelector('i');
+        
+        toggleButton.addEventListener('click', function() {
+            // Toggle password visibility
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggleIcon.classList.remove('bi-eye');
+                toggleIcon.classList.add('bi-eye-slash');
+            } else {
+                passwordField.type = 'password';
+                toggleIcon.classList.remove('bi-eye-slash');
+                toggleIcon.classList.add('bi-eye');
+            }
+        });
+    });
+</script>
 {% endblock %} 
