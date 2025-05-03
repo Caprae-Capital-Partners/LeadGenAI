@@ -27,42 +27,31 @@ def merge_data_sources(data1: List[Dict[str, str]],
                        data3: List[Dict[str, str]],
                        fieldnames: List[str]) -> List[Dict[str, str]]:
     merged = []
-    seen_keys = set()  # Used to track unique records by Name or Address
-    duplicate_count = 0
-    
-    # def get_key(record: Dict[str, str]) -> str:
-    #     # Use Name or Address as unique identifier
-    #     return (record.get("Company", "") + record.get("Address", "")).strip().lower()
-    
+    seen_keys = set()  # Used to track unique records by Company and Address
+
     def get_key(record: Dict[str, str]) -> str:
+        """Generate a unique key for deduplication based on Company and Address."""
         company = record.get("Company", "").strip().lower()
         address = record.get("Address", "").replace("[G]", "").strip().lower()
         return company + address
 
-    # Helper to add record to merged list safely
     def add_record(record: Dict[str, str]):
-        nonlocal duplicate_count
+        """Add a record to the merged list, ensuring no duplicates."""
         key = get_key(record)
         if key not in seen_keys:
             seen_keys.add(key)
-            merged.append({field: record.get(field, "") for field in fieldnames})
-        else:
-            duplicate_count += 1
+            # Normalize the record to include all required fields
+            normalized_record = {field: record.get(field, "NA") for field in fieldnames}
+            merged.append(normalized_record)
 
+    # Process each data source
     for record in data1:
-        # Map Rating field to BBB_rating if present
-        if "BBB_rating" not in record:
-            record["BBB_rating"] = record.get("Rating", "NA")
         add_record(record)
 
     for record in data2:
-        # Map Rating from data2, keep as is
         add_record(record)
-        
+
     for record in data3:
         add_record(record)
-        
-    # print(f"Duplicates found: {duplicate_count}")
-    # print(f"Total entries after deduplication: {len(merged)}")
 
     return merged
