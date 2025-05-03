@@ -287,9 +287,8 @@
 
     <nav class="docs-nav">
         <a href="#roles" class="docs-nav-item">User & Role Management</a>
-        <a href="#config" class="docs-nav-item">System Configuration</a>
-        <a href="#logs" class="docs-nav-item">Error Logs & Monitoring</a>
-        <a href="#maintenance" class="docs-nav-item">Maintenance Tasks</a>
+        <a href="#leads" class="docs-nav-item">Lead Management</a>
+        <a href="#api" class="docs-nav-item">API Documentation</a>
     </nav>
 
     <div id="roles" class="docs-section">
@@ -302,7 +301,7 @@
 
             <h3>Understanding Roles</h3>
             <p>
-                LeadGen has four predefined roles with different permission levels:
+                LeadGen has three predefined roles with different permission levels:
             </p>
             
             <table>
@@ -314,21 +313,20 @@
                     </tr>
                 </thead>
                 <tbody>
-    
                     <tr>
                         <td><strong>User</strong></td>
                         <td>Standard user role</td>
-                        <td>Can view, add, edit leads status, and export data</td>
+                        <td>Can view leads, update lead status, export data, and access the dashboard</td>
                     </tr>
                     <tr>
                         <td><strong>Admin</strong></td>
                         <td>Administrative access</td>
-                        <td>All user capabilities plus user management, system configuration, and access to reports</td>
+                        <td>All user capabilities plus user management, lead creation/editing/deletion capabilities</td>
                     </tr>
                     <tr>
                         <td><strong>Developer</strong></td>
                         <td>Technical administrator</td>
-                        <td>All admin capabilities plus access to system logs, API management, and database tools</td>
+                        <td>All admin capabilities plus access to API functionalities</td>
                     </tr>
                 </tbody>
             </table>
@@ -340,7 +338,7 @@
                 <div class="step-content">
                     <div class="step-title">Access User Management</div>
                     <div class="step-description">
-                        Navigate to the "Admin" section in the sidebar, then select "User Management".
+                        Navigate to the "User Management" section in the sidebar. This is only visible to users with Admin or Developer roles.
                     </div>
                 </div>
             </div>
@@ -348,15 +346,15 @@
             <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <div class="step-title">Add New Users</div>
+                    <div class="step-title">Create New Users</div>
                     <div class="step-description">
-                        Click the "Add User" button and fill out the required information. You'll need to provide:
+                        Click the "Create User" link in the sidebar or "Add User" button on the User Management page and fill out the required information:
                         <ul>
-                            <li>Full Name</li>
-                            <li>Email Address (will be used as username)</li>
-                            <li>Initial Password</li>
+                            <li>Username</li>
+                            <li>Email Address</li>
+                            <li>Password and Confirmation</li>
                             <li>Role Assignment</li>
-                            <li>Department (optional)</li>
+                            <li>Company (optional)</li>
                         </ul>
                     </div>
                 </div>
@@ -365,10 +363,14 @@
             <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                    <div class="step-title">Edit Existing Users</div>
+                    <div class="step-title">Update User Roles</div>
                     <div class="step-description">
-                        Find the user in the list and click the "Edit" button. You can modify any of their details, 
-                        change their role, or reset their password.
+                        From the User Management page, you can update roles for existing users:
+                        <ul>
+                            <li>Locate the user in the table</li>
+                            <li>Use the role dropdown to select a new role</li>
+                            <li>Submit the form to apply the change</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -376,10 +378,14 @@
             <div class="step">
                 <div class="step-number">4</div>
                 <div class="step-content">
-                    <div class="step-title">Deactivate Users</div>
+                    <div class="step-title">Delete Users</div>
                     <div class="step-description">
-                        To temporarily disable a user's access, toggle the "Active" switch to Off. 
-                        Their account will remain in the system but they will not be able to log in.
+                        To remove a user from the system:
+                        <ul>
+                            <li>Locate the user in the table</li>
+                            <li>Click the "Delete" button</li>
+                            <li>Confirm the deletion when prompted</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -394,41 +400,30 @@
                     Important
                 </div>
                 <div class="warning-content">
-                    There must always be at least one active user with the "Admin" role. The system will prevent you from deactivating the last admin account.
+                    You cannot delete your own account, and there must always be at least one active admin user in the system.
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="config" class="docs-section">
-        <h2 class="section-title">System Configuration</h2>
+    <div id="leads" class="docs-section">
+        <h2 class="section-title">Lead Management</h2>
         <div class="section-content">
             <p>
-                LeadGen provides various configuration options that can be adjusted to match your organization's needs.
+                As an admin, you have enhanced capabilities for managing leads in the system.
             </p>
 
-            <h3>General Settings</h3>
+            <h3>Creating Leads</h3>
             <p>
-                The General Settings page allows you to customize basic system parameters:
-            </p>
-            <ul>
-                <li><strong>Company Information</strong> - Update your organization name, logo, and contact details</li>
-                <li><strong>Email Settings</strong> - Configure email notifications and templates</li>
-                <li><strong>Lead Scoring Rules</strong> - Define criteria for automatic lead scoring</li>
-                <li><strong>Data Retention Policy</strong> - Set up rules for data archiving and deletion</li>
-            </ul>
-
-            <h3>Custom Fields</h3>
-            <p>
-                LeadGen allows you to define custom fields to track additional information specific to your business needs:
+                Admin and Developer roles can manually add new leads to the system:
             </p>
             
             <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                    <div class="step-title">Access Custom Fields</div>
+                    <div class="step-title">Access the Lead Form</div>
                     <div class="step-description">
-                        Navigate to "Admin" → "System Configuration" → "Custom Fields"
+                        Click on "Single Import" in the sidebar navigation.
                     </div>
                 </div>
             </div>
@@ -436,15 +431,13 @@
             <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <div class="step-title">Create New Field</div>
+                    <div class="step-title">Fill Out Lead Details</div>
                     <div class="step-description">
-                        Click "Add Custom Field" and specify:
+                        Complete the form with the lead information. Required fields include:
                         <ul>
-                            <li>Field Name - How the field will appear in the UI</li>
-                            <li>Field Type - Text, Number, Date, Dropdown, etc.</li>
-                            <li>Required - Whether the field must be filled</li>
-                            <li>Default Value - Initial value for new leads</li>
-                            <li>Options - For dropdown fields, the available choices</li>
+                            <li>Email and Phone (must be unique in the system)</li>
+                            <li>First name and Last name</li>
+                            <li>Company information (where applicable)</li>
                         </ul>
                     </div>
                 </div>
@@ -453,9 +446,34 @@
             <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                    <div class="step-title">Arrange Field Order</div>
+                    <div class="step-title">Submit the Form</div>
                     <div class="step-description">
-                        Use drag-and-drop to change the order in which fields appear on forms and reports.
+                        Click "Save" to add the new lead to the database.
+                    </div>
+                </div>
+            </div>
+
+            <h3>Editing and Deleting Leads</h3>
+            <p>
+                Only Admin and Developer roles can perform these actions:
+            </p>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Editing Lead Information</div>
+                    <div class="step-description">
+                        From the Leads page, click the "Edit" button next to a lead to access the edit form. You can modify any field and save the changes.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Deleting Leads</div>
+                    <div class="step-description">
+                        Only users with Admin role can delete leads. Click the "Delete" button next to a lead to remove it from the system.
                     </div>
                 </div>
             </div>
@@ -470,41 +488,21 @@
                     Pro Tip
                 </div>
                 <div class="tip-content">
-                    Group related custom fields together for better organization. You can create field sections to separate different types of information.
+                    Before deleting a lead, consider exporting it first to maintain a record in your external systems.
                 </div>
             </div>
 
-            <h3>Integration Settings</h3>
+            <h3>Bulk Import Management</h3>
             <p>
-                Configure integrations with other systems and services:
-            </p>
-            <ul>
-                <li><strong>CRM Integration</strong> - Connect with popular CRM systems</li>
-                <li><strong>Email Marketing Tools</strong> - Sync leads with email marketing platforms</li>
-                <li><strong>API Keys</strong> - Manage authentication for external services</li>
-                <li><strong>Webhook Configuration</strong> - Set up automated triggers and actions</li>
-            </ul>
-        </div>
-    </div>
-
-    <div id="logs" class="docs-section">
-        <h2 class="section-title">Error Logs & Monitoring</h2>
-        <div class="section-content">
-            <p>
-                LeadGen includes comprehensive logging and monitoring tools to help you maintain system health and troubleshoot issues.
-            </p>
-
-            <h3>System Logs</h3>
-            <p>
-                The system automatically logs various events and errors. To access these logs:
+                For importing large numbers of leads at once:
             </p>
             
             <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                    <div class="step-title">Navigate to Logs</div>
+                    <div class="step-title">Prepare Your CSV File</div>
                     <div class="step-description">
-                        Go to "Admin" → "System" → "Logs"
+                        Create a structured CSV file with columns for lead information. Email and Phone are required fields and must be unique.
                     </div>
                 </div>
             </div>
@@ -512,170 +510,9 @@
             <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <div class="step-title">Filter Logs</div>
+                    <div class="step-title">Use Column Mapping</div>
                     <div class="step-description">
-                        Use the filtering options to narrow down the logs:
-                        <ul>
-                            <li>Log Level - Error, Warning, Info, Debug</li>
-                            <li>Time Range - Last hour, day, week, etc.</li>
-                            <li>Source - Component that generated the log</li>
-                            <li>User - Filter by specific user activity</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <div class="step-title">Analyze Log Details</div>
-                    <div class="step-description">
-                        Click on any log entry to see detailed information, including:
-                        <ul>
-                            <li>Timestamp - Exact date and time</li>
-                            <li>Error Message - Description of the issue</li>
-                            <li>Stack Trace - Technical details (for errors)</li>
-                            <li>User Context - Who was affected</li>
-                            <li>Request Details - URL, parameters, headers</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">4</div>
-                <div class="step-content">
-                    <div class="step-title">Export Logs</div>
-                    <div class="step-description">
-                        Use the "Export" button to download logs for offline analysis or to share with support.
-                    </div>
-                </div>
-            </div>
-
-            <h3>Performance Monitoring</h3>
-            <p>
-                The system dashboard provides real-time metrics on system performance:
-            </p>
-            <ul>
-                <li><strong>User Activity</strong> - Number of active users, login frequency</li>
-                <li><strong>Database Performance</strong> - Query response times, table sizes</li>
-                <li><strong>API Usage</strong> - Request volume, response times, error rates</li>
-                <li><strong>System Resources</strong> - CPU, memory, and disk usage</li>
-            </ul>
-
-            <div class="warning">
-                <div class="warning-title">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                        <line x1="12" y1="9" x2="12" y2="13"></line>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    Important
-                </div>
-                <div class="warning-content">
-                    Regular monitoring of system logs is essential for identifying potential issues before they affect users. We recommend checking the error logs at least once per week.
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="maintenance" class="docs-section">
-        <h2 class="section-title">Maintenance Tasks</h2>
-        <div class="section-content">
-            <p>
-                Regular maintenance is important to keep your LeadGen system running smoothly. Here are key maintenance tasks administrators should perform.
-            </p>
-
-            <h3>Database Maintenance</h3>
-            <p>
-                The database is the core of your LeadGen system. Regular maintenance ensures optimal performance:
-            </p>
-            
-            <div class="step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                    <div class="step-title">Run Database Optimization</div>
-                    <div class="step-description">
-                        Go to "Admin" → "System" → "Database" → "Optimize" to run automatic optimization routines. 
-                        This should be done monthly or when performance begins to degrade.
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                    <div class="step-title">Archive Old Data</div>
-                    <div class="step-description">
-                        Use the archiving tool to move inactive leads to the archive. This keeps your active database 
-                        smaller and faster while preserving historical data.
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <div class="step-title">Verify Backups</div>
-                    <div class="step-description">
-                        Check that automatic backups are running successfully by going to "Admin" → "System" → "Backups" 
-                        and confirming recent backup entries.
-                    </div>
-                </div>
-            </div>
-
-            <h3>Security Audits</h3>
-            <p>
-                Regular security checks help protect your valuable lead data:
-            </p>
-            <ul>
-                <li><strong>User Account Audit</strong> - Review all user accounts quarterly to ensure only current employees have access</li>
-                <li><strong>Access Log Review</strong> - Check for suspicious login patterns or unauthorized access attempts</li>
-                <li><strong>Permission Verification</strong> - Confirm that user roles and permissions are appropriate for each user's job function</li>
-                <li><strong>API Key Rotation</strong> - Change API keys periodically to reduce the risk of unauthorized access</li>
-            </ul>
-
-            <h3>System Updates</h3>
-            <p>
-                Keeping your system updated ensures you have the latest features and security patches:
-            </p>
-            
-            <div class="step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                    <div class="step-title">Check for Updates</div>
-                    <div class="step-description">
-                        Go to "Admin" → "System" → "Updates" to see if any system updates are available.
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                    <div class="step-title">Backup Before Updating</div>
-                    <div class="step-description">
-                        Always create a manual backup before applying updates by clicking "Create Backup" in the Backups section.
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <div class="step-title">Apply Updates</div>
-                    <div class="step-description">
-                        Click "Install Updates" and follow the on-screen instructions. Updates may require temporary system downtime.
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">4</div>
-                <div class="step-content">
-                    <div class="step-title">Verify System Operation</div>
-                    <div class="step-description">
-                        After updating, check key system functionality to ensure everything is working correctly.
+                        When uploading, map your CSV columns to the appropriate fields in the system. This ensures data is correctly imported.
                     </div>
                 </div>
             </div>
@@ -690,7 +527,105 @@
                     Important
                 </div>
                 <div class="warning-content">
-                    Always schedule system updates during off-hours to minimize disruption to users. Inform all users in advance if significant downtime is expected.
+                    Duplicate entries (based on email or phone) will be skipped during import to prevent data duplication.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="api" class="docs-section">
+        <h2 class="section-title">API Documentation</h2>
+        <div class="section-content">
+            <p>
+                LeadGen provides API endpoints for programmatic access to lead data and functionality.
+                These endpoints require authentication and appropriate role permissions.
+            </p>
+
+            <h3>Available Endpoints</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Endpoint</th>
+                        <th>Method</th>
+                        <th>Description</th>
+                        <th>Required Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>/api/leads</code></td>
+                        <td>GET</td>
+                        <td>Retrieve all leads in the system</td>
+                        <td>Any authenticated user</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/leads</code></td>
+                        <td>POST</td>
+                        <td>Create a new lead</td>
+                        <td>Admin or Developer</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/leads/{lead_id}</code></td>
+                        <td>PUT</td>
+                        <td>Update an existing lead</td>
+                        <td>Admin or Developer</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/leads/{lead_id}/status</code></td>
+                        <td>PUT</td>
+                        <td>Update lead status only</td>
+                        <td>Any authenticated user</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/upload_leads</code></td>
+                        <td>POST</td>
+                        <td>Bulk upload leads via JSON</td>
+                        <td>Any authenticated user</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Example API Usage</h3>
+            <p>
+                To create a new lead via the API:
+            </p>
+            <pre><code>
+POST /api/leads
+Content-Type: application/json
+
+{
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john.doe@example.com",
+  "phone": "+11234567890",
+  "company": "Example Corp",
+  "title": "Marketing Director"
+}
+            </code></pre>
+
+            <p>
+                To update a lead status:
+            </p>
+            <pre><code>
+PUT /api/leads/123/status
+Content-Type: application/json
+
+{
+  "status": "qualified"
+}
+            </code></pre>
+
+            <div class="warning">
+                <div class="warning-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    Important
+                </div>
+                <div class="warning-content">
+                    All API requests require authentication. You must include valid authentication credentials with each request.
                 </div>
             </div>
         </div>
