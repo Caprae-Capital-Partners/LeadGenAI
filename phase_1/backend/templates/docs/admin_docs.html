@@ -1,0 +1,756 @@
+{% extends "base.html" %}
+{% block title %}Admin Documentation - LeadGen{% endblock %}
+
+{% block additional_styles %}
+<style>
+    :root {
+        --primary-color: #4361ee;
+        --secondary-color: #3f37c9;
+        --accent-color: #4cc9f0;
+        --success-color: #4ad66d;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --text-color: #1e293b;
+        --light-text: #64748b;
+        --background-color: #f8fafc;
+        --card-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .docs-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    .docs-header {
+        margin-bottom: 40px;
+        text-align: center;
+    }
+
+    .docs-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text-color);
+        margin-bottom: 16px;
+    }
+
+    .docs-subtitle {
+        font-size: 1.1rem;
+        color: var(--light-text);
+    }
+
+    .admin-badge {
+        display: inline-block;
+        background-color: var(--warning-color);
+        color: white;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 50px;
+        margin-left: 12px;
+        vertical-align: middle;
+    }
+
+    .docs-nav {
+        display: flex;
+        background-color: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 40px;
+        position: sticky;
+        top: 80px;
+        z-index: 100;
+    }
+
+    .docs-nav-item {
+        padding: 16px 20px;
+        color: var(--light-text);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        flex: 1;
+        text-align: center;
+        border-bottom: 2px solid transparent;
+    }
+
+    .docs-nav-item:hover {
+        color: var(--primary-color);
+        background-color: var(--background-color);
+    }
+
+    .docs-nav-item.active {
+        color: var(--primary-color);
+        border-bottom: 2px solid var(--primary-color);
+    }
+
+    .docs-section {
+        background-color: white;
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 30px;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .section-content {
+        color: var(--text-color);
+        line-height: 1.7;
+    }
+
+    .section-content p {
+        margin-bottom: 16px;
+    }
+
+    .section-content h3 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin: 32px 0 16px;
+        color: var(--text-color);
+    }
+
+    .section-content h4 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 24px 0 12px;
+        color: var(--text-color);
+    }
+
+    .step {
+        display: flex;
+        margin-bottom: 24px;
+    }
+
+    .step-number {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        margin-right: 16px;
+        flex-shrink: 0;
+    }
+
+    .step-content {
+        flex: 1;
+    }
+
+    .step-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-color);
+    }
+
+    .step-description {
+        color: var(--light-text);
+    }
+
+    .warning {
+        background-color: #fff7ed;
+        border-left: 4px solid var(--warning-color);
+        padding: 16px;
+        margin: 20px 0;
+        border-radius: 0 8px 8px 0;
+    }
+
+    .warning-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .warning-title svg {
+        color: var(--warning-color);
+    }
+
+    .warning-content {
+        color: var(--text-color);
+    }
+
+    .tip {
+        background-color: #e6f7ff;
+        border-left: 4px solid var(--accent-color);
+        padding: 16px;
+        margin: 20px 0;
+        border-radius: 0 8px 8px 0;
+    }
+
+    .tip-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .tip-title svg {
+        color: var(--accent-color);
+    }
+
+    .tip-content {
+        color: var(--text-color);
+    }
+
+    .image-container {
+        margin: 24px 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .image-container img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .image-caption {
+        padding: 12px;
+        background-color: #f8fafc;
+        color: var(--light-text);
+        font-size: 0.9rem;
+        text-align: center;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    code {
+        font-family: monospace;
+        background-color: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 24px 0;
+    }
+
+    table th, table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    table th {
+        background-color: #f8fafc;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .docs-nav {
+            flex-direction: column;
+            border-radius: 8px;
+        }
+
+        .docs-nav-item {
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+            padding: 12px 16px;
+        }
+
+        .docs-nav-item.active {
+            border-left: 3px solid var(--primary-color);
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .docs-section {
+            padding: 24px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="docs-container">
+    <div class="docs-header">
+        <h1 class="docs-title">Admin Documentation <span class="admin-badge">Admin Only</span></h1>
+        <p class="docs-subtitle">Comprehensive guide for LeadGen system administrators</p>
+    </div>
+
+    <nav class="docs-nav">
+        <a href="#roles" class="docs-nav-item">User & Role Management</a>
+        <a href="#config" class="docs-nav-item">System Configuration</a>
+        <a href="#logs" class="docs-nav-item">Error Logs & Monitoring</a>
+        <a href="#maintenance" class="docs-nav-item">Maintenance Tasks</a>
+    </nav>
+
+    <div id="roles" class="docs-section">
+        <h2 class="section-title">User & Role Management</h2>
+        <div class="section-content">
+            <p>
+                As an administrator, you have complete control over user accounts and role assignments. LeadGen 
+                uses a role-based access control system to determine what actions users can perform.
+            </p>
+
+            <h3>Understanding Roles</h3>
+            <p>
+                LeadGen has four predefined roles with different permission levels:
+            </p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Description</th>
+                        <th>Capabilities</th>
+                    </tr>
+                </thead>
+                <tbody>
+    
+                    <tr>
+                        <td><strong>User</strong></td>
+                        <td>Standard user role</td>
+                        <td>Can view, add, edit leads status, and export data</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Admin</strong></td>
+                        <td>Administrative access</td>
+                        <td>All user capabilities plus user management, system configuration, and access to reports</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Developer</strong></td>
+                        <td>Technical administrator</td>
+                        <td>All admin capabilities plus access to system logs, API management, and database tools</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Managing Users</h3>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Access User Management</div>
+                    <div class="step-description">
+                        Navigate to the "Admin" section in the sidebar, then select "User Management".
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Add New Users</div>
+                    <div class="step-description">
+                        Click the "Add User" button and fill out the required information. You'll need to provide:
+                        <ul>
+                            <li>Full Name</li>
+                            <li>Email Address (will be used as username)</li>
+                            <li>Initial Password</li>
+                            <li>Role Assignment</li>
+                            <li>Department (optional)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Edit Existing Users</div>
+                    <div class="step-description">
+                        Find the user in the list and click the "Edit" button. You can modify any of their details, 
+                        change their role, or reset their password.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">Deactivate Users</div>
+                    <div class="step-description">
+                        To temporarily disable a user's access, toggle the "Active" switch to Off. 
+                        Their account will remain in the system but they will not be able to log in.
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning">
+                <div class="warning-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    Important
+                </div>
+                <div class="warning-content">
+                    There must always be at least one active user with the "Admin" role. The system will prevent you from deactivating the last admin account.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="config" class="docs-section">
+        <h2 class="section-title">System Configuration</h2>
+        <div class="section-content">
+            <p>
+                LeadGen provides various configuration options that can be adjusted to match your organization's needs.
+            </p>
+
+            <h3>General Settings</h3>
+            <p>
+                The General Settings page allows you to customize basic system parameters:
+            </p>
+            <ul>
+                <li><strong>Company Information</strong> - Update your organization name, logo, and contact details</li>
+                <li><strong>Email Settings</strong> - Configure email notifications and templates</li>
+                <li><strong>Lead Scoring Rules</strong> - Define criteria for automatic lead scoring</li>
+                <li><strong>Data Retention Policy</strong> - Set up rules for data archiving and deletion</li>
+            </ul>
+
+            <h3>Custom Fields</h3>
+            <p>
+                LeadGen allows you to define custom fields to track additional information specific to your business needs:
+            </p>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Access Custom Fields</div>
+                    <div class="step-description">
+                        Navigate to "Admin" → "System Configuration" → "Custom Fields"
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Create New Field</div>
+                    <div class="step-description">
+                        Click "Add Custom Field" and specify:
+                        <ul>
+                            <li>Field Name - How the field will appear in the UI</li>
+                            <li>Field Type - Text, Number, Date, Dropdown, etc.</li>
+                            <li>Required - Whether the field must be filled</li>
+                            <li>Default Value - Initial value for new leads</li>
+                            <li>Options - For dropdown fields, the available choices</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Arrange Field Order</div>
+                    <div class="step-description">
+                        Use drag-and-drop to change the order in which fields appear on forms and reports.
+                    </div>
+                </div>
+            </div>
+
+            <div class="tip">
+                <div class="tip-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    Pro Tip
+                </div>
+                <div class="tip-content">
+                    Group related custom fields together for better organization. You can create field sections to separate different types of information.
+                </div>
+            </div>
+
+            <h3>Integration Settings</h3>
+            <p>
+                Configure integrations with other systems and services:
+            </p>
+            <ul>
+                <li><strong>CRM Integration</strong> - Connect with popular CRM systems</li>
+                <li><strong>Email Marketing Tools</strong> - Sync leads with email marketing platforms</li>
+                <li><strong>API Keys</strong> - Manage authentication for external services</li>
+                <li><strong>Webhook Configuration</strong> - Set up automated triggers and actions</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="logs" class="docs-section">
+        <h2 class="section-title">Error Logs & Monitoring</h2>
+        <div class="section-content">
+            <p>
+                LeadGen includes comprehensive logging and monitoring tools to help you maintain system health and troubleshoot issues.
+            </p>
+
+            <h3>System Logs</h3>
+            <p>
+                The system automatically logs various events and errors. To access these logs:
+            </p>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Navigate to Logs</div>
+                    <div class="step-description">
+                        Go to "Admin" → "System" → "Logs"
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Filter Logs</div>
+                    <div class="step-description">
+                        Use the filtering options to narrow down the logs:
+                        <ul>
+                            <li>Log Level - Error, Warning, Info, Debug</li>
+                            <li>Time Range - Last hour, day, week, etc.</li>
+                            <li>Source - Component that generated the log</li>
+                            <li>User - Filter by specific user activity</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Analyze Log Details</div>
+                    <div class="step-description">
+                        Click on any log entry to see detailed information, including:
+                        <ul>
+                            <li>Timestamp - Exact date and time</li>
+                            <li>Error Message - Description of the issue</li>
+                            <li>Stack Trace - Technical details (for errors)</li>
+                            <li>User Context - Who was affected</li>
+                            <li>Request Details - URL, parameters, headers</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">Export Logs</div>
+                    <div class="step-description">
+                        Use the "Export" button to download logs for offline analysis or to share with support.
+                    </div>
+                </div>
+            </div>
+
+            <h3>Performance Monitoring</h3>
+            <p>
+                The system dashboard provides real-time metrics on system performance:
+            </p>
+            <ul>
+                <li><strong>User Activity</strong> - Number of active users, login frequency</li>
+                <li><strong>Database Performance</strong> - Query response times, table sizes</li>
+                <li><strong>API Usage</strong> - Request volume, response times, error rates</li>
+                <li><strong>System Resources</strong> - CPU, memory, and disk usage</li>
+            </ul>
+
+            <div class="warning">
+                <div class="warning-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    Important
+                </div>
+                <div class="warning-content">
+                    Regular monitoring of system logs is essential for identifying potential issues before they affect users. We recommend checking the error logs at least once per week.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="maintenance" class="docs-section">
+        <h2 class="section-title">Maintenance Tasks</h2>
+        <div class="section-content">
+            <p>
+                Regular maintenance is important to keep your LeadGen system running smoothly. Here are key maintenance tasks administrators should perform.
+            </p>
+
+            <h3>Database Maintenance</h3>
+            <p>
+                The database is the core of your LeadGen system. Regular maintenance ensures optimal performance:
+            </p>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Run Database Optimization</div>
+                    <div class="step-description">
+                        Go to "Admin" → "System" → "Database" → "Optimize" to run automatic optimization routines. 
+                        This should be done monthly or when performance begins to degrade.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Archive Old Data</div>
+                    <div class="step-description">
+                        Use the archiving tool to move inactive leads to the archive. This keeps your active database 
+                        smaller and faster while preserving historical data.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Verify Backups</div>
+                    <div class="step-description">
+                        Check that automatic backups are running successfully by going to "Admin" → "System" → "Backups" 
+                        and confirming recent backup entries.
+                    </div>
+                </div>
+            </div>
+
+            <h3>Security Audits</h3>
+            <p>
+                Regular security checks help protect your valuable lead data:
+            </p>
+            <ul>
+                <li><strong>User Account Audit</strong> - Review all user accounts quarterly to ensure only current employees have access</li>
+                <li><strong>Access Log Review</strong> - Check for suspicious login patterns or unauthorized access attempts</li>
+                <li><strong>Permission Verification</strong> - Confirm that user roles and permissions are appropriate for each user's job function</li>
+                <li><strong>API Key Rotation</strong> - Change API keys periodically to reduce the risk of unauthorized access</li>
+            </ul>
+
+            <h3>System Updates</h3>
+            <p>
+                Keeping your system updated ensures you have the latest features and security patches:
+            </p>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Check for Updates</div>
+                    <div class="step-description">
+                        Go to "Admin" → "System" → "Updates" to see if any system updates are available.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Backup Before Updating</div>
+                    <div class="step-description">
+                        Always create a manual backup before applying updates by clicking "Create Backup" in the Backups section.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Apply Updates</div>
+                    <div class="step-description">
+                        Click "Install Updates" and follow the on-screen instructions. Updates may require temporary system downtime.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">Verify System Operation</div>
+                    <div class="step-description">
+                        After updating, check key system functionality to ensure everything is working correctly.
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning">
+                <div class="warning-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    Important
+                </div>
+                <div class="warning-content">
+                    Always schedule system updates during off-hours to minimize disruption to users. Inform all users in advance if significant downtime is expected.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Add smooth scrolling to navigation links
+    document.addEventListener('DOMContentLoaded', function() {
+        const navLinks = document.querySelectorAll('.docs-nav-item');
+        
+        // Add click event listeners to nav items
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Get the target section
+                const targetId = this.getAttribute('href');
+                const targetSection = document.querySelector(targetId);
+                
+                // Smooth scroll to the section
+                targetSection.scrollIntoView({
+                    behavior: 'smooth'
+                });
+                
+                // Update active class
+                navLinks.forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+        
+        // Add scroll spy functionality
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('.docs-section');
+            let currentSection = '';
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                
+                if (pageYOffset >= (sectionTop - 200)) {
+                    currentSection = '#' + section.getAttribute('id');
+                }
+            });
+            
+            // Update active class based on scroll position
+            if (currentSection) {
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === currentSection) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+        
+        // Set initial active state
+        if (navLinks.length > 0) {
+            navLinks[0].classList.add('active');
+        }
+    });
+</script>
+{% endblock %} 

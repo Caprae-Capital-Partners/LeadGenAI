@@ -118,6 +118,68 @@
         .nav-link:hover {
             color: var(--primary-color);
         }
+        
+        /* Dropdown styles */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-toggle {
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .dropdown-toggle i {
+            transition: transform 0.2s ease;
+            font-size: 0.8rem;
+            margin-left: 3px;
+        }
+        
+        .dropdown-toggle:hover i {
+            transform: translateY(2px);
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 40px;
+            left: 0;
+            background: white;
+            min-width: 200px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 8px 0;
+            z-index: 1050;
+            display: none;
+            animation: fadeIn 0.2s ease;
+            transform-origin: top center;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .dropdown-item {
+            display: block;
+            padding: 10px 16px;
+            color: var(--dark-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #f1f5f9;
+            color: var(--primary-color);
+        }
 
         .user-menu {
             display: flex;
@@ -286,9 +348,25 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="navbar-brand">
-            <a href="{{ url_for('main.index') }}" class="logo">LeadGen DB</a>
+            <a href="{{ url_for('main.index') }}" class="logo">LeadGen</a>
         </div>
         <div class="navbar-menu">
+            <a href="{{ url_for('main.index') }}" class="nav-link">Home</a>
+            
+            {% if current_user.is_authenticated and current_user.role in ['admin', 'developer'] %}
+            <div class="dropdown">
+                <a href="#" class="nav-link dropdown-toggle" id="docDropdown">
+                    Documentation <i></i>
+                </a>
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('main.user_docs') }}" class="dropdown-item">User Documentation</a>
+                    <a href="{{ url_for('main.admin_docs') }}" class="dropdown-item">Admin Documentation</a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{{ url_for('main.user_docs') }}" class="nav-link">Documentation</a>
+            {% endif %}
+            
             {% if current_user.is_authenticated %}
                 <div class="user-menu">
                     <span class="username">{{ current_user.username }}</span>
@@ -341,6 +419,21 @@
                 <i class="bi bi-cloud-upload"></i>
                 <span>Bulk Import</span>
             </a>
+        </div>
+        
+        <!-- Documentation Section -->
+        <div class="nav-section">
+            <div class="nav-section-title">DOCUMENTATION</div>
+            <a href="{{ url_for('main.user_docs') }}" class="nav-item {% if request.endpoint == 'main.user_docs' %}active{% endif %}">
+                <i class="bi bi-file-text"></i>
+                <span>User Guide</span>
+            </a>
+            {% if current_user.is_authenticated and current_user.role in ['admin', 'developer'] %}
+            <a href="{{ url_for('main.admin_docs') }}" class="nav-item {% if request.endpoint == 'main.admin_docs' %}active{% endif %}">
+                <i class="bi bi-shield-lock"></i>
+                <span>Admin Guide</span>
+            </a>
+            {% endif %}
         </div>
 
         <!-- System Section -->
@@ -396,6 +489,36 @@
             // Close sidebar when clicking overlay
             if (sidebarOverlay) {
                 sidebarOverlay.addEventListener('click', toggleSidebar);
+            }
+            
+            // Documentation dropdown functionality
+            const docDropdown = document.getElementById('docDropdown');
+            const dropdownMenu = document.querySelector('.dropdown-menu');
+            
+            if (docDropdown && dropdownMenu) {
+                // Toggle dropdown on click
+                docDropdown.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
+                });
+                
+                // Add hover effect to dropdown items
+                const dropdownItems = document.querySelectorAll('.dropdown-item');
+                dropdownItems.forEach(item => {
+                    item.addEventListener('mouseenter', function() {
+                        this.style.backgroundColor = '#f1f5f9';
+                    });
+                    item.addEventListener('mouseleave', function() {
+                        this.style.backgroundColor = 'transparent';
+                    });
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.dropdown')) {
+                        dropdownMenu.style.display = 'none';
+                    }
+                });
             }
         });
     </script>
