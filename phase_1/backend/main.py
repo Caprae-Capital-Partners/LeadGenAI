@@ -15,7 +15,6 @@ FIELDNAMES = [
     "Company",
     "Industry",
     "Address",
-    "Rating",
     "BBB_rating",
     "Business_phone",
     "Website"
@@ -36,7 +35,7 @@ async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, s
     
     df = pd.DataFrame(merged_data)
 
-    parsed_data = parse_data(df, location)
+    parsed_data = parse_data(df, FIELDNAMES, location)
     data = parsed_data.to_dict(orient='records')
     
     # De duplify using fuzzy matching    

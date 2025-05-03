@@ -1,3 +1,4 @@
+from typing import List
 import pandas as pd
 import re
 
@@ -25,21 +26,21 @@ def parse_address(address: str, location: str) -> pd.DataFrame:
         places['Address'] = [address.replace("[G]", "")]
         places['Street'] = [address.replace("[G]", "")]
         if len(location_parts) > 1:
-            places['State'] = [location_parts[-1].replace(" ", "")]
-            places['City'] = [location_parts[-2].replace(" ", "")]
+            places['State'] = [location_parts[-1].strip().upper()]
+            places['City'] = [location_parts[-2].strip().title()]
         return places
 
     address = address.split(',')
     if len(address) == 3:
         places['Address'] = [address]
         places['Street'] = [address[0]]
-        places['City'] = [address[1]]
-        places['State'] = re.sub(r'[\d\s\-]', '', address[2])
+        places['City'] = [address[1].strip()]
+        places['State'] = re.sub(r'[\d\s\-]', '', address[2].strip())
 
     if len(address) == 2:
         places['Address'] = [address]
-        places['City'] = [address[0]]
-        places['State'] = re.sub(r'[\d\s\-]', '', address[1])
+        places['City'] = [address[0].strip()]
+        places['State'] = re.sub(r'[\d\s\-]', '', address[1].strip())
 
     else:
         places['Street'] = [address[0]]
@@ -64,7 +65,7 @@ def parse_number(raw: str) -> str:
     
     return f"({area})-{mid}-{last}"
    
-def parse_data(scraped: pd.DataFrame, location: str) -> pd.DataFrame:
+def parse_data(scraped: pd.DataFrame, fieldnames: List[str], location: str) -> pd.DataFrame:
     # Apply parse_address to each address and collect into list of DataFrames
     address_dfs = [parse_address(address, location) for address in scraped['Address']]
     
@@ -77,24 +78,26 @@ def parse_data(scraped: pd.DataFrame, location: str) -> pd.DataFrame:
     # Merge parsed address data
     scraped = pd.concat([scraped.reset_index(drop=True), address_df.drop(columns='Address').reset_index(drop=True)], axis=1)
     
-    cols = list(scraped.columns)
-    extra_cols = [col for col in ['Street', 'City', 'State'] if col in cols]
+    # Ensure all original columns are preserved
+    og_fields = fieldnames
+    extra_cols = [col for col in ['Street', 'City', 'State'] if col in scraped.columns]
+    addr_idx = og_fields.index('Address')
+    
+    # Reorder columns to include original columns and parsed address fields
+    reordered = (
+        og_fields[:addr_idx] +   # Columns before Address
+        extra_cols +            # Parsed address fields
+        og_fields[addr_idx + 1:] # Columns after Address
+    )
+    scraped = scraped[[col for col in reordered if col in scraped.columns]]
 
-    if 'Address' in cols:
-        addr_idx = cols.index('Address')
-        reordered = (
-            cols[:addr_idx + 1] +
-            extra_cols +
-            [col for col in cols if col not in extra_cols and col != 'Address'][addr_idx + 1:]
-        )
-        scraped = scraped[reordered]
-        
-    scraped = scraped.drop(columns='Address')
+    # Drop the original Address column if it still exists
+    if 'Address' in scraped.columns:
+        scraped = scraped.drop(columns='Address')
 
-    # scraped.to_csv('../data/Parsed_output.csv', index=False)
     return scraped
 
 
 # if __name__ == "__main__":
 #     scraped = pd.read_csv('merged_output.csv')
-#     parse_data(scraped)
+#     parse_data(scraped, "san diego, ca")
