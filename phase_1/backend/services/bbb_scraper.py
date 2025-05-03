@@ -19,7 +19,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
    
     try:
         browser_manager = PlaywrightManager(headless=True)
-        page = await browser_manager.start_browser(stealth_on=False)
+        page = await browser_manager.start_browser(stealth_on=True)
         await page.goto(BASE_URL)
         
         while True:
@@ -36,8 +36,8 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                     
                     business_name_selector = "h3.result-business-name a"
                     business_element = await card.locator(business_name_selector).count()
-                    details['Name'] = await card.locator(business_name_selector).inner_text() if business_element > 0 else "NA"
-                    details["Name"] = details["Name"].replace("advertisement:\n", "").strip()
+                    details['Company'] = await card.locator(business_name_selector).inner_text() if business_element > 0 else "NA"
+                    details["Company"] = details["Company"].replace("advertisement:\n", "").strip()
                         
                     # Scrape industry
                     industry_selector = "p.bds-body.text-size-4.text-gray-70"
@@ -64,7 +64,7 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                         details['BBB_rating'] = "NA"
                     
                     details.update({
-                        "Name": details['Name'],
+                        "Company": details['Company'],
                         "Industry": details['Industry'],
                         "Address": details['Address'],
                         "Business_phone": details['Business_phone'],
@@ -76,13 +76,29 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                     print(f"Error extracting data for card {i}: {e}")
                 
             # Go to next page if available
-            next_page_btn = page.locator('a[rel="next"]', has_text="Next")
-            if await next_page_btn.count() > 0:
-                await next_page_btn.click()
-                # await page.wait_for_load_state("domcontentloaded")
-                await asyncio.sleep(1)
-            else:
-                break
+            try:
+                next_page_btn = page.locator('a[rel="next"]', has_text="Next")
+                if await next_page_btn.count() > 0:
+                    try:
+                        await next_page_btn.click(timeout=5000)
+                        await page.wait_for_load_state("domcontentloaded")
+                    except Exception:
+                        print(f"Error clicking 'Next' button... reloading page and trying again")
+                        try:
+                            await page.goto(page.url)
+                            await asyncio.sleep(2)
+                            await next_page_btn.click(timeout=5000)
+                            await asyncio.sleep(1)
+                        except Exception:
+                            # print(f"Error clicking 'Next' button.")
+                            return lead_list
+                                                
+                else:
+                    break
+                
+            except Exception as e:
+                print(f"Error during pagination: {e}")
+                return lead_list  # Return the leads collected so far
                 
         # print(f"Found {len(lead_list)} leads in BBB")
         return lead_list

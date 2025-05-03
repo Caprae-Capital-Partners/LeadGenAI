@@ -30,9 +30,14 @@ def merge_data_sources(data1: List[Dict[str, str]],
     seen_keys = set()  # Used to track unique records by Name or Address
     duplicate_count = 0
     
+    # def get_key(record: Dict[str, str]) -> str:
+    #     # Use Name or Address as unique identifier
+    #     return (record.get("Company", "") + record.get("Address", "")).strip().lower()
+    
     def get_key(record: Dict[str, str]) -> str:
-        # Use Name or Address as unique identifier
-        return (record.get("Name", "") + record.get("Address", "")).strip().lower()
+        company = record.get("Company", "").strip().lower()
+        address = record.get("Address", "").replace("[GOOGLE]", "").strip().lower()
+        return company + address
 
     # Helper to add record to merged list safely
     def add_record(record: Dict[str, str]):
@@ -57,7 +62,7 @@ def merge_data_sources(data1: List[Dict[str, str]],
     for record in data3:
         add_record(record)
         
-    print(f"Duplicates found: {duplicate_count}")
-    print(f"Total entries after deduplication: {len(merged)}")
+    # print(f"Duplicates found: {duplicate_count}")
+    # print(f"Total entries after deduplication: {len(merged)}")
 
     return merged

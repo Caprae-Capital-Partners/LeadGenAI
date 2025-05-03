@@ -15,7 +15,7 @@ st.set_page_config(page_title="LeadGenAI", layout="wide")
 st.title("📊 LeadGen AI Tool")
 
 st.markdown("#### Welcome to Caprae Capital's LeadGenAI Tool! 🐐")
-st.markdown("Add your target industry and location to the sidebar, and hit '🚀 Fetch Leads'. Then, filter, edit, and download your leads!")
+st.markdown("Add your target industry and location to the sidebar, and hit '🚀 Fetch Leads'.")
 
 # --- State Initialization ---
 if 'raw_data' not in st.session_state:
@@ -35,7 +35,18 @@ st.sidebar.header("🔍 Search Criteria")
 industry = st.sidebar.text_input("Industry", placeholder="e.g. dentist")
 location = st.sidebar.text_input("Location", placeholder="e.g. San Diego, CA")
 fetch_button = st.sidebar.button("🚀 Fetch Leads", disabled = st.session_state.is_scraping)
-
+st.sidebar.write("⚠️ Instructions:")
+st.sidebar.write("1. Enter your target industry and location.")
+st.sidebar.write("2. Click '🚀 Fetch Leads'.")
+st.sidebar.write("3. Filter, edit, and download your leads!")
+st.sidebar.write("4. Click '📄 Get Overviews' to enrich leads with company overviews.")
+st.sidebar.write("5. Click '🔍 Enrich Contact Info' to enrich leads with contact info.")
+st.sidebar.write("6. Click '📥 Download as CSV' to download your leads.")
+st.sidebar.write("📝 Note:")
+st.sidebar.write("1. Average expected time for fetching leads is 1-2 minutes.")
+st.sidebar.write("2. Any lead enrichment or overview generation on a large dataset (>30 entries at a time) may take some time or crash the website.")
+st.sidebar.write("3. Data may be misleading or incorrect. Please verify before exporting it.")
+st.sidebar.write("4. If any unexpected errors occur, please refresh the page and try again.")
 
 # --- Fetch Leads ---
 if fetch_button and not st.session_state.is_scraping:
@@ -51,18 +62,18 @@ if st.session_state.is_scraping and not fetch_button:
     st.session_state.is_scraping = False
     st.rerun()
 
-import gc
-import objgraph
+# import gc
+# import objgraph
 
-if st.button("🧹 Check for Memory Leaks"):
-    for o in gc.get_objects():
-        if 'session_state.SessionState' in str(type(o)) and o is not st.session_state:
-            st.write("SessionState reference retained by: ", type(o))
+# if st.button("🧹 Check for Memory Leaks"):
+#     for o in gc.get_objects():
+#         if 'session_state.SessionState' in str(type(o)) and o is not st.session_state:
+#             st.write("SessionState reference retained by: ", type(o))
             
-            chain = objgraph.find_backref_chain(o, objgraph.is_proper_module)
-            st.write("Backref chain:")
-            for item in chain:
-                st.write(f"→ {type(item)}")
+#             chain = objgraph.find_backref_chain(o, objgraph.is_proper_module)
+#             st.write("Backref chain:")
+#             for item in chain:
+#                 st.write(f"→ {type(item)}")
 
 # --- Display Leads + Filters ---
 if not st.session_state.raw_data.empty:
@@ -100,11 +111,11 @@ if not st.session_state.raw_data.empty:
 
     # Merge in enriched data (if any)
     if not st.session_state.enriched_data.empty:
-        merged = pd.merge(filtered_df, st.session_state.enriched_data, on="Name", how="left", suffixes=('', '_enriched'))
+        merged = pd.merge(filtered_df, st.session_state.enriched_data, on="Company", how="left", suffixes=('', '_enriched'))
 
-        for col in ["Overview", "Products & Services", "Management", "Website"]:
+        for col in ["Overview", "Products & Services", "Management", "Website", "BBB_rating", "Management"]:
             if f"{col}_enriched" in merged.columns:
-                merged[col] = merged[f"{col}_enriched"]
+                merged[col] = merged[f"{col}_enriched"].fillna("NA")
 
         display_df = merged.drop(columns=[c for c in merged.columns if c.endswith("_enriched")])
     else:
@@ -113,8 +124,8 @@ if not st.session_state.raw_data.empty:
     st.markdown("### 📋 Leads Table")
     st.markdown(f"Total leads: {len(display_df)}")
 
-    if "Name" in display_df.columns:
-        display_df = display_df.sort_values(by="Name", key=lambda col: col.str.lower(), na_position='last').reset_index(drop=True)
+    if "Company" in display_df.columns:
+        display_df = display_df.sort_values(by="Company", key=lambda col: col.str.lower(), na_position='last').reset_index(drop=True)
 
     edited_df = st.data_editor(
         display_df,
@@ -156,9 +167,7 @@ if not st.session_state.raw_data.empty:
 
         # async def enrich_selected(df):
         #     from backend.services.overview_scraper import AsyncCompanyScraper
-        #     api_key = "sk-b37194c5c44e4653ac21eee3c20f2ee1"
-        #     scraper = AsyncCompanyScraper(api_key=api_key)
-        #     # scraper = AsyncCompanyScraper(api_key=st.secrets["OPENAI_API_KEY"])
+        #     scraper = AsyncCompanyScraper(api_key=st.secrets["OPENAI_API_KEY"])
         #     enriched_rows = []
 
         #     for _, row in df.iterrows():
@@ -177,8 +186,7 @@ if not st.session_state.raw_data.empty:
         
         async def enrich_selected(df):
             from backend.services.overview_scraper import AsyncCompanyScraper
-            api_key = "sk-b37194c5c44e4653ac21eee3c20f2ee1"
-            scraper = AsyncCompanyScraper(api_key=api_key)
+            scraper = AsyncCompanyScraper(api_key=st.secrets["OPENAI_API_KEY"])
 
             companies = df.to_dict(orient="records")  # Convert dataframe to list of dicts
             location = ""  # Or you can pull this from elsewhere if you prefer

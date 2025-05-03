@@ -12,7 +12,7 @@ from backend.services.merge_sources import merge_data_sources
 from backend.services.parser import parse_data
 
 FIELDNAMES = [
-    "Name",
+    "Company",
     "Industry",
     "Address",
     "Rating",
@@ -26,21 +26,29 @@ async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, s
     bbb_data, google_maps_data, yp_data = await asyncio.gather(
         scrape_bbb(industry, location),
         scrape_lead_by_industry(industry, location),
-        scrape_yellowpages(industry, location)
+        scrape_yellowpages(industry, location, max_pages=5)
     )
+    
+    for item in google_maps_data:
+        item['Address'] = f"[GOOGLE]{item['Address']}"
+    
     print(f"Fetched: BBB={len(bbb_data)}, GMaps={len(google_maps_data)}, YP={len(yp_data)}")
 
     # Merge data on name and address
     merged_data = merge_data_sources(bbb_data, google_maps_data, yp_data, fieldnames=FIELDNAMES)
     
-    # De duplify using fuzzy matching    
-    deduplified_data = deduplicate_businesses(merged_data)
-    df = pd.DataFrame(deduplified_data)
-    
-    parsed_data = parse_data(df)
+    df = pd.DataFrame(merged_data)
+    print(df.head())
+    parsed_data = parse_data(df, location)
     data = parsed_data.to_dict(orient='records')
     
-    return data
+    # De duplify using fuzzy matching    
+    deduplified_data = deduplicate_businesses(data)
+    print(deduplified_data)
+    
+    print(f"Total entries after deduplication: {len(deduplified_data)}")
+    
+    return deduplified_data
 
 async def fetch_and_merge_seq(industry: str, location: str) -> List[Dict[str,str]]:
     bbb_data = []
