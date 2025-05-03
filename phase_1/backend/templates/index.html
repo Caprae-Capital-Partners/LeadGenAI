@@ -453,7 +453,7 @@
                     <p class="doc-description">
                         Find answers to commonly asked questions about LeadGen features and functionality.
                     </p>
-                    <a href="{{ url_for('main.user_docs') }}#search" class="doc-link">
+                    <a href="#faq" class="doc-link">
                         View FAQs
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -486,6 +486,187 @@
             </div>
         </div>
     </section>
+    
+    <!-- FAQ Section -->
+    <section id="faq" class="faq-section">
+        <div class="faq-container">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            
+            <div class="faq-accordion">
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>How do I import leads into the system?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>You can import leads by using our Bulk Import feature. Navigate to "Bulk Import" in the sidebar, upload your CSV file, and map your columns to the appropriate fields in our system. The system will then process your file and import valid leads.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>What file formats are supported for importing leads?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Currently, the system supports CSV (Comma Separated Values) files for importing leads. Make sure your CSV file includes at least the required fields: Email and Phone number.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>How can I export my leads?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>To export leads, go to the Leads page, select the leads you want to export using the checkboxes, choose your preferred format (CSV or Excel), and click the "Export Selected" button.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>Can I update lead status in bulk?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Currently, lead status must be updated individually. You can update a lead's status by selecting the appropriate status from the dropdown menu in the Actions column for that lead.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>Who can add or delete leads?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Only users with Admin or Developer roles can add new leads individually or delete leads. Standard users can view leads, update their status, and export data.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>How do I filter leads to find specific information?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>You can use the filtering options on the Leads page to narrow down your results. Filter by company, location, role/title, lead score, industry, business type, state, employee size, or revenue range to find specific leads.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <style>
+        /* FAQ Section Styles */
+        .faq-section {
+            padding: 80px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .faq-container {
+            width: 100%;
+        }
+        
+        .faq-accordion {
+            margin-top: 40px;
+        }
+        
+        .faq-item {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+        }
+        
+        .faq-question {
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .faq-question:hover {
+            background-color: #f8fafc;
+        }
+        
+        .faq-question h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin: 0;
+        }
+        
+        .faq-icon {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: var(--primary-color);
+            transition: all 0.3s ease;
+        }
+        
+        .faq-answer {
+            padding: 0 24px;
+            height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .faq-answer p {
+            padding-bottom: 20px;
+            color: var(--light-text);
+            line-height: 1.6;
+        }
+        
+        .faq-item.active .faq-answer {
+            height: auto;
+            padding-top: 0;
+        }
+        
+        .faq-item.active .faq-icon {
+            transform: rotate(45deg);
+        }
+    </style>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // FAQ Accordion Functionality
+            const faqItems = document.querySelectorAll('.faq-item');
+            
+            faqItems.forEach(item => {
+                const question = item.querySelector('.faq-question');
+                
+                question.addEventListener('click', () => {
+                    // Toggle active class on the clicked item
+                    item.classList.toggle('active');
+                    
+                    // Close other items
+                    faqItems.forEach(otherItem => {
+                        if (otherItem !== item) {
+                            otherItem.classList.remove('active');
+                        }
+                    });
+                });
+            });
+            
+            // Smooth scroll to FAQ when clicking the View FAQs link
+            const faqLink = document.querySelector('a[href="#faq"]');
+            if (faqLink) {
+                faqLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const targetSection = document.querySelector('#faq');
+                    if (targetSection) {
+                        targetSection.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            }
+        });
+    </script>
     
     <!-- About Us Section -->
     <section class="about-section" id="about">
