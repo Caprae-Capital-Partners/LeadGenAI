@@ -62,11 +62,11 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
         category = info_texts[0] if len(info_texts) > 0 else "NA"
         address = "[G]" + info_texts[-1] if len(info_texts) > 2 else "NA"
 
-        rating_element = container.locator("span[aria-label*='stars']")
-        rating = (
-            (await rating_element.get_attribute("aria-label")).split(" stars")[0]
-            if await rating_element.count() > 0 else "NA"
-        )
+        # rating_element = container.locator("span[aria-label*='stars']")
+        # rating = (
+        #     (await rating_element.get_attribute("aria-label")).split(" stars")[0]
+        #     if await rating_element.count() > 0 else "NA"
+        # )
 
         phone_element = container.locator("span.UsdlK")
         phone = (
@@ -83,20 +83,18 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
             website = f"https://www.googleadservices.com{website}"
 
         return {
-            "Name": company_name,
+            "Company": company_name,
             "Industry": category,
             "Address": address,
-            "Rating": rating,
             "Business_phone": phone,
             "Website": website
         }
     except Exception as e:
         print(f"Error extracting data for a business: {e}")
         return {
-            "Name": "NA",
+            "Company": "NA",
             "Industry": "NA",
             "Address": "NA",
-            "Rating": "NA",
             "Business_phone": "NA",
             "Website": "NA"
         }
@@ -154,5 +152,5 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
     finally:
         await manager.stop_browser()
 
-if __name__ == "__main__":
-    print(asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca")))
+# if __name__ == "__main__":
+#     print(asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca")))
