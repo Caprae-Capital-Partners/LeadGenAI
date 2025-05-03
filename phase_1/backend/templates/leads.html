@@ -1488,7 +1488,7 @@
                         <tr>
                             <th class="checkbox-col">
                                 <div class="checkbox-wrapper">
-                                    <input type="checkbox" id="selectAll" class="custom-checkbox" onclick="toggleAllCheckboxes()">
+                                    <input type="checkbox" id="headerSelectAll" class="custom-checkbox" onclick="toggleAllCheckboxes()">
                                 </div>
                             </th>
                             <th class="sticky-col id-col">ID</th>
@@ -1694,54 +1694,68 @@
         });
         
         function toggleAllCheckboxes() {
-            const selectAllCheckbox = document.getElementById('selectAll');
+            // Get both header checkbox and top "Select All" checkbox
+            const topSelectAllCheckbox = document.getElementById('selectAll');
+            const headerCheckbox = document.getElementById('headerSelectAll');
+            
+            // Set checked state based on whichever checkbox triggered the event
+            const newCheckedState = document.activeElement === headerCheckbox ? 
+                                    headerCheckbox.checked : 
+                                    topSelectAllCheckbox.checked;
+            
+            // Sync both checkboxes
+            if (headerCheckbox) headerCheckbox.checked = newCheckedState;
+            if (topSelectAllCheckbox) topSelectAllCheckbox.checked = newCheckedState;
+            
+            // Apply checked state to all lead checkboxes
             const checkboxes = document.querySelectorAll('.lead-checkbox');
-            const headerCheckbox = document.querySelector('.checkbox-col .custom-checkbox');
-            
-            // Get all visible rows
-            const visibleRows = Array.from(document.querySelectorAll('#leadsTable tbody tr')).filter(
-                row => row.style.display !== 'none'
-            );
-            
-            // Get all visible checkboxes
-            const visibleCheckboxes = visibleRows.map(row => row.querySelector('.lead-checkbox'));
-            
-            // Set checked state for all checkboxes (both header and rows)
-            const newCheckedState = selectAllCheckbox.checked;
             checkboxes.forEach(checkbox => {
                 if (checkbox) checkbox.checked = newCheckedState;
             });
-            
-            // Sync header checkboxes
-            if (headerCheckbox) headerCheckbox.checked = newCheckedState;
-            if (selectAllCheckbox) selectAllCheckbox.checked = newCheckedState;
             
             // Update export button state
             updateExportButton();
         }
 
-        // Add event listener to sync header checkbox with select all
+        // Add event listener to sync checkboxes
         document.addEventListener('DOMContentLoaded', function() {
-            const headerCheckbox = document.querySelector('.checkbox-col .custom-checkbox');
-            const selectAllCheckbox = document.getElementById('selectAll');
+            const headerCheckbox = document.getElementById('headerSelectAll');
+            const topSelectAllCheckbox = document.getElementById('selectAll');
             
+            // Listen for changes on header checkbox
             if (headerCheckbox) {
                 headerCheckbox.addEventListener('change', function() {
-                    if (selectAllCheckbox) {
-                        selectAllCheckbox.checked = this.checked;
-                        toggleAllCheckboxes();
-                    }
+                    toggleAllCheckboxes();
                 });
             }
             
-            if (selectAllCheckbox) {
-                selectAllCheckbox.addEventListener('change', function() {
-                    if (headerCheckbox) {
-                        headerCheckbox.checked = this.checked;
-                        toggleAllCheckboxes();
-                    }
+            // Listen for changes on top Select All checkbox
+            if (topSelectAllCheckbox) {
+                topSelectAllCheckbox.addEventListener('change', function() {
+                    toggleAllCheckboxes();
                 });
             }
+            
+            // Listen for changes on individual lead checkboxes to manage the "Select All" state
+            document.querySelectorAll('.lead-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const allCheckboxes = document.querySelectorAll('.lead-checkbox');
+                    const checkedCount = document.querySelectorAll('.lead-checkbox:checked').length;
+                    
+                    // If all checkboxes are checked, set "Select All" to checked
+                    // If not all are checked, set "Select All" to unchecked
+                    const allChecked = checkedCount === allCheckboxes.length;
+                    
+                    if (headerCheckbox) headerCheckbox.checked = allChecked;
+                    if (topSelectAllCheckbox) topSelectAllCheckbox.checked = allChecked;
+                    
+                    // Update export button
+                    updateExportButton();
+                });
+            });
+            
+            // Initialize export button state
+            updateExportButton();
         });
 
         function updateExportButton() {
@@ -1962,23 +1976,7 @@
             // Initialize filters
             populateFilters();
 
-            // Add change event listener to all checkboxes
-            document.querySelectorAll('.lead-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    const allCheckboxes = Array.from(document.querySelectorAll('.lead-checkbox'));
-                    const visibleCheckboxes = allCheckboxes.filter(cb => 
-                        cb.closest('tr').style.display !== 'none'
-                    );
-                    const allChecked = visibleCheckboxes.every(cb => cb.checked);
-                    const selectAllCheckbox = document.getElementById('selectAll');
-                    if (selectAllCheckbox) {
-                        selectAllCheckbox.checked = allChecked;
-                        selectAllCheckbox.indeterminate = !allChecked && 
-                            visibleCheckboxes.some(cb => cb.checked);
-                    }
-                    updateExportButton();
-                });
-            });
+            // Add change event listener to all checkboxes - this is handled by our new listener in toggleAllCheckboxes
         });
 
         function clearFilters() {
@@ -2010,11 +2008,11 @@
             // Update total count
             document.getElementById('totalCount').textContent = totalRows;
 
-            // Uncheck select all
-            const selectAllCheckbox = document.getElementById('selectAll');
-            if (selectAllCheckbox) {
-                selectAllCheckbox.checked = false;
-            }
+            // Uncheck select all checkboxes
+            const topSelectAllCheckbox = document.getElementById('selectAll');
+            const headerCheckbox = document.getElementById('headerSelectAll');
+            if (topSelectAllCheckbox) topSelectAllCheckbox.checked = false;
+            if (headerCheckbox) headerCheckbox.checked = false;
 
             // Update export button state
             updateExportButton();
