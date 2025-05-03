@@ -163,12 +163,8 @@ class LeadController:
                 return True, ""
         except IntegrityError as e:
             db.session.rollback()
-            if "lead_email_key" in str(e):
-                return False, f"Error: Email address '{lead_data['email']}' is already in use"
-            elif "lead_phone_key" in str(e):
-                return False, f"Error: Phone number '{lead_data['phone']}' is already in use"
-            else:
-                return False, f"Error adding/updating lead: {str(e)}"
+            # Use generic error message instead of specific ones
+            return False, "Duplicate data detected"
         except Exception as e:
             db.session.rollback()
             return False, f"Error adding/updating lead: {str(e)}"

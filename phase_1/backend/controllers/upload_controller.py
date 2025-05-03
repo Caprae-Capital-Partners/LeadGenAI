@@ -190,7 +190,6 @@ class UploadController:
                     else:
                         skipped_duplicates += 1
                         skipped_details.append(f"Row {idx+2}: {msg}")
-                        flash(f"Row {idx+2}: {msg}", 'info')
                 except Exception as e:
                     errors += 1
                     reason = f"Database error: {str(e)}"
@@ -207,9 +206,9 @@ class UploadController:
                     skipped_details.append(f"Row {idx+2}: {reason}")
                     continue
 
-            # Flash all skipped details at the end as a single message
-            if skipped_details:
-                flash(' / '.join(skipped_details), 'info')
+            # Don't flash skipped details
+            # if skipped_details:
+            #     flash(' / '.join(skipped_details), 'info')
 
             return added, skipped_duplicates, errors
 
