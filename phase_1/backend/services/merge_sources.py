@@ -36,7 +36,7 @@ def merge_data_sources(data1: List[Dict[str, str]],
     
     def get_key(record: Dict[str, str]) -> str:
         company = record.get("Company", "").strip().lower()
-        address = record.get("Address", "").replace("[GOOGLE]", "").strip().lower()
+        address = record.get("Address", "").replace("[G]", "").strip().lower()
         return company + address
 
     # Helper to add record to merged list safely

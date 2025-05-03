@@ -21,11 +21,11 @@ def parse_address(address: str, location: str) -> pd.DataFrame:
     if pd.isna(address):
         return places
     
-    if address.startswith("[GOOGLE]"):
-        places['Address'] = [address.replace("[GOOGLE]", "")]
-        places['Street'] = [address.replace("[GOOGLE]", "")]
+    if address.startswith("[G]"):
+        places['Address'] = [address.replace("[G]", "")]
+        places['Street'] = [address.replace("[G]", "")]
         if len(location_parts) > 1:
-            places['States'] = [location_parts[-1].replace(" ", "")]
+            places['State'] = [location_parts[-1].replace(" ", "")]
             places['City'] = [location_parts[-2].replace(" ", "")]
         return places
 
@@ -33,12 +33,12 @@ def parse_address(address: str, location: str) -> pd.DataFrame:
     if len(address) == 3:
         places['Address'] = [address]
         places['Street'] = [address[0]]
-        places['City'] = [address[1].replace(" ", "")]
+        places['City'] = [address[1]]
         places['State'] = re.sub(r'[\d\s\-]', '', address[2])
 
     if len(address) == 2:
         places['Address'] = [address]
-        places['City'] = [address[0].replace(" ", "")]
+        places['City'] = [address[0]]
         places['State'] = re.sub(r'[\d\s\-]', '', address[1])
 
     else:

@@ -60,7 +60,7 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
             if (await span.text_content()).strip() and (await span.text_content()).strip() != "·"
         ]
         category = info_texts[0] if len(info_texts) > 0 else "NA"
-        address = info_texts[-1] if len(info_texts) > 2 else "NA"
+        address = "[G]" + info_texts[-1] if len(info_texts) > 2 else "NA"
 
         rating_element = container.locator("span[aria-label*='stars']")
         rating = (
