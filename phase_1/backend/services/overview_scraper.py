@@ -146,7 +146,7 @@ class AsyncCompanyScraper:
         answers = await asyncio.gather(*chat_tasks)
     
         return {
-            "Name": company_name,
+            "Company": company_name,
             "Overview": answers[0] if len(answers) > 0 else "Not Found",
             "Products & Services": answers[1] if len(answers) > 1 else "Not Found",
     }
@@ -191,7 +191,7 @@ class AsyncCompanyScraper:
 
         async def process_with_semaphore(company):
             async with semaphore:
-                name = company.get("Name", "NA")
+                name = company.get("Company", "NA")
                 result = await self.process_company(name, location, context=context)  # pass context
                 return {**company, **result}
 
