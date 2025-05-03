@@ -99,7 +99,7 @@ async def fetch_management(data: List[Tuple[str, str]], context: BrowserContext,
 
 async def enrich_management(data: List[Tuple[str,str]]) -> List[str]:
     """Enriches lead data with website and management details."""
-    manager = PlaywrightManager(headless=False)
+    manager = PlaywrightManager(headless=True)
     await manager.start_browser(stealth_on=True)
     try:
         results = await fetch_management(data, manager.context)
