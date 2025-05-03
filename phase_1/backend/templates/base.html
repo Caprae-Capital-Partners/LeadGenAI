@@ -324,13 +324,13 @@
         </div>
 
         <!-- Settings Section -->
-        <div class="nav-section">
+        <!-- <div class="nav-section">
             <div class="nav-section-title">System</div>
             <a href="#" class="nav-item">
                 <i class="bi bi-gear"></i>
                 <span>Settings</span>
             </a>
-        </div>
+        </div> -->
 
         <!-- User Management (Admin and Developer) -->
         {% if current_user.is_authenticated and (current_user.is_admin() or current_user.role == 'developer') %}
