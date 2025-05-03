@@ -348,9 +348,9 @@
 {% block content %}
     <section class="hero-section">
         <div class="hero-content">
-            <h1 class="hero-title">Transform Your Lead Generation</h1>
+            <h1 class="hero-title">Streamline Your Lead Management</h1>
             <p class="hero-subtitle">
-                Automate your lead generation process with data analytics
+                An easy-to-use system for organizing, tracking, and managing your leads
             </p>
             <div class="cta-buttons">
                 <a href="{{ url_for('lead.dashboard') }}" class="btn btn-primary">
@@ -360,7 +360,7 @@
                         <line x1="20" y1="8" x2="20" y2="14"></line>
                         <line x1="23" y1="11" x2="17" y2="11"></line>
                     </svg>
-                    Dashboard
+                    Go to Dashboard
                 </a>
             </div>
         </div>
@@ -377,9 +377,9 @@
                         <line x1="12" y1="17" x2="12.01" y2="17"></line>
                     </svg>
                 </div>
-                <h3 class="feature-title">Smart Lead Scoring</h3>
+                <h3 class="feature-title">Lead Management</h3>
                 <p class="feature-description">
-                    Automatically score and prioritize leads based on multiple data points and behavior patterns.
+                    Easily store, track, and manage your leads with comprehensive filtering and search capabilities.
                 </p>
             </div>
 
@@ -391,9 +391,9 @@
                         <line x1="12" y1="22.08" x2="12" y2="12"></line>
                     </svg>
                 </div>
-                <h3 class="feature-title">Personalized Outreach</h3>
+                <h3 class="feature-title">Bulk Import & Export</h3>
                 <p class="feature-description">
-                    Generate customized email and LinkedIn messages tailored to each lead's profile and interests.
+                    Import leads from CSV files with column mapping and export selected leads in CSV or Excel format.
                 </p>
             </div>
 
@@ -405,9 +405,9 @@
                         <line x1="9" y1="21" x2="9" y2="9"></line>
                     </svg>
                 </div>
-                <h3 class="feature-title">Easy Management</h3>
+                <h3 class="feature-title">Status Tracking</h3>
                 <p class="feature-description">
-                    Organize and manage your leads efficiently with our intuitive dashboard and filtering system.
+                    Track lead status through your sales pipeline and get a real-time dashboard view of your lead management metrics.
                 </p>
             </div>
         </div>
@@ -462,6 +462,7 @@
                     </a>
                 </div>
                 
+                {% if current_user.is_authenticated and current_user.role in ['admin', 'developer'] %}
                 <div class="doc-card">
                     <div class="doc-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -481,6 +482,7 @@
                         </svg>
                     </a>
                 </div>
+                {% endif %}
             </div>
         </div>
     </section>
@@ -491,10 +493,10 @@
         <div class="about-content">
             <div class="about-text">
                 <p>
-                    LeadGen was founded in 2023 with a clear mission: to revolutionize how businesses generate and manage leads. We identified common pain points in traditional lead generation processes and built a solution that combines smart automation with intuitive design.
+                    LeadGenDB is a lead management system designed to help businesses efficiently organize, track, and manage their leads. Our platform provides a centralized database for your lead information with tools for importing, filtering, and exporting data.
                 </p>
                 <p>
-                    Our team consists of data scientists, sales experts, and UI/UX specialists who work together to create a platform that not only streamlines lead management but also provides valuable insights to maximize conversion rates.
+                    Our team has developed this solution to address the common challenges in lead management by creating a simple yet powerful system that prioritizes ease of use and practical functionality.
                 </p>
                 
                 <div class="mission-values">
@@ -507,8 +509,8 @@
                             </svg>
                         </div>
                         <div class="value-text">
-                            <h4>Innovation</h4>
-                            <p>We constantly strive to incorporate cutting-edge technologies and methodologies to improve lead generation.</p>
+                            <h4>Simplicity</h4>
+                            <p>We focus on delivering a clean, intuitive interface that makes lead management straightforward and accessible.</p>
                         </div>
                     </div>
                     
@@ -519,8 +521,8 @@
                             </svg>
                         </div>
                         <div class="value-text">
-                            <h4>Customer-Centricity</h4>
-                            <p>We design our platform with our users in mind, prioritizing ease of use and practical functionality.</p>
+                            <h4>Efficiency</h4>
+                            <p>Our tools are designed to save you time with features like bulk import/export and quick filtering options.</p>
                         </div>
                     </div>
                     
@@ -533,8 +535,8 @@
                             </svg>
                         </div>
                         <div class="value-text">
-                            <h4>Data-Driven Decisions</h4>
-                            <p>We believe in the power of data analytics to drive better business outcomes and informed decisions.</p>
+                            <h4>Organization</h4>
+                            <p>We help you keep your lead data structured and accessible, making it easier to manage your sales pipeline.</p>
                         </div>
                     </div>
                 </div>
