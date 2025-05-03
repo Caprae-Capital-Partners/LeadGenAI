@@ -11,6 +11,8 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256))
+    role = db.Column(db.String(20), default='user', nullable=False)
+    company = db.Column(db.String(100))  # New field for company
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
 
@@ -21,6 +23,22 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """Check if password matches"""
         return check_password_hash(self.password_hash, password)
+
+    def has_role(self, role):
+        """Check if user has specific role"""
+        return self.role == role
+
+    def is_admin(self):
+        """Check if user is admin"""
+        return self.role == 'admin'
+
+    def is_developer(self):
+        """Check if user is developer"""
+        return self.role == 'developer'
+
+    def is_staff(self):
+        """Check if user is admin or developer"""
+        return self.role in ['admin', 'developer']
 
     def __repr__(self):
         return f'<User {self.username}>' 

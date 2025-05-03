@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user
 
 class AuthController:
     @staticmethod
-    def register(username, email, password):
+    def register(username, email, password, role='user', company=''):
         """Register a new user"""
         # Check if username already exists
         if User.query.filter_by(username=username).first():
@@ -13,9 +13,14 @@ class AuthController:
         if User.query.filter_by(email=email).first():
             return False, "Email already registered"
 
+        # Validate role
+        valid_roles = ['admin', 'developer', 'user']
+        if role not in valid_roles:
+            return False, f"Invalid role. Must be one of: {', '.join(valid_roles)}"
+
         try:
             # Create new user
-            user = User(username=username, email=email)
+            user = User(username=username, email=email, role=role, company=company)
             user.set_password(password)
             
             # Add to database

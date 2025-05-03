@@ -141,3 +141,34 @@ class LeadController:
         """Get all leads as JSON for API"""
         leads = Lead.query.all()
         return [lead.to_dict() for lead in leads]
+
+    @staticmethod
+    def add_or_update_lead_by_match(lead_data):
+        """Add a new lead or update existing lead by matching email or phone"""
+        try:
+            existing_lead = Lead.query.filter(
+                (Lead.email == lead_data['email']) | (Lead.phone == lead_data['phone'])
+            ).first()
+
+            if existing_lead:
+                for key, value in lead_data.items():
+                    if hasattr(existing_lead, key):
+                        setattr(existing_lead, key, value)
+                db.session.commit()
+                return True, ""
+            else:
+                lead = Lead(**lead_data)
+                db.session.add(lead)
+                db.session.commit()
+                return True, ""
+        except IntegrityError as e:
+            db.session.rollback()
+            if "lead_email_key" in str(e):
+                return False, f"Error: Email address '{lead_data['email']}' is already in use"
+            elif "lead_phone_key" in str(e):
+                return False, f"Error: Phone number '{lead_data['phone']}' is already in use"
+            else:
+                return False, f"Error adding/updating lead: {str(e)}"
+        except Exception as e:
+            db.session.rollback()
+            return False, f"Error adding/updating lead: {str(e)}"

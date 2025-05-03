@@ -327,14 +327,25 @@
         <div class="nav-section">
             <div class="nav-section-title">System</div>
             <a href="#" class="nav-item">
-                <i class="bi bi-people"></i>
-                <span>Users</span>
-            </a>
-            <a href="#" class="nav-item">
                 <i class="bi bi-gear"></i>
                 <span>Settings</span>
             </a>
         </div>
+
+        <!-- User Management (Admin and Developer) -->
+        {% if current_user.is_authenticated and (current_user.is_admin() or current_user.role == 'developer') %}
+        <div class="nav-section">
+            <div class="nav-section-title">User Management</div>
+            <a href="{{ url_for('auth.manage_users') }}" class="nav-item {% if request.endpoint == 'auth.manage_users' %}active{% endif %}">
+                <i class="bi bi-people"></i>
+                <span>Manage Users</span>
+            </a>
+            <a href="{{ url_for('auth.signup') }}" class="nav-item {% if request.endpoint == 'auth.signup' %}active{% endif %}">
+                <i class="bi bi-person-plus"></i>
+                <span>Create User</span>
+            </a>
+        </div>
+        {% endif %}
     </nav>
     {% endif %}
 
