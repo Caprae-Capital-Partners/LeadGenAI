@@ -61,7 +61,7 @@ async def extract_businesses(page):
         return businesses
     
     for listing in listings:
-        business_info = {'Name': 'NA', 'Industry': 'NA', 'Address': 'NA', 'Business_phone': 'NA', 'Website': 'NA'}
+        business_info = {'Company': 'NA', 'Industry': 'NA', 'Address': 'NA', 'Business_phone': 'NA', 'Website': 'NA'}
         
         # Extract business name
         try:
