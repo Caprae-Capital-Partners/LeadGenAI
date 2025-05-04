@@ -65,17 +65,16 @@ async def extract_business_details(container: Locator, search_term: str) -> Dict
     """Extract details from a single business container using Locator API."""
     try:
         business_info = {
-            'name': 'N/A',
-            'industry': search_term,
-            'address': 'N/A',
-            'phone': 'N/A',
-            'website': 'N/A'
+            'Company': 'NA',
+            'Industry': search_term,
+            'Address': 'NA',
+            'Business_phone': 'NA',
         }
         
         # Extract name
         name_locator = container.locator('h3 a strong')
         if await name_locator.count() > 0:
-            business_info['name'] = (await name_locator.first.text_content()).strip()
+            business_info['Company'] = (await name_locator.first.text_content()).strip()
         
         # Extract address - using a more specific approach to avoid multiple matches
         # First try to find the specific address span (usually the second span.small)
@@ -91,25 +90,25 @@ async def extract_business_details(container: Locator, search_term: str) -> Dict
             
             # Check if it looks like an address (contains numbers)
             if re.search(r'\d', address_text) and len(address_text) > 5:
-                business_info['address'] = address_text.strip()
+                business_info['Address'] = address_text.strip()
         
         # Extract phone
         phone_locator = container.locator('a[href^="tel:"] strong')
         if await phone_locator.count() > 0:
             phone_text = (await phone_locator.first.text_content()).strip()
             phone_text = re.sub(r'[^\d\s\-\+\(\)]', '', phone_text)
-            business_info['phone'] = phone_text
+            business_info['Business_phone'] = phone_text
         
         # Extract website
-        website_locators = await container.locator('a[href^="http"]:not([href*="hotfrog.com"]):not([href^="tel:"])').all()
-        for locator in website_locators:
-            href = await locator.get_attribute('href')
-            if href and not href.startswith('tel:'):
-                business_info['website'] = href
-                break
+        # website_locators = await container.locator('a[href^="http"]:not([href*="hotfrog.com"]):not([href^="tel:"])').all()
+        # for locator in website_locators:
+        #     href = await locator.get_attribute('href')
+        #     if href and not href.startswith('tel:'):
+        #         business_info['Website'] = href
+        #         break
         
-        if ((business_info['name'] != 'N/A' and business_info['name'] != '') or 
-            (business_info['phone'] != 'N/A' and business_info['phone'] != '')):
+        if ((business_info['Company'] != 'N/A' and business_info['Company'] != '') or 
+            (business_info['Business_phone'] != 'N/A' and business_info['Business_phone'] != '')):
             return business_info
         return None
     
@@ -167,7 +166,7 @@ async def scrape_hotfrog(search_term: str, location: str, max_pages: int = 3) ->
     all_businesses = []
     
     search_term = search_term.lower().replace(' ', '-')
-    location = location.lower().replace(' ', '-')
+    location = location.lower().replace(', ', '-')
     
     for page_num in range(1, max_pages + 1):
         page_businesses = await scrape_page(search_term, location, page_num)
@@ -183,7 +182,7 @@ async def scrape_hotfrog(search_term: str, location: str, max_pages: int = 3) ->
     seen = set()
     
     for business in all_businesses:
-        identifier = f"{business['name']}_{business['phone']}"
+        identifier = f"{business['Company']}_{business['Business_phone']}"
         if identifier not in seen:
             seen.add(identifier)
             unique_businesses.append(business)
@@ -196,14 +195,14 @@ async def save_to_csv(businesses, filename='hotfrog_data.csv'):
         print("No data to save to CSV.")
         return None
     
-    output_dir = "hotfrog_data"
+    output_dir = "yellowpages_data"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
     filepath = os.path.join(output_dir, filename)
     
     with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['name', 'industry', 'address', 'phone', 'website']
+        fieldnames = ['Company', 'Industry', 'Address', 'Business_phone']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
         writer.writeheader()
@@ -217,29 +216,18 @@ async def main():
     """Main function to run the scraper with user interaction."""
     print("\n=== HotFrog Business Scraper ===\n")
     
-    search_term = input("Enter business type to search for (e.g., 'restaurants'): ")
-    location = input("Enter location (state or city name): ")
-    
-    try:
-        max_pages = int(input("Enter maximum number of pages to scrape (1-5 recommended): "))
-        if max_pages < 1:
-            max_pages = 1
-        if max_pages > 5:
-            print("Warning: Scraping many pages increases chance of detection. Limiting to 5 pages.")
-            max_pages = 5
-    except:
-        print("Invalid input for max pages, defaulting to 2.")
-        max_pages = 2
-    
+    search_term = "primary care"
+    location = "glendale, ca"
+     
     print(f"\nScraping Hotfrog for '{search_term}' in '{location}'...")
     
-    businesses = await scrape_hotfrog(search_term, location, max_pages)
+    businesses = await scrape_hotfrog(search_term, location, 5)
     
     if businesses:
         print(f"\nSuccessfully scraped {len(businesses)} unique businesses.")
         filename = f"{search_term.replace(' ', '_')}_{location.replace(' ', '_')}.csv"
         await save_to_csv(businesses, filename)
-        print(f"Data saved to hotfrog_data/{filename}")
+        print(f"Data saved {filename}")
     else:
         print("\nNo businesses were scraped. Try running the script again or adjusting your search terms.")
 
