@@ -298,7 +298,7 @@ def api_upload_leads():
             return jsonify({"status": "error", "message": "Invalid data format. Expected a list of leads"}), 400
         
         # Initial validation - check required fields only once
-        required_fields = ['email', 'phone']
+        required_fields = ['email', 'phone', 'website']
         valid_leads = []
         invalid_indices = []
         
@@ -308,9 +308,10 @@ def api_upload_leads():
                 # Clean email and phone
                 lead['email'] = UploadController.clean_email(lead['email'])
                 lead['phone'] = UploadController.clean_phone(lead['phone'])
+                lead['website'] = UploadController.clean_website(lead['website'])
                 
                 # Quick validation
-                if UploadController.is_valid_email(lead['email']) and UploadController.is_valid_phone(lead['phone']):
+                if UploadController.is_valid_email(lead['email']) and UploadController.is_valid_phone(lead['phone']) and UploadController.is_valid_website(lead['website']):
                     # Truncate fields to match database limitations
                     lead = Lead.truncate_fields(lead)
                     valid_leads.append(lead)
@@ -323,17 +324,18 @@ def api_upload_leads():
         added = 0
         skipped = 0
         
-        # Get all existing emails and phones in one query to check duplicates efficiently
-        existing_leads = db.session.query(Lead.email, Lead.phone).all()
+        # Get all existing emails, phones, and websites in one query to check duplicates efficiently
+        existing_leads = db.session.query(Lead.email, Lead.phone, Lead.website).all()
         existing_emails = {lead.email for lead in existing_leads}
         existing_phones = {lead.phone for lead in existing_leads}
+        existing_websites = {lead.website for lead in existing_leads}
         
         # Prepare lists for bulk operations
         new_leads = []
         
         for lead_data in valid_leads:
             # Check if it's a duplicate
-            if lead_data['email'] in existing_emails or lead_data['phone'] in existing_phones:
+            if lead_data['email'] in existing_emails or lead_data['phone'] in existing_phones or lead_data['website'] in existing_websites:
                 skipped += 1
                 continue
                 
@@ -344,7 +346,7 @@ def api_upload_leads():
             # Update tracking sets to prevent duplicates within the same batch
             existing_emails.add(lead_data['email'])
             existing_phones.add(lead_data['phone'])
-            
+            existing_websites.add(lead_data['website'])
         # Bulk insert new leads
         if new_leads:
             db.session.bulk_save_objects(new_leads)
@@ -361,7 +363,7 @@ def api_upload_leads():
                 "added": added,
                 "skipped_duplicates": skipped,
                 "errors": errors,
-                "invalid_indices": invalid_indices[:10] if invalid_indices else []  # Return first 10 invalid indices for debugging
+                "invalid_indices": invalid_indices[:10] if invalid_indices else []
             }
         }), 200
         

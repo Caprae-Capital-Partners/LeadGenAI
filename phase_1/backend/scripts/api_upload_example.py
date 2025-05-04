@@ -94,8 +94,8 @@ def upload_leads(leads_data, session_cookie=None):
 
 if __name__ == "__main__":
     # Replace with your actual credentials
-    username = "dev"  # Update with your actual username
-    password = "dev123"  # Update with your actual password
+    username = "developer"  # Update with your actual username
+    password = "developer123"  # Update with your actual password
     
     # Option 1: Login first to get session cookie
     print("Attempting to login and get session cookie...")

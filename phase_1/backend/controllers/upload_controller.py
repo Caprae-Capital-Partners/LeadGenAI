@@ -34,6 +34,12 @@ class UploadController:
         if pd.isna(phone):
             return None
         return re.sub(r'\D', '', str(phone))
+    
+    @staticmethod
+    def clean_website(website):
+        if pd.isna(website):
+            return None
+        return str(website).strip().lower()
 
     @staticmethod
     def is_valid_email(email):
@@ -48,6 +54,12 @@ class UploadController:
             return False
         phone_str = re.sub(r'\D', '', str(phone))
         return phone_str.isdigit() and len(phone_str) >= 8
+    
+    @staticmethod
+    def is_valid_website(website):
+        if not website or pd.isna(website):
+            return False
+        return bool(website.strip())
 
     @staticmethod
     def is_valid_row(name, email, phone):
