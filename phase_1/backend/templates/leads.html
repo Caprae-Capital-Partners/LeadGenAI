@@ -1855,7 +1855,8 @@
                 'industry': 11,
                 'revenue': 12,
                 'employees': 15,
-                'score': 20
+                'score': 19,
+                'status': 20
             };
 
             // Skip header row
@@ -1879,9 +1880,11 @@
                     shouldShow = roleCell === role.toLowerCase();
                 }
 
-                if (shouldShow && score) {
-                    const scoreCell = row.cells[20].textContent.trim().toLowerCase();
-                    shouldShow = scoreCell === score.toLowerCase();
+                if (shouldShow && status) {
+                    const statusCell = row.cells[20].textContent.trim().toLowerCase();
+                    // Compare case-insensitive, taking into account 'New' default and capitalize filter
+                    console.log(`Comparing status: "${statusCell}" with filter: "${status.toLowerCase()}"`);
+                    shouldShow = statusCell === status.toLowerCase();
                 }
 
                 // Apply search text
