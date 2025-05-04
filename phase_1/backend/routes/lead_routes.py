@@ -238,13 +238,33 @@ def export_leads():
     """Export selected leads to CSV or Excel - All roles can export"""
     selected_leads = request.form.getlist('selected_leads[]')
     file_format = request.form.get('file_format', 'csv')
+    export_type = request.form.get('export_type', 'selected')
     
-    if not selected_leads:
+    # Get filter parameters if exporting filtered data
+    filter_params = None
+    if export_type == 'filtered':
+        filter_params = {
+            'company': request.form.get('company', ''),
+            'location': request.form.get('location', ''),
+            'role': request.form.get('role', ''),
+            'status': request.form.get('status', ''),
+            'revenue': request.form.get('revenue', ''),
+            'search': request.form.get('search', '')
+        }
+        # Remove empty filters
+        filter_params = {k: v for k, v in filter_params.items() if v}
+    
+    # Check if we're exporting selected leads and if any are selected
+    if export_type == 'selected' and not selected_leads:
         flash('Please select at least one lead to export', 'danger')
         return redirect(url_for('lead.view_leads'))
     
     try:
-        output, filename, mimetype = ExportController.export_leads_to_file(selected_leads, file_format)
+        # Pass either lead_ids or filter_params based on export type
+        if export_type == 'selected':
+            output, filename, mimetype = ExportController.export_leads_to_file(selected_leads, file_format)
+        else:  # filtered
+            output, filename, mimetype = ExportController.export_leads_to_file(None, file_format, filter_params)
         
         if output is None:
             flash('No leads found to export', 'danger')

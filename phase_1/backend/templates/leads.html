@@ -1312,6 +1312,14 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        
+                        <div class="filter-item">
+                            <label class="filter-label">Revenue</label>
+                            <input type="text" id="revenueFilter" class="filter-input" 
+                                   placeholder="Min revenue (e.g. $500K, $5M)" 
+                                   title="Enter minimum revenue value (e.g. $500K, $5M) to show leads with equal or higher revenue"
+                                   onkeyup="applyFilters()">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1661,17 +1669,39 @@
 
     <!-- Add Export Format Dialog -->
     <div id="exportFormatDialog" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
-        <div class="modal-content" style="background-color: white; margin: 15% auto; padding: 20px; border-radius: 8px; width: 300px; position: relative;">
-            <h3 style="margin-top: 0; color: var(--primary-color);">Select Export Format</h3>
+        <div class="modal-content" style="background-color: white; margin: 15% auto; padding: 24px; border-radius: 12px; width: 400px; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+            <h3 style="margin-top: 0; color: var(--primary-color); font-size: 24px; text-align: center; margin-bottom: 24px;">Export Options</h3>
+            
             <div style="margin: 20px 0;">
-                <button onclick="exportLeads('csv')" class="btn" style="width: 100%; margin-bottom: 10px; background: var(--primary-color); color: white;">
-                    Export as CSV
-                </button>
-                <button onclick="exportLeads('excel')" class="btn" style="width: 100%; background: var(--success-color); color: white;">
-                    Export as Excel
-                </button>
+                <div style="margin-bottom: 16px; font-weight: 600; font-size: 16px; color: #333;">What to Export:</div>
+                <div style="display: flex; margin-bottom: 24px; gap: 20px;">
+                    <label style="display: flex; align-items: center; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; background-color: #f8fafc; width: 100%; cursor: pointer; transition: all 0.2s ease;">
+                        <input type="radio" name="exportType" value="selected" style="margin-right: 12px; width: 18px; height: 18px; accent-color: var(--primary-color);"> 
+                        <div>
+                            <div style="font-weight: 500;">Selected Leads</div>
+                            <div style="color: #64748b; font-size: 14px;">(<span id="selectedCount">0</span> leads)</div>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: center; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; background-color: #f8fafc; width: 100%; cursor: pointer; transition: all 0.2s ease;">
+                        <input type="radio" name="exportType" value="filtered" style="margin-right: 12px; width: 18px; height: 18px; accent-color: var(--primary-color);"> 
+                        <div>
+                            <div style="font-weight: 500;">Filtered Leads</div>
+                            <div style="color: #64748b; font-size: 14px;">(<span id="filteredCount">0</span> leads)</div>
+                        </div>
+                    </label>
+                </div>
+                
+                <div style="margin-bottom: 16px; font-weight: 600; font-size: 16px; color: #333;">Export Format:</div>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <button onclick="exportLeads('csv')" class="btn" style="width: 100%; background: var(--primary-color); color: white; padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease;">
+                        Export as CSV
+                    </button>
+                    <button onclick="exportLeads('excel')" class="btn" style="width: 100%; background: var(--success-color); color: white; padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease;">
+                        Export as Excel
+                    </button>
+                </div>
             </div>
-            <button onclick="closeExportFormatDialog()" class="btn" style="width: 100%; background: #f8f9fa; color: var(--dark-color);">
+            <button onclick="closeExportFormatDialog()" class="btn" style="width: 100%; background: #f1f5f9; color: #475569; padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease; margin-top: 16px;">
                 Cancel
             </button>
         </div>
@@ -1776,15 +1806,63 @@
                 exportForm.appendChild(input);
             });
             
-            exportBtn.disabled = selectedCheckboxes.length === 0;
+            const selectedCount = selectedCheckboxes.length;
+            
+            // Count rows for filtered count
+            const visibleRows = document.querySelectorAll('#leadsTable tbody tr:not([style*="display: none"])').length;
+            const totalRows = document.querySelectorAll('#leadsTable tbody tr').length;
+            
+            // Check if any filter is active
+            const isFilterActive = isAnyFilterActive();
+            
+            // If no filter is active, show total rows instead of "filtered"
+            const filteredCount = isFilterActive ? visibleRows : totalRows;
+            const filterText = isFilterActive ? 'Filtered' : 'All';
+            
+            exportBtn.disabled = selectedCount === 0 && filteredCount === 0;
             exportBtn.innerHTML = `
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7 10 12 15 17 10"></polyline>
                     <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                <span>Export Selected (${selectedCheckboxes.length})</span>
+                <span>Export (${selectedCount > 0 ? selectedCount + ' Selected' : filteredCount + ' ' + filterText})</span>
             `;
+            
+            // Update counts in the export dialog
+            if (document.getElementById('selectedCount')) {
+                document.getElementById('selectedCount').textContent = selectedCount;
+            }
+            if (document.getElementById('filteredCount')) {
+                document.getElementById('filteredCount').textContent = filteredCount;
+                
+                // Update filtered label text
+                const filteredCountLabel = document.querySelector('label[for="exportType-filtered"] div, input[name="exportType"][value="filtered"]').closest('label').querySelector('div div:first-child');
+                if (filteredCountLabel) {
+                    filteredCountLabel.textContent = isFilterActive ? 'Filtered Leads' : 'All Leads';
+                }
+            }
+        }
+        
+        // Function to check if any filter is active
+        function isAnyFilterActive() {
+            // Check basic filters
+            if (document.getElementById('companyFilter').value !== '') return true;
+            if (document.getElementById('locationFilter').value !== '') return true;
+            if (document.getElementById('roleFilter').value !== '') return true;
+            if (document.getElementById('statusFilter').value !== '') return true;
+            if (document.getElementById('revenueFilter').value !== '') return true;
+            if (document.getElementById('searchInput').value !== '') return true;
+            
+            // Check advanced filters
+            const advancedFilters = document.querySelectorAll('.filter-row');
+            for (let row of advancedFilters) {
+                const field = row.querySelector('.field-select').value;
+                const value = row.querySelector('.value-input').value;
+                if (field && value) return true;
+            }
+            
+            return false;
         }
 
         function toggleAdvancedFilters() {
@@ -1825,6 +1903,7 @@
             const location = document.getElementById('locationFilter').value;
             const role = document.getElementById('roleFilter').value;
             const status = document.getElementById('statusFilter').value;
+            const revenue = document.getElementById('revenueFilter').value.trim();
 
             // Get advanced filter conditions
             const advancedFilters = [];
@@ -1882,9 +1961,21 @@
 
                 if (shouldShow && status) {
                     const statusCell = row.cells[20].textContent.trim().toLowerCase();
-                    // Compare case-insensitive, taking into account 'New' default and capitalize filter
-                    console.log(`Comparing status: "${statusCell}" with filter: "${status.toLowerCase()}"`);
                     shouldShow = statusCell === status.toLowerCase();
+                }
+                
+                
+                if (shouldShow && revenue) {
+                    const revenueCell = row.cells[12].textContent.trim();
+                    // Compare revenue values (handle $XM format)
+                    const rowRevenueValue = parseRevenueValue(revenueCell);
+                    const filterRevenueValue = parseRevenueValue(revenue);
+                    
+                    if (rowRevenueValue !== null && filterRevenueValue !== null) {
+                        shouldShow = rowRevenueValue >= filterRevenueValue;
+                    } else {
+                        shouldShow = false;
+                    }
                 }
 
                 // Apply search text
@@ -1962,7 +2053,7 @@
         // Remove automatic filter application on input change
         document.addEventListener('DOMContentLoaded', function() {
             // Add change event listeners to all filter dropdowns
-            const filters = ['companyFilter', 'locationFilter', 'roleFilter', 'statusFilter'];
+            const filters = ['companyFilter', 'locationFilter', 'roleFilter', 'statusFilter', 'revenueFilter'];
             filters.forEach(filterId => {
                 const filter = document.getElementById(filterId);
                 if (filter) {
@@ -1984,7 +2075,7 @@
 
         function clearFilters() {
             // Reset all filter dropdowns
-            const filters = ['companyFilter', 'locationFilter', 'roleFilter', 'statusFilter'];
+            const filters = ['companyFilter', 'locationFilter', 'roleFilter', 'statusFilter', 'revenueFilter'];
             filters.forEach(filterId => {
                 const filter = document.getElementById(filterId);
                 if (filter) {
@@ -2138,6 +2229,31 @@
 
             // Apply filters to update the table
             applyFilters();
+        }
+        
+        // Function to parse revenue values like $5M, $1.5M, etc.
+        function parseRevenueValue(revenueStr) {
+            if (!revenueStr || revenueStr === '-') return null;
+            
+            // Handle "nan" value
+            if (revenueStr.toLowerCase() === 'nan') return 0;
+            
+            
+            const cleanStr = revenueStr.replace('$', '').trim();
+            
+            if (cleanStr.endsWith('M') || cleanStr.endsWith('m')) {
+                // Convert $XM format to a number (millions)
+                const numPart = parseFloat(cleanStr.slice(0, -1));
+                return isNaN(numPart) ? null : numPart;
+            } else if (cleanStr.endsWith('K') || cleanStr.endsWith('k')) {
+                // Convert $XK format to a number (thousands)
+                const numPart = parseFloat(cleanStr.slice(0, -1));
+                return isNaN(numPart) ? null : numPart / 1000; 
+            } else {
+                // Try to parse as a direct number
+                const numPart = parseFloat(cleanStr);
+                return isNaN(numPart) ? null : numPart;
+            }
         }
 
         function addFilterRow(button) {
@@ -2363,6 +2479,7 @@
             document.getElementById('locationFilter').value = '';
             document.getElementById('roleFilter').value = '';
             document.getElementById('statusFilter').value = '';
+            document.getElementById('revenueFilter').value = '';
             
             // Clear search input
             document.getElementById('searchInput').value = '';
@@ -2398,6 +2515,65 @@
         }
 
         function showExportFormatDialog() {
+            // Update the counts before showing the dialog
+            const selectedCount = document.querySelectorAll('.lead-checkbox:checked').length;
+            const visibleRows = document.querySelectorAll('#leadsTable tbody tr:not([style*="display: none"])').length;
+            const totalRows = document.querySelectorAll('#leadsTable tbody tr').length;
+            
+            // Check if any filter is active
+            const isFilterActive = isAnyFilterActive();
+            
+            // If no filter is active, show total rows instead of "filtered"
+            const filteredCount = isFilterActive ? visibleRows : totalRows;
+            
+            if (document.getElementById('selectedCount')) {
+                document.getElementById('selectedCount').textContent = selectedCount;
+            }
+            if (document.getElementById('filteredCount')) {
+                document.getElementById('filteredCount').textContent = filteredCount;
+                
+                // Update label text based on whether filters are active
+                const filteredLabel = document.querySelector('input[name="exportType"][value="filtered"]').closest('label').querySelector('div div:first-child');
+                if (filteredLabel) {
+                    filteredLabel.textContent = isFilterActive ? 'Filtered Leads' : 'All Leads';
+                }
+            }
+            
+            // Set the appropriate default radio button
+            const selectedRadio = document.querySelector('input[name="exportType"][value="selected"]');
+            const filteredRadio = document.querySelector('input[name="exportType"][value="filtered"]');
+            
+            if (selectedCount > 0) {
+                selectedRadio.checked = true;
+                // Highlight selected radio
+                selectedRadio.closest('label').style.borderColor = 'var(--primary-color)';
+                selectedRadio.closest('label').style.backgroundColor = '#eef2ff';
+                filteredRadio.closest('label').style.borderColor = '#e2e8f0';
+                filteredRadio.closest('label').style.backgroundColor = '#f8fafc';
+            } else {
+                filteredRadio.checked = true;
+                // Highlight filtered radio
+                filteredRadio.closest('label').style.borderColor = 'var(--primary-color)';
+                filteredRadio.closest('label').style.backgroundColor = '#eef2ff';
+                selectedRadio.closest('label').style.borderColor = '#e2e8f0';
+                selectedRadio.closest('label').style.backgroundColor = '#f8fafc';
+            }
+            
+            // Add click event to radio buttons for highlighting
+            document.querySelectorAll('input[name="exportType"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    // Reset all radio labels
+                    document.querySelectorAll('input[name="exportType"]').forEach(r => {
+                        r.closest('label').style.borderColor = '#e2e8f0';
+                        r.closest('label').style.backgroundColor = '#f8fafc';
+                    });
+                    
+                    // Highlight selected radio
+                    this.closest('label').style.borderColor = 'var(--primary-color)';
+                    this.closest('label').style.backgroundColor = '#eef2ff';
+                });
+            });
+            
             document.getElementById('exportFormatDialog').style.display = 'block';
         }
 
@@ -2407,11 +2583,84 @@
 
         function exportLeads(format) {
             const form = document.getElementById('exportForm');
-            const formatInput = document.createElement('input');
+            
+            // Add file format
+            let formatInput = document.createElement('input');
             formatInput.type = 'hidden';
             formatInput.name = 'file_format';
             formatInput.value = format;
             form.appendChild(formatInput);
+            
+            // Get export type (selected or filtered)
+            const exportType = document.querySelector('input[name="exportType"]:checked').value;
+            let exportTypeInput = document.createElement('input');
+            exportTypeInput.type = 'hidden';
+            exportTypeInput.name = 'export_type';
+            exportTypeInput.value = exportType;
+            form.appendChild(exportTypeInput);
+            
+            // If exporting filtered data, add current filter values
+            if (exportType === 'filtered') {
+                // Get current filter values
+                const companyFilter = document.getElementById('companyFilter').value;
+                const locationFilter = document.getElementById('locationFilter').value;
+                const roleFilter = document.getElementById('roleFilter').value;
+                const statusFilter = document.getElementById('statusFilter').value;
+                const revenueFilter = document.getElementById('revenueFilter').value;
+                const searchInput = document.getElementById('searchInput').value;
+                
+                // Add filter values as hidden inputs
+                if (companyFilter) {
+                    let input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'company';
+                    input.value = companyFilter;
+                    form.appendChild(input);
+                }
+                
+                if (locationFilter) {
+                    let input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'location';
+                    input.value = locationFilter;
+                    form.appendChild(input);
+                }
+                
+                if (roleFilter) {
+                    let input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'role';
+                    input.value = roleFilter;
+                    form.appendChild(input);
+                }
+                
+                if (statusFilter) {
+                    let input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'status';
+                    input.value = statusFilter;
+                    form.appendChild(input);
+                }
+                
+                if (revenueFilter) {
+                    let input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'revenue';
+                    input.value = revenueFilter;
+                    form.appendChild(input);
+                }
+                
+                if (searchInput) {
+                    let input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'search';
+                    input.value = searchInput;
+                    form.appendChild(input);
+                }
+                
+                // Add advanced filters if they exist (future implementation)
+            }
+            
             form.submit();
             closeExportFormatDialog();
         }
