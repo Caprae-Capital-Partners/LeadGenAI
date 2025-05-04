@@ -6,9 +6,10 @@ import sys
 
 # Uncomment below lines if running this only this file for debugging
 # sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# sys.path.append(os.path.abspath("C:/Work/Internship/Web Scraper Caprae/LeadGenAI/phase_1/backend"))
 # from config.browser_config import PlaywrightManager
 
-from backend.config.browser_config import PlaywrightManager
+# from backend.config.browser_config import PlaywrightManager
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config.browser_config import PlaywrightManager
@@ -152,5 +153,5 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
     finally:
         await manager.stop_browser()
 
-# if __name__ == "__main__":
-#     print(asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca")))
+if __name__ == "__main__":
+    print(asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca")))

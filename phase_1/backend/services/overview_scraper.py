@@ -19,10 +19,14 @@ from config.browser_config import PlaywrightManager
 class AsyncCompanyScraper:
     def __init__(self, api_key: str):
         self.api_key = api_key
+        # self.df = pd.DataFrame(columns=[
+        #     'Overview', 'Product Services', 'Revenue'
+        # ])
         self.df = pd.DataFrame(columns=[
-            'Overview', 'Product Services', 'Revenue'
+            'Overview'
         ])
-        self.sources = ["Name", "Overview", "Products & Services"]
+        # self.sources = ["Name", "Overview", "Products & Services"]
+        self.sources = ["Name", "Overview"]
         self.google_search = "https://www.bing.com/search?q="
         self.manager = PlaywrightManager(headless=True)
         self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
@@ -104,12 +108,12 @@ class AsyncCompanyScraper:
                 f'{query} LinkedIn profile',
                 f'{query} site:linkedin.com'
             ],
-            [  # Products & Services
-                f'{query} Products Services',
-                f'{query} product list',
-                f'{query} services offered',
-                f'{query} what they sell'
-            ],
+            # [  # Products & Services
+            #     f'{query} Products Services',
+            #     f'{query} product list',
+            #     f'{query} services offered',
+            #     f'{query} what they sell'
+            # ],
         ]
         
         urls = [f'https://www.bing.com/search?q={random.choice(group)}' for group in query_variants]
@@ -137,9 +141,11 @@ class AsyncCompanyScraper:
         overview_text = texts[0]+texts[1] if len(texts) > 0 else "No overview data"
         services_text = texts[2] if len(texts) > 2 else "No services data"
         
+        print(overview_text)
+        
         prompts = [
             f"Explain in brief about {company_name} in {location} using the info provided: {overview_text}. Explain in about 50 words. Only answer by using the given information.",
-            f"Explain what {company_name} in {location} offers in terms of its products or the services they provide using this info: {services_text}. Provide a overview of around 50 words. Only answer by using the given information.",
+            # f"Explain what {company_name} in {location} offers in terms of its products or the services they provide using this info: {services_text}. Provide a overview of around 50 words. Only answer by using the given information.",
         ]
         
         chat_tasks = [asyncio.create_task(self.get_chat_response(prompt)) for prompt in prompts]
@@ -148,7 +154,7 @@ class AsyncCompanyScraper:
         return {
             "Company": company_name,
             "Overview": answers[0] if len(answers) > 0 else "Not Found",
-            "Products & Services": answers[1] if len(answers) > 1 else "Not Found",
+            # "Products & Services": answers[1] if len(answers) > 1 else "Not Found",
     }
 
     async def save(self, df, folder='../data'):
@@ -186,38 +192,66 @@ class AsyncCompanyScraper:
         semaphore = asyncio.Semaphore(3)
         processed_companies = []
 
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_16) AppleWebKit/537.36 (KHTML, like Gecko) Version/14.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36 Edg/90.0.818.62',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 OPR/45.0.2552.888',
+            'Mozilla/5.0 (Linux; Android 10; Pixel 4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.210 Mobile Safari/537.36',
+            'Mozilla/5.0 (Android 10; Mobile; rv:89.0) Gecko/89.0 Firefox/89.0',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4_2 like Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/537.36',
+            'Mozilla/5.0 (Android 10; Mobile; rv:91.0) Gecko/91.0 Firefox/91.0 Edge/91.0.864.48',
+            'Mozilla/5.0 (Linux; Android 10; Pixel 4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Mobile Safari/537.36 OPR/58.0.2875.157',
+            'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:41.0) Gecko/20100101 Firefox/41.0',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:39.0) Gecko/20100101 Firefox/39.0'
+        ]
+        
         await self.manager.start_browser(stealth_on=True)
-        context = await self.manager.browser.new_context()
+        contexts = []
+        for i in range(3):
+            user_agent = random.choice(user_agents)
+            context = await self.manager.browser.new_context(user_agent=user_agent)
+            contexts.append(context)
 
-        async def process_with_semaphore(company):
+        # Step 2: Assign each company to a context in round-robin fashion
+        async def process_with_semaphore(company, context):
             async with semaphore:
                 name = company.get("Company", "NA")
-                result = await self.process_company(name, location, context=context)  # pass context
+                result = await self.process_company(name, location, context=context)
                 return {**company, **result}
 
-        tasks = [asyncio.create_task(process_with_semaphore(company)) for company in companies]
+        tasks = []
+        for i, company in enumerate(companies):
+            context = contexts[i % 3]  # round-robin assignment
+            tasks.append(asyncio.create_task(process_with_semaphore(company, context)))
+
+        # Step 3: Gather all results
         processed_companies = await asyncio.gather(*tasks)
 
-        await context.close()  # Close context properly
-        await self.manager.stop_browser()  # Stop browser properly
+        # Step 4: Close contexts and browser
+        for context in contexts:
+            await context.close()
+        await self.manager.stop_browser()
 
         return processed_companies
     
         
-# if __name__ == "__main__":
-#     scraper = AsyncCompanyScraper()
-#     list_dict = [
-#         {'Phone Number': '02302494959',
-#          'Name': 'Pokenbir'},
-#         {'Email': 'admin@gmail.com',
-#          'Name': 'GLI Global Loyalty'},
-#         {'Email': 'siloam@gmail.com',
-#          'Name': 'Siloam Hospital'}
-#     ]
-#     result = asyncio.run(scraper.process_all_companies(list_dict, "Kebun Jeruk, Jakarta Selatan"))
+if __name__ == "__main__":
+    scraper = AsyncCompanyScraper(api_key="sk-b37194c5c44e4653ac21eee3c20f2ee1")
+    list_dict = [
+        {'Phone Number': '02302494959',
+         'Name': 'Pokenbir'},
+        {'Email': 'admin@gmail.com',
+         'Name': 'GLI Global Loyalty'},
+        {'Email': 'siloam@gmail.com',
+         'Name': 'Siloam Hospital'}
+    ]
+    result = asyncio.run(scraper.process_all_companies(list_dict, "Kebun Jeruk, Jakarta Selatan"))
     
-# #     result = asyncio.run(scraper.process_company("Pokenbir", "Kebun Jeruk, Jakarta Selatan"))
-# #     # result = asyncio.get_event_loop().run_until_complete(scraper.process_company("Born Again Construction LLC"))
-# #     # asyncio.run(scraper.save(result))
-# #     # asyncio.run(scraper.combine_leads('overview_and_products_services.csv', 'leads_private equity firms_New York.csv'))
-#     print(result)
+    # result = asyncio.run(scraper.process_company("Pokenbir", "Kebun Jeruk, Jakarta Selatan"))
+#     # result = asyncio.get_event_loop().run_until_complete(scraper.process_company("Born Again Construction LLC"))
+#     # asyncio.run(scraper.save(result))
+#     # asyncio.run(scraper.combine_leads('overview_and_products_services.csv', 'leads_private equity firms_New York.csv'))
+    print(result)

@@ -173,6 +173,7 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+/phase_1/frontend/.streamlit/secrets.toml
 /phase_1/data
 .vscode
 *.toml
