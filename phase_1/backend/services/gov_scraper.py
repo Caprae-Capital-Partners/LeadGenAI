@@ -1,6 +1,6 @@
 import requests
 
-HF_TOKEN = "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"
+HF_TOKEN = ""
 URL = "https://fatmagician-gov-leads.hf.space/search"
 
 def search_leads(location: str, category: str) -> dict:
