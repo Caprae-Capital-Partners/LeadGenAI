@@ -139,10 +139,8 @@ class AsyncCompanyScraper:
         print(f"Total texts extracted: {len(texts)}")
 
         overview_text = texts[0]+texts[1] if len(texts) > 0 else "No overview data"
-        services_text = texts[2] if len(texts) > 2 else "No services data"
-        
-        print(overview_text)
-        
+        # services_text = texts[2] if len(texts) > 2 else "No services data"
+                
         prompts = [
             f"Explain in brief about {company_name} in {location} using the info provided: {overview_text}. Explain in about 50 words. Only answer by using the given information.",
             # f"Explain what {company_name} in {location} offers in terms of its products or the services they provide using this info: {services_text}. Provide a overview of around 50 words. Only answer by using the given information.",
@@ -238,20 +236,20 @@ class AsyncCompanyScraper:
         return processed_companies
     
         
-if __name__ == "__main__":
-    scraper = AsyncCompanyScraper(api_key="sk-b37194c5c44e4653ac21eee3c20f2ee1")
-    list_dict = [
-        {'Phone Number': '02302494959',
-         'Name': 'Pokenbir'},
-        {'Email': 'admin@gmail.com',
-         'Name': 'GLI Global Loyalty'},
-        {'Email': 'siloam@gmail.com',
-         'Name': 'Siloam Hospital'}
-    ]
-    result = asyncio.run(scraper.process_all_companies(list_dict, "Kebun Jeruk, Jakarta Selatan"))
+# if __name__ == "__main__":
+#     scraper = AsyncCompanyScraper(api_key="")
+#     list_dict = [
+#         {'Phone Number': '02302494959',
+#          'Name': 'Pokenbir'},
+#         {'Email': 'admin@gmail.com',
+#          'Name': 'GLI Global Loyalty'},
+#         {'Email': 'siloam@gmail.com',
+#          'Name': 'Siloam Hospital'}
+#     ]
+#     result = asyncio.run(scraper.process_all_companies(list_dict, "Kebun Jeruk, Jakarta Selatan"))
     
     # result = asyncio.run(scraper.process_company("Pokenbir", "Kebun Jeruk, Jakarta Selatan"))
 #     # result = asyncio.get_event_loop().run_until_complete(scraper.process_company("Born Again Construction LLC"))
 #     # asyncio.run(scraper.save(result))
 #     # asyncio.run(scraper.combine_leads('overview_and_products_services.csv', 'leads_private equity firms_New York.csv'))
-    print(result)
+    # print(result)
