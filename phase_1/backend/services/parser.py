@@ -29,9 +29,39 @@ def parse_address(address: str, location: str) -> pd.DataFrame:
             places['State'] = [location_parts[-1].strip().upper()]
             places['City'] = [location_parts[-2].strip().title()]
         return places
+    if address.startswith("[H]"):
+        places['Address'] = [address.replace("[H]", "")]
+        if places['Address'].iloc[0].upper() == "NA":
+            places['City'] = ["NA"]
+            places['State'] = [location_parts[-1].strip().upper()]
+            return places
+        
+        address_parts = address.replace("[H]", "").split(',')
+
+        if len(address_parts) > 4:
+            places['Street'] = [address_parts[0].strip()]
+            places['City'] = [address_parts[-3].strip()]
+            places['State'] = re.sub(r'[\d\s\-]', '', address_parts[-2].strip())
+        elif len(address_parts) == 4:
+            # Format: Street, City, State
+            places['Street'] = [address_parts[0].strip()]
+            places['City'] = [address_parts[1].strip()]
+            places['State'] = re.sub(r'[\d\s\-]', '', address_parts[2].strip())
+        elif len(address_parts) == 3:
+            # Format: City, State
+            places['Street'] = ["NA"]
+            places['City'] = [address_parts[0].strip()]
+            places['State'] = re.sub(r'[\d\s\-]', '', address_parts[1].strip())
+        elif len(address_parts) == 1:
+            # Format: Only Street or incomplete address
+            places['Street'] = [address_parts[0].strip()]
+            places['City'] = ["NA"]
+            places['State'] = [location_parts[-1].strip().upper()]
+
+        return places
 
     address = address.split(',')
-    if len(address) == 3:
+    if len(address) >= 3:
         places['Address'] = [address]
         places['Street'] = [address[0]]
         places['City'] = [address[1].strip()]
