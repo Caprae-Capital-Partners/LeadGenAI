@@ -1,23 +1,26 @@
 import requests
 
 HF_TOKEN = "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"
-url = "https://fatmagician-gov-leads.hf.space/search"  # ✅ CORRECT URL
+URL = "https://fatmagician-gov-leads.hf.space/search"
 
-headers = {
-    "Authorization": f"Bearer {HF_TOKEN}",
-    "Content-Type": "application/json"
-}
+def search_leads(location: str, category: str) -> dict:
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/json"
+    }
 
-data = {
-    "location": "California",
-    "category": "barbershop"
-}
+    data = {
+        "location": location,
+        "category": category
+    }
 
-response = requests.post(url, json=data, headers=headers)
+    response = requests.post(URL, json=data, headers=headers)
 
-print(response.status_code)
-try:
-    print(response.json())
-except requests.exceptions.JSONDecodeError:
-    print("Non-JSON response:", response.text)
+    try:
+        return response.json()
+    except requests.exceptions.JSONDecodeError:
+        return {"error": "Non-JSON response", "status_code": response.status_code, "text": response.text}
 
+# if __name__ == "__main__":
+#     result = search_leads("los angeles", "barbershop")
+#     print(result)
