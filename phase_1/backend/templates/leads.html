@@ -1565,10 +1565,10 @@
                             <td>{{ lead.product_service_category or '-' }}</td>
                             <td>{{ lead.business_type or '-' }}</td>
                             <td>{{ lead.employees_range or '-' }}</td>
-                            <td>{{ lead.year_founded or '-' }}</td>
+                            <td>{{ lead.year_founded|int if lead.year_founded else '-' }}</td>
                             <!-- Customization -->
                             <td>{{ lead.owner_linkedin or '-' }}</td>
-                            <td>{{ lead.owner_age or '-' }}</td>
+                            <td>{% if lead.owner_age and lead.owner_age|string|lower != 'nan' %}{{ lead.owner_age|int if lead.owner_age|string|float == lead.owner_age|string|float|int else lead.owner_age }}{% else %}-{% endif %}</td>
                             <td>{{ lead.score or '-' }}</td>
                             <td>{{ lead.status|capitalize or 'New' }}</td>
                             <td class="truncate" title="{{ lead.reasoning }}">{{ lead.reasoning or '-' }}</td>
@@ -1583,8 +1583,8 @@
                             <td class="truncate" title="{{ lead.linkedin_customization_1 }}">{{ lead.linkedin_customization_1 or '-' }}</td>
                             <td class="truncate" title="{{ lead.linkedin_customization_2 }}">{{ lead.linkedin_customization_2 or '-' }}</td>
                             <!-- Timestamps -->
-                            <td class="date-col">{{ lead.created_at or '-' }}</td>
-                            <td class="date-col">{{ lead.updated_at or '-' }}</td>
+                            <td class="date-col">{{ lead.created_at.strftime('%Y-%m-%d %H:%M') if lead.created_at else '-' }}</td>
+                            <td class="date-col">{{ lead.updated_at.strftime('%Y-%m-%d %H:%M') if lead.updated_at else '-' }}</td>
                             <!-- Actions -->
                             <td class="actions">
                                 <!-- Status update for all users -->
