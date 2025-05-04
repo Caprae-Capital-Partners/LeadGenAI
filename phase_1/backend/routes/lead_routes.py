@@ -4,10 +4,13 @@ from controllers.upload_controller import UploadController
 from controllers.export_controller import ExportController
 from controllers.dashboard_controller import DashboardController
 from models.lead_model import db, Lead
-from flask_login import login_required
+from flask_login import login_required, current_user
+from utils.decorators import role_required
 import csv
 from io import StringIO, BytesIO
 import datetime
+import pandas as pd
+import io
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -26,8 +29,9 @@ def form():
 
 @lead_bp.route('/submit', methods=['POST'])
 @login_required
+@role_required('admin', 'developer')
 def submit():
-    """Submit new lead"""
+    """Submit new lead - Admin and Developer only"""
     success, message = LeadController.create_lead(request.form)
 
     if success:
@@ -88,7 +92,7 @@ def upload_csv():
 @lead_bp.route('/view_leads')
 @login_required
 def view_leads():
-    """View all leads"""
+    """View all leads - All roles can access"""
     leads = LeadController.get_all_leads()
     
     # Get unique values for filters
@@ -96,6 +100,7 @@ def view_leads():
     locations = sorted(set(f"{lead.city}, {lead.state}" if lead.city and lead.state else (lead.city or lead.state) for lead in leads if (lead.city or lead.state)))
     roles = sorted(set(lead.title for lead in leads if lead.title))
     scores = sorted(set(lead.score for lead in leads if lead.score))
+    statuses = sorted(set(lead.status for lead in leads if lead.status))
     
     # Get additional filter options
     industries = sorted(set(lead.industry for lead in leads if lead.industry))
@@ -110,6 +115,7 @@ def view_leads():
                          locations=locations,
                          roles=roles,
                          scores=scores,
+                         statuses=statuses,
                          industries=industries,
                          business_types=business_types,
                          states=states,
@@ -118,8 +124,9 @@ def view_leads():
 
 @lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
 @login_required
+@role_required('admin', 'developer')
 def edit_lead(lead_id):
-    """Edit lead"""
+    """Edit lead - Admin and Developer only"""
     if request.method == 'POST':
         success, message = LeadController.update_lead(lead_id, request.form)
 
@@ -132,10 +139,30 @@ def edit_lead(lead_id):
     lead = LeadController.get_lead_by_id(lead_id)
     return render_template('edit_lead.html', lead=lead)
 
+@lead_bp.route('/update_status/<int:lead_id>', methods=['POST'])
+@login_required
+def update_status(lead_id):
+    """Update lead status - All roles can update status"""
+    try:
+        lead = Lead.query.get_or_404(lead_id)
+        new_status = request.form.get('status')
+        if new_status:
+            lead.status = new_status
+            db.session.commit()
+            flash('Status updated successfully', 'success')
+        else:
+            flash('No status provided', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating status: {str(e)}', 'danger')
+
+    return redirect(url_for('lead.view_leads'))
+
 @lead_bp.route('/delete/<int:lead_id>')
 @login_required
+@role_required('admin', 'developer')
 def delete_lead(lead_id):
-    """Delete lead"""
+    """Delete lead - Admin and Developer  only"""
     try:
         lead = Lead.query.get_or_404(lead_id)
         db.session.delete(lead)
@@ -150,14 +177,15 @@ def delete_lead(lead_id):
 @lead_bp.route('/api/leads', methods=['GET'])
 @login_required
 def get_leads():
-    """API endpoint to get all leads"""
+    """API endpoint to get all leads - All roles can access"""
     leads = Lead.query.all()
     return jsonify([lead.to_dict() for lead in leads])
 
 @lead_bp.route('/api/leads', methods=['POST'])
 @login_required
+@role_required('admin', 'developer')
 def create_lead():
-    """Create a new lead"""
+    """Create a new lead via API - Admin and Developer only"""
     data = request.json
     lead = Lead(**data)
     
@@ -171,8 +199,9 @@ def create_lead():
 
 @lead_bp.route('/api/leads/<int:lead_id>', methods=['PUT'])
 @login_required
+@role_required('admin', 'developer')
 def update_lead_api(lead_id):
-    """Update a lead via API"""
+    """Update a lead via API - Admin and Developer only"""
     lead = Lead.query.get_or_404(lead_id)
     data = request.json
     
@@ -185,10 +214,28 @@ def update_lead_api(lead_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
+@lead_bp.route('/api/leads/<int:lead_id>/status', methods=['PUT'])
+@login_required
+def update_status_api(lead_id):
+    """Update a lead's status via API - All roles can update status"""
+    lead = Lead.query.get_or_404(lead_id)
+    data = request.json
+    
+    if 'status' not in data:
+        return jsonify({"error": "Status field is required"}), 400
+    
+    try:
+        lead.status = data['status']
+        db.session.commit()
+        return jsonify({"message": "Status updated successfully", "lead": lead.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+
 @lead_bp.route('/export_leads', methods=['POST'])
 @login_required
 def export_leads():
-    """Export selected leads to CSV or Excel"""
+    """Export selected leads to CSV or Excel - All roles can export"""
     selected_leads = request.form.getlist('selected_leads[]')
     file_format = request.form.get('file_format', 'csv')
     
@@ -216,6 +263,91 @@ def export_leads():
 @lead_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """Display dashboard"""
+    """Display dashboard - All roles can access"""
     stats = DashboardController.get_dashboard_stats()
     return render_template('dashboard.html', **stats)
+
+@lead_bp.route('/api/upload_leads', methods=['POST'])
+@login_required
+def api_upload_leads():
+    """API endpoint for scraping team to upload leads"""
+    try:
+        data = request.get_json()
+        
+        if not data or not isinstance(data, list) or len(data) == 0:
+            return jsonify({"status": "error", "message": "Invalid data format. Expected a list of leads"}), 400
+        
+        # Initial validation - check required fields only once
+        required_fields = ['email', 'phone']
+        valid_leads = []
+        invalid_indices = []
+        
+        # Pre-validate all leads at once
+        for i, lead in enumerate(data):
+            if all(field in lead for field in required_fields):
+                # Clean email and phone
+                lead['email'] = UploadController.clean_email(lead['email'])
+                lead['phone'] = UploadController.clean_phone(lead['phone'])
+                
+                # Quick validation
+                if UploadController.is_valid_email(lead['email']) and UploadController.is_valid_phone(lead['phone']):
+                    # Truncate fields to match database limitations
+                    lead = Lead.truncate_fields(lead)
+                    valid_leads.append(lead)
+                else:
+                    invalid_indices.append(i)
+            else:
+                invalid_indices.append(i)
+                
+        # Process all valid leads in bulk
+        added = 0
+        skipped = 0
+        
+        # Get all existing emails and phones in one query to check duplicates efficiently
+        existing_leads = db.session.query(Lead.email, Lead.phone).all()
+        existing_emails = {lead.email for lead in existing_leads}
+        existing_phones = {lead.phone for lead in existing_leads}
+        
+        # Prepare lists for bulk operations
+        new_leads = []
+        
+        for lead_data in valid_leads:
+            # Check if it's a duplicate
+            if lead_data['email'] in existing_emails or lead_data['phone'] in existing_phones:
+                skipped += 1
+                continue
+                
+            # Add to new leads list for bulk insert
+            new_lead = Lead(**lead_data)
+            new_leads.append(new_lead)
+            
+            # Update tracking sets to prevent duplicates within the same batch
+            existing_emails.add(lead_data['email'])
+            existing_phones.add(lead_data['phone'])
+            
+        # Bulk insert new leads
+        if new_leads:
+            db.session.bulk_save_objects(new_leads)
+            db.session.commit()
+            added = len(new_leads)
+        
+        # Calculate statistics
+        errors = len(invalid_indices)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Upload Complete! Added: {added}, Skipped: {skipped}, Errors: {errors}",
+            "stats": {
+                "added": added,
+                "skipped_duplicates": skipped,
+                "errors": errors,
+                "invalid_indices": invalid_indices[:10] if invalid_indices else []  # Return first 10 invalid indices for debugging
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "status": "error",
+            "message": f"Error during upload: {str(e)}"
+        }), 500
