@@ -1397,7 +1397,7 @@
 
             <div class="filter-group" id="filterGroup1">
                 <div class="filter-row">
-                    <select class="filter-select field-select">
+                    <select class="filter-select field-select" onchange="updateOperatorOptions(this)">
                         <option value="">Select Field</option>
                         <!-- Basic Information -->
                         <option value="company">Company</option>
@@ -1417,9 +1417,7 @@
                         <option value="product_service_category">Products/Services</option>
                         <option value="business_type">Business Type</option>
                         <option value="employees_range">Employee Range</option>
-                        <option value="rev_source">Revenue Source</option>
                         <option value="year_founded">Year Founded</option>
-                        <option value="associated_members">Associated Members</option>
                         
                         <!-- Owner Information -->
                         <option value="owner_linkedin">Owner's LinkedIn</option>
@@ -1427,6 +1425,7 @@
                         
                         <!-- Scoring and Notes -->
                         <option value="score">Lead Score</option>
+                        <option value="status">Status</option>
                         <option value="reasoning">Score Reasoning</option>
                         <option value="additional_notes">Additional Notes</option>
                         
@@ -1924,18 +1923,38 @@
 
             // Column mapping for advanced filters
             const columnMap = {
+                // Checkbox(0), ID(1), then data columns start
                 'company': 2,
                 'first_name': 3,
                 'last_name': 4,
                 'email': 5,
                 'phone': 6,
                 'title': 7,
-                'location': 8,
+                'location': 8, // Combined city and state
+                'city': 8,
+                'state': 8,
+                'website': 9,
+                'linkedin_url': 10,
                 'industry': 11,
                 'revenue': 12,
-                'employees': 15,
+                'product_service_category': 13,
+                'business_type': 14,
+                'employees_range': 15,
+                'year_founded': 16,
+                'owner_linkedin': 17,
+                'owner_age': 18,
                 'score': 19,
-                'status': 20
+                'status': 20,
+                'reasoning': 21,
+                'additional_notes': 22,
+                'subject_line_1': 23,
+                'email_customization_1': 24,
+                'subject_line_2': 25,
+                'email_customization_2': 26,
+                'linkedin_customization_1': 27,
+                'linkedin_customization_2': 28,
+                'created_at': 29,
+                'updated_at': 30
             };
 
             // Skip header row
@@ -1974,7 +1993,8 @@
                     if (rowRevenueValue !== null && filterRevenueValue !== null) {
                         shouldShow = rowRevenueValue >= filterRevenueValue;
                     } else {
-                        shouldShow = false;
+                        // If we can't parse the revenue values, fall back to string comparison
+                        shouldShow = revenueCell.toLowerCase().includes(revenue.toLowerCase());
                     }
                 }
 
@@ -1996,29 +2016,111 @@
                     let advancedResult = true;
                     
                     advancedFilters.forEach((filter, index) => {
-                        const cellValue = row.cells[columnMap[filter.field]].textContent.trim();
+                        const columnIndex = columnMap[filter.field] || -1;
+                        
+                        // Skip if column mapping not found
+                        if (columnIndex === -1) {
+                            return;
+                        }
+                        
+                        const cellValue = row.cells[columnIndex].textContent.trim();
                         const filterValue = filter.value;
                         let matches = false;
-
-                        switch (filter.operator) {
-                            case 'equals':
-                                matches = cellValue.toLowerCase() === filterValue.toLowerCase();
-                                break;
-                            case 'contains':
+                        
+                        // Special handling for revenue field
+                        if (filter.field === 'revenue') {
+                            const cellRevenueValue = parseRevenueValue(cellValue);
+                            const filterRevenueValue = parseRevenueValue(filterValue);
+                            
+                            if (cellRevenueValue !== null && filterRevenueValue !== null) {
+                                switch (filter.operator) {
+                                    case 'equals':
+                                        matches = Math.abs(cellRevenueValue - filterRevenueValue) < 0.01; // Approximation for floating point
+                                        break;
+                                    case 'contains':
+                                        matches = cellValue.toLowerCase().includes(filterValue.toLowerCase());
+                                        break;
+                                    case 'greater':
+                                        matches = cellRevenueValue > filterRevenueValue;
+                                        break;
+                                    case 'less':
+                                        matches = cellRevenueValue < filterRevenueValue;
+                                        break;
+                                    default:
+                                        matches = cellValue.toLowerCase() === filterValue.toLowerCase();
+                                }
+                            }
+                        } 
+                        // Handle date fields
+                        else if (['created_at', 'updated_at'].includes(filter.field)) {
+                            const cellDate = new Date(cellValue);
+                            let filterDate;
+                            
+                            try {
+                                filterDate = new Date(filterValue);
+                            } catch (e) {
+                                filterDate = null;
+                            }
+                            
+                            if (!isNaN(cellDate) && filterDate && !isNaN(filterDate)) {
+                                switch (filter.operator) {
+                                    case 'equals':
+                                        matches = cellDate.toDateString() === filterDate.toDateString();
+                                        break;
+                                    case 'greater':
+                                        matches = cellDate > filterDate;
+                                        break;
+                                    case 'less':
+                                        matches = cellDate < filterDate;
+                                        break;
+                                    default:
+                                        matches = cellValue.toLowerCase().includes(filterValue.toLowerCase());
+                                }
+                            } else {
                                 matches = cellValue.toLowerCase().includes(filterValue.toLowerCase());
-                                break;
-                            case 'starts':
-                                matches = cellValue.toLowerCase().startsWith(filterValue.toLowerCase());
-                                break;
-                            case 'ends':
-                                matches = cellValue.toLowerCase().endsWith(filterValue.toLowerCase());
-                                break;
-                            case 'greater':
-                                matches = parseFloat(cellValue) > parseFloat(filterValue);
-                                break;
-                            case 'less':
-                                matches = parseFloat(cellValue) < parseFloat(filterValue);
-                                break;
+                            }
+                        }
+                        // Handle numeric fields
+                        else if (['score', 'year_founded', 'owner_age'].includes(filter.field)) {
+                            const cellNum = parseFloat(cellValue);
+                            const filterNum = parseFloat(filterValue);
+                            
+                            if (!isNaN(cellNum) && !isNaN(filterNum)) {
+                                switch (filter.operator) {
+                                    case 'equals':
+                                        matches = cellNum === filterNum;
+                                        break;
+                                    case 'greater':
+                                        matches = cellNum > filterNum;
+                                        break;
+                                    case 'less':
+                                        matches = cellNum < filterNum;
+                                        break;
+                                    default:
+                                        matches = cellValue.toLowerCase().includes(filterValue.toLowerCase());
+                                }
+                            } else {
+                                matches = cellValue.toLowerCase().includes(filterValue.toLowerCase());
+                            }
+                        }
+                        // Default string comparison for other fields
+                        else {
+                            switch (filter.operator) {
+                                case 'equals':
+                                    matches = cellValue.toLowerCase() === filterValue.toLowerCase();
+                                    break;
+                                case 'contains':
+                                    matches = cellValue.toLowerCase().includes(filterValue.toLowerCase());
+                                    break;
+                                case 'starts':
+                                    matches = cellValue.toLowerCase().startsWith(filterValue.toLowerCase());
+                                    break;
+                                case 'ends':
+                                    matches = cellValue.toLowerCase().endsWith(filterValue.toLowerCase());
+                                    break;
+                                default:
+                                    matches = cellValue.toLowerCase().includes(filterValue.toLowerCase());
+                            }
                         }
 
                         if (index === 0) {
@@ -2070,7 +2172,20 @@
             // Initialize filters
             populateFilters();
 
-            // Add change event listener to all checkboxes - this is handled by our new listener in toggleAllCheckboxes
+            // Initialize advanced filter field select change listeners
+            document.querySelectorAll('.field-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    updateOperatorOptions(this);
+                });
+                
+                // Initialize operator options for existing rows
+                if (select.value) {
+                    updateOperatorOptions(select);
+                }
+            });
+
+            // Initialize export button state
+            updateExportButton();
         });
 
         function clearFilters() {
@@ -2238,8 +2353,28 @@
             // Handle "nan" value
             if (revenueStr.toLowerCase() === 'nan') return 0;
             
+            // Special case for < or > with revenue
+            if (revenueStr.includes('<') || revenueStr.includes('>')) {
+                // Extract the numeric part after < or >
+                const match = revenueStr.match(/[<>]\s*\$?(\d+(?:\.\d+)?[MmKk]?)/);
+                if (match && match[1]) {
+                    const numericPart = match[1];
+                    let value;
+                    
+                    if (numericPart.endsWith('M') || numericPart.endsWith('m')) {
+                        value = parseFloat(numericPart.slice(0, -1));
+                    } else if (numericPart.endsWith('K') || numericPart.endsWith('k')) {
+                        value = parseFloat(numericPart.slice(0, -1)) / 1000; // Convert K to M
+                    } else {
+                        value = parseFloat(numericPart);
+                    }
+                    
+                    // For < we return a small value, for > we return the actual value
+                    return revenueStr.includes('<') ? Math.max(0.1, value - 0.1) : value;
+                }
+            }
             
-            const cleanStr = revenueStr.replace('$', '').trim();
+            const cleanStr = revenueStr.replace(/[$,]/g, '').trim();
             
             if (cleanStr.endsWith('M') || cleanStr.endsWith('m')) {
                 // Convert $XM format to a number (millions)
@@ -2261,7 +2396,7 @@
             const newRow = document.createElement('div');
             newRow.className = 'filter-row';
             newRow.innerHTML = `
-                <select class="filter-select field-select">
+                <select class="filter-select field-select" onchange="updateOperatorOptions(this)">
                     <option value="">Select Field</option>
                     <!-- Basic Information -->
                     <option value="company">Company</option>
@@ -2281,9 +2416,7 @@
                     <option value="product_service_category">Products/Services</option>
                     <option value="business_type">Business Type</option>
                     <option value="employees_range">Employee Range</option>
-                    <option value="rev_source">Revenue Source</option>
                     <option value="year_founded">Year Founded</option>
-                    <option value="associated_members">Associated Members</option>
                     
                     <!-- Owner Information -->
                     <option value="owner_linkedin">Owner's LinkedIn</option>
@@ -2291,6 +2424,7 @@
                     
                     <!-- Scoring and Notes -->
                     <option value="score">Lead Score</option>
+                    <option value="status">Status</option>
                     <option value="reasoning">Score Reasoning</option>
                     <option value="additional_notes">Additional Notes</option>
                     
@@ -2334,7 +2468,71 @@
                 </button>
             `;
             filterGroup.appendChild(newRow);
+            
+            // Initialize the operator options based on field type
+            updateOperatorOptions(newRow.querySelector('.field-select'));
         }
+
+        // Function to update operator options based on selected field
+        function updateOperatorOptions(fieldSelect) {
+            const row = fieldSelect.closest('.filter-row');
+            const operatorSelect = row.querySelector('.operator-select');
+            const field = fieldSelect.value;
+            
+            // Reset operator select
+            operatorSelect.innerHTML = '';
+            
+            // Define operators based on field type
+            if (['revenue', 'score', 'year_founded', 'owner_age'].includes(field)) {
+                // Numeric fields
+                operatorSelect.innerHTML = `
+                    <option value="equals">Equals</option>
+                    <option value="greater">Greater than</option>
+                    <option value="less">Less than</option>
+                `;
+            } else if (['created_at', 'updated_at'].includes(field)) {
+                // Date fields
+                operatorSelect.innerHTML = `
+                    <option value="equals">Equals</option>
+                    <option value="greater">After</option>
+                    <option value="less">Before</option>
+                    <option value="contains">Contains</option>
+                `;
+            } else {
+                // Text fields (default)
+                operatorSelect.innerHTML = `
+                    <option value="equals">Equals</option>
+                    <option value="contains">Contains</option>
+                    <option value="starts">Starts with</option>
+                    <option value="ends">Ends with</option>
+                `;
+            }
+            
+            // Update placeholder text for the value input
+            const valueInput = row.querySelector('.value-input');
+            if (['created_at', 'updated_at'].includes(field)) {
+                valueInput.placeholder = "YYYY-MM-DD";
+            } else if (field === 'revenue') {
+                valueInput.placeholder = "e.g. $5M or $500K";
+            } else if (['score', 'year_founded', 'owner_age'].includes(field)) {
+                valueInput.placeholder = "Enter number...";
+            } else {
+                valueInput.placeholder = "Enter value...";
+            }
+        }
+
+        // Add event listener to initialize operator options for the first row
+        document.addEventListener('DOMContentLoaded', function() {
+            // Find the initial field select and set up its operator options
+            const initialFieldSelect = document.querySelector('.filter-row .field-select');
+            if (initialFieldSelect) {
+                initialFieldSelect.addEventListener('change', function() {
+                    updateOperatorOptions(this);
+                });
+            }
+            
+            // Rest of the DOMContentLoaded code...
+        });
 
         function removeFilterRow(button) {
             const row = button.closest('.filter-row');
