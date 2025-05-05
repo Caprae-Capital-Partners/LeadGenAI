@@ -59,6 +59,12 @@
         position: relative;
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
+    .date-col {
+        width: 180px;
+        text-align: center;
+        font-weight: 500;
+        background: #f8f9fa;
+    }
 </style>
 {% endblock %}
 {% block content %}
@@ -92,7 +98,7 @@
                     <th>Old Value</th>
                     <th>New Value</th>
                     <th>Username</th>
-                    <th>Changed At</th>
+                    <th class="date-col">Changed At</th>
                 </tr>
             </thead>
             <tbody>
@@ -105,7 +111,7 @@
                     <td class="truncate" title="{{ log.old_value }}">{{ log.old_value }}</td>
                     <td class="truncate" title="{{ log.new_value }}">{{ log.new_value }}</td>
                     <td>{{ log.username }}</td>
-                    <td>{{ log.changed_at }}</td>
+                    <td class="date-col">{{ log.changed_at.strftime('%Y-%m-%d %H:%M:%S') if log.changed_at else '-' }}</td>
                 </tr>
                 {% else %}
                 <tr><td colspan="8" style="text-align:center;">No audit log entries found.</td></tr>
