@@ -137,6 +137,29 @@ class LeadController:
             return False, f"Error deleting lead: {str(e)}"
 
     @staticmethod
+    def delete_multiple_leads(lead_ids):
+        """Delete multiple leads by their IDs"""
+        if not lead_ids:
+            return False, "No leads selected for deletion."
+            
+        try:
+            # Get all leads to be deleted
+            leads = Lead.query.filter(Lead.id.in_(lead_ids)).all()
+            
+            if not leads:
+                return False, "No leads found with the specified IDs."
+                
+            # Delete all leads
+            for lead in leads:
+                db.session.delete(lead)
+                
+            db.session.commit()
+            return True, f"{len(leads)} leads deleted successfully!"
+        except Exception as e:
+            db.session.rollback()
+            return False, f"Error deleting leads: {str(e)}"
+
+    @staticmethod
     def get_leads_json():
         """Get all leads as JSON for API"""
         leads = Lead.query.all()

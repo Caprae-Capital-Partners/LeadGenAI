@@ -174,6 +174,29 @@ def delete_lead(lead_id):
 
     return redirect(url_for('lead.view_leads'))
 
+@lead_bp.route('/delete_multiple_leads', methods=['POST'])
+@login_required
+@role_required('admin', 'developer')
+def delete_multiple_leads():
+    """Delete multiple leads - Admin and Developer only"""
+    selected_leads = request.form.getlist('selected_leads[]')
+    
+    if not selected_leads:
+        flash('No leads selected for deletion', 'danger')
+        return redirect(url_for('lead.view_leads'))
+    
+    # Convert string IDs to integers
+    lead_ids = [int(id) for id in selected_leads if id.isdigit()]
+    
+    success, message = LeadController.delete_multiple_leads(lead_ids)
+    
+    if success:
+        flash(message, 'success')
+    else:
+        flash(message, 'danger')
+        
+    return redirect(url_for('lead.view_leads'))
+
 @lead_bp.route('/api/leads', methods=['GET'])
 @login_required
 def get_leads():

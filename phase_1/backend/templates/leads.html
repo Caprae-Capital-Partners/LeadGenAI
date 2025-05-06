@@ -1,1230 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Lead Data{% endblock %}
 {% block additional_styles %}
-<style>
-    :root {
-      --primary-color: #4361ee;
-      --secondary-color: #3f37c9;
-      --accent-color: #4cc9f0;
-      --success-color: #4ad66d;
-      --danger-color: #f72585;
-      --light-color: #f8f9fa;
-      --dark-color: #212529;
-      --border-color: #e9ecef;
-      --hover-color: #f8f9fa;
-      --background-color: #F7F9FC;
-      --card-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: var(--background-color);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .container {
-      flex: 1;
-      max-width: 100%;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-    
-    h1 {
-      color: var(--dark-color);
-      margin: 0 0 25px 0;
-      font-size: 24px;
-      font-weight: 600;
-      position: relative;
-      padding-bottom: 10px;
-    }
-    
-    h1::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 40px;
-      height: 3px;
-      background: var(--primary-color);
-      border-radius: 2px;
-    }
-    
-    .filters-container {
-      background: white;
-      border-radius: 16px;
-      box-shadow: var(--card-shadow);
-      margin-bottom: 16px;
-      padding: 24px;
-      transition: all 0.3s ease;
-    }
-    
-    .search-wrapper {
-      width: 100%;
-      max-width: 800px;
-      margin: 0 auto 24px;
-      position: relative;
-    }
-    
-    .search-box {
-      width: 100%;
-      padding: 12px 18px 12px 45px;
-      border: 1px solid #E2E8F0;
-      border-radius: 12px;
-      font-size: 15px;
-      transition: all 0.3s ease;
-      background-color: white;
-    }
-    
-    .search-box:focus {
-      outline: none;
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-    }
-    
-    .search-icon {
-      position: absolute;
-      left: 15px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #94A3B8;
-    }
-    
-    .search-options {
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      padding: 8px 0;
-    }
-    
-    .search-option {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      user-select: none;
-      background: var(--light-color);
-    }
-    
-    .search-option:hover {
-      background-color: #e9ecef;
-    }
-    
-    .search-option input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-    }
-    
-    .search-option-text {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: #666;
-      font-size: 14px;
-    }
-    
-    .search-option svg {
-      color: #666;
-    }
-    
-    .search-option:hover .search-option-text,
-    .search-option:hover svg {
-      color: var(--primary-color);
-    }
-    
-    .filters-body {
-      padding: 20px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-    }
-    
-    .filters-section {
-      margin-bottom: 20px;
-    }
-    
-    .section-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--primary-color);
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .filters-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
-      width: 100%;
-    }
-    
-    .filter-item {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    
-    .filter-label {
-      font-size: 13px;
-      color: #64748B;
-      font-weight: 500;
-    }
-    
-    .filter-select {
-      padding: 10px 15px;
-      border: 1px solid #E2E8F0;
-      border-radius: 12px;
-      font-size: 14px;
-      color: #1E293B;
-      background-color: white;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 15px center;
-      padding-right: 40px;
-    }
-    
-    .filter-select:hover {
-      border-color: var(--primary-color);
-    }
-    
-    .filter-select:focus {
-      outline: none;
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-    }
-    
-    .range-inputs {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-    
-    .range-input {
-      flex: 1;
-      padding: 10px 15px;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      font-size: 14px;
-      background-color: white;
-      transition: all 0.2s ease;
-    }
-    
-    .range-input:hover {
-      border-color: var(--primary-color);
-    }
-    
-    .range-input:focus {
-      outline: none;
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-    }
-    
-    .range-separator {
-      color: #666;
-      font-size: 14px;
-      padding: 0 5px;
-    }
-    
-    .filters-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 24px;
-      padding-top: 20px;
-      border-top: 1px solid #E2E8F0;
-    }
-    
-    .filters-footer-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    
-    .btn-delete {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      background: white;
-      border: 1px solid var(--danger-color);
-      border-radius: 8px;
-      color: var(--danger-color);
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .btn-delete:hover {
-      background: var(--danger-color);
-      color: white;
-    }
-    
-    .total-counter {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      background: #f8fafc;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      color: #64748B;
-      font-size: 14px;
-    }
-    
-    .total-counter strong {
-      color: var(--primary-color);
-    }
-    
-    .actions-group {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    
-    .select-all-wrapper {
-      display: flex;
-      align-items: center;
-      padding: 8px 16px;
-      background: white;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      transition: all 0.2s ease;
-    }
-    
-    .select-all-wrapper:hover {
-      border-color: var(--primary-color);
-      background: #f8fafc;
-    }
-    
-    .select-all-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--dark-color);
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      user-select: none;
-    }
-    
-    .custom-checkbox {
-      appearance: none;
-      -webkit-appearance: none;
-      width: 18px;
-      height: 18px;
-      border: 2px solid #e2e8f0;
-      border-radius: 4px;
-      background-color: white;
-      cursor: pointer;
-      position: relative;
-      transition: all 0.2s ease;
-    }
-    
-    .custom-checkbox:hover {
-      border-color: var(--primary-color);
-    }
-    
-    .custom-checkbox:checked {
-      background-color: var(--primary-color);
-      border-color: var(--primary-color);
-    }
-    
-    .custom-checkbox:checked::after {
-      content: '';
-      position: absolute;
-      left: 5px;
-      top: 2px;
-      width: 6px;
-      height: 10px;
-      border: solid white;
-      border-width: 0 2px 2px 0;
-      transform: rotate(45deg);
-    }
-    
-    .export-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      background: var(--success-color);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .export-btn:not(:disabled) {
-      background: var(--success-color);
-    }
-    
-    .export-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      background: #94a3b8;
-    }
-    
-    .export-btn:not(:disabled):hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(74, 214, 109, 0.2);
-    }
-    
-    .export-btn svg {
-      width: 16px;
-      height: 16px;
-    }
-    
-    .toggle-advanced {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      background: white;
-      border: 1px solid var(--primary-color);
-      border-radius: 8px;
-      color: var(--primary-color);
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .toggle-advanced:hover {
-      background: var(--primary-color);
-      color: white;
-    }
-    
-    .toggle-icon {
-      transition: transform 0.2s ease;
-    }
-    
-    .toggle-advanced[aria-expanded="true"] .toggle-icon {
-      transform: rotate(180deg);
-    }
-    
-    .advanced-filters {
-      background: white;
-      border-radius: 12px;
-      border: 1px solid var(--border-color);
-      margin-top: 20px;
-      display: none;
-    }
-    
-    .advanced-filters.show {
-      display: block;
-      animation: slideDown 0.3s ease-out forwards;
-    }
-    
-    @keyframes slideDown {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    .filter-instructions {
-      margin-bottom: 20px;
-      padding: 16px;
-      background: #f8fafc;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-    }
-    
-    .filter-instructions p {
-      margin: 0 0 10px 0;
-      color: var(--dark-color);
-      font-weight: 500;
-      font-size: 14px;
-    }
-    
-    .filter-instructions ol {
-      margin: 0;
-      padding-left: 20px;
-      color: #64748B;
-    }
-    
-    .filter-instructions li {
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    
-    .filter-row {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 12px;
-      background: white;
-      padding: 16px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-    }
-    
-    .filter-select {
-      min-width: 180px;
-      padding: 8px 12px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      font-size: 14px;
-      color: var(--dark-color);
-      background-color: white;
-    }
-    
-    .operator-select {
-      min-width: 120px;
-    }
-    
-    .logic-select {
-      min-width: 100px;
-    }
-    
-    .filter-input {
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      font-size: 14px;
-      color: var(--dark-color);
-    }
-    
-    .btn-add-filter, .btn-remove-filter {
-      padding: 8px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      background: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-    }
-    
-    .btn-add-filter:hover {
-      background: var(--primary-color);
-      border-color: var(--primary-color);
-      color: white;
-    }
-    
-    .btn-remove-filter {
-      padding: 8px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      background: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-      color: var(--danger-color);
-    }
-    
-    .btn-remove-filter:hover {
-      background: var(--danger-color);
-      border-color: var(--danger-color);
-      color: white;
-    }
-    
-    .advanced-filters-actions {
-      display: flex;
-      gap: 12px;
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid var(--border-color);
-    }
-    
-    .btn-apply-filter, .btn-clear-filter {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .btn-apply-filter {
-      background: var(--primary-color);
-      color: white;
-      border: none;
-    }
-    
-    .btn-apply-filter:hover {
-      background: var(--secondary-color);
-    }
-    
-    .btn-clear-filter {
-      background: white;
-      color: var(--danger-color);
-      border: 1px solid var(--danger-color);
-    }
-    
-    .btn-clear-filter:hover {
-      background: var(--danger-color);
-      color: white;
-    }
-    
-    .column-visibility {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-    }
-    
-    .column-group {
-      background: var(--light-color);
-      padding: 15px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-    }
-    
-    .column-group-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--primary-color);
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .column-toggle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 0;
-      cursor: pointer;
-      font-size: 13px;
-      color: #666;
-      transition: all 0.2s ease;
-    }
-    
-    .column-toggle:hover {
-      color: var(--primary-color);
-    }
-    
-    .column-toggle input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--border-color);
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    
-    @media (max-width: 768px) {
-      .filters-header {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      
-      .search-wrapper {
-        min-width: auto;
-      }
-      
-      .search-options {
-        justify-content: flex-start;
-      }
-      
-      .filters-footer {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      
-      .toggle-advanced {
-        text-align: center;
-        justify-content: center;
-      }
-      
-      .total-counter {
-        text-align: center;
-        justify-content: center;
-      }
-    }
-    
-    .table-container {
-      flex: 1;
-      background: white;
-      border-radius: 16px;
-      box-shadow: var(--card-shadow);
-      overflow: auto;
-      margin-bottom: 20px;
-    }
-    
-    table {
-      width: 100%;
-      min-width: max-content;
-      border-collapse: separate;
-      border-spacing: 0;
-    }
-    
-    thead {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background-color: #f8f9fa;
-    }
-    
-    th {
-      background: white;
-      padding: 16px;
-      text-align: left;
-      font-weight: 500;
-      color: #64748B;
-      border-bottom: 1px solid #E2E8F0;
-      font-size: 13px;
-      white-space: nowrap;
-    }
-
-    th.actions {
-      position: sticky;
-      right: 0;
-      z-index: 11;
-      background-color: #f8f9fa;
-    }
-    
-    td {
-      padding: 16px;
-      border-bottom: 1px solid #E2E8F0;
-      color: #1E293B;
-      font-size: 14px;
-      white-space: nowrap;
-    }
-    
-    td.actions {
-      position: sticky;
-      right: 0;
-      background-color: white;
-      z-index: 1;
-      box-shadow: -5px 0 5px rgba(255, 255, 255, 0.9);
-    }
-    
-    tr {
-      transition: all 0.3s ease;
-    }
-    
-    tr:hover {
-      background-color: #F8FAFC;
-    }
-    
-    .section-header {
-      background-color: #e7f3ff;
-      color: var(--primary-color);
-      font-weight: bold;
-      text-align: center;
-    }
-    
-    .actions {
-      display: flex;
-      gap: 12px;
-      position: sticky;
-      right: 0;
-      background-color: #fff;
-      box-shadow: -5px 0 5px rgba(255, 255, 255, 0.9);
-      padding-left: 15px;
-    }
-    
-    .sticky-col {
-      position: sticky;
-      left: 0;
-      background-color: #fff;
-      z-index: 1;
-      box-shadow: 5px 0 5px rgba(255, 255, 255, 0.9);
-    }
-    
-    .id-col {
-      width: 70px;
-      text-align: center;
-    }
-    
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
-    
-    .btn:active {
-      transform: translateY(0);
-    }
-    
-    .btn-back {
-      background: var(--primary-color);
-      color: white;
-      border: none;
-    }
-    
-    .btn-back:hover {
-      background: var(--secondary-color);
-    }
-    
-    .btn-edit {
-      background: var(--primary-color);
-      color: white;
-      border: none;
-    }
-    
-    .btn-edit:hover {
-      background: var(--secondary-color);
-    }
-    
-    .btn-delete {
-      background: white;
-      color: var(--danger-color);
-      border: 1px solid var(--danger-color);
-    }
-    
-    .btn-delete:hover {
-      background: var(--danger-color);
-      color: white;
-    }
-    
-    .success-message {
-      background-color: #e8f5e9;
-      color: #2e7d32;
-      padding: 15px;
-      margin-bottom: 25px;
-      border-radius: 8px;
-      border-left: 4px solid #43a047;
-      animation: fadeInDown 0.5s;
-    }
-    
-    .truncate {
-      max-width: 250px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      transition: all 0.2s ease;
-    }
-    
-    .truncate:hover {
-      max-width: 500px;
-      white-space: normal;
-      background-color: #fffde7;
-      z-index: 10;
-      position: relative;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    
-    .date-col {
-      width: 180px;
-    }
-    
-    .highlight {
-      background-color: #fffde7 !important;
-    }
-    
-    /* Animations */
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
-    }
-    
-    .pulse-animation {
-      animation: pulse 2s infinite;
-    }
-    
-    /* Responsive adjustments */
-    @media screen and (max-width: 768px) {
-      .search-container {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      
-      .search-box {
-        width: 100%;
-        margin-bottom: 15px;
-      }
-      
-      .total {
-        margin-top: 15px;
-      }
-      
-      .container {
-        padding: 16px;
-      }
-      
-      .btn-back {
-        width: 100%;
-        text-align: center;
-      }
-    }
-    .select-all-container {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-left: auto;
-        background: #f8fafc;
-        padding: 8px 16px;
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
-        transition: all 0.2s ease;
-      }
-
-      .select-all-container:hover {
-        background: #f1f5f9;
-        border-color: var(--primary-color);
-      }
-
-      .select-all-container label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--dark-color);
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        user-select: none;
-      }
-
-      .checkbox-wrapper {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .custom-checkbox {
-        appearance: none;
-        -webkit-appearance: none;
-        width: 18px;
-        height: 18px;
-        border: 2px solid #e2e8f0;
-        border-radius: 4px;
-        background-color: white;
-        cursor: pointer;
-        position: relative;
-        transition: all 0.2s ease;
-      }
-
-      .custom-checkbox:hover {
-        border-color: var(--primary-color);
-        background-color: #f8fafc;
-      }
-
-      .custom-checkbox:checked {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-      }
-
-      .custom-checkbox:checked::after {
-        content: '';
-        position: absolute;
-        left: 5px;
-        top: 2px;
-        width: 6px;
-        height: 10px;
-        border: solid white;
-        border-width: 0 2px 2px 0;
-        transform: rotate(45deg);
-      }
-
-      .custom-checkbox:indeterminate {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-      }
-
-      .custom-checkbox:indeterminate::after {
-        content: '';
-        position: absolute;
-        left: 3px;
-        top: 7px;
-        width: 10px;
-        height: 2px;
-        background-color: white;
-      }
-
-      /* Style for the checkbox column */
-      .checkbox-col {
-        width: 40px;
-        text-align: center;
-        background-color: #f8fafc;
-        position: sticky;
-        left: 0;
-        z-index: 2;
-      }
-
-      .checkbox-col .checkbox-wrapper {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        padding: 8px;
-      }
-
-      /* Update the select all text style */
-      .select-all-text {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        color: var(--dark-color);
-      }
-
-      .select-all-text svg {
-        width: 16px;
-        height: 16px;
-        color: var(--primary-color);
-      }
-
-      /* Update the export button style */
-      .export-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background-color: var(--success-color);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-
-      .export-btn:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(74, 214, 109, 0.2);
-      }
-
-      .export-btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-
-      .export-btn svg {
-        width: 16px;
-        height: 16px;
-      }
-
-      /* Update the bottom controls container */
-      .bottom-controls {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-top: 24px;
-        padding: 16px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: var(--card-shadow);
-      }
-
-    /* New styles for advanced filters container */
-    .advanced-filters-container {
-        background: white;
-        border-radius: 16px;
-        box-shadow: var(--card-shadow);
-        margin-bottom: 25px;
-        padding: 24px;
-        display: none;
-        transition: all 0.3s ease;
-    }
-
-    .advanced-filters-container.show {
-        display: block;
-        animation: slideDown 0.3s ease-out forwards;
-    }
-
-    .advanced-filters-header {
-        margin-bottom: 20px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .filter-instructions {
-        background: #f8fafc;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 24px;
-        border: 1px solid var(--border-color);
-    }
-
-    .filter-instructions p {
-        color: var(--dark-color);
-        font-weight: 500;
-        margin-bottom: 12px;
-    }
-
-    .filter-instructions ol {
-        margin: 0;
-        padding-left: 20px;
-        color: #64748B;
-    }
-
-    .filter-instructions li {
-        margin-bottom: 8px;
-        font-size: 14px;
-        line-height: 1.5;
-    }
-
-    .filter-group {
-        margin-bottom: 24px;
-    }
-
-    .advanced-filters-actions {
-        display: flex;
-        gap: 12px;
-        padding-top: 20px;
-        border-top: 1px solid var(--border-color);
-    }
-
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    /* Update toggle button styles */
-    .toggle-advanced {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 16px;
-        background: white;
-        border: 1px solid var(--primary-color);
-        border-radius: 8px;
-        color: var(--primary-color);
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .toggle-advanced:hover {
-        background: var(--primary-color);
-        color: white;
-    }
-
-    .toggle-advanced[aria-expanded="true"] .toggle-icon {
-        transform: rotate(180deg);
-    }
-
-    .bottom-controls {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: var(--card-shadow);
-        margin-top: 24px;
-    }
-
-    .bottom-controls-left {
-        display: flex;
-        align-items: center;
-    }
-
-    .pagination-container {
-        margin: 0;
-    }
-    
-    .pagination {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-    
-    .rows-per-page {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #64748B;
-        font-size: 14px;
-    }
-    
-    .rows-select {
-        padding: 6px 12px;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        background: white;
-        color: var(--dark-color);
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    
-    .rows-select:hover {
-        border-color: var(--primary-color);
-    }
-    
-    .btn-pagination {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        border: 1px solid var(--border-color);
-        background: white;
-        border-radius: 8px;
-        color: var(--dark-color);
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    
-    .btn-pagination:hover:not(:disabled) {
-        background: var(--primary-color);
-        color: white;
-        border-color: var(--primary-color);
-    }
-    
-    .btn-pagination:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    
-    .page-info {
-        color: #64748B;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-    
-    .page-info span {
-        color: var(--primary-color);
-        font-weight: 500;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/leads.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -1252,7 +29,8 @@
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" id="searchInput" class="search-box" placeholder="Search across all fields..." onkeyup="searchTable()">
+                    <input type="text" id="searchInput" class="search-box" placeholder="Search across all fields..." onkeyup="handleSearchInput(event)">
+                    <div id="searchHistory" class="search-history"></div>
                 </div>
             </div>
 
@@ -1362,6 +140,20 @@
                             <span>Export Selected (0)</span>
                         </button>
                     </form>
+                    
+                    {% if current_user.role in ['admin', 'developer'] %}
+                    <form id="deleteMultipleForm" action="{{ url_for('lead.delete_multiple_leads') }}" method="POST" style="margin: 0;">
+                        <button type="button" class="btn btn-delete" id="deleteSelectedBtn" disabled onclick="confirmDeleteSelected()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                            <span>Delete Selected (0)</span>
+                        </button>
+                    </form>
+                    {% endif %}
 
                     <button class="toggle-advanced" onclick="toggleAdvancedFilters()" aria-expanded="false">
                         Advanced Filters
@@ -1828,6 +620,38 @@
                 <span>Export (${selectedCount > 0 ? selectedCount + ' Selected' : filteredCount + ' ' + filterText})</span>
             `;
             
+            // Update delete button if it exists
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            if (deleteBtn) {
+                deleteBtn.disabled = selectedCount === 0;
+                deleteBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                    <span>Delete Selected (${selectedCount})</span>
+                `;
+                
+                // Update hidden inputs for delete form
+                const deleteForm = document.getElementById('deleteMultipleForm');
+                if (deleteForm) {
+                    // Remove any existing hidden inputs
+                    const existingDeleteInputs = deleteForm.querySelectorAll('input[name="selected_leads[]"]');
+                    existingDeleteInputs.forEach(input => input.remove());
+                    
+                    // Add new hidden inputs for selected leads
+                    selectedCheckboxes.forEach(checkbox => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'selected_leads[]';
+                        input.value = checkbox.value;
+                        deleteForm.appendChild(input);
+                    });
+                }
+            }
+            
             // Update counts in the export dialog
             if (document.getElementById('selectedCount')) {
                 document.getElementById('selectedCount').textContent = selectedCount;
@@ -2167,11 +991,32 @@
             const searchInput = document.getElementById('searchInput');
             if (searchInput) {
                 searchInput.addEventListener('input', applyFilters);
+                searchInput.addEventListener('keyup', handleSearchInput);
+                
+                // Show all search history when focusing on search box
+                searchInput.addEventListener('focus', function() {
+                    displaySearchHistory(); // Show all history items regardless of input value
+                    document.getElementById('searchHistory').classList.add('show');
+                });
             }
-
+            
+            // Load search history on page load
+            loadSearchHistory();
+            
+            // Close search history when clicking outside
+            document.addEventListener('click', function(event) {
+                const searchWrapper = document.querySelector('.search-wrapper');
+                if (searchWrapper && !searchWrapper.contains(event.target)) {
+                    const searchHistory = document.getElementById('searchHistory');
+                    if (searchHistory) {
+                        searchHistory.classList.remove('show');
+                    }
+                }
+            });
+            
             // Initialize filters
             populateFilters();
-
+            
             // Initialize advanced filter field select change listeners
             document.querySelectorAll('.field-select').forEach(select => {
                 select.addEventListener('change', function() {
@@ -2235,7 +1080,24 @@
         // Initialize search on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Add event listener for search input
-            document.getElementById('searchInput').addEventListener('keyup', searchTable);
+            document.getElementById('searchInput').addEventListener('keyup', handleSearchInput);
+            
+            // Load search history on page load
+            loadSearchHistory();
+            
+            // Add event listener to show all search history when clicking in the search box
+            document.getElementById('searchInput').addEventListener('focus', function() {
+                displaySearchHistory(); // Show all history items regardless of input value
+                document.getElementById('searchHistory').classList.add('show');
+            });
+            
+            // Close search history when clicking outside
+            document.addEventListener('click', function(event) {
+                const searchWrapper = document.querySelector('.search-wrapper');
+                if (!searchWrapper.contains(event.target)) {
+                    document.getElementById('searchHistory').classList.remove('show');
+                }
+            });
             
             // Add row highlighting on hover
             const tableRows = document.querySelectorAll('#leadsTable tbody tr');
@@ -2251,6 +1113,201 @@
             // Initialize export button state
             updateExportButton();
         });
+        
+        // Functions for search history
+        function handleSearchInput(event) {
+            const searchText = event.target.value.trim();
+            
+            // Display search history based on current input
+            if (searchText.length > 0) {
+                displaySearchHistory(searchText);
+                document.getElementById('searchHistory').classList.add('show');
+            } else {
+                displaySearchHistory(); // Show all history when input is empty
+                document.getElementById('searchHistory').classList.add('show');
+            }
+            
+            // Apply filters to table
+            applyFilters();
+            
+            // Add to search history if Enter key is pressed and text is not empty
+            if (event.key === 'Enter' && searchText.length > 0) {
+                addToSearchHistory(searchText);
+            }
+        }
+        
+        function saveSearchQuery(query) {
+            // Don't save empty or very short queries
+            if (!query || query.length < 3) {
+                return;
+            }
+            
+            // Get existing history or initialize an empty array
+            let searchHistory = JSON.parse(localStorage.getItem('leadSearchHistory') || '[]');
+            
+            // Check if the query already exists in history
+            const existingIndex = searchHistory.findIndex(item => item.query.toLowerCase() === query.toLowerCase());
+            
+            if (existingIndex !== -1) {
+                // Remove the existing entry so it can be moved to the top
+                searchHistory.splice(existingIndex, 1);
+            }
+            
+            // Add the new query at the beginning with timestamp
+            searchHistory.unshift({
+                query: query,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Limit history to 10 items
+            if (searchHistory.length > 10) {
+                searchHistory = searchHistory.slice(0, 10);
+            }
+            
+            // Save back to localStorage
+            localStorage.setItem('leadSearchHistory', JSON.stringify(searchHistory));
+            
+            // Refresh the display
+            loadSearchHistory();
+        }
+        
+        function loadSearchHistory() {
+            const searchHistory = document.getElementById('searchHistory');
+            const history = JSON.parse(localStorage.getItem('leadSearchHistory') || '[]');
+            
+            if (history.length === 0) {
+                searchHistory.classList.remove('show');
+                return;
+            }
+            
+            // Clear the existing history items
+            searchHistory.innerHTML = '';
+            
+            // Add history items
+            history.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'search-history-item';
+                
+                // Format the timestamp to a relative time (e.g., "2 hours ago")
+                const timestamp = new Date(item.timestamp);
+                const relativeTime = getRelativeTimeString(timestamp);
+                
+                historyItem.innerHTML = `
+                    <div class="search-history-text">${item.query}</div>
+                    <div class="search-history-timestamp">${relativeTime}</div>
+                `;
+                
+                // Add click event to use this search query
+                historyItem.addEventListener('click', function() {
+                    document.getElementById('searchInput').value = item.query;
+                    searchTable();
+                    searchHistory.classList.remove('show');
+                });
+                
+                searchHistory.appendChild(historyItem);
+            });
+            
+            // Add a "Clear History" button
+            const clearButton = document.createElement('div');
+            clearButton.className = 'search-history-clear';
+            clearButton.textContent = 'Clear Search History';
+            clearButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                clearSearchHistory();
+            });
+            
+            searchHistory.appendChild(clearButton);
+        }
+        
+        function displaySearchHistory(filter = '') {
+            const searchHistory = document.getElementById('searchHistory');
+            const history = JSON.parse(localStorage.getItem('leadSearchHistory') || '[]');
+            
+            if (history.length === 0) {
+                searchHistory.classList.remove('show');
+                return;
+            }
+            
+            // Clear the existing history items
+            searchHistory.innerHTML = '';
+            
+            // Filter and add history items
+            const filteredHistory = filter 
+                ? history.filter(item => item.query.toLowerCase().includes(filter.toLowerCase()))
+                : history;
+                
+            if (filteredHistory.length === 0) {
+                searchHistory.classList.remove('show');
+                return;
+            }
+            
+            filteredHistory.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'search-history-item';
+                
+                // Format the timestamp to a relative time
+                const timestamp = new Date(item.timestamp);
+                const relativeTime = getRelativeTimeString(timestamp);
+                
+                historyItem.innerHTML = `
+                    <div class="search-history-text">${item.query}</div>
+                    <div class="search-history-timestamp">${relativeTime}</div>
+                `;
+                
+                // Add click event to use this search query
+                historyItem.addEventListener('click', function() {
+                    document.getElementById('searchInput').value = item.query;
+                    searchTable();
+                    searchHistory.classList.remove('show');
+                });
+                
+                searchHistory.appendChild(historyItem);
+            });
+            
+            // Add a "Clear History" button
+            const clearButton = document.createElement('div');
+            clearButton.className = 'search-history-clear';
+            clearButton.textContent = 'Clear Search History';
+            clearButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                clearSearchHistory();
+            });
+            
+            searchHistory.appendChild(clearButton);
+        }
+        
+        function clearSearchHistory() {
+            localStorage.removeItem('leadSearchHistory');
+            document.getElementById('searchHistory').innerHTML = '';
+            document.getElementById('searchHistory').classList.remove('show');
+        }
+        
+        function getRelativeTimeString(date) {
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - date) / 1000);
+            
+            if (diffInSeconds < 60) {
+                return 'just now';
+            }
+            
+            const diffInMinutes = Math.floor(diffInSeconds / 60);
+            if (diffInMinutes < 60) {
+                return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+            }
+            
+            const diffInHours = Math.floor(diffInMinutes / 60);
+            if (diffInHours < 24) {
+                return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+            }
+            
+            const diffInDays = Math.floor(diffInHours / 24);
+            if (diffInDays < 30) {
+                return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+            }
+            
+            // For older dates, return the actual date
+            return date.toLocaleDateString();
+        }
 
         // Initialize tooltips
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -2869,6 +1926,215 @@
             if (event.target == dialog) {
                 closeExportFormatDialog();
             }
+            
+            const deleteDialog = document.getElementById('deleteConfirmDialog');
+            if (deleteDialog && event.target == deleteDialog) {
+                closeDeleteConfirmDialog();
+            }
+        }
+        
+        // Function to confirm deletion of multiple leads
+        function confirmDeleteSelected() {
+            const selectedCheckboxes = document.querySelectorAll('.lead-checkbox:checked');
+            const selectedCount = selectedCheckboxes.length;
+            
+            if (selectedCount === 0) {
+                return;
+            }
+            
+            // Create confirmation dialog if it doesn't exist
+            let deleteDialog = document.getElementById('deleteConfirmDialog');
+            
+            if (!deleteDialog) {
+                deleteDialog = document.createElement('div');
+                deleteDialog.id = 'deleteConfirmDialog';
+                deleteDialog.className = 'modal';
+                deleteDialog.style.display = 'none';
+                deleteDialog.style.position = 'fixed';
+                deleteDialog.style.zIndex = '1000';
+                deleteDialog.style.left = '0';
+                deleteDialog.style.top = '0';
+                deleteDialog.style.width = '100%';
+                deleteDialog.style.height = '100%';
+                deleteDialog.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                
+                const dialogContent = document.createElement('div');
+                dialogContent.className = 'modal-content';
+                dialogContent.style.backgroundColor = 'white';
+                dialogContent.style.margin = '15% auto';
+                dialogContent.style.padding = '24px';
+                dialogContent.style.borderRadius = '12px';
+                dialogContent.style.width = '400px';
+                dialogContent.style.position = 'relative';
+                dialogContent.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
+                
+                deleteDialog.appendChild(dialogContent);
+                document.body.appendChild(deleteDialog);
+            }
+            
+            // Update dialog content
+            const dialogContent = deleteDialog.querySelector('.modal-content');
+            dialogContent.innerHTML = `
+                <h3 style="margin-top: 0; color: var(--danger-color); font-size: 24px; text-align: center; margin-bottom: 24px;">Confirm Deletion</h3>
+                
+                <div style="margin: 20px 0; text-align: center;">
+                    <p style="font-size: 16px; margin-bottom: 20px;">Are you sure you want to delete ${selectedCount} selected lead${selectedCount !== 1 ? 's' : ''}?</p>
+                    <p style="font-size: 14px; color: #64748B; margin-bottom: 30px;">This action cannot be undone.</p>
+                    
+                    <div style="display: flex; gap: 12px; justify-content: center;">
+                        <button onclick="submitDeleteMultiple()" class="btn" style="background: var(--danger-color); color: white; padding: 12px 24px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease;">
+                            Yes, Delete
+                        </button>
+                        <button onclick="closeDeleteConfirmDialog()" class="btn" style="background: #f1f5f9; color: #475569; padding: 12px 24px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease;">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Show dialog
+            deleteDialog.style.display = 'block';
+        }
+        
+        function closeDeleteConfirmDialog() {
+            const deleteDialog = document.getElementById('deleteConfirmDialog');
+            if (deleteDialog) {
+                deleteDialog.style.display = 'none';
+            }
+        }
+        
+        function submitDeleteMultiple() {
+            document.getElementById('deleteMultipleForm').submit();
+            closeDeleteConfirmDialog();
+        }
+
+        // Display search history with optional filter text
+        function displaySearchHistory(filterText = '') {
+            const historyContainer = document.getElementById('searchHistory');
+            const searchHistory = getSearchHistory();
+            
+            // Clear previous history items
+            historyContainer.innerHTML = '';
+            
+            if (searchHistory.length === 0) {
+                // If no history, show a message
+                const noHistoryItem = document.createElement('div');
+                noHistoryItem.className = 'history-item no-results';
+                noHistoryItem.textContent = 'No search history';
+                historyContainer.appendChild(noHistoryItem);
+                return;
+            }
+            
+            // Display all history items or filter them if filterText is provided
+            const itemsToShow = filterText.trim() 
+                ? searchHistory.filter(item => item.toLowerCase().includes(filterText.toLowerCase()))
+                : searchHistory;
+                
+            itemsToShow.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                
+                // Create text span for the search term
+                const textSpan = document.createElement('span');
+                textSpan.className = 'history-item-text';
+                textSpan.textContent = item;
+                historyItem.appendChild(textSpan);
+                
+                // Create delete button
+                const deleteBtn = document.createElement('span');
+                deleteBtn.className = 'delete-history-item';
+                deleteBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                `;
+                
+                // Add click event for delete button
+                deleteBtn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Prevent the historyItem click event
+                    removeFromSearchHistory(item);
+                });
+                
+                historyItem.appendChild(deleteBtn);
+                
+                // Add click event for the history item
+                historyItem.addEventListener('click', function() {
+                    document.getElementById('searchInput').value = item;
+                    applyFilters();
+                    historyContainer.classList.remove('show');
+                });
+                
+                historyContainer.appendChild(historyItem);
+            });
+            
+            // Add clear all button
+            const clearButton = document.createElement('div');
+            clearButton.className = 'search-history-clear';
+            clearButton.textContent = 'Clear All History';
+            clearButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                clearSearchHistory();
+            });
+            
+            historyContainer.appendChild(clearButton);
+        }
+        
+        // Remove a specific item from search history
+        function removeFromSearchHistory(query) {
+            let history = getSearchHistory();
+            
+            // Filter out the item to remove
+            history = history.filter(item => item !== query);
+            
+            // Save updated history back to localStorage
+            localStorage.setItem('leadSearchHistory', JSON.stringify(history));
+            
+            // Refresh the display
+            displaySearchHistory();
+        }
+        
+        // Get search history from localStorage
+        function getSearchHistory() {
+            try {
+                const history = JSON.parse(localStorage.getItem('leadSearchHistory') || '[]');
+                // If we have the old format with objects, extract just the queries
+                if (history.length > 0 && typeof history[0] === 'object' && history[0].query) {
+                    return history.map(item => item.query);
+                }
+                return history;
+            } catch (e) {
+                console.error('Error parsing search history:', e);
+                return [];
+            }
+        }
+        
+        // Add a search query to history
+        function addToSearchHistory(query) {
+            if (!query || query.length < 3) return;
+            
+            let history = getSearchHistory();
+            
+            // Remove duplicates
+            history = history.filter(item => item.toLowerCase() !== query.toLowerCase());
+            
+            // Add new query at the beginning
+            history.unshift(query);
+            
+            // Limit to 10 items
+            if (history.length > 10) {
+                history = history.slice(0, 10);
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('leadSearchHistory', JSON.stringify(history));
+            
+            // Refresh the display
+            displaySearchHistory();
+        }
+        
+        // Load search history
+        function loadSearchHistory() {
         }
     </script>
 {% endblock %}
