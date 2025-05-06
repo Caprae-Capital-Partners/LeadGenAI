@@ -62,6 +62,14 @@ if st.session_state.is_scraping and not fetch_button:
     st.session_state.is_scraping = False
     st.rerun()
 
+def _merge_enrichment(new_rows: pd.DataFrame):
+    if st.session_state.enriched_data.empty:
+        st.session_state.enriched_data = new_rows
+    else:
+        st.session_state.enriched_data = (
+            pd.concat([st.session_state.enriched_data, new_rows], ignore_index=True)
+            .drop_duplicates(subset="Company", keep="last")
+        )
 # import gc
 # import objgraph
 
@@ -113,9 +121,9 @@ if not st.session_state.raw_data.empty:
     if not st.session_state.enriched_data.empty:
         merged = pd.merge(filtered_df, st.session_state.enriched_data, on="Company", how="left", suffixes=('', '_enriched'))
 
-        for col in ["Overview", "Products & Services", "Management", "Website", "BBB_rating", "Management"]:
+        for col in ["Overview", "Products & Services", "Management", "Website"]:
             if f"{col}_enriched" in merged.columns:
-                merged[col] = merged[f"{col}_enriched"].fillna("NA")
+                merged[col] = merged[f"{col}_enriched"]
 
         display_df = merged.drop(columns=[c for c in merged.columns if c.endswith("_enriched")])
     else:
@@ -135,6 +143,13 @@ if not st.session_state.raw_data.empty:
         hide_index=True
     )
     st.session_state.edited_data = edited_df
+
+    # --- Only sync deletions if a row was actually deleted ---
+    if len(edited_df) < len(display_df):
+        # Assuming "Company" is a unique identifier
+        st.session_state.raw_data = st.session_state.raw_data[
+            st.session_state.raw_data["Company"].isin(edited_df["Company"])
+        ].reset_index(drop=True)
 
     # --- Get Overviews ---
     if st.button("📄 Get Overviews"):
@@ -204,7 +219,7 @@ if not st.session_state.raw_data.empty:
         enriched_df = loop.run_until_complete(enrich_selected(edited_df))
         loop.close()
 
-        st.session_state.enriched_data = enriched_df
+        _merge_enrichment(enriched_df)
         st.success("✅ Overviews added successfully!")
         st.rerun()
 
@@ -244,7 +259,7 @@ if not st.session_state.raw_data.empty:
         enriched_df = loop.run_until_complete(enrich_leads(edited_df, location))
         loop.close()
 
-        st.session_state.enriched_data = enriched_df
+        _merge_enrichment(enriched_df)
         st.success("✅ Contact info enriched!")
         st.rerun()
     # --- Download ---
