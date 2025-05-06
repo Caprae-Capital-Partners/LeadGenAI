@@ -5,6 +5,8 @@ import sys
 import os
 
 os.system('playwright install chromium')
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # Import backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -66,10 +68,11 @@ def _merge_enrichment(new_rows: pd.DataFrame):
     if st.session_state.enriched_data.empty:
         st.session_state.enriched_data = new_rows
     else:
-        st.session_state.enriched_data = (
-            pd.concat([st.session_state.enriched_data, new_rows], ignore_index=True)
-            .drop_duplicates(subset="Company", keep="last")
-        )
+        # Update only the rows that are being enriched
+        st.session_state.enriched_data = pd.concat(
+            [st.session_state.enriched_data, new_rows], 
+            ignore_index=True
+        ).drop_duplicates(subset="Company", keep="last")
 # import gc
 # import objgraph
 
@@ -119,11 +122,18 @@ if not st.session_state.raw_data.empty:
 
     # Merge in enriched data (if any)
     if not st.session_state.enriched_data.empty:
-        merged = pd.merge(filtered_df, st.session_state.enriched_data, on="Company", how="left", suffixes=('', '_enriched'))
+        merged = pd.merge(
+            filtered_df, 
+            st.session_state.enriched_data, 
+            on="Company", 
+            how="left", 
+            suffixes=('', '_enriched')
+        )
 
         for col in ["Overview", "Products & Services", "Management", "Website"]:
             if f"{col}_enriched" in merged.columns:
-                merged[col] = merged[f"{col}_enriched"]
+                # Only update the column if the enriched value is not null
+                merged[col] = merged[f"{col}_enriched"].combine_first(merged[col])
 
         display_df = merged.drop(columns=[c for c in merged.columns if c.endswith("_enriched")])
     else:

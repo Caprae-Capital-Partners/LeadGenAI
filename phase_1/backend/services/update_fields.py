@@ -199,7 +199,7 @@ async def get_rating_and_website(page: Page, company_name: str, state: str) -> T
 async def update_data(data: List[Dict[str, str]], state: str, context: BrowserContext, batch_size: int = 5) -> List[Dict[str, str]]:
     async def process_company(page, index, company):
         website, rating = await get_rating_and_website(page, company["Company"], state)
-        return index, website, rating
+        return {"Website": website, "BBB_rating": rating}
 
     # Collect companies with missing website
     to_update = [(i, item) for i, item in enumerate(data) if not item.get("Website") or item["Website"] == "NA"]
@@ -216,9 +216,10 @@ async def update_data(data: List[Dict[str, str]], state: str, context: BrowserCo
 
         # print(results)    
         # Update the data
-        for idx, website, rating in results:
-            data[idx]["Website"] = website
-            data[idx]["BBB_rating"] = rating
+        for (idx, _), result in zip(batch, results):
+            if result["Website"]:  # Update only if a valid website is returned
+                data[idx]["Website"] = result["Website"]
+            data[idx]["BBB_rating"] = result["BBB_rating"]
 
         # Close all pages
         await asyncio.gather(*[p.close() for p in pages])
