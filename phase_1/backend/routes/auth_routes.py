@@ -81,7 +81,7 @@ def manage_users():
 
 @auth_bp.route('/update_user_role', methods=['POST'])
 @login_required
-@role_required('admin')
+@role_required('admin', 'developer')
 def update_user_role():
     """Update user role - only accessible to admins"""
     user_id = request.form.get('user_id')
@@ -114,7 +114,7 @@ def update_user_role():
 
 @auth_bp.route('/delete_user')
 @login_required
-@role_required('admin')
+@role_required('admin', 'developer')
 def delete_user():
     """Delete user - only accessible to admins"""
     user_id = request.args.get('user_id')

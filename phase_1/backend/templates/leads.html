@@ -353,7 +353,7 @@
                             <td>{{ lead.linkedin_url or '-' }}</td>
                             <td>{{ lead.industry or '-' }}</td>
                             <td>{{ lead.revenue or '-' }}</td>
-                            <td>{{ lead.product_service_category or '-' }}</td>
+                            <td class="truncate" title="{{ lead.product_service_category }}">{{ lead.product_service_category or '-' }}</td>
                             <td>{{ lead.business_type or '-' }}</td>
                             <td>{{ lead.employees_range or '-' }}</td>
                             <td>{{ lead.year_founded|int if lead.year_founded else '-' }}</td>
@@ -1013,10 +1013,10 @@
                     }
                 }
             });
-            
+
             // Initialize filters
             populateFilters();
-            
+
             // Initialize advanced filter field select change listeners
             document.querySelectorAll('.field-select').forEach(select => {
                 select.addEventListener('change', function() {
@@ -2136,5 +2136,18 @@
         // Load search history
         function loadSearchHistory() {
         }
+
+        // Hide flash messages after 5 seconds (5000 ms)
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                document.querySelectorAll('.success-message').forEach(function(msg) {
+                    msg.style.transition = 'opacity 0.5s';
+                    msg.style.opacity = 0;
+                    setTimeout(function() {
+                        msg.style.display = 'none';
+                    }, 500); // Wait for fade out
+                });
+            }, 5000); // 5 seconds
+        });
     </script>
 {% endblock %}

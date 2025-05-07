@@ -6,7 +6,7 @@ class LeadController:
     @staticmethod
     def get_all_leads():
         """Get all leads for view"""
-        return Lead.query.all()
+        return Lead.query.order_by(Lead.updated_at.desc()).all()
 
     @staticmethod
     def get_lead_by_id(lead_id):
