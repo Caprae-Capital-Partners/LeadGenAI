@@ -108,7 +108,7 @@ class ExportController:
                 # 'Score': lead.score,
                 'Status': lead.status,
                 # 'Reasoning': lead.reasoning,
-                # 'Notes': lead.additional_notes,
+                'Notes': lead.additional_notes,
                 # 'Subject Line 1': lead.subject_line_1,
                 # 'Email Content 1': lead.email_customization_1,
                 # 'Subject Line 2': lead.subject_line_2,
