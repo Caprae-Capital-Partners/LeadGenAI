@@ -52,21 +52,21 @@ class Lead(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime, nullable=True)
-    
-    # Only truncate these fields if needed
-    FIELD_MAX_LENGTHS = {
-        'product_service_category': 2000,
-        'business_type': 100,
-    }
-
     status = db.Column(db.String(20), default='new', nullable=False)
 
-    @classmethod
-    def truncate_fields(cls, data):
-        for field, max_len in cls.FIELD_MAX_LENGTHS.items():
-            if field in data and isinstance(data[field], str):
-                data[field] = data[field][:max_len]
-        return data
+
+    # Only truncate these fields if needed
+    # FIELD_MAX_LENGTHS = {
+    #     'product_service_category': 2000,
+    #     'business_type': 100,
+    # }
+
+    # @classmethod
+    # def truncate_fields(cls, data):
+    #     for field, max_len in cls.FIELD_MAX_LENGTHS.items():
+    #         if field in data and isinstance(data[field], str):
+    #             data[field] = data[field][:max_len]
+    #     return data
     
     # @property
     # def full_name(self):

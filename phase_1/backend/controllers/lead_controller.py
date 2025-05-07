@@ -8,17 +8,20 @@ class LeadController:
     @staticmethod
     def get_all_leads():
         """Get all leads for view"""
-        return Lead.query.filter_by(deleted=False).order_by(Lead.updated_at.desc()).all()
+        # return Lead.query.filter_by(deleted=False).order_by(Lead.updated_at.desc()).all()
+        return Lead.query.order_by(Lead.updated_at.desc()).all()
 
     @staticmethod
     def get_lead_by_id(lead_id):
         """Get lead by ID"""
-        return Lead.query.filter_by(id=lead_id, deleted=False).first_or_404()
+        # return Lead.query.filter_by(id=lead_id, deleted=False).first_or_404()
+        return Lead.query.filter_by(id=lead_id).first_or_404()
 
     @staticmethod
     def get_leads_by_ids(lead_ids):
         """Get multiple leads by their IDs"""
-        return Lead.query.filter(Lead.id.in_(lead_ids), Lead.deleted==False).all()
+        # return Lead.query.filter(Lead.id.in_(lead_ids), Lead.deleted==False).all()
+        return Lead.query.filter(Lead.id.in_(lead_ids)).all()
 
     @staticmethod
     def create_lead(form_data):
