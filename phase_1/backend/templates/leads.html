@@ -216,20 +216,18 @@
                         <option value="owner_age">Owner's Age Range</option>
                         
                         <!-- Scoring and Notes -->
-                        <option value="score">Lead Score</option>
                         <option value="status">Status</option>
-                        <option value="reasoning">Score Reasoning</option>
                         <option value="additional_notes">Additional Notes</option>
                         
                         <!-- Email Customization -->
-                        <option value="subject_line_1">Email Subject (1st)</option>
-                        <option value="email_customization_1">Email Content (1st)</option>
-                        <option value="subject_line_2">Email Subject (2nd)</option>
-                        <option value="email_customization_2">Email Content (2nd)</option>
+                        <!-- <option value="subject_line_1">Email Subject (1st)</option> -->
+                        <!-- <option value="email_customization_1">Email Content (1st)</option> -->
+                        <!-- <option value="subject_line_2">Email Subject (2nd)</option> -->
+                        <!-- <option value="email_customization_2">Email Content (2nd)</option> -->
                         
                         <!-- LinkedIn Customization -->
-                        <option value="linkedin_customization_1">LinkedIn Message (1st)</option>
-                        <option value="linkedin_customization_2">LinkedIn Message (2nd)</option>
+                        <!-- <option value="linkedin_customization_1">LinkedIn Message (1st)</option> -->
+                        <!-- <option value="linkedin_customization_2">LinkedIn Message (2nd)</option> -->
                         
                         <!-- Timestamps -->
                         <option value="created_at">Created Date</option>
@@ -311,19 +309,17 @@
                             <!-- Customization -->
                             <th>Owner's LinkedIn</th>
                             <th>Owner's Age Range</th>
-                            <th>Lead Score</th>
                             <th>Status</th>
-                            <th>Score Reasoning</th>
                             <th>Additional Notes</th>
                             <!-- Email 1 -->
-                            <th>Email Subject (1st)</th>
-                            <th>Email Content (1st)</th>
+                            <!-- <th>Email Subject (1st)</th> -->
+                            <!-- <th>Email Content (1st)</th> -->
                             <!-- Email 2 -->
-                            <th>Email Subject (2nd)</th>
-                            <th>Email Content (2nd)</th>
+                            <!-- <th>Email Subject (2nd)</th> -->
+                            <!-- <th>Email Content (2nd)</th> -->
                             <!-- LinkedIn -->
-                            <th>LinkedIn Message (1st)</th>
-                            <th>LinkedIn Message (2nd)</th>
+                            <!-- <th>LinkedIn Message (1st)</th> -->
+                            <!-- <th>LinkedIn Message (2nd)</th> -->
                             <!-- Timestamps -->
                             <th class="date-col">Created Date</th>
                             <th class="date-col">Last Updated</th>
@@ -360,19 +356,17 @@
                             <!-- Customization -->
                             <td>{{ lead.owner_linkedin or '-' }}</td>
                             <td>{% if lead.owner_age and lead.owner_age|string|lower != 'nan' %}{{ lead.owner_age|int if lead.owner_age|string|float == lead.owner_age|string|float|int else lead.owner_age }}{% else %}-{% endif %}</td>
-                            <td>{{ lead.score or '-' }}</td>
                             <td>{{ lead.status|capitalize or 'New' }}</td>
-                            <td class="truncate" title="{{ lead.reasoning }}">{{ lead.reasoning or '-' }}</td>
                             <td class="truncate" title="{{ lead.additional_notes }}">{{ lead.additional_notes or '-' }}</td>
                             <!-- Email 1 -->
-                            <td>{{ lead.subject_line_1 or '-' }}</td>
-                            <td class="truncate" title="{{ lead.email_customization_1 }}">{{ lead.email_customization_1 or '-' }}</td>
+                            <!-- <td>{{ lead.subject_line_1 or '-' }}</td> -->
+                            <!-- <td class="truncate" title="{{ lead.email_customization_1 }}">{{ lead.email_customization_1 or '-' }}</td> -->
                             <!-- Email 2 -->
-                            <td>{{ lead.subject_line_2 or '-' }}</td>
-                            <td class="truncate" title="{{ lead.email_customization_2 }}">{{ lead.email_customization_2 or '-' }}</td>
+                            <!-- <td>{{ lead.subject_line_2 or '-' }}</td> -->
+                            <!-- <td class="truncate" title="{{ lead.email_customization_2 }}">{{ lead.email_customization_2 or '-' }}</td> -->
                             <!-- LinkedIn -->
-                            <td class="truncate" title="{{ lead.linkedin_customization_1 }}">{{ lead.linkedin_customization_1 or '-' }}</td>
-                            <td class="truncate" title="{{ lead.linkedin_customization_2 }}">{{ lead.linkedin_customization_2 or '-' }}</td>
+                            <!-- <td class="truncate" title="{{ lead.linkedin_customization_1 }}">{{ lead.linkedin_customization_1 or '-' }}</td> -->
+                            <!-- <td class="truncate" title="{{ lead.linkedin_customization_2 }}">{{ lead.linkedin_customization_2 or '-' }}</td> -->
                             <!-- Timestamps -->
                             <td class="date-col">{{ lead.created_at.strftime('%Y-%m-%d %H:%M') if lead.created_at else '-' }}</td>
                             <td class="date-col">{{ lead.updated_at.strftime('%Y-%m-%d %H:%M') if lead.updated_at else '-' }}</td>
@@ -767,18 +761,19 @@
                 'year_founded': 16,
                 'owner_linkedin': 17,
                 'owner_age': 18,
-                'score': 19,
-                'status': 20,
-                'reasoning': 21,
-                'additional_notes': 22,
-                'subject_line_1': 23,
-                'email_customization_1': 24,
-                'subject_line_2': 25,
-                'email_customization_2': 26,
-                'linkedin_customization_1': 27,
-                'linkedin_customization_2': 28,
-                'created_at': 29,
-                'updated_at': 30
+                'status': 19,
+                'additional_notes': 20,
+                'created_at': 21,
+                'updated_at': 22
+                // Removed fields:
+                // 'score': 19,
+                // 'reasoning': 21,
+                // 'subject_line_1': 23,
+                // 'email_customization_1': 24,
+                // 'subject_line_2': 25,
+                // 'email_customization_2': 26,
+                // 'linkedin_customization_1': 27,
+                // 'linkedin_customization_2': 28,
             };
 
             // Skip header row
@@ -803,7 +798,7 @@
                 }
 
                 if (shouldShow && status) {
-                    const statusCell = row.cells[20].textContent.trim().toLowerCase();
+                    const statusCell = row.cells[19].textContent.trim().toLowerCase();
                     shouldShow = statusCell === status.toLowerCase();
                 }
                 
@@ -905,7 +900,7 @@
                             }
                         }
                         // Handle numeric fields
-                        else if (['score', 'year_founded', 'owner_age'].includes(filter.field)) {
+                        else if (['year_founded', 'owner_age'].includes(filter.field)) {
                             const cellNum = parseFloat(cellValue);
                             const filterNum = parseFloat(filterValue);
                             
@@ -1480,20 +1475,18 @@
                     <option value="owner_age">Owner's Age Range</option>
                     
                     <!-- Scoring and Notes -->
-                    <option value="score">Lead Score</option>
                     <option value="status">Status</option>
-                    <option value="reasoning">Score Reasoning</option>
                     <option value="additional_notes">Additional Notes</option>
                     
                     <!-- Email Customization -->
-                    <option value="subject_line_1">Email Subject (1st)</option>
-                    <option value="email_customization_1">Email Content (1st)</option>
-                    <option value="subject_line_2">Email Subject (2nd)</option>
-                    <option value="email_customization_2">Email Content (2nd)</option>
+                    <!-- <option value="subject_line_1">Email Subject (1st)</option> -->
+                    <!-- <option value="email_customization_1">Email Content (1st)</option> -->
+                    <!-- <option value="subject_line_2">Email Subject (2nd)</option> -->
+                    <!-- <option value="email_customization_2">Email Content (2nd)</option> -->
                     
                     <!-- LinkedIn Customization -->
-                    <option value="linkedin_customization_1">LinkedIn Message (1st)</option>
-                    <option value="linkedin_customization_2">LinkedIn Message (2nd)</option>
+                    <!-- <option value="linkedin_customization_1">LinkedIn Message (1st)</option> -->
+                    <!-- <option value="linkedin_customization_2">LinkedIn Message (2nd)</option> -->
                     
                     <!-- Timestamps -->
                     <option value="created_at">Created Date</option>
@@ -1540,7 +1533,7 @@
             operatorSelect.innerHTML = '';
             
             // Define operators based on field type
-            if (['revenue', 'score', 'year_founded', 'owner_age'].includes(field)) {
+            if (['revenue', 'year_founded', 'owner_age'].includes(field)) {
                 // Numeric fields
                 operatorSelect.innerHTML = `
                     <option value="equals">Equals</option>
@@ -1571,7 +1564,7 @@
                 valueInput.placeholder = "YYYY-MM-DD";
             } else if (field === 'revenue') {
                 valueInput.placeholder = "e.g. $5M or $500K";
-            } else if (['score', 'year_founded', 'owner_age'].includes(field)) {
+            } else if (['year_founded', 'owner_age'].includes(field)) {
                 valueInput.placeholder = "Enter number...";
             } else {
                 valueInput.placeholder = "Enter value...";

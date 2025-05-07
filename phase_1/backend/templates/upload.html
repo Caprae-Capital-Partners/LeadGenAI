@@ -598,8 +598,28 @@
             const dynamicMappings = document.getElementById('dynamicMappings');
             dynamicMappings.innerHTML = ''; // Clear existing mappings
             
-            // Create a mapping row for each CSV header
-            headers.forEach((header, index) => {
+            // Define fields we want to hide
+            const hiddenFields = ['score', 'reasoning', 'email_customization_1', 'subject_line_1', 
+                                'email_customization_2', 'subject_line_2', 'linkedin_customization_1', 
+                                'linkedin_customization_2'];
+            
+            // Filter out CSV headers that match our hidden fields patterns
+            const filteredHeaders = headers.filter(header => {
+                // Check if this header matches any of our hidden field patterns
+                const matchesHiddenPattern = 
+                    header.toLowerCase().includes('score') ||
+                    header.toLowerCase().includes('reasoning') ||
+                    header.toLowerCase().includes('r/y/g') ||
+                    header.toLowerCase().includes('email customization') ||
+                    header.toLowerCase().includes('subject line') ||
+                    header.toLowerCase().includes('linkedin customization');
+                
+                // Keep headers that don't match hidden patterns
+                return !matchesHiddenPattern;
+            });
+            
+            // Create a mapping row for each filtered CSV header
+            filteredHeaders.forEach((header, index) => {
                 const row = document.createElement('div');
                 row.className = 'mapping-row';
                 
@@ -623,6 +643,11 @@
                 
                 // Add all database fields
                 allLeadFields.forEach(field => {
+                    
+                    if (hiddenFields.includes(field.name)) {
+                        return; 
+                    }
+                    
                     const option = document.createElement('option');
                     option.value = field.name;
                     option.textContent = field.label;
@@ -850,14 +875,15 @@
                 "owner_linkedin": ["owner's linkedin", "founder linkedin", "ceo linkedin"],
                 "owner_age": ["owner age", "founder age", "ceo age"],
                 "additional_notes": ["notes", "comment", "additional notes", "remark", "observation"],
-                "score": ["score", "rating", "rank", "grade"],
-                "reasoning": ["reasoning", "reason", "explanation", "justification"],
-                "email_customization_1": ["Email customization #1", "email template", "email 1", "first email", "email personalization"],
-                "subject_line_1": ["subject line #1", "subject #1", "email subject", "first subject"],
-                "email_customization_2": ["Email customization #2", "follow up email", "second email", "email 2"],
-                "subject_line_2": ["subject line #2", "subject 2", "follow up subject", "second subject"],
-                "linkedin_customization_1": ["linkedin customization #1", "linkedin message", "linkedin 1", "first linkedin", "linkedin custom"],
-                "linkedin_customization_2": ["linkedin customization #2", "follow up linkedin", "second linkedin", "linkedin 2"]
+                // Remove the fields as requested
+                // "score": ["score", "rating", "rank", "grade"],
+                // "reasoning": ["reasoning", "reason", "explanation", "justification"],
+                // "email_customization_1": ["Email customization #1", "email template", "email 1", "first email", "email personalization"],
+                // "subject_line_1": ["subject line #1", "subject #1", "email subject", "first subject"],
+                // "email_customization_2": ["Email customization #2", "follow up email", "second email", "email 2"],
+                // "subject_line_2": ["subject line #2", "subject 2", "follow up subject", "second subject"],
+                // "linkedin_customization_1": ["linkedin customization #1", "linkedin message", "linkedin 1", "first linkedin", "linkedin custom"],
+                // "linkedin_customization_2": ["linkedin customization #2", "follow up linkedin", "second linkedin", "linkedin 2"]
             };
             
             // Get all select dropdowns
@@ -938,14 +964,14 @@
           {name: "owner_linkedin", label: "Owner LinkedIn"},
           {name: "owner_age", label: "Owner Age"},
           {name: "additional_notes", label: "Notes"},
-          {name: "score", label: "Score"},
-          {name: "reasoning", label: "Reasoning"},
-          {name: "email_customization_1", label: "Email Customization 1"},
-          {name: "subject_line_1", label: "Subject Line 1"},
-          {name: "email_customization_2", label: "Email Customization 2"},
-          {name: "subject_line_2", label: "Subject Line 2"},
-          {name: "linkedin_customization_1", label: "LinkedIn Customization 1"},
-          {name: "linkedin_customization_2", label: "LinkedIn Customization 2"},
+          // {name: "score", label: "Score"},
+          // {name: "reasoning", label: "Reasoning"},
+          // {name: "email_customization_1", label: "Email Customization 1"},
+          // {name: "subject_line_1", label: "Subject Line 1"},
+          // {name: "email_customization_2", label: "Email Customization 2"},
+          // {name: "subject_line_2", label: "Subject Line 2"},
+          // {name: "linkedin_customization_1", label: "LinkedIn Customization 1"},
+          // {name: "linkedin_customization_2", label: "LinkedIn Customization 2"},
           {name: "status", label: "Status"}
         ];
         

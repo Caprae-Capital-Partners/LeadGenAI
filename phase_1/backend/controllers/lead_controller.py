@@ -1,22 +1,24 @@
 from flask import request, redirect, render_template, flash, url_for, jsonify
 from models.lead_model import db, Lead
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime
+from sqlalchemy import text
 
 class LeadController:
     @staticmethod
     def get_all_leads():
         """Get all leads for view"""
-        return Lead.query.order_by(Lead.updated_at.desc()).all()
+        return Lead.query.filter_by(deleted=False).order_by(Lead.updated_at.desc()).all()
 
     @staticmethod
     def get_lead_by_id(lead_id):
         """Get lead by ID"""
-        return Lead.query.get_or_404(lead_id)
+        return Lead.query.filter_by(id=lead_id, deleted=False).first_or_404()
 
     @staticmethod
     def get_leads_by_ids(lead_ids):
         """Get multiple leads by their IDs"""
-        return Lead.query.filter(Lead.id.in_(lead_ids)).all()
+        return Lead.query.filter(Lead.id.in_(lead_ids), Lead.deleted==False).all()
 
     @staticmethod
     def create_lead(form_data):
@@ -124,12 +126,19 @@ class LeadController:
             return False, f"Error updating lead: {str(e)}"
 
     @staticmethod
-    def delete_lead(lead_id):
-        """Delete lead by ID"""
+    def delete_lead(lead_id, current_user=None):
+        """Soft delete lead by ID"""
         lead = Lead.query.get_or_404(lead_id)
 
         try:
-            db.session.delete(lead)
+            # Set current user for audit log if provided
+            if current_user:
+                user_name = current_user.username if hasattr(current_user, 'username') else str(current_user)
+                db.session.execute(text("SELECT set_app_user(:username)"), {'username': user_name})
+                
+            # Instead of deleting, mark as deleted
+            lead.deleted = True
+            lead.deleted_at = datetime.utcnow()
             db.session.commit()
             return True, "Lead deleted successfully!"
         except Exception as e:
@@ -137,21 +146,28 @@ class LeadController:
             return False, f"Error deleting lead: {str(e)}"
 
     @staticmethod
-    def delete_multiple_leads(lead_ids):
-        """Delete multiple leads by their IDs"""
+    def delete_multiple_leads(lead_ids, current_user=None):
+        """Soft delete multiple leads by their IDs"""
         if not lead_ids:
             return False, "No leads selected for deletion."
             
         try:
+            # Set current user for audit log if provided
+            if current_user:
+                user_name = current_user.username if hasattr(current_user, 'username') else str(current_user)
+                db.session.execute(text("SELECT set_app_user(:username)"), {'username': user_name})
+                
             # Get all leads to be deleted
             leads = Lead.query.filter(Lead.id.in_(lead_ids)).all()
             
             if not leads:
                 return False, "No leads found with the specified IDs."
                 
-            # Delete all leads
+            # Mark all leads as deleted
+            now = datetime.utcnow()
             for lead in leads:
-                db.session.delete(lead)
+                lead.deleted = True
+                lead.deleted_at = now
                 
             db.session.commit()
             return True, f"{len(leads)} leads deleted successfully!"
@@ -162,7 +178,7 @@ class LeadController:
     @staticmethod
     def get_leads_json():
         """Get all leads as JSON for API"""
-        leads = Lead.query.all()
+        leads = Lead.query.filter_by(deleted=False).all()
         return [lead.to_dict() for lead in leads]
 
     @staticmethod

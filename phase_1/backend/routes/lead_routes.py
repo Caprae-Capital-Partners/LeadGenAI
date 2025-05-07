@@ -162,14 +162,16 @@ def update_status(lead_id):
 @login_required
 @role_required('admin', 'developer')
 def delete_lead(lead_id):
-    """Delete lead - Admin and Developer  only"""
+    """Soft delete lead - Admin and Developer only"""
     try:
-        lead = Lead.query.get_or_404(lead_id)
-        db.session.delete(lead)
-        db.session.commit()
-        flash('Lead deleted successfully', 'success')
+        # Use the controller method which now implements soft delete
+        # Pass current_user for audit logging
+        success, message = LeadController.delete_lead(lead_id, current_user=current_user)
+        if success:
+            flash('Lead deleted successfully', 'success')
+        else:
+            flash(message, 'danger')
     except Exception as e:
-        db.session.rollback()
         flash(f'Error deleting lead: {str(e)}', 'danger')
 
     return redirect(url_for('lead.view_leads'))
@@ -178,7 +180,7 @@ def delete_lead(lead_id):
 @login_required
 @role_required('admin', 'developer')
 def delete_multiple_leads():
-    """Delete multiple leads - Admin and Developer only"""
+    """Soft delete multiple leads - Admin and Developer only"""
     selected_leads = request.form.getlist('selected_leads[]')
     
     if not selected_leads:
@@ -188,7 +190,8 @@ def delete_multiple_leads():
     # Convert string IDs to integers
     lead_ids = [int(id) for id in selected_leads if id.isdigit()]
     
-    success, message = LeadController.delete_multiple_leads(lead_ids)
+    # Pass current_user for audit logging
+    success, message = LeadController.delete_multiple_leads(lead_ids, current_user=current_user)
     
     if success:
         flash(message, 'success')
@@ -201,8 +204,8 @@ def delete_multiple_leads():
 @login_required
 def get_leads():
     """API endpoint to get all leads - All roles can access"""
-    leads = Lead.query.all()
-    return jsonify([lead.to_dict() for lead in leads])
+    leads = LeadController.get_leads_json()
+    return jsonify(leads)
 
 @lead_bp.route('/api/leads', methods=['POST'])
 @login_required
@@ -313,7 +316,7 @@ def dashboard():
 @lead_bp.route('/api/upload_leads', methods=['POST'])
 @login_required
 def api_upload_leads():
-    """API endpoint for scraping team to upload leads"""
+    """API endpoint"""
     try:
         data = request.get_json()
         
@@ -321,7 +324,7 @@ def api_upload_leads():
             return jsonify({"status": "error", "message": "Invalid data format. Expected a list of leads"}), 400
         
         # Initial validation - check required fields only once
-        required_fields = ['email', 'phone', 'website']
+        required_fields = ['email', 'phone', 'website','company']
         valid_leads = []
         invalid_indices = []
         
@@ -332,9 +335,10 @@ def api_upload_leads():
                 lead['email'] = UploadController.clean_email(lead['email'])
                 lead['phone'] = UploadController.clean_phone(lead['phone'])
                 lead['website'] = UploadController.clean_website(lead['website'])
+                lead['company'] = UploadController.clean_company(lead['company'])
                 
                 # Quick validation
-                if UploadController.is_valid_email(lead['email']) and UploadController.is_valid_phone(lead['phone']) and UploadController.is_valid_website(lead['website']):
+                if UploadController.is_valid_email(lead['email']) and UploadController.is_valid_phone(lead['phone']) and UploadController.is_valid_website(lead['website']) and UploadController.is_valid_company(lead['company']):
                     # Truncate fields to match database limitations
                     lead = Lead.truncate_fields(lead)
                     valid_leads.append(lead)
@@ -348,17 +352,18 @@ def api_upload_leads():
         skipped = 0
         
         # Get all existing emails, phones, and websites in one query to check duplicates efficiently
-        existing_leads = db.session.query(Lead.email, Lead.phone, Lead.website).all()
+        existing_leads = db.session.query(Lead.email, Lead.phone, Lead.website, Lead.company).all()
         existing_emails = {lead.email for lead in existing_leads}
         existing_phones = {lead.phone for lead in existing_leads}
         existing_websites = {lead.website for lead in existing_leads}
+        existing_companies = {lead.company for lead in existing_leads}
         
         # Prepare lists for bulk operations
         new_leads = []
         
         for lead_data in valid_leads:
             # Check if it's a duplicate
-            if lead_data['email'] in existing_emails or lead_data['phone'] in existing_phones or lead_data['website'] in existing_websites:
+            if lead_data['email'] in existing_emails or lead_data['phone'] in existing_phones or lead_data['website'] in existing_websites or lead_data['company'] in existing_companies:
                 skipped += 1
                 continue
                 
@@ -370,6 +375,8 @@ def api_upload_leads():
             existing_emails.add(lead_data['email'])
             existing_phones.add(lead_data['phone'])
             existing_websites.add(lead_data['website'])
+            existing_companies.add(lead_data['company'])
+            
         # Bulk insert new leads
         if new_leads:
             db.session.bulk_save_objects(new_leads)
@@ -396,3 +403,18 @@ def api_upload_leads():
             "status": "error",
             "message": f"Error during upload: {str(e)}"
         }), 500
+
+@lead_bp.route('/api/leads/<int:lead_id>', methods=['DELETE'])
+@login_required
+@role_required('admin', 'developer')
+def delete_lead_api(lead_id):
+    """Soft delete a lead via API - Admin and Developer only"""
+    try:
+        # Use the controller method which implements soft delete
+        success, message = LeadController.delete_lead(lead_id, current_user=current_user)
+        if success:
+            return jsonify({"message": "Lead successfully deleted"})
+        else:
+            return jsonify({"error": message}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

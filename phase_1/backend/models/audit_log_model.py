@@ -44,6 +44,18 @@ def ensure_audit_log_infrastructure(db):
             app_user := session_user;
         END IF;
 
+        -- Special handling for soft delete
+        IF NEW.deleted = TRUE AND OLD.deleted = FALSE THEN
+            EXECUTE format('INSERT INTO lead_audit_log (table_name, row_id, column_name, old_value, new_value, username, changed_at) VALUES (%L, %s, %L, %L, %L, %L, now())',
+                TG_TABLE_NAME,
+                OLD.id,
+                'LEAD_DELETED',
+                'false',
+                'true',
+                app_user
+            );
+        END IF;
+
         FOR col_name IN SELECT column_name 
                           FROM information_schema.columns 
                           WHERE table_name = TG_TABLE_NAME 

@@ -50,6 +50,8 @@ class Lead(db.Model):
     # Metadata
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
     
     # Only truncate these fields if needed
     FIELD_MAX_LENGTHS = {
@@ -111,5 +113,7 @@ class Lead(db.Model):
             'reasoning': self.reasoning,
             'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'deleted': self.deleted,
+            'deleted_at': self.deleted_at.isoformat() if self.deleted_at else None
         } 
