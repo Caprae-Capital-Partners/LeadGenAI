@@ -80,7 +80,8 @@ to match our standard format, and enrich it with Apollo, LinkedIn, and Growjo da
 """
 )
 st.sidebar.markdown("### ⚠️ Instructions")
-st.sidebar.markdown("""
+st.sidebar.markdown(
+    """
 1. **Upload your `.csv` file** containing company data.
 2. **Choose how many rows** you'd like to enrich.
 3. During **column mapping**, ensure your dataset's columns match the required normalized fields, especially **Company** and **Website**, or else it will not enrich your data correctly
@@ -92,7 +93,8 @@ st.sidebar.markdown("""
 - On average, enrichment takes **1–3 minutes per row**.
 - Data is sourced from **Growjo** and **Apollo**, but these sources may occasionally provide **incomplete or inaccurate information**, so it is better to still verify critical fields manually.
 - Fields are enriched using a **combination of sources**. Some rows may be filled entirely from Growjo, some from Apollo, and others using both.
-""")
+"""
+)
 
 if "normalized_df" not in st.session_state:
     st.session_state.normalized_df = None
@@ -270,7 +272,9 @@ if (
                 website = growjo_result.get("company_website", "")
                 if website and website.lower() != "not found":
                     rows_to_update.at[df_idx, "Website"] = website
-                    st.markdown(f"✅ Found website for {growjo_result.get('company_name')}: {website}")
+                    st.markdown(
+                        f"✅ Found website for {growjo_result.get('company_name')}: {website}"
+                    )
 
         # Refresh websites list with newly found websites
         websites = [
@@ -404,26 +408,29 @@ if (
                 fill("First Name", first_name, "")
                 fill("Last Name", last_name, "")
 
-
             # Determine source contribution
-            used_growjo = any([
-                growjo.get("revenue"),
-                growjo.get("employee_count"),
-                growjo.get("industry"),
-                growjo.get("decider_email"),
-                growjo.get("decider_name"),
-                growjo.get("company_website")
-            ])
+            used_growjo = any(
+                [
+                    growjo.get("revenue"),
+                    growjo.get("employee_count"),
+                    growjo.get("industry"),
+                    growjo.get("decider_email"),
+                    growjo.get("decider_name"),
+                    growjo.get("company_website"),
+                ]
+            )
 
-            used_apollo = any([
-                apollo.get("annual_revenue_printed"),
-                apollo.get("employee_count"),
-                apollo.get("industry"),
-                apollo.get("linkedin_url"),
-                apollo.get("founded_year"),
-                apollo.get("keywords"),
-                apollo.get("business_type")
-            ])
+            used_apollo = any(
+                [
+                    apollo.get("annual_revenue_printed"),
+                    apollo.get("employee_count"),
+                    apollo.get("industry"),
+                    apollo.get("linkedin_url"),
+                    apollo.get("founded_year"),
+                    apollo.get("keywords"),
+                    apollo.get("business_type"),
+                ]
+            )
 
             # Assign source tag
             if used_growjo and used_apollo:
@@ -435,11 +442,8 @@ if (
             else:
                 rows_to_update.at[idx, "Source"] = "N/A"
 
-
             progress_bar.progress((i + 1) / len(rows_to_update))
             status_text.text(f"Enhanced {i + 1} of {len(rows_to_update)} rows")
-
-
 
         for col in rows_to_update.columns:
             enhanced_df.loc[rows_to_update.index, col] = rows_to_update[col]
