@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
+import asyncio
 import os
-from scraper.apollo_scraper import enrich_single_company
-from scraper.growjoScraper import GrowjoScraper
-from scraper.apollo_people import find_best_person
-from scraper.apollo_scraper import enrich_single_company
+from backend_phase2.scraper.apollo_scraper import enrich_single_company
+from backend_phase2.scraper.growjoScraper import GrowjoScraper
+from backend_phase2.scraper.apollo_people import find_best_person
+from backend_phase2.scraper.apollo_scraper import enrich_single_company
+from phase_1.backend.main import fetch_and_merge_data
 
 
 app = Flask(__name__)
@@ -138,6 +140,26 @@ def apollo_scrape_batch():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+    
+@app.route("/api/lead-scrape", methods=["POST"])
+async def lead_scrape():
+    try:
+        data = request.get_json()
+        industry = data.get("industry")
+        location = data.get("location")
+
+        if not industry or not location:
+            return jsonify({"error": "Missing industry or location"}), 400
+
+        try:
+            results = await fetch_and_merge_data(industry, location)
+        except Exception as e:
+            return jsonify({"error": f"Error during data fetching: {str(e)}"}), 500
+
+        return jsonify(results), 200
+    except Exception as e:
+        return jsonify({"Internal error: ": str(e)}), 500
 
 
 if __name__ == "__main__":

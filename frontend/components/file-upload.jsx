@@ -1,32 +1,26 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Upload, FileUp, FileIcon, X, CheckCircle } from "lucide-react"
-import { cn } from "@/components/lib/utils"
+import { cn } from "@/lib/utils"
 
-interface FileUploadProps {
-  onFileUpload: (file: File) => void
-}
-
-export function FileUpload({ onFileUpload }: FileUploadProps) {
+export function FileUpload({ onFileUpload }) {
   const [isDragging, setIsDragging] = useState(false)
-  const [file, setFile] = useState<File | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState(null)
+  const fileInputRef = useRef(null)
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e) => {
     e.preventDefault()
     setIsDragging(true)
   }
 
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragLeave = (e) => {
     e.preventDefault()
     setIsDragging(false)
   }
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e) => {
     e.preventDefault()
     setIsDragging(false)
 
@@ -39,7 +33,7 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0]
       if (selectedFile.type === "text/csv") {

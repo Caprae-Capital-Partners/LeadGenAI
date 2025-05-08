@@ -28,7 +28,7 @@ jobs:
 
             # 🧠 Clone as LeadgenAI (not DataEnhancement)
             if [ ! -d "LeadgenAI" ]; then
-              git clone https://github.com/Rafiiisy/LeadGenAI.git
+              git clone https://github.com/Caprae-Capital-Partners/LeadGenAI.git
             fi
 
             cd LeadGenAI || exit 1

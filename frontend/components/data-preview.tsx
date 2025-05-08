@@ -7,57 +7,62 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Search, Filter } from "lucide-react"
 
-// Mock data for demonstration
+// Mock data for demonstration - this would come from the scraper results in a real app
 const mockData = [
   {
     id: 1,
     company: "Acme Inc",
     website: "acme.com",
-    industry: "Software",
-    employees: "50-200",
-    revenue: "$10M-$50M",
-    contact: "John Smith",
-    email: "john@acme.com",
+    industry: "Software & Technology",
+    street: "123 Tech Blvd",
+    city: "San Francisco",
+    state: "CA",
+    bbb_rating: "A+",
+    business_phone: "+1 (555) 123-4567",
   },
   {
     id: 2,
     company: "TechCorp",
     website: "techcorp.io",
-    industry: "SaaS",
-    employees: "10-50",
-    revenue: "$1M-$10M",
-    contact: "Sarah Johnson",
-    email: "sarah@techcorp.io",
+    industry: "Software & Technology",
+    street: "456 Innovation Way",
+    city: "Austin",
+    state: "TX",
+    bbb_rating: "A",
+    business_phone: "+1 (555) 987-6543",
   },
   {
     id: 3,
     company: "DataSystems",
     website: "datasystems.co",
-    industry: "Data Analytics",
-    employees: "200-500",
-    revenue: "$50M-$100M",
-    contact: "Michael Chen",
-    email: "michael@datasystems.co",
+    industry: "Software & Technology",
+    street: "789 Data Drive",
+    city: "New York",
+    state: "NY",
+    bbb_rating: "A+",
+    business_phone: "+1 (555) 456-7890",
   },
   {
     id: 4,
     company: "CloudWorks",
     website: "cloudworks.net",
-    industry: "Cloud Services",
-    employees: "50-200",
-    revenue: "$10M-$50M",
-    contact: "Emily Davis",
-    email: "emily@cloudworks.net",
+    industry: "Software & Technology",
+    street: "321 Cloud Ave",
+    city: "Seattle",
+    state: "WA",
+    bbb_rating: "B+",
+    business_phone: "+1 (555) 234-5678",
   },
   {
     id: 5,
     company: "AI Solutions",
     website: "aisolutions.ai",
-    industry: "Artificial Intelligence",
-    employees: "10-50",
-    revenue: "$1M-$10M",
-    contact: "David Wilson",
-    email: "david@aisolutions.ai",
+    industry: "Software & Technology",
+    street: "555 AI Parkway",
+    city: "Boston",
+    state: "MA",
+    bbb_rating: "A-",
+    business_phone: "+1 (555) 876-5432",
   },
 ]
 
@@ -85,19 +90,20 @@ export function DataPreview() {
     (row) =>
       row.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
       row.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.contact.toLowerCase().includes(searchTerm.toLowerCase()),
+      row.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      row.state.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Preview and Select Data</h3>
+        <h3 className="text-lg font-medium">Preview and Select Companies</h3>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search data..."
+              placeholder="Search companies..."
               className="w-64 pl-8"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -120,12 +126,11 @@ export function DataPreview() {
                 />
               </TableHead>
               <TableHead>Company</TableHead>
-              <TableHead>Website</TableHead>
               <TableHead>Industry</TableHead>
-              <TableHead>Employees</TableHead>
-              <TableHead>Revenue</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Address</TableHead>
+              <TableHead>BBB Rating</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Website</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -134,13 +139,19 @@ export function DataPreview() {
                 <TableCell>
                   <Checkbox checked={selectedRows.includes(row.id)} onCheckedChange={() => toggleSelectRow(row.id)} />
                 </TableCell>
-                <TableCell>{row.company}</TableCell>
-                <TableCell>{row.website}</TableCell>
+                <TableCell>
+                  <div className="font-medium">{row.company}</div>
+                </TableCell>
                 <TableCell>{row.industry}</TableCell>
-                <TableCell>{row.employees}</TableCell>
-                <TableCell>{row.revenue}</TableCell>
-                <TableCell>{row.contact}</TableCell>
-                <TableCell>{row.email}</TableCell>
+                <TableCell>
+                  <div>{row.street}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {row.city}, {row.state}
+                  </div>
+                </TableCell>
+                <TableCell>{row.bbb_rating}</TableCell>
+                <TableCell>{row.business_phone}</TableCell>
+                <TableCell>{row.website}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -149,7 +160,7 @@ export function DataPreview() {
 
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          {selectedRows.length} of {mockData.length} rows selected for enrichment
+          {selectedRows.length} of {mockData.length} companies selected for enrichment
         </div>
         <Button
           variant="outline"
