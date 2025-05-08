@@ -4,10 +4,10 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Download, Filter, Search } from "lucide-react"
+import { Download, Filter, Search, ArrowRight } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useRouter } from "next/navigation"
 
 // Mock data for demonstration
 const mockResults = [
@@ -15,77 +15,74 @@ const mockResults = [
     id: 1,
     company: "Acme Inc",
     website: "acme.com",
-    location: "San Francisco, CA",
-    industry: "Software",
-    revenue: "$10M-$50M",
-    employees: "50-200",
-    decisionMaker: {
-      name: "John Smith",
-      title: "CTO",
-      email: "john@acme.com",
-      linkedin: "linkedin.com/in/johnsmith",
-      phone: "+1 (555) 123-4567",
-    },
+    industry: "Software & Technology",
+    street: "123 Tech Blvd",
+    city: "San Francisco",
+    state: "CA",
+    bbb_rating: "A+",
+    business_phone: "+1 (555) 123-4567",
   },
   {
     id: 2,
     company: "TechCorp",
     website: "techcorp.io",
-    location: "Austin, TX",
-    industry: "SaaS",
-    revenue: "$1M-$10M",
-    employees: "10-50",
-    decisionMaker: {
-      name: "Sarah Johnson",
-      title: "CEO",
-      email: "sarah@techcorp.io",
-      linkedin: "linkedin.com/in/sarahjohnson",
-      phone: "+1 (555) 987-6543",
-    },
+    industry: "Software & Technology",
+    street: "456 Innovation Way",
+    city: "Austin",
+    state: "TX",
+    bbb_rating: "A",
+    business_phone: "+1 (555) 987-6543",
   },
   {
     id: 3,
     company: "DataSystems",
     website: "datasystems.co",
-    location: "New York, NY",
-    industry: "Data Analytics",
-    revenue: "$50M-$100M",
-    employees: "200-500",
-    decisionMaker: {
-      name: "Michael Chen",
-      title: "CIO",
-      email: "michael@datasystems.co",
-      linkedin: "linkedin.com/in/michaelchen",
-      phone: "+1 (555) 456-7890",
-    },
+    industry: "Software & Technology",
+    street: "789 Data Drive",
+    city: "New York",
+    state: "NY",
+    bbb_rating: "A+",
+    business_phone: "+1 (555) 456-7890",
+  },
+  {
+    id: 4,
+    company: "CloudWorks",
+    website: "cloudworks.net",
+    industry: "Software & Technology",
+    street: "321 Cloud Ave",
+    city: "Seattle",
+    state: "WA",
+    bbb_rating: "B+",
+    business_phone: "+1 (555) 234-5678",
+  },
+  {
+    id: 5,
+    company: "AI Solutions",
+    website: "aisolutions.ai",
+    industry: "Software & Technology",
+    street: "555 AI Parkway",
+    city: "Boston",
+    state: "MA",
+    bbb_rating: "A-",
+    business_phone: "+1 (555) 876-5432",
   },
 ]
 
 export function ScraperResults() {
-  const [selectedRows, setSelectedRows] = useState<number[]>([])
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
 
-  const toggleSelectAll = () => {
-    if (selectedRows.length === mockResults.length) {
-      setSelectedRows([])
-    } else {
-      setSelectedRows(mockResults.map((result) => result.id))
-    }
-  }
-
-  const toggleSelectRow = (id: number) => {
-    if (selectedRows.includes(id)) {
-      setSelectedRows(selectedRows.filter((rowId) => rowId !== id))
-    } else {
-      setSelectedRows([...selectedRows, id])
-    }
+  const handleNext = () => {
+    // Navigate to the data enhancement page
+    router.push("?tab=enhancement")
   }
 
   const filteredResults = mockResults.filter(
     (result) =>
       result.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
       result.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      result.decisionMaker.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      result.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      result.state.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -93,7 +90,7 @@ export function ScraperResults() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Scraper Results</CardTitle>
+            <CardTitle>Company Search Results</CardTitle>
             <CardDescription>{mockResults.length} companies found</CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -118,18 +115,12 @@ export function ScraperResults() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectedRows.length === mockResults.length && mockResults.length > 0}
-                    onCheckedChange={toggleSelectAll}
-                  />
-                </TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Industry</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Revenue</TableHead>
-                <TableHead>Employees</TableHead>
-                <TableHead>Decision Maker</TableHead>
+                <TableHead>Address</TableHead>
+                <TableHead>BBB Rating</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Website</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -137,23 +128,18 @@ export function ScraperResults() {
                 filteredResults.map((result) => (
                   <TableRow key={result.id}>
                     <TableCell>
-                      <Checkbox
-                        checked={selectedRows.includes(result.id)}
-                        onCheckedChange={() => toggleSelectRow(result.id)}
-                      />
-                    </TableCell>
-                    <TableCell>
                       <div className="font-medium">{result.company}</div>
-                      <div className="text-sm text-muted-foreground">{result.website}</div>
                     </TableCell>
                     <TableCell>{result.industry}</TableCell>
-                    <TableCell>{result.location}</TableCell>
-                    <TableCell>{result.revenue}</TableCell>
-                    <TableCell>{result.employees}</TableCell>
                     <TableCell>
-                      <div className="font-medium">{result.decisionMaker.name}</div>
-                      <div className="text-sm text-muted-foreground">{result.decisionMaker.title}</div>
+                      <div>{result.street}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {result.city}, {result.state}
+                      </div>
                     </TableCell>
+                    <TableCell>{result.bbb_rating}</TableCell>
+                    <TableCell>{result.business_phone}</TableCell>
+                    <TableCell>{result.website}</TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -168,10 +154,15 @@ export function ScraperResults() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <div className="text-sm text-muted-foreground">
-          {selectedRows.length} of {mockResults.length} selected
-        </div>
+        <div className="text-sm text-muted-foreground"></div>
         <div className="flex gap-2">
+          <Button
+            className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
+            onClick={handleNext}
+          >
+            <ArrowRight className="mr-2 h-4 w-4" />
+            Next
+          </Button>
           <Select defaultValue="csv">
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Format" />
@@ -182,12 +173,9 @@ export function ScraperResults() {
               <SelectItem value="json">JSON</SelectItem>
             </SelectContent>
           </Select>
-          <Button
-            className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
-            disabled={selectedRows.length === 0}
-          >
+          <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
-            Export Selected
+            Export
           </Button>
         </div>
       </CardFooter>

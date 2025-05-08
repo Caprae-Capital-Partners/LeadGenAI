@@ -1,17 +1,7 @@
 import { CheckIcon } from "lucide-react"
-import { cn } from "@/components/lib/utils"
+import { cn } from "@/lib/utils"
 
-interface Step {
-  title: string
-  description: string
-}
-
-interface StepperProps {
-  steps: Step[]
-  currentStep: number
-}
-
-export function Stepper({ steps, currentStep }: StepperProps) {
+export function Stepper({ steps, currentStep }) {
   return (
     <div className="w-full mb-8">
       <div className="flex items-center justify-between">
@@ -50,5 +40,3 @@ export function Stepper({ steps, currentStep }: StepperProps) {
     </div>
   )
 }
-
-export type { Step }
