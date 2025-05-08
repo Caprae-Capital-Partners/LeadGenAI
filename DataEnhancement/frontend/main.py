@@ -352,7 +352,7 @@ if (
 
             growjo_score = sum(1 for f in growjo_fields if f and f.lower() != "not found")
             apollo_score = sum(1 for f in apollo_fields if f and f.lower() != "not found")
-            use_apollo = apollo_score > growjo_score
+            use_apollo = apollo_score > growjo_scorenp
 
             if use_apollo:
                 fill("Email", apollo_person.get("email"), "")
