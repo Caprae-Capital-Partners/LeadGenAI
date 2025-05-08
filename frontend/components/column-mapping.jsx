@@ -53,7 +53,7 @@ const standardFields = [
 ]
 
 export function ColumnMapping() {
-  const [mappings, setMappings] = useState<Record<string, string>>({
+  const [mappings, setMappings] = useState({
     "Company Name": "Company",
     URL: "Website",
     Industry: "Industry",
@@ -72,7 +72,7 @@ export function ColumnMapping() {
     "Contact LinkedIn": "Owner's LinkedIn",
   })
 
-  const handleMappingChange = (csvHeader: string, standardField: string) => {
+  const handleMappingChange = (csvHeader, standardField) => {
     setMappings({
       ...mappings,
       [csvHeader]: standardField,
