@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Scraper } from "@/components/scraper"
-import { DataEnhancement } from "@/components/data-enhancement"
-import { Header } from "@/components/header"
-import { Sidebar } from "@/components/sidebar"
+import { Scraper } from "@/components/scraper/scraper"
+import { DataEnhancement } from "@/components/enrichment/data-enhancement"
+import { Header } from "@/components/layout/header"
+import { Sidebar } from "@/components/layout/sidebar"
 import { useSearchParams, useRouter } from "next/navigation"
 
 export function Dashboard() {
