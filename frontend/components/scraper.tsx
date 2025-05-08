@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
-import { ScraperResults } from "@/components/scraper/scraper-results"
+import { ScraperResults } from "@/components/scraper-results"
 
 export function Scraper() {
   const [isScrapingActive, setIsScrapingActive] = useState(false)

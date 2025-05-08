@@ -148,39 +148,58 @@ export function EnrichmentResults() {
   }
 
   // Parse filter string to get operation and value
-  const parseFilter = (filterStr: string, isRevenue = false): { operation: string; value: number | null } => {
-    filterStr = filterStr.toLowerCase().trim()
+  const parseFilter = (  filterStr: string,  isRevenue = false): { operation: string; value: number | null; upper?: number | null } => 
+    {
+      filterStr = filterStr.toLowerCase().trim()
 
-    // Default result
-    const result = { operation: "exact", value: null as number | null }
+      const result = {
+        operation: "exact",
+        value: null as number | null,
+        upper: null as number | null,
+      }
 
-    // Check for "exact" keyword
-    if (filterStr.startsWith("exact")) {
-      result.operation = "exact"
-      filterStr = filterStr.replace("exact", "").trim()
-    }
-    // Check for "less than" keywords
-    else if (filterStr.startsWith("less than") || filterStr.startsWith("under") || filterStr.startsWith("<")) {
-      result.operation = "less than"
-      filterStr = filterStr.replace(/less than|under|</g, "").trim()
-    }
-    // Check for "greater than" keywords
-    else if (filterStr.startsWith("greater than") || filterStr.startsWith("over") || filterStr.startsWith(">")) {
-      result.operation = "greater than"
-      filterStr = filterStr.replace(/greater than|over|>/g, "").trim()
+      // Handle range: e.g., "100 - 400"
+      const rangeMatch = filterStr.match(/^(\d+(?:[kmb]?)?)\s*-\s*(\d+(?:[kmb]?)?)$/)
+      if (rangeMatch) {
+        const val1 = isRevenue ? parseRevenue(rangeMatch[1]) : parseInt(rangeMatch[1])
+        const val2 = isRevenue ? parseRevenue(rangeMatch[2]) : parseInt(rangeMatch[2])
+        result.operation = "between"
+        result.value = val1 ?? null
+        result.upper = val2 ?? null
+        return result
+      }
+
+      // Greater than or equal
+      if (filterStr.startsWith(">=")) {
+        result.operation = "greater than or equal"
+        filterStr = filterStr.slice(2).trim()
+      }
+      // Greater than
+      else if (filterStr.startsWith(">")) {
+        result.operation = "greater than"
+        filterStr = filterStr.slice(1).trim()
+      }
+      // Less than or equal
+      else if (filterStr.startsWith("<=")) {
+        result.operation = "less than or equal"
+        filterStr = filterStr.slice(2).trim()
+      }
+      // Less than
+      else if (filterStr.startsWith("<")) {
+        result.operation = "less than"
+        filterStr = filterStr.slice(1).trim()
+      }
+
+      // Parse value
+      if (isRevenue) {
+        result.value = parseRevenue(filterStr)
+      } else {
+        result.value = parseInt(filterStr)
+      }
+
+      return result
     }
 
-    // Parse the value
-    if (isRevenue) {
-      result.value = parseRevenue(filterStr)
-    } else {
-      // For employees, just parse as integer
-      result.value = Number.parseInt(filterStr.replace(/employees|employee/g, "").trim())
-      if (isNaN(result.value)) result.value = null
-    }
-
-    return result
-  }
 
   // Apply filters to the data
   useEffect(() => {
@@ -201,29 +220,37 @@ export function EnrichmentResults() {
 
     // Apply employees filter
     if (employeesFilter) {
-      const { operation, value } = parseFilter(employeesFilter)
+      const { operation, value, upper } = parseFilter(employeesFilter)
       if (value !== null) {
         filtered = filtered.filter((company) => {
           if (operation === "exact") return company.employees === value
           if (operation === "less than") return company.employees < value
+          if (operation === "less than or equal") return company.employees <= value
           if (operation === "greater than") return company.employees > value
+          if (operation === "greater than or equal") return company.employees >= value
+          if (operation === "between") return company.employees >= value && company.employees <= (upper ?? value)
           return true
         })
       }
     }
 
+
     // Apply revenue filter
     if (revenueFilter) {
-      const { operation, value } = parseFilter(revenueFilter, true)
+      const { operation, value, upper } = parseFilter(revenueFilter, true)
       if (value !== null) {
         filtered = filtered.filter((company) => {
           if (operation === "exact") return company.revenue === value
           if (operation === "less than") return company.revenue < value
+          if (operation === "less than or equal") return company.revenue <= value
           if (operation === "greater than") return company.revenue > value
+          if (operation === "greater than or equal") return company.revenue >= value
+          if (operation === "between") return company.revenue >= value && company.revenue <= (upper ?? value)
           return true
         })
       }
     }
+
 
     setFilteredCompanies(filtered)
   }, [searchTerm, employeesFilter, revenueFilter])
@@ -331,10 +358,11 @@ export function EnrichmentResults() {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Filter examples:</p>
-                    <p>"exact 100" - exactly 100 employees</p>
-                    <p>"less than 50" - fewer than 50 employees</p>
-                    <p>"greater than 200" - more than 200 employees</p>
+                    <p>{'>100'} → greater than 100</p>
+                    <p>{'>=100'} → at least 100</p>
+                    <p>{'<100'} → less than 100</p>
+                    <p>{'<=100'} → at most 100</p>
+                    <p>{'100 - 400'} → between 100 and 400</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -362,10 +390,11 @@ export function EnrichmentResults() {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Filter examples:</p>
-                    <p>"exact $5M" - exactly $5 million</p>
-                    <p>"less than $10M" - less than $10 million</p>
-                    <p>"greater than $1M" - more than $1 million</p>
+                    <p>{'>100'} → greater than 100</p>
+                    <p>{'>=100'} → at least 100</p>
+                    <p>{'<100'} → less than 100</p>
+                    <p>{'<=100'} → at most 100</p>
+                    <p>{'100 - 400'} → between 100 and 400</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
