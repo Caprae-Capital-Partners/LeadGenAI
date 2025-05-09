@@ -177,6 +177,7 @@ export function ScraperResults() {
                 <TableHead>BBB Rating</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Website</TableHead>
+                <TableHead>Lead ID</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -255,6 +256,9 @@ export function ScraperResults() {
                           handleCellChange(rowIdx, "website", e.target.value)
                         }
                       />
+                    </TableCell>
+                    <TableCell>
+                      {result.id}
                     </TableCell>
                   </TableRow>
                 ))
