@@ -27,17 +27,19 @@ jobs:
             cd ~/scraper-webapp
 
             # 🧠 Clone as LeadgenAI (not DataEnhancement)
-            if [ ! -d "LeadgenAI" ]; then
+            if [ ! -d "LeadGenAI" ]; then
               git clone https://github.com/Caprae-Capital-Partners/LeadGenAI.git
             fi
 
             cd LeadGenAI || exit 1
+            
+            git fetch origin main
+            git reset --hard origin/main
 
             # 🔐 Inject env variables
             echo "${{ secrets.BACKEND_ENV_VARS }}" > .env
 
             # 🚀 Pull latest code & deploy
-            git pull origin main
             docker compose down
             docker compose up -d --build
           EOF
