@@ -49,6 +49,25 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
   const [businessTypeFilter, setBusinessTypeFilter] = useState("")
   const [filteredCompanies, setFilteredCompanies] = useState<EnrichedCompany[]>([])
   const [showFilters, setShowFilters] = useState(false)
+  const downloadCSV = (data: any[], filename: string) => {
+  const headers = Object.keys(data[0])
+  const csvRows = [
+    headers.join(","), // header row
+    ...data.map(row =>
+      headers.map(field => `"${(row[field] ?? "").toString().replace(/"/g, '""')}"`).join(",")
+    ),
+  ]
+  const csvContent = csvRows.join("\n")
+  const blob = new Blob([csvContent], { type: "text/csv" })
+  const url = URL.createObjectURL(blob)
+
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 
   const parseRevenue = (revenueStr: string): number | null => {
     revenueStr = revenueStr.toLowerCase().trim().replace(/[$,]/g, "")
@@ -201,9 +220,15 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                 <Filter className="h-4 w-4 mr-2" />
                 {showFilters ? "Hide Filters" : "Show Filters"}
               </Button>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export
+              <Button
+                onClick={() => downloadCSV(filteredCompanies, "enriched_results.csv")}
+                disabled={filteredCompanies.length === 0}
+                variant="outline"
+                size="sm"
+                className="gap-1"
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
               </Button>
             </div>
 
