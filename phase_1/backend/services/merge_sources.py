@@ -22,10 +22,11 @@ def save_to_csv(data: List[Dict[str, str]], headers: List[str], filename: str = 
     print(f"Data saved to {filename}")
 
 
-def merge_data_sources(data1: List[Dict[str, str]],
-                       data2: List[Dict[str, str]],
-                       data3: List[Dict[str, str]],
-                       fieldnames: List[str]) -> List[Dict[str, str]]:
+def merge_data_sources(fieldnames: List[str],
+                       data1: List[Dict[str, str]] = [],
+                       data2: List[Dict[str, str]] = [],
+                       data3: List[Dict[str, str]] = [],
+                       data4: List[Dict[str, str]] = []) -> List[Dict[str, str]]:
     merged = []
     seen_keys = set()  # Used to track unique records by Company and Address
 
@@ -52,6 +53,9 @@ def merge_data_sources(data1: List[Dict[str, str]],
         add_record(record)
 
     for record in data3:
+        add_record(record)
+        
+    for record in data4:
         add_record(record)
 
     return merged

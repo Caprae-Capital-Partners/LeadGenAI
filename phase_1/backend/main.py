@@ -12,6 +12,7 @@ from backend.services.bbb_scraper import scrape_bbb
 from backend.services.google_maps_scraper import scrape_lead_by_industry
 from backend.services.merge_sources import merge_data_sources
 from backend.services.parser import parse_data
+from backend.services.hotfrog_scraper import scrape_hotfrog
 
 import psutil
 import time
@@ -32,22 +33,22 @@ async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, s
     start_mem = process.memory_info().rss / 1024 / 1024  # In MB
     
     # Running parallel
-    bbb_data, google_maps_data, yp_data = await asyncio.gather(
+    bbb_data, google_maps_data, yp_data, hf_data = await asyncio.gather(
         scrape_bbb(industry, location),
         scrape_lead_by_industry(industry, location),
-        scrape_yellowpages(industry, location, max_pages=5)
+        scrape_yellowpages(industry, location, max_pages=5),
+        scrape_hotfrog(industry, location, max_pages=5)
     )
         
-    print(f"Fetched: BBB={len(bbb_data)}, GMaps={len(google_maps_data)}, YP={len(yp_data)}")
+    print(f"Fetched: BBB={len(bbb_data)}, GMaps={len(google_maps_data)}, YP={len(yp_data)}, HF={len(hf_data)}")
 
     # Merge data on name and address
-    merged_data = merge_data_sources(bbb_data, google_maps_data, yp_data, fieldnames=FIELDNAMES)
+    merged_data = merge_data_sources(FIELDNAMES, bbb_data, google_maps_data, yp_data, hf_data)
     
     df = pd.DataFrame(merged_data)
 
     parsed_data = parse_data(df, FIELDNAMES, location)
     data = parsed_data.to_dict(orient='records')
-    
     # De duplify using fuzzy matching    
     deduplified_data = deduplicate_businesses(data)
     
