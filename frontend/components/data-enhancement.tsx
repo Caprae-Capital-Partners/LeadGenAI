@@ -8,36 +8,30 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, Filter, Download } from "lucide-react"
+import { useLeads } from "./LeadsProvider"
 
 export function DataEnhancement() {
   const [showResults, setShowResults] = useState(false)
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
+  const { leads } = useLeads()
+  const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
   const [selectAll, setSelectAll] = useState(false)
-
-  const companies = [
-    { id: "1", name: "Acme Inc", website: "acme.com", industry: "Software" },
-    { id: "2", name: "TechCorp", website: "techcorp.io", industry: "Technology" },
-    { id: "3", name: "DataSystems", website: "datasystems.co", industry: "Data Analytics" },
-    { id: "4", name: "CloudWorks", website: "cloudworks.net", industry: "Cloud Infrastructure" },
-    { id: "5", name: "AI Solutions", website: "aisolutions.ai", industry: "Artificial Intelligence" },
-  ]
 
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedCompanies([])
     } else {
-      setSelectedCompanies(companies.map((company) => company.id))
+      setSelectedCompanies(leads.map((company) => company.id))
     }
     setSelectAll(!selectAll)
   }
 
-  const handleSelectCompany = (id: string) => {
+  const handleSelectCompany = (id: number) => {
     if (selectedCompanies.includes(id)) {
       setSelectedCompanies(selectedCompanies.filter((companyId) => companyId !== id))
       setSelectAll(false)
     } else {
       setSelectedCompanies([...selectedCompanies, id])
-      if (selectedCompanies.length + 1 === companies.length) {
+      if (selectedCompanies.length + 1 === leads.length) {
         setSelectAll(true)
       }
     }
@@ -93,16 +87,16 @@ export function DataEnhancement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {companies.map((company) => (
+                  {leads.map((company) => (
                     <TableRow key={company.id}>
                       <TableCell>
                         <Checkbox
                           checked={selectedCompanies.includes(company.id)}
                           onCheckedChange={() => handleSelectCompany(company.id)}
-                          aria-label={`Select ${company.name}`}
+                          aria-label={`Select ${company.company}`}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{company.name}</TableCell>
+                      <TableCell className="font-medium">{company.company}</TableCell>
                       <TableCell>{company.website}</TableCell>
                       <TableCell>{company.industry}</TableCell>
                     </TableRow>
@@ -113,7 +107,7 @@ export function DataEnhancement() {
 
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
-                {selectedCompanies.length} of {companies.length} selected
+                {selectedCompanies.length} of {leads.length} selected
               </p>
               <Button onClick={handleStartEnrichment} disabled={selectedCompanies.length === 0}>
                 Start Enrichment

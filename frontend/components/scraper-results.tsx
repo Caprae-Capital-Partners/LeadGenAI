@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Download, Filter, Search, ArrowRight } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
+import { useLeads } from "./LeadsProvider"
+import * as XLSX from "xlsx"
 
 // Mock data for demonstration
 const mockResults = [
@@ -71,19 +73,73 @@ const mockResults = [
 export function ScraperResults() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
+  const { leads, setLeads } = useLeads()
+  const [exportFormat, setExportFormat] = useState("csv")
+
+  const handleCellChange = (rowIdx: number, field: string, value: string) => {
+    setLeads(prev =>
+      prev.map((row, idx) =>
+        idx === rowIdx ? { ...row, [field]: value } : row
+      )
+    )
+  }
 
   const handleNext = () => {
     // Navigate to the data enhancement page
     router.push("?tab=enhancement")
   }
 
-  const filteredResults = mockResults.filter(
+  const filteredResults = leads.filter(
     (result) =>
       result.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
       result.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
       result.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
       result.state.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const exportCSV = () => {
+    const csvRows = [
+      Object.keys(leads[0]).join(","), // header
+      ...leads.map(row => Object.values(row).map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+    ];
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "leads.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify(leads, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "leads.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(leads);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Leads");
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "leads.xlsx";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    if (exportFormat === "csv") exportCSV();
+    else if (exportFormat === "excel") exportExcel();
+    else if (exportFormat === "json") exportJSON();
+  };
 
   return (
     <Card>
@@ -125,21 +181,81 @@ export function ScraperResults() {
             </TableHeader>
             <TableBody>
               {filteredResults.length > 0 ? (
-                filteredResults.map((result) => (
+                filteredResults.map((result, rowIdx) => (
                   <TableRow key={result.id}>
                     <TableCell>
-                      <div className="font-medium">{result.company}</div>
+                      <input
+                        className="font-medium border-b w-full bg-transparent"
+                        value={result.company}
+                        onChange={e =>
+                          handleCellChange(rowIdx, "company", e.target.value)
+                        }
+                      />
                     </TableCell>
-                    <TableCell>{result.industry}</TableCell>
                     <TableCell>
-                      <div>{result.street}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {result.city}, {result.state}
+                      <input
+                        className="border-b w-full bg-transparent"
+                        value={result.industry}
+                        onChange={e =>
+                          handleCellChange(rowIdx, "industry", e.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <input
+                        className="border-b w-full bg-transparent"
+                        value={result.street}
+                        onChange={e =>
+                          handleCellChange(rowIdx, "street", e.target.value)
+                        }
+                        placeholder="Street"
+                      />
+                      <div className="flex gap-1 mt-1">
+                        <input
+                          className="border-b w-1/2 bg-transparent text-sm text-muted-foreground"
+                          value={result.city}
+                          onChange={e =>
+                            handleCellChange(rowIdx, "city", e.target.value)
+                          }
+                          placeholder="City"
+                        />
+                        <input
+                          className="border-b w-1/2 bg-transparent text-sm text-muted-foreground"
+                          value={result.state}
+                          onChange={e =>
+                            handleCellChange(rowIdx, "state", e.target.value)
+                          }
+                          placeholder="State"
+                        />
                       </div>
                     </TableCell>
-                    <TableCell>{result.bbb_rating}</TableCell>
-                    <TableCell>{result.business_phone}</TableCell>
-                    <TableCell>{result.website}</TableCell>
+                    <TableCell>
+                      <input
+                        className="border-b w-full bg-transparent"
+                        value={result.bbb_rating}
+                        onChange={e =>
+                          handleCellChange(rowIdx, "bbb_rating", e.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <input
+                        className="border-b w-full bg-transparent"
+                        value={result.business_phone}
+                        onChange={e =>
+                          handleCellChange(rowIdx, "business_phone", e.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <input
+                        className="border-b w-full bg-transparent"
+                        value={result.website}
+                        onChange={e =>
+                          handleCellChange(rowIdx, "website", e.target.value)
+                        }
+                      />
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -163,7 +279,7 @@ export function ScraperResults() {
             <ArrowRight className="mr-2 h-4 w-4" />
             Next
           </Button>
-          <Select defaultValue="csv">
+          <Select value={exportFormat} onValueChange={setExportFormat}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Format" />
             </SelectTrigger>
@@ -173,7 +289,7 @@ export function ScraperResults() {
               <SelectItem value="json">JSON</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
