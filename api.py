@@ -5,12 +5,14 @@ import os
 from backend_phase2.scraper.apollo_scraper import enrich_single_company
 from backend_phase2.scraper.growjoScraper import GrowjoScraper
 from backend_phase2.scraper.apollo_people import find_best_person
-from backend_phase2.scraper.apollo_scraper import enrich_single_company
 from phase_1.backend.main import fetch_and_merge_data
+from flask_cors import CORS
 
 
 app = Flask(__name__)
+CORS(app, origins=["http://localhost:3000", "https://yourdomain.com"])
 load_dotenv()
+
 
 
 @app.route("/health", methods=["GET"])
