@@ -14,8 +14,8 @@ services:
 
   scraper:
     build: 
-      context: ./phase_1
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: phase_1/Dockerfile
     container_name: scraper-api
     ports:
       - "5051:5050"

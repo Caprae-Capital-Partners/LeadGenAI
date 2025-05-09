@@ -30,12 +30,10 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY . .
 RUN pip install -r requirements.txt
-
 RUN pip install playwright && playwright install chromium
 
-COPY . .
 EXPOSE 5050
 CMD ["hypercorn", "api:app", "--bind", "0.0.0.0:5050", "--workers", "1", "--worker-class", "asyncio"]
 
