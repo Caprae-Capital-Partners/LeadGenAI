@@ -37,5 +37,5 @@ RUN pip install playwright && playwright install chromium
 
 COPY . .
 EXPOSE 5050
-CMD ["hypercorn", "api.app:app", "--bind", "0.0.0.0:5050", "--workers", "1", "--worker-class", "asyncio"]
+CMD ["hypercorn", "api:app", "--bind", "0.0.0.0:5050", "--workers", "1", "--worker-class", "asyncio"]
 
