@@ -22,14 +22,15 @@ jobs:
       - name: 📦 Install Dependencies
         run: |
           pip install -r backend_phase2/requirements.txt
+          pip install -r phase_1/requirements.txt
           pip install flake8 black
 
       - name: ✨ Check Code Format with Black (Allow Failure)
         continue-on-error: true
         run: |
-          black --check backend_phase2/
+          black --check backend_phase2/ phase_1/
 
       - name: ⚙️ Lint with flake8
         continue-on-error: true
         run: |
-          flake8 backend_phase2/
+          flake8 backend_phase2/ phase_1/
