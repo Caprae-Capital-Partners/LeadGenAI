@@ -41,12 +41,13 @@ async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, s
     
     gmaps_page = await manager.context.new_page()
     bbb_page = await manager.context.new_page()
+    hf_page = await manager.context.new_page()
     
     bbb_data, google_maps_data, yp_data, hf_data = await asyncio.gather(
         scrape_bbb(industry, location, gmaps_page),
         scrape_lead_by_industry(industry, location, bbb_page),
         scrape_yellowpages(industry, location, max_pages=5),
-        scrape_hotfrog(industry, location, max_pages=5)
+        scrape_hotfrog(industry, location, hf_page, max_pages=5)
     )
     
     await manager.stop_browser()
