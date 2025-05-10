@@ -20,17 +20,10 @@ RUN apt-get update && apt-get install -y \
 ENV CHROME_BIN=/usr/bin/chromium
 ENV PATH=$PATH:/usr/bin/chromedriver
 
-# ✅ Copy everything inside backend_phase2 into /app
 WORKDIR /app
 COPY . .
-
-# ✅ Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# ✅ Make /app a module root
 ENV PYTHONPATH=/app
-
-# ✅ Run the app from /app/api/app.py
-WORKDIR /app/api
+RUN pip install --no-cache-dir -r backend_phase2/requirements.txt
+WORKDIR /app/backend_phase2/api
 CMD ["python", "app.py"]
 
