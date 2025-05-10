@@ -24,7 +24,7 @@ WORKDIR /app
 # ✅ Explicitly copy what is needed
 COPY api.py /app/api.py
 COPY backend_phase2/requirements.txt /app/requirements.txt
-COPY backend_phase2/scraper /app/scraper
+COPY backend_phase2 /app/backend_phase2
 
 RUN pip install --no-cache-dir -r requirements.txt
 
