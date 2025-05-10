@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-from api.routes.enrich import enrich_bp
+from routes.enrich import enrich_bp
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "https://yourdomain.com"])

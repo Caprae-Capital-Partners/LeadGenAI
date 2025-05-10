@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y \
 ENV CHROME_BIN=/usr/bin/chromium
 ENV PATH=$PATH:/usr/bin/chromedriver
 
-WORKDIR /app
+WORKDIR /app/api
 COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 5050
-CMD ["python", "api/app.py"]
+CMD ["python", "app.py"]
