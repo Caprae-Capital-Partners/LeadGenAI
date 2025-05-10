@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Install Chromium + Edge
+# Install system dependencies + Chromium + Edge
 RUN apt-get update && apt-get install -y \
     wget unzip curl gnupg lsb-release ca-certificates \
     chromium chromium-driver \
@@ -16,17 +16,19 @@ RUN apt-get update && apt-get install -y \
     chmod +x /usr/local/bin/msedgedriver && \
     rm /tmp/edgedriver.zip
 
+# Environment variables
 ENV CHROME_BIN=/usr/bin/chromium
 ENV PATH=$PATH:/usr/bin/chromedriver
 
+# App setup
 WORKDIR /app
 
-# ✅ Explicitly copy what is needed
-COPY api.py /app/api.py
-COPY backend_phase2/requirements.txt /app/requirements.txt
+# ✅ Copy only what's needed
 COPY backend_phase2 /app/backend_phase2
 
-RUN pip install --no-cache-dir -r requirements.txt
+# ✅ Install dependencies
+RUN pip install --no-cache-dir -r backend_phase2/requirements.txt
 
+# ✅ Expose port and run Flask app
 EXPOSE 5050
-CMD ["python", "api.py"]
+CMD ["python", "backend_phase2/api/app.py"]
