@@ -1,10 +1,5 @@
-from flask import Flask
-from backend.api.routes.scraper import scraper_routes
+from quart import Quart
+from backend.api.routes.scraper import scraper_bp
 
-def create_app():
-    app = Flask(__name__)
-
-    # Register the scraper routes
-    app.register_blueprint(scraper_routes, url_prefix='/api')
-
-    return app
+app = Quart(__name__)
+app.register_blueprint(scraper_bp, url_prefix='/api')

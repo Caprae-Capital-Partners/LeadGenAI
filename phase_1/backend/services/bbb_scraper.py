@@ -7,7 +7,7 @@ import sys
 # sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
 # from config.browser_config import PlaywrightManager
 
-from phase_1.backend.config.browser_config import PlaywrightManager
+from backend.config.browser_config import PlaywrightManager
 
 # FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
 
