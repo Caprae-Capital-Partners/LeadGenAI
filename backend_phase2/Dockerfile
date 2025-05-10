@@ -20,15 +20,8 @@ RUN apt-get update && apt-get install -y \
 ENV CHROME_BIN=/usr/bin/chromium
 ENV PATH=$PATH:/usr/bin/chromedriver
 
-# App setup
-WORKDIR /app/backend_phase2
-
-# ✅ Copy only what's needed
-COPY backend_phase2 /app/backend_phase2
-
-# ✅ Install dependencies
-RUN pip install --no-cache-dir -r backend_phase2/requirements.txt
-
-# ✅ Expose port and run Flask app
+WORKDIR /app
+COPY . .
+RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 5050
 CMD ["python", "api/app.py"]
