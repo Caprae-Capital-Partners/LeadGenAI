@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
-from backend_phase2.scraper.apollo_scraper import enrich_single_company
-from backend_phase2.scraper.growjoScraper import GrowjoScraper
-from backend_phase2.scraper.apollo_people import find_best_person
+from scraper.apollo_scraper import enrich_single_company
+from scraper.growjoScraper import GrowjoScraper
+from scraper.apollo_people import find_best_person
 
 enrich_bp = Blueprint('enrich', __name__)
 
