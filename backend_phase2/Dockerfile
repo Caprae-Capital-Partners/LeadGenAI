@@ -21,7 +21,7 @@ ENV CHROME_BIN=/usr/bin/chromium
 ENV PATH=$PATH:/usr/bin/chromedriver
 
 # App setup
-WORKDIR /app
+WORKDIR /app/backend_phase2
 
 # ✅ Copy only what's needed
 COPY backend_phase2 /app/backend_phase2
@@ -31,4 +31,4 @@ RUN pip install --no-cache-dir -r backend_phase2/requirements.txt
 
 # ✅ Expose port and run Flask app
 EXPOSE 5050
-CMD ["python", "backend_phase2/api/app.py"]
+CMD ["python", "api/app.py"]
