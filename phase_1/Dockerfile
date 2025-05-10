@@ -32,7 +32,7 @@ WORKDIR /app
 
 # ✅ Explicitly copy only the needed files
 COPY phase_1/requirements.txt /app/requirements.txt
-COPY phase_1/api.py /app/api.py
+COPY api.py /app/api.py
 COPY phase_1/backend /app/backend  
 RUN pip install -r requirements.txt
 RUN pip install playwright && playwright install chromium
