@@ -27,6 +27,10 @@ COPY . .
 # ✅ Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# ✅ Make /app a module root
+ENV PYTHONPATH=/app
+
 # ✅ Run the app from /app/api/app.py
 WORKDIR /app/api
 CMD ["python", "app.py"]
+
