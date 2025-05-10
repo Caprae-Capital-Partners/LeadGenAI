@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Sys dependencies for Playwright
+# System dependencies for Playwright
 RUN apt-get update && apt-get install -y \
     curl wget unzip \
     libnss3 \
@@ -30,11 +30,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY . .
-RUN ls -al /app
+# ✅ Explicitly copy only the needed files
+COPY phase_1/requirements.txt /app/requirements.txt
+COPY phase_1/api.py /app/api.py
+COPY phase_1/backend /app/backend  
 RUN pip install -r requirements.txt
 RUN pip install playwright && playwright install chromium
 
 EXPOSE 5050
 CMD ["hypercorn", "api:app", "--bind", "0.0.0.0:5050", "--workers", "1", "--worker-class", "asyncio"]
-

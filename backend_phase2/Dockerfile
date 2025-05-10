@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Install system dependencies + Chromium + Edge
+# Install Chromium + Edge
 RUN apt-get update && apt-get install -y \
     wget unzip curl gnupg lsb-release ca-certificates \
     chromium chromium-driver \
@@ -16,13 +16,15 @@ RUN apt-get update && apt-get install -y \
     chmod +x /usr/local/bin/msedgedriver && \
     rm /tmp/edgedriver.zip
 
-# Environment vars
 ENV CHROME_BIN=/usr/bin/chromium
 ENV PATH=$PATH:/usr/bin/chromedriver
 
-# App setup
 WORKDIR /app
-COPY . .
+
+# ✅ Explicitly copy what is needed
+COPY api.py /app/api.py
+COPY backend_phase2/requirements.txt /app/requirements.txt
+COPY backend_phase2/scraper /app/scraper
 
 RUN pip install --no-cache-dir -r requirements.txt
 
