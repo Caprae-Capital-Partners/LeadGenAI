@@ -1,19 +1,11 @@
 import asyncio
 from typing import List, Dict
 import pandas as pd
-<<<<<<< HEAD
-
-import sys
-import os
-# sys.path.append("backend")
-sys.path.append(os.path.abspath("C:/Work/Internship/Web Scraper Caprae/LeadGenAI/phase_1/"))
-=======
 import os
 import sys
 # sys.path.append("backend")
 sys.path.append(os.path.abspath("C:/Work/Internship/Web Scraper Caprae/LeadGenAI/phase_1/"))
 
->>>>>>> 9276d8314e81622b78fc1e7cd50cfb9823f8fa66
 from backend.services.Fuzzymatching import deduplicate_businesses
 from backend.services.yellowpages_scraper import scrape_yellowpages
 from backend.services.bbb_scraper import scrape_bbb
@@ -126,12 +118,7 @@ async def fetch_and_merge_seq(industry: str, location: str) -> List[Dict[str,str
         print(f"Error merging data: {e}")
         return []
 
-if __name__ == "__main__":
-    # Run the async function in an event loop
-    result = asyncio.run(fetch_and_merge_data("plumbing services", "Carmel, IN"))
-<<<<<<< HEAD
-    # save_to_csv(result, filename="merged_output.csv", headers=FIELDNAMES)
-=======
-    # save_to_csv(result, filename="merged_output.csv", headers=FIELDNAMES)
-    print(result)
->>>>>>> 9276d8314e81622b78fc1e7cd50cfb9823f8fa66
+# if __name__ == "__main__":
+# Run the async function in an event loop
+# result = asyncio.run(fetch_and_merge_data("plumbing services", "Carmel, IN"))
+# save_to_csv(result, filename="merged_output.csv", headers=FIELDNAMES)
