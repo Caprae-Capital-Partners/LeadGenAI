@@ -202,9 +202,51 @@ def delete_multiple_leads():
 @lead_bp.route('/api/leads', methods=['GET'])
 @login_required
 def get_leads():
-    """API endpoint to get all leads - All roles can access"""
-    leads = LeadController.get_leads_json()
-    return jsonify(leads)
+    """API endpoint to get all leads with pagination, search and filtering"""
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    # Get search and filter parameters
+    search_term = request.args.get('search', '')
+    company = request.args.get('company', '')
+    status = request.args.get('status', '')
+    source = request.args.get('source', '')
+    
+    # Build query with filters
+    query = Lead.query.filter(Lead.is_deleted == False)
+    
+    if search_term:
+        query = query.filter(
+            db.or_(
+                Lead.company.ilike(f'%{search_term}%'),
+                Lead.owner_name.ilike(f'%{search_term}%'),
+                Lead.owner_email.ilike(f'%{search_term}%')
+            )
+        )
+    
+    if company:
+        query = query.filter(Lead.company.ilike(f'%{company}%'))
+    
+    if status:
+        query = query.filter(Lead.status == status)
+    
+    if source:
+        query = query.filter(Lead.source == source)
+    
+    # Execute paginated query
+    paginated_leads = query.order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
+    
+    # Format results
+    results = {
+        "total": paginated_leads.total,
+        "pages": paginated_leads.pages,
+        "current_page": page,
+        "per_page": per_page,
+        "leads": [lead.to_dict() for lead in paginated_leads.items]
+    }
+    
+    return jsonify(results)
 
 @lead_bp.route('/api/leads', methods=['POST'])
 @login_required
@@ -309,7 +351,7 @@ def export_leads():
 @lead_bp.route('/api/upload_leads', methods=['POST'])
 @login_required
 def api_upload_leads():
-    """API endpoint"""
+    """API endpoint to upload multiple leads"""
     try:
         data = request.get_json()
         
@@ -444,5 +486,189 @@ def delete_lead_api(lead_id):
             return jsonify({"message": "Lead successfully deleted"})
         else:
             return jsonify({"error": message}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@lead_bp.route('/api/leads/<int:lead_id>', methods=['GET'])
+@login_required
+def get_lead_by_id(lead_id):
+    """Get detail of a single lead by ID"""
+    try:
+        lead = Lead.query.filter_by(lead_id=lead_id, is_deleted=False).first_or_404()
+        return jsonify(lead.to_dict())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
+
+# Sources Management Endpoints
+@lead_bp.route('/api/sources', methods=['GET'])
+@login_required
+def get_sources():
+    """Get all available lead sources"""
+    try:
+        # Query all distinct sources from the leads table
+        sources = db.session.query(Lead.source).filter(
+            Lead.source.isnot(None), 
+            Lead.source != ''
+        ).distinct().all()
+        
+        # Extract the source strings from the query result
+        source_list = [source[0] for source in sources]
+        
+        return jsonify({
+            "total": len(source_list),
+            "sources": sorted(source_list)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@lead_bp.route('/api/sources', methods=['POST'])
+@login_required
+@role_required('admin', 'developer')
+def add_source():
+    """Add a new source - Admin and Developer only"""
+    try:
+        data = request.json
+        
+        if not data or 'name' not in data:
+            return jsonify({"error": "Source name is required"}), 400
+            
+        source_name = data['name'].strip()
+        
+        if not source_name:
+            return jsonify({"error": "Source name cannot be empty"}), 400
+            
+        # Check if source already exists
+        existing_sources = db.session.query(Lead.source).filter(
+            Lead.source == source_name
+        ).first()
+        
+        if existing_sources:
+            return jsonify({"error": "Source already exists"}), 400
+            
+        # Create a dummy lead with just the source to add it to the system
+        # This is a simple way to add a source without creating a separate table
+        # In a production system, you might want a dedicated sources table
+        dummy_lead = Lead(
+            company="Source Definition", 
+            source=source_name,
+            status="Source Definition"
+        )
+        
+        db.session.add(dummy_lead)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Source added successfully",
+            "source": source_name
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# Stats Endpoints
+@lead_bp.route('/api/stats/summary', methods=['GET'])
+@login_required
+def get_stats_summary():
+    """Get lead count summary statistics"""
+    try:
+        # Get time range parameters (defaults to last 30 days)
+        days = request.args.get('days', 30, type=int)
+        start_date = datetime.datetime.now() - datetime.timedelta(days=days)
+        
+        # Get leads count by date
+        date_query = db.session.query(
+            db.func.date(Lead.created_at).label('date'),
+            db.func.count(Lead.lead_id).label('count')
+        ).filter(
+            Lead.created_at >= start_date,
+            Lead.is_deleted == False
+        ).group_by(
+            db.func.date(Lead.created_at)
+        ).all()
+        
+        # Get leads count by source
+        source_query = db.session.query(
+            Lead.source,
+            db.func.count(Lead.lead_id).label('count')
+        ).filter(
+            Lead.is_deleted == False,
+            Lead.source.isnot(None),
+            Lead.source != ''
+        ).group_by(
+            Lead.source
+        ).all()
+        
+        # Get leads count by status
+        status_query = db.session.query(
+            Lead.status,
+            db.func.count(Lead.lead_id).label('count')
+        ).filter(
+            Lead.is_deleted == False,
+            Lead.status.isnot(None),
+            Lead.status != ''
+        ).group_by(
+            Lead.status
+        ).all()
+        
+        # Format results
+        date_stats = {str(date): count for date, count in date_query}
+        source_stats = {source: count for source, count in source_query}
+        status_stats = {status: count for status, count in status_query}
+        
+        # Get total lead count
+        total_leads = db.session.query(Lead).filter(Lead.is_deleted == False).count()
+        
+        return jsonify({
+            "total_leads": total_leads,
+            "by_date": date_stats,
+            "by_source": source_stats,
+            "by_status": status_stats
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@lead_bp.route('/api/stats/top-sources', methods=['GET'])
+@login_required
+def get_top_sources():
+    """Get top performing lead sources"""
+    try:
+        # Get time range parameters (defaults to all time)
+        days = request.args.get('days', None, type=int)
+        limit = request.args.get('limit', 5, type=int)
+        
+        # Build query
+        query = db.session.query(
+            Lead.source,
+            db.func.count(Lead.lead_id).label('count')
+        ).filter(
+            Lead.is_deleted == False,
+            Lead.source.isnot(None),
+            Lead.source != ''
+        )
+        
+        # Add date filter if specified
+        if days:
+            start_date = datetime.datetime.now() - datetime.timedelta(days=days)
+            query = query.filter(Lead.created_at >= start_date)
+        
+        # Complete query with group by and order
+        results = query.group_by(
+            Lead.source
+        ).order_by(
+            db.func.count(Lead.lead_id).desc()
+        ).limit(limit).all()
+        
+        # Format results
+        top_sources = [
+            {"source": source, "count": count}
+            for source, count in results
+        ]
+        
+        return jsonify({
+            "top_sources": top_sources
+        })
+        
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -1,10 +1,30 @@
-from flask import Blueprint, request, render_template, redirect, url_for, flash
+from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
 from controllers.auth_controller import AuthController
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, login_user, logout_user
 from utils.decorators import role_required
 from models.user_model import User, db
+from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+import datetime
+import os
 
 auth_bp = Blueprint('auth', __name__)
+
+# Get secret key from environment or use a default for development
+SECRET_KEY = os.environ.get('SECRET_KEY')
+
+def generate_token(user_id):
+    """Generate JWT token for the user"""
+    payload = {
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1),
+        'iat': datetime.datetime.utcnow(),
+        'sub': user_id
+    }
+    return jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm='HS256'
+    )
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -142,4 +162,113 @@ def delete_user():
         db.session.rollback()
         flash(f'Error deleting user: {str(e)}', 'danger')
     
-    return redirect(url_for('auth.manage_users')) 
+    return redirect(url_for('auth.manage_users'))
+
+@auth_bp.route('/api/auth/login', methods=['POST'])
+def login_api():
+    """Login to get access token"""
+    data = request.json
+    
+    if not data:
+        return jsonify({"error": "No input data provided"}), 400
+        
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+    
+    # Find user by email
+    user = User.query.filter_by(email=email).first()
+    
+    if not user or not check_password_hash(user.password_hash, password):
+        return jsonify({"error": "Invalid email or password"}), 401
+    
+    # Log in the user with Flask-Login
+    login_user(user)
+    
+    # Generate JWT token
+    token = generate_token(user.id)
+    
+    return jsonify({
+        "message": "Login successful",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "role": user.role
+        },
+        "token": token
+    })
+
+@auth_bp.route('/api/auth/register', methods=['POST'])
+def register_api():
+    """Register a new user"""
+    data = request.json
+    
+    if not data:
+        return jsonify({"error": "No input data provided"}), 400
+        
+    email = data.get('email')
+    password = data.get('password')
+    name = data.get('name', '')
+    role = data.get('role', 'user')  # Default role is user
+    
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+    
+    # Check if user already exists
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+        return jsonify({"error": "Email already registered"}), 400
+    
+    # Create new user
+    new_user = User(
+        email=email,
+        password_hash=generate_password_hash(password),
+        name=name,
+        role=role
+    )
+    
+    try:
+        db.session.add(new_user)
+        db.session.commit()
+        
+        # Log in the new user
+        login_user(new_user)
+        
+        # Generate JWT token
+        token = generate_token(new_user.id)
+        
+        return jsonify({
+            "message": "Registration successful",
+            "user": {
+                "id": new_user.id,
+                "email": new_user.email,
+                "name": new_user.name,
+                "role": new_user.role
+            },
+            "token": token
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@auth_bp.route('/api/auth/me', methods=['GET'])
+@login_required
+def get_user_info():
+    """Get current user information"""
+    return jsonify({
+        "id": current_user.id,
+        "email": current_user.email,
+        "name": current_user.name,
+        "role": current_user.role
+    })
+
+@auth_bp.route('/api/auth/logout', methods=['POST'])
+@login_required
+def logout_api():
+    """Logout user"""
+    logout_user()
+    return jsonify({"message": "Logout successful"}) 

@@ -220,3 +220,385 @@ The CSV file should contain the following columns (column names can be mapped du
 - Industry
 - Business Type
 - Notes
+
+# LeadGen API Documentation
+
+This document provides an overview of all available API endpoints in the LeadGen system.
+
+## Authentication
+
+### Login
+- **URL**: `/api/auth/login`
+- **Method**: `POST`
+- **Description**: Authenticate user and get access token
+- **Request Body**:
+  ```json
+  {
+    "email": "user@example.com",
+    "password": "your_password"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "message": "Login successful",
+    "user": {
+      "id": 1,
+      "email": "user@example.com",
+      "name": "John Doe",
+      "role": "admin"
+    },
+    "token": "jwt_token_here"
+  }
+  ```
+
+### Register
+- **URL**: `/api/auth/register`
+- **Method**: `POST`
+- **Description**: Create a new user account
+- **Request Body**:
+  ```json
+  {
+    "email": "newuser@example.com",
+    "password": "your_password",
+    "name": "New User",
+    "role": "user"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "message": "Registration successful",
+    "user": {
+      "id": 2,
+      "email": "newuser@example.com",
+      "name": "New User",
+      "role": "user"
+    },
+    "token": "jwt_token_here"
+  }
+  ```
+
+### Get Current User
+- **URL**: `/api/auth/me`
+- **Method**: `GET`
+- **Description**: Get information about the currently logged in user
+- **Headers**: Authorization with Bearer token
+- **Success Response**:
+  ```json
+  {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "admin"
+  }
+  ```
+
+### Logout
+- **URL**: `/api/auth/logout`
+- **Method**: `POST`
+- **Description**: Logout the current user
+- **Headers**: Authorization with Bearer token
+- **Success Response**:
+  ```json
+  {
+    "message": "Logout successful"
+  }
+  ```
+
+## Leads
+
+### Get All Leads
+- **URL**: `/api/leads`
+- **Method**: `GET`
+- **Description**: Get a paginated list of all leads with optional filtering
+- **Headers**: Authorization with Bearer token
+- **Query Parameters**:
+  - `page`: Page number (default: 1)
+  - `per_page`: Items per page (default: 10)
+  - `search`: Search term for company, owner name, or email
+  - `company`: Filter by company name
+  - `status`: Filter by status
+  - `source`: Filter by source
+- **Success Response**:
+  ```json
+  {
+    "total": 100,
+    "pages": 10,
+    "current_page": 1,
+    "per_page": 10,
+    "leads": [
+      {
+        "lead_id": 1,
+        "company": "Acme Inc",
+        "owner_name": "John Doe",
+        "owner_email": "john@acme.com",
+        "status": "New",
+        "created_at": "2023-06-15T10:30:00"
+      },
+      ...
+    ]
+  }
+  ```
+
+### Get Lead by ID
+- **URL**: `/api/leads/{lead_id}`
+- **Method**: `GET`
+- **Description**: Get details of a specific lead
+- **Headers**: Authorization with Bearer token
+- **Success Response**:
+  ```json
+  {
+    "lead_id": 1,
+    "company": "Acme Inc",
+    "owner_name": "John Doe",
+    "owner_email": "john@acme.com",
+    "phone": "123-456-7890",
+    "website": "https://acme.com",
+    "status": "New",
+    "created_at": "2023-06-15T10:30:00",
+    "source": "Website",
+    "notes": "Interested in our products"
+  }
+  ```
+
+### Create Lead
+- **URL**: `/api/leads`
+- **Method**: `POST`
+- **Description**: Create a new lead (Admin and Developer only)
+- **Headers**: Authorization with Bearer token
+- **Request Body**:
+  ```json
+  {
+    "company": "New Company",
+    "owner_name": "Jane Smith",
+    "owner_email": "jane@newcompany.com",
+    "phone": "123-456-7890",
+    "website": "https://newcompany.com",
+    "status": "New",
+    "source": "LinkedIn"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "message": "Lead created successfully",
+    "lead": {
+      "lead_id": 5,
+      "company": "New Company",
+      "owner_name": "Jane Smith",
+      "owner_email": "jane@newcompany.com",
+      "status": "New"
+    }
+  }
+  ```
+
+### Update Lead
+- **URL**: `/api/leads/{lead_id}`
+- **Method**: `PUT`
+- **Description**: Update lead details (Admin and Developer only)
+- **Headers**: Authorization with Bearer token
+- **Request Body**:
+  ```json
+  {
+    "company": "Updated Company Name",
+    "status": "Contacted",
+    "notes": "Called on June 15th"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "message": "Lead updated successfully",
+    "lead": {
+      "lead_id": 5,
+      "company": "Updated Company Name",
+      "owner_name": "Jane Smith",
+      "owner_email": "jane@newcompany.com",
+      "status": "Contacted",
+      "notes": "Called on June 15th"
+    }
+  }
+  ```
+
+### Update Lead Status
+- **URL**: `/api/leads/{lead_id}/status`
+- **Method**: `PUT`
+- **Description**: Update just the status of a lead (All roles)
+- **Headers**: Authorization with Bearer token
+- **Request Body**:
+  ```json
+  {
+    "status": "Qualified"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "message": "Status updated successfully",
+    "lead": {
+      "lead_id": 5,
+      "company": "Updated Company Name",
+      "status": "Qualified"
+    }
+  }
+  ```
+
+### Delete Lead
+- **URL**: `/api/leads/{lead_id}`
+- **Method**: `DELETE`
+- **Description**: Soft delete a lead (Admin and Developer only)
+- **Headers**: Authorization with Bearer token
+- **Success Response**:
+  ```json
+  {
+    "message": "Lead successfully deleted"
+  }
+  ```
+
+### Upload Multiple Leads
+- **URL**: `/api/upload_leads`
+- **Method**: `POST`
+- **Description**: Upload multiple leads at once
+- **Headers**: Authorization with Bearer token
+- **Request Body**:
+  ```json
+  [
+    {
+      "company": "Company A",
+      "owner_email": "contact@companya.com",
+      "phone": "123-456-7890",
+      "source": "LinkedIn"
+    },
+    {
+      "company": "Company B",
+      "owner_email": "contact@companyb.com",
+      "phone": "987-654-3210",
+      "source": "Website"
+    }
+  ]
+  ```
+- **Success Response**:
+  ```json
+  {
+    "status": "success",
+    "message": "Upload Complete! Added: 2, Skipped: 0, Errors: 0",
+    "stats": {
+      "added": 2,
+      "skipped_duplicates": 0,
+      "errors": 0,
+      "invalid_indices": []
+    }
+  }
+  ```
+
+## Sources
+
+### Get All Sources
+- **URL**: `/api/sources`
+- **Method**: `GET`
+- **Description**: Get a list of all available lead sources
+- **Headers**: Authorization with Bearer token
+- **Success Response**:
+  ```json
+  {
+    "total": 5,
+    "sources": [
+      "Facebook",
+      "Google",
+      "LinkedIn",
+      "Website",
+      "Word of Mouth"
+    ]
+  }
+  ```
+
+### Add New Source
+- **URL**: `/api/sources`
+- **Method**: `POST`
+- **Description**: Add a new lead source (Admin and Developer only)
+- **Headers**: Authorization with Bearer token
+- **Request Body**:
+  ```json
+  {
+    "name": "Twitter"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "message": "Source added successfully",
+    "source": "Twitter"
+  }
+  ```
+
+## Statistics
+
+### Get Summary Statistics
+- **URL**: `/api/stats/summary`
+- **Method**: `GET`
+- **Description**: Get lead count summary statistics
+- **Headers**: Authorization with Bearer token
+- **Query Parameters**:
+  - `days`: Time period in days (default: 30)
+- **Success Response**:
+  ```json
+  {
+    "total_leads": 100,
+    "by_date": {
+      "2023-06-01": 5,
+      "2023-06-02": 7,
+      "2023-06-03": 3
+    },
+    "by_source": {
+      "LinkedIn": 35,
+      "Website": 25,
+      "Google": 15,
+      "Facebook": 15,
+      "Word of Mouth": 10
+    },
+    "by_status": {
+      "New": 30,
+      "Contacted": 25,
+      "Qualified": 20,
+      "Proposal": 15,
+      "Closed": 10
+    }
+  }
+  ```
+
+### Get Top Sources
+- **URL**: `/api/stats/top-sources`
+- **Method**: `GET`
+- **Description**: Get top performing lead sources
+- **Headers**: Authorization with Bearer token
+- **Query Parameters**:
+  - `days`: Time period in days (optional)
+  - `limit`: Maximum number of sources to return (default: 5)
+- **Success Response**:
+  ```json
+  {
+    "top_sources": [
+      {
+        "source": "LinkedIn",
+        "count": 35
+      },
+      {
+        "source": "Website",
+        "count": 25
+      },
+      {
+        "source": "Google",
+        "count": 15
+      },
+      {
+        "source": "Facebook",
+        "count": 15
+      },
+      {
+        "source": "Word of Mouth",
+        "count": 10
+      }
+    ]
+  }
+  ```

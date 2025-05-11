@@ -13,3 +13,4 @@ werkzeug
 openpyxl
 pymysql
 python-dotenv
+jwt
