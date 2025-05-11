@@ -13,7 +13,7 @@ from backend.config.browser_config import PlaywrightManager
 
 async def scrape_bbb(industry: str, location: str, page=None) -> List[Dict[str,str]]:  
     industry = industry.replace(" ", "+")
-    location = location.replace(", ", "%2C")
+    location = location.replace(",", "%2C").strip()
     BASE_URL = f"https://www.bbb.org/search?find_country=USA&find_loc={location}&find_text={industry}"
     lead_list = []
     internal_browser = False
