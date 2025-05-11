@@ -11,7 +11,7 @@ import { Search, Filter, Download } from "lucide-react"
 import type { ApolloCompany, GrowjoCompany, ApolloPerson } from "@/types/enrichment"
 import axios from "axios"
 
-const BACKEND_URL = "http://localhost:5050"
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!
 
 export function DataEnhancement() {
   const [showResults, setShowResults] = useState(false)

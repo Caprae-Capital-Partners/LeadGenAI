@@ -47,6 +47,13 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
   const [employeesFilter, setEmployeesFilter] = useState("")
   const [revenueFilter, setRevenueFilter] = useState("")
   const [businessTypeFilter, setBusinessTypeFilter] = useState("")
+  const [productFilter, setProductFilter] = useState("")
+  const [yearFoundedFilter, setYearFoundedFilter] = useState("")
+  const [bbbRatingFilter, setBbbRatingFilter] = useState("")
+  const [streetFilter, setStreetFilter] = useState("")
+  const [cityFilter, setCityFilter] = useState("")
+  const [stateFilter, setStateFilter] = useState("")
+  const [sourceFilter, setSourceFilter] = useState("")
   const [filteredCompanies, setFilteredCompanies] = useState<EnrichedCompany[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const downloadCSV = (data: any[], filename: string) => {
@@ -146,9 +153,64 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
     if (businessTypeFilter) {
       filtered = filtered.filter((c) => c.businessType.toLowerCase().includes(businessTypeFilter.toLowerCase()))
     }
+    if (productFilter) {
+      filtered = filtered.filter((company) =>
+        company.productCategory?.toLowerCase().includes(productFilter.toLowerCase())
+      )
+    }
+
+    if (yearFoundedFilter) {
+      filtered = filtered.filter((company) =>
+        company.yearFounded?.toLowerCase().includes(yearFoundedFilter.toLowerCase())
+      )
+    }
+
+    if (bbbRatingFilter) {
+      filtered = filtered.filter((company) =>
+        company.bbbRating?.toLowerCase().includes(bbbRatingFilter.toLowerCase())
+      )
+    }
+
+    if (streetFilter) {
+      filtered = filtered.filter((company) =>
+        company.street?.toLowerCase().includes(streetFilter.toLowerCase())
+      )
+    }
+
+    if (cityFilter) {
+      filtered = filtered.filter((company) =>
+        company.city?.toLowerCase().includes(cityFilter.toLowerCase())
+      )
+    }
+
+    if (stateFilter) {
+      filtered = filtered.filter((company) =>
+        company.state?.toLowerCase().includes(stateFilter.toLowerCase())
+      )
+    }
+
+    if (sourceFilter) {
+      filtered = filtered.filter((company) =>
+        company.source?.toLowerCase().includes(sourceFilter.toLowerCase())
+      )
+    }
+
 
     setFilteredCompanies(filtered)
-  }, [searchTerm, employeesFilter, revenueFilter, businessTypeFilter, enrichedCompanies])
+    }, [
+      searchTerm,
+      employeesFilter,
+      revenueFilter,
+      businessTypeFilter,
+      productFilter,
+      yearFoundedFilter,
+      bbbRatingFilter,
+      streetFilter,
+      cityFilter,
+      stateFilter,
+      sourceFilter,
+      enrichedCompanies
+    ])
 
   useEffect(() => {
     setFilteredCompanies(enrichedCompanies)
@@ -252,6 +314,48 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                   onChange={(e) => setBusinessTypeFilter(e.target.value)}
                   className="w-[240px]"
                 />
+                <Input
+                  placeholder="Product Category (e.g. SaaS)"
+                  value={productFilter}
+                  onChange={(e) => setProductFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Year Founded (e.g. 2015)"
+                  value={yearFoundedFilter}
+                  onChange={(e) => setYearFoundedFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="BBB Rating (e.g. A+)"
+                  value={bbbRatingFilter}
+                  onChange={(e) => setBbbRatingFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Street"
+                  value={streetFilter}
+                  onChange={(e) => setStreetFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="City"
+                  value={cityFilter}
+                  onChange={(e) => setCityFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="State"
+                  value={stateFilter}
+                  onChange={(e) => setStateFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Source (e.g. Growjo)"
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value)}
+                  className="w-[240px]"
+                />
                 <Button
                   variant="ghost"
                   size="sm"
@@ -259,7 +363,15 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                     setEmployeesFilter("")
                     setRevenueFilter("")
                     setBusinessTypeFilter("")
+                    setProductFilter("")
+                    setYearFoundedFilter("")
+                    setBbbRatingFilter("")
+                    setStreetFilter("")
+                    setCityFilter("")
+                    setStateFilter("")
+                    setSourceFilter("")
                   }}
+
                 >
                   <X className="h-4 w-4 mr-1" />
                   Clear All
