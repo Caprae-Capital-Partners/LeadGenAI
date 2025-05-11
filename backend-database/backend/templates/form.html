@@ -363,28 +363,28 @@
     
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
       <div class="input-container">
-        <label for="owner_first_name" class="required">First Name</label>
-        <input type="text" id="owner_first_name" name="owner_first_name" required placeholder="Enter first name">
+        <label for="owner_first_name">First Name</label>
+        <input type="text" id="owner_first_name" name="owner_first_name" placeholder="Enter first name">
       </div>
       
       <div class="input-container">
-        <label for="owner_last_name" class="required">Last Name</label>
-        <input type="text" id="owner_last_name" name="owner_last_name" required placeholder="Enter last name">
+        <label for="owner_last_name">Last Name</label>
+        <input type="text" id="owner_last_name" name="owner_last_name" placeholder="Enter last name">
       </div>
       
       <div class="input-container">
-        <label for="owner_email" class="required">Email</label>
-        <input type="email" id="owner_email" name="owner_email" required placeholder="Enter email address">
+        <label for="owner_email">Email</label>
+        <input type="email" id="owner_email" name="owner_email" placeholder="Enter email address">
       </div>
       
       <div class="input-container">
         <label for="phone">Phone Number</label>
-        <input type="text" id="phone" name="phone" required placeholder="Enter phone number">
+        <input type="text" id="phone" name="phone" placeholder="Enter phone number">
       </div>
       
       <div class="input-container">
-        <label for="company" class="required">Company Name</label>
-        <input type="text" id="company" name="company" required placeholder="Enter company name">
+        <label for="company">Company Name</label>
+        <input type="text" id="company" name="company" placeholder="Enter company name">
       </div>
       
       <div class="input-container">
@@ -513,7 +513,6 @@
       // Create select for field type
       const fieldSelect = document.createElement('select');
       fieldSelect.name = 'dynamic_field_name[]';
-      fieldSelect.required = true;
       
       // Add options from available fields
       const defaultOption = document.createElement('option');
@@ -543,7 +542,6 @@
       fieldInput.type = 'text';
       fieldInput.name = 'dynamic_field_value[]';
       fieldInput.placeholder = 'Select a field type first';
-      fieldInput.required = true;
       
       // Update placeholder when field type changes
       fieldSelect.addEventListener('change', function() {

@@ -315,8 +315,8 @@ def api_upload_leads():
         if not data or not isinstance(data, list) or len(data) == 0:
             return jsonify({"status": "error", "message": "Invalid data format. Expected a list of leads"}), 400
         
-        # Initial validation - check required fields only once
-        required_fields = ['owner_email', 'phone', 'website', 'company']
+        # Initial validation - only require company field
+        required_fields = ['company']
         valid_leads = []
         invalid_indices = []
         
@@ -327,18 +327,30 @@ def api_upload_leads():
                 lead['owner_email'] = lead.pop('email')
                 
             if all(field in lead for field in required_fields):
-                # Clean email and phone
-                lead['owner_email'] = UploadController.clean_email(lead['owner_email'])
-                lead['phone'] = UploadController.clean_phone(lead['phone'])
-                lead['website'] = UploadController.clean_website(lead['website'])
+                # Clean fields if present
+                if 'owner_email' in lead:
+                    lead['owner_email'] = UploadController.clean_email(lead.get('owner_email', ''))
+                else:
+                    lead['owner_email'] = ''
+                    
+                if 'phone' in lead:
+                    lead['phone'] = UploadController.clean_phone(lead.get('phone', ''))
+                else:
+                    lead['phone'] = ''
+                    
+                if 'website' in lead:
+                    lead['website'] = UploadController.clean_website(lead.get('website', ''))
+                else:
+                    lead['website'] = ''
+                    
                 lead['company'] = UploadController.clean_company(lead['company'])
                 
-                # Set default values for required fields
-                if 'search_keyword' not in lead:
-                    lead['search_keyword'] = {}  # Empty JSON object as default
-                    
-                # Quick validation
-                if UploadController.is_valid_email(lead['owner_email']) and UploadController.is_valid_phone(lead['phone']) and UploadController.is_valid_website(lead['website']) and UploadController.is_valid_company(lead['company']):
+                # Company validation only
+                if UploadController.is_valid_company(lead['company']):
+                    # Set default values for required fields
+                    if 'search_keyword' not in lead:
+                        lead['search_keyword'] = {}  # Empty JSON object as default
+                        
                     # Truncate fields to match database limitations
                     if hasattr(Lead, 'truncate_fields'):
                         lead = Lead.truncate_fields(lead)
@@ -354,17 +366,28 @@ def api_upload_leads():
         
         # Get all existing emails, phones, and websites in one query to check duplicates efficiently
         existing_leads = db.session.query(Lead.owner_email, Lead.phone, Lead.website, Lead.company).all()
-        existing_emails = {lead.owner_email for lead in existing_leads}
-        existing_phones = {lead.phone for lead in existing_leads}
-        existing_websites = {lead.website for lead in existing_leads}
-        existing_companies = {lead.company for lead in existing_leads}
+        existing_emails = {lead.owner_email for lead in existing_leads if lead.owner_email}
+        existing_phones = {lead.phone for lead in existing_leads if lead.phone}
+        existing_websites = {lead.website for lead in existing_leads if lead.website}
+        existing_companies = {lead.company for lead in existing_leads if lead.company}
         
         # Prepare lists for bulk operations
         new_leads = []
         
         for lead_data in valid_leads:
-            # Check if it's a duplicate
-            if lead_data['owner_email'] in existing_emails or lead_data['phone'] in existing_phones or lead_data['website'] in existing_websites or lead_data['company'] in existing_companies:
+            # Check if it's a duplicate (only if relevant fields are present)
+            is_duplicate = False
+            
+            if lead_data.get('owner_email') and lead_data['owner_email'] in existing_emails:
+                is_duplicate = True
+            elif lead_data.get('phone') and lead_data['phone'] in existing_phones:
+                is_duplicate = True
+            elif lead_data.get('website') and lead_data['website'] in existing_websites:
+                is_duplicate = True
+            elif lead_data['company'] in existing_companies:
+                is_duplicate = True
+                
+            if is_duplicate:
                 skipped += 1
                 continue
                 
@@ -373,9 +396,12 @@ def api_upload_leads():
             new_leads.append(new_lead)
             
             # Update tracking sets to prevent duplicates within the same batch
-            existing_emails.add(lead_data['owner_email'])
-            existing_phones.add(lead_data['phone'])
-            existing_websites.add(lead_data['website'])
+            if lead_data.get('owner_email'):
+                existing_emails.add(lead_data['owner_email'])
+            if lead_data.get('phone'):
+                existing_phones.add(lead_data['phone'])
+            if lead_data.get('website'):
+                existing_websites.add(lead_data['website'])
             existing_companies.add(lead_data['company'])
             
         # Bulk insert new leads

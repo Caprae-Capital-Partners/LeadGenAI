@@ -3,10 +3,74 @@ import io
 import re
 from datetime import datetime
 from models.lead_model import db, Lead
+from controllers.lead_controller import LeadController
 import chardet
 from flask import flash
 
 class UploadController:
+    # Add field mapping dictionary at the start of the class
+    FIELD_MAPPING = {
+        # Legacy field mappings
+        'title': 'owner_title',
+        'linkedin_url': 'company_linkedin',
+        'product_service_category': 'product_category',
+        'employees_range': 'employees',
+        'associated_members': 'employees',
+        'rev_source': 'source',
+        'owner_age': None,
+        'additional_notes': None,
+        
+        # Case-sensitive field mappings with spaces
+        'Company': 'company',
+        'City': 'city',
+        'State': 'state',
+        'First Name': 'owner_first_name',
+        'Last Name': 'owner_last_name',
+        'Email': 'owner_email',
+        'Title': 'owner_title',
+        'Website': 'website',
+        'LinkedIn URL': 'company_linkedin',
+        'Industry': 'industry',
+        'Revenue': 'revenue',
+        'Product/Service Category': 'product_category',
+        'Business Type (B2B, B2B2C)': 'business_type',
+        'Employees range': 'employees',
+        'Year Founded': 'year_founded',
+        "Owner's LinkedIn": 'owner_linkedin',
+        'Associated Members': 'employees',
+        'Phone': 'phone',
+        'Company Phone': 'company_phone',
+        'Owner Phone': 'owner_phone_number',
+        'Street': 'street',
+        'BBB Rating': 'bbb_rating',
+        
+        # Fields to ignore
+        'Score': None,
+        'Email customization #1': None,
+        'Subject Line #1': None,
+        'Email Customization #2': None,
+        'Subject Line #2': None,
+        'LinkedIn Customization #1': None,
+        'LinkedIn Customization #2': None,
+        'Reasoning for r//y/g': None,
+    }
+
+    @staticmethod
+    def map_field_name(field_name):
+        """Map a field name to its database column name"""
+        # First try exact match
+        if field_name in UploadController.FIELD_MAPPING:
+            return UploadController.FIELD_MAPPING[field_name]
+            
+        # Try case-insensitive match
+        field_name_lower = field_name.lower()
+        for key, value in UploadController.FIELD_MAPPING.items():
+            if key.lower() == field_name_lower:
+                return value
+                
+        # If no match found, return None
+        return None
+
     @staticmethod
     def log_error(filename, row_number, data, reason):
         log_file = "upload_errors.log"
@@ -75,7 +139,8 @@ class UploadController:
 
     @staticmethod
     def is_valid_row(name, email, phone):
-        return bool(name and str(name).strip()) and UploadController.is_valid_email(email) and UploadController.is_valid_phone(phone)
+        # Only validate company name, all other fields can be empty
+        return True  # Remove validation since we want to allow empty fields
 
     @staticmethod
     def process_csv_file(file, name_col, email_col, phone_col, dynamic_fields=None, first_name_col=None, last_name_col=None):
@@ -104,22 +169,30 @@ class UploadController:
             df = pd.read_csv(io.StringIO(content))
             df.columns = df.columns.str.strip()
 
-            missing_cols = [col for col in [email_col, phone_col] if col not in df.columns]
-            if missing_cols:
-                raise Exception(f"Missing required columns: {', '.join(missing_cols)}")
+            # Fill empty values with "-" for all columns
+            df = df.fillna("-")
+
+            # Only validate that the name column exists if provided
+            if name_col and name_col not in df.columns:
+                raise Exception(f"Missing required column: {name_col}")
 
             # Handle first_name and last_name columns if provided
             if first_name_col and first_name_col in df.columns:
-                df['owner_first_name'] = df[first_name_col].fillna("").astype(str).str.strip()
+                df['owner_first_name'] = df[first_name_col].apply(lambda x: str(x).strip() if str(x).strip() != "-" else "")
+            else:
+                df['owner_first_name'] = ""
+                
             if last_name_col and last_name_col in df.columns:
-                df['owner_last_name'] = df[last_name_col].fillna("").astype(str).str.strip()
+                df['owner_last_name'] = df[last_name_col].apply(lambda x: str(x).strip() if str(x).strip() != "-" else "")
+            else:
+                df['owner_last_name'] = ""
 
-            # Only process name if name_col is provided and exists in columns
+            # Process name column if it exists
             if name_col and name_col in df.columns:
-                df[name_col] = df[name_col].fillna("")
-                df['name'] = df[name_col].astype(str).str.strip()
+                df[name_col] = df[name_col].apply(lambda x: str(x).strip() if str(x).strip() != "-" else "")
+                df['name'] = df[name_col]
                 def split_name(name):
-                    if not name or pd.isna(name):
+                    if not name or name == "-":
                         return "", ""
                     parts = name.strip().split()
                     if len(parts) == 0:
@@ -137,10 +210,17 @@ class UploadController:
                 df['name'] = ""
 
             # Always set name to first_name + last_name if name is empty
-            df['name'] = df.apply(lambda row: row['name'] if 'name' in row and row['name'] else f"{row.get('owner_first_name','')} {row.get('owner_last_name','')}".strip(), axis=1)
+            df['name'] = df.apply(lambda row: row['name'] if row['name'] and row['name'] != "-" else f"{row.get('owner_first_name','')} {row.get('owner_last_name','')}".strip(), axis=1)
 
-            df['owner_email'] = df[email_col].apply(UploadController.clean_email)
-            df['phone'] = df[phone_col].apply(UploadController.clean_phone)
+            # Process email and phone fields if they exist in the CSV
+            df['owner_email'] = "" if email_col not in df.columns else df[email_col].apply(lambda x: UploadController.clean_email(x) if str(x).strip() != "-" else "")
+            df['phone'] = "" if phone_col not in df.columns else df[phone_col].apply(lambda x: UploadController.clean_phone(x) if str(x).strip() != "-" else "")
+
+            # Set company field - use name if company column doesn't exist
+            if 'company' not in df.columns:
+                df['company'] = df['name']
+            else:
+                df['company'] = df['company'].apply(lambda x: str(x).strip() if str(x).strip() != "-" else "Unknown Company")
 
             added = 0
             skipped_duplicates = 0
@@ -148,94 +228,147 @@ class UploadController:
             skipped_details = []
 
             for idx, row in df.iterrows():
-                name = row['name']
-                email = row['owner_email']
-                phone = row['phone']
-                first_name = row['owner_first_name']
-                last_name = row['owner_last_name']
-
-                if not UploadController.is_valid_row(name, email, phone):
-                    errors += 1
-                    reason = "Invalid row: Missing or invalid required fields"
-                    UploadController.log_error(
-                        filename,
-                        idx + 2,  # Adding 2 to account for 0-based index and header row
-                        {
-                            'name': name,
-                            'email': email,
-                            'phone': phone
-                        },
-                        reason
-                    )
-                    skipped_details.append(f"Row {idx+2}: {reason}")
-                    continue
-
-                existing_lead = Lead.query.filter(
-                    (Lead.owner_email == email) | (Lead.phone == phone)
-                ).first()
-
-                if existing_lead:
-                    skipped_duplicates += 1
-                    reason = "Duplicate entry found"
-                    UploadController.log_error(
-                        filename,
-                        idx + 2,
-                        {
-                            'name': name,
-                            'email': email,
-                            'phone': phone
-                        },
-                        reason
-                    )
-                    skipped_details.append(f"Row {idx+2}: {reason}")
-                    continue
-
                 try:
+                    # Start with basic fields that are always required
                     lead_data = {
-                        'owner_first_name': str(first_name).strip() if first_name is not None else '',
-                        'owner_last_name': str(last_name).strip() if last_name is not None else '',
-                        'owner_email': str(email).strip() if email is not None else '',
-                        'phone': str(phone).strip() if phone is not None else '',
-                        'source': 'manual',  # Default source
-                        'search_keyword': {}  # Empty JSON object as default
+                        'search_keyword': {},
+                        'source': 'manual',
+                        'company': str(row.get('company', '')).strip() or "Unknown Company",
+                        'status': 'new'
                     }
-                    # Add dynamic fields
+
+                    # Map and clean all fields from the CSV
+                    for column in df.columns:
+                        mapped_field = UploadController.map_field_name(column)
+                        
+                        # Skip fields that are mapped to None or already processed
+                        if mapped_field is None or mapped_field in lead_data:
+                            continue
+                            
+                        value = row[column]
+                        if value != "-":  # Only process non-dash values
+                            # Convert to string and clean
+                            value = str(value).strip()
+                            
+                            # Special handling for specific fields
+                            if mapped_field == 'employees':
+                                try:
+                                    if '-' in value:
+                                        value = int(value.split('-')[0].strip())
+                                    else:
+                                        value = int(value)
+                                except (ValueError, TypeError):
+                                    value = None
+                            elif mapped_field == 'revenue':
+                                try:
+                                    value = float(value.replace('$', '').replace('M', '000000').replace('K', '000'))
+                                except (ValueError, TypeError):
+                                    value = None
+                            elif mapped_field == 'year_founded':
+                                try:
+                                    value = str(int(float(value)))
+                                except (ValueError, TypeError):
+                                    value = None
+                            
+                            # Only add non-empty values
+                            if value not in (None, '', 'nan', 'NaN', 'None'):
+                                lead_data[mapped_field] = value
+
+                    # Remove any fields that are not in the Lead model
+                    valid_fields = {
+                        'search_keyword', 'source', 'company', 'status', 'city', 'state',
+                        'owner_first_name', 'owner_last_name', 'owner_email', 'owner_title',
+                        'website', 'company_linkedin', 'industry', 'revenue', 'product_category',
+                        'business_type', 'employees', 'year_founded', 'owner_linkedin', 'phone',
+                        'company_phone', 'owner_phone_number', 'street', 'bbb_rating'
+                    }
+                    
+                    # Remove any fields that are not in valid_fields
+                    lead_data = {k: v for k, v in lead_data.items() if k in valid_fields}
+                    
+                    # Add dynamic fields if provided
                     if dynamic_fields:
                         for db_field, csv_col in dynamic_fields.items():
-                            if csv_col in df.columns:
+                            if csv_col in df.columns and db_field in valid_fields:
                                 value = row[csv_col]
-                                lead_data[db_field] = str(value).strip() if value is not None else ''
-                    # Truncate only the fields defined in the model
-                    if hasattr(Lead, 'truncate_fields'):
-                        lead_data = Lead.truncate_fields(lead_data)
+                                if value != "-":
+                                    lead_data[db_field] = str(value).strip()
 
-                    # Use smart add/update logic
-                    from controllers.lead_controller import LeadController
-                    success, msg = LeadController.add_or_update_lead_by_match(lead_data)
-                    if success:
-                        added += 1
-                    else:
-                        skipped_duplicates += 1
-                        skipped_details.append(f"Row {idx+2}: {msg}")
+                    # Try to add/update the lead
+                    try:
+                        # Clean and prepare the lead data
+                        clean_lead_data = {}
+                        for key, value in lead_data.items():
+                            if value is not None and value != '' and value != "-":
+                                if key == 'employees' and isinstance(value, str):
+                                    try:
+                                        clean_lead_data[key] = int(float(value))
+                                    except (ValueError, TypeError):
+                                        clean_lead_data[key] = None
+                                elif key == 'revenue' and isinstance(value, str):
+                                    try:
+                                        value = value.replace('$', '').replace('M', '000000').replace('K', '000').replace('B', '000000000')
+                                        clean_lead_data[key] = float(value)
+                                    except (ValueError, TypeError):
+                                        clean_lead_data[key] = None
+                                elif key == 'year_founded' and isinstance(value, str):
+                                    try:
+                                        clean_lead_data[key] = str(int(float(value)))
+                                    except (ValueError, TypeError):
+                                        clean_lead_data[key] = None
+                                elif key == 'search_keyword' and isinstance(value, dict):
+                                    clean_lead_data[key] = value
+                                else:
+                                    clean_lead_data[key] = str(value).strip()
+
+                        # Double check that we only have valid fields
+                        clean_lead_data = {k: v for k, v in clean_lead_data.items() if k in valid_fields}
+
+                        # Add/update the lead using the static method
+                        try:
+                            # Ensure we're passing a dictionary to add_or_update_lead_by_match
+                            if not isinstance(clean_lead_data, dict):
+                                raise ValueError("Lead data must be a dictionary")
+                                
+                            result = LeadController.add_or_update_lead_by_match(clean_lead_data)
+                            
+                            # Handle the tuple return value
+                            if isinstance(result, tuple) and len(result) == 2:
+                                success, message = result
+                                if success:
+                                    added += 1
+                                    UploadController.log_error(filename, idx + 2, clean_lead_data, f"Success: {message}")
+                                else:
+                                    # Check if it's a duplicate
+                                    if "already in use" in message:
+                                        skipped_duplicates += 1
+                                        skipped_details.append(f"Row {idx+2}: {message}")
+                                        UploadController.log_error(filename, idx + 2, clean_lead_data, f"Skipped (duplicate): {message}")
+                                    else:
+                                        errors += 1
+                                        skipped_details.append(f"Row {idx+2}: {message}")
+                                        UploadController.log_error(filename, idx + 2, clean_lead_data, f"Error: {message}")
+                            else:
+                                errors += 1
+                                reason = f"Invalid return value from add_or_update_lead_by_match: {result}"
+                                UploadController.log_error(filename, idx + 2, clean_lead_data, reason)
+                                skipped_details.append(f"Row {idx+2}: {reason}")
+                        except Exception as e:
+                            errors += 1
+                            reason = f"Error adding lead: {str(e)}"
+                            UploadController.log_error(filename, idx + 2, clean_lead_data, reason)
+                            skipped_details.append(f"Row {idx+2}: {reason}")
+                    except Exception as e:
+                        errors += 1
+                        reason = f"Error processing row: {str(e)}"
+                        UploadController.log_error(filename, idx + 2, row.to_dict(), reason)
+                        skipped_details.append(f"Row {idx+2}: {reason}")
+
                 except Exception as e:
                     errors += 1
-                    reason = f"Database error: {str(e)}"
-                    UploadController.log_error(
-                        filename,
-                        idx + 2,
-                        {
-                            'name': name,
-                            'email': email,
-                            'phone': phone
-                        },
-                        reason
-                    )
+                    reason = f"Error processing row: {str(e)}"
+                    UploadController.log_error(filename, idx + 2, row.to_dict(), reason)
                     skipped_details.append(f"Row {idx+2}: {reason}")
-                    continue
-
-            # Don't flash skipped details
-            # if skipped_details:
-            #     flash(' / '.join(skipped_details), 'info')
 
             return added, skipped_duplicates, errors
 

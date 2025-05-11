@@ -234,25 +234,50 @@ class LeadController:
     def add_or_update_lead_by_match(lead_data):
         """Add a new lead or update existing lead by matching email or phone"""
         try:
-            existing_lead = Lead.query.filter(
-                (Lead.owner_email == lead_data.get('owner_email')) | (Lead.phone == lead_data.get('phone'))
-            ).first()
+            # Only check for duplicates if email or phone is not empty
+            query = Lead.query
+            conditions = []
+            
+            # Clean and validate the data
+            if lead_data.get('owner_email'):
+                lead_data['owner_email'] = str(lead_data['owner_email']).strip().lower()
+                conditions.append(Lead.owner_email == lead_data['owner_email'])
+            if lead_data.get('phone'):
+                lead_data['phone'] = str(lead_data['phone']).strip()
+                conditions.append(Lead.phone == lead_data['phone'])
+                
+            if conditions:
+                existing_lead = query.filter(db.or_(*conditions)).first()
+            else:
+                existing_lead = None
 
             if existing_lead:
+                # Update existing lead with new data
                 for key, value in lead_data.items():
-                    if hasattr(existing_lead, key):
+                    if hasattr(existing_lead, key) and value is not None:
                         setattr(existing_lead, key, value)
                 db.session.commit()
-                return True, ""
+                return (True, "Lead updated successfully")
             else:
-                lead = Lead(**lead_data)
-                db.session.add(lead)
-                db.session.commit()
-                return True, ""
+                # Create new lead
+                # Remove any None values to avoid SQLAlchemy errors
+                clean_data = {k: v for k, v in lead_data.items() if v is not None}
+                try:
+                    lead = Lead(**clean_data)
+                    db.session.add(lead)
+                    db.session.commit()
+                    return (True, "Lead added successfully")
+                except Exception as e:
+                    db.session.rollback()
+                    return (False, f"Error creating lead: {str(e)}")
         except IntegrityError as e:
             db.session.rollback()
-            # Use generic error message instead of specific ones
-            return False, "Duplicate data detected"
+            if "lead_owner_email_key" in str(e):
+                return (False, f"Email address '{lead_data.get('owner_email')}' is already in use")
+            elif "lead_phone_key" in str(e):
+                return (False, f"Phone number '{lead_data.get('phone')}' is already in use")
+            else:
+                return (False, "Duplicate data detected")
         except Exception as e:
             db.session.rollback()
-            return False, f"Error adding/updating lead: {str(e)}"
+            return (False, f"Error adding/updating lead: {str(e)}")
