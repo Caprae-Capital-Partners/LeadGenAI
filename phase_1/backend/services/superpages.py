@@ -4,32 +4,32 @@ import sys
 from typing import Dict, List
 from playwright.async_api import Locator
 
-sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
-from config.browser_config import PlaywrightManager
-# from backend.config.browser_config import PlaywrightManager
+# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# from config.browser_config import PlaywrightManager
+from backend.config.browser_config import PlaywrightManager
 
-async def save_to_csv(businesses, filename='superpages_data.csv'):
-    import csv
-    """Save extracted business data to CSV file."""
-    if not businesses:
-        print("No data to save to CSV.")
-        return None
+# async def save_to_csv(businesses, filename='superpages_data.csv'):
+#     import csv
+#     """Save extracted business data to CSV file."""
+#     if not businesses:
+#         print("No data to save to CSV.")
+#         return None
     
-    output_dir = "superpages_data"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+#     output_dir = "superpages_data"
+#     if not os.path.exists(output_dir):
+#         os.makedirs(output_dir)
     
-    filepath = os.path.join(output_dir, filename)
+#     filepath = os.path.join(output_dir, filename)
     
-    with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['Company', 'Business_phone', 'Website', 'Address', 'Industry']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+#     with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+#         fieldnames = ['Company', 'Business_phone', 'Website', 'Address', 'Industry']
+#         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
-        writer.writeheader()
-        for business in businesses:
-            writer.writerow(business)
+#         writer.writeheader()
+#         for business in businesses:
+#             writer.writerow(business)
     
-    print(f"CSV file saved to: {filepath}")
+#     print(f"CSV file saved to: {filepath}")
 
 async def handle_cookie_consent(page):
     """Handle cookie consent dialogs."""
@@ -204,21 +204,21 @@ async def scrape_superpages(search_term: str, location: str, max_pages: int = 5)
     
     except Exception as e:
         print(f"Error during scraping: {e}")
-        return all_results
+        return all_results # Return results collected so far
     finally:
         # Close the browser
         await manager.stop_browser()
 
-if __name__ == "__main__":
-    search_term = "primary care"
-    location = "glendale, ca"
-    max_pages = 5
+# if __name__ == "__main__":
+#     search_term = "primary care"
+#     location = "glendale, ca"
+#     max_pages = 5
     
-    print(f"Scraping {search_term} in {location} from Superpages.com...")
-    results = asyncio.run(scrape_superpages(search_term, location, max_pages=max_pages))
+#     print(f"Scraping {search_term} in {location} from Superpages.com...")
+#     results = asyncio.run(scrape_superpages(search_term, location, max_pages=max_pages))
     
-    if results:
-        filename = f"{search_term.replace(' ', '_')}_{location.replace(' ', '_').replace(',', '')}.csv"
-        asyncio.run(save_to_csv(results, filename=filename))
+#     if results:
+#         filename = f"{search_term.replace(' ', '_')}_{location.replace(' ', '_').replace(',', '')}.csv"
+#         asyncio.run(save_to_csv(results, filename=filename))
     
-    print(f"Scraped {len(results)} unique businesses.")
+#     print(f"Scraped {len(results)} unique businesses.")
