@@ -2,11 +2,10 @@ import asyncio
 import os
 import sys
 from typing import Dict, List
-from playwright.async_api import Locator
+from playwright.async_api import Locator, Page
 
 # sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
 # from config.browser_config import PlaywrightManager
-from backend.config.browser_config import PlaywrightManager
 
 # async def save_to_csv(businesses, filename='superpages_data.csv'):
 #     import csv
@@ -142,18 +141,14 @@ async def extract_businesses(page) -> List[Dict[str, str]]:
     
     return results
 
-async def scrape_superpages(search_term: str, location: str, max_pages: int = 5) -> List[Dict[str, str]]:
-    """Scrape Superpages using sequential navigation through paginated results."""
+async def scrape_superpages(search_term: str, location: str, page: Page, max_pages: int = 5) -> List[Dict[str, str]]:
+    """Scrape Superpages using the provided browser page."""
     # Format the search URL
     search_term_clean = search_term.replace(' ', '+')
     location_clean = location.replace(' ', '+').replace(',', '%2C')
     start_url = f"https://www.superpages.com/search?search_terms={search_term_clean}&geo_location_terms={location_clean}"
     
     # print(f"Starting scrape at URL: {start_url}")
-    
-    manager = PlaywrightManager(headless=True)
-    page = await manager.start_browser(stealth_on=True)
-    
     try:
         # Navigate to the first URL
         await page.goto(start_url, wait_until='domcontentloaded', timeout=60000)
@@ -204,21 +199,4 @@ async def scrape_superpages(search_term: str, location: str, max_pages: int = 5)
     
     except Exception as e:
         print(f"Error during scraping: {e}")
-        return all_results # Return results collected so far
-    finally:
-        # Close the browser
-        await manager.stop_browser()
-
-# if __name__ == "__main__":
-#     search_term = "primary care"
-#     location = "glendale, ca"
-#     max_pages = 5
-    
-#     print(f"Scraping {search_term} in {location} from Superpages.com...")
-#     results = asyncio.run(scrape_superpages(search_term, location, max_pages=max_pages))
-    
-#     if results:
-#         filename = f"{search_term.replace(' ', '_')}_{location.replace(' ', '_').replace(',', '')}.csv"
-#         asyncio.run(save_to_csv(results, filename=filename))
-    
-#     print(f"Scraped {len(results)} unique businesses.")
+        return []
