@@ -100,11 +100,15 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
             "Website": "NA"
         }
 
-async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str, str]]:
+async def scrape_lead_by_industry(industry: str, location: str, page=None) -> List[Dict[str, str]]:
     """Scrape multiple leads by industry and location from Google Maps."""
+    internal_browser = False
     manager = PlaywrightManager(headless=True)
     try:
-        page = await manager.start_browser(stealth_on=False)
+        if page == None:
+            page = await manager.start_browser(stealth_on=False)
+            internal_browser = True
+            
         await page.goto(BASE_URL)
         await asyncio.sleep(2)
         
@@ -151,7 +155,8 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
         raise RuntimeError(f"An error occurred while scraping: {e}")
         
     finally:
-        await manager.stop_browser()
+        if internal_browser:
+            await manager.stop_browser()
 
 if __name__ == "__main__":
     print(asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca")))
