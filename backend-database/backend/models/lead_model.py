@@ -24,8 +24,8 @@ class Lead(db.Model):
     # Contact Information
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
-    email = db.Column(db.String(120), unique=True)
-    phone = db.Column(db.String(30), unique=True)
+    email = db.Column(db.String(120))
+    phone = db.Column(db.String(30))
     title = db.Column(db.String(100))
     
     # Owner Information
