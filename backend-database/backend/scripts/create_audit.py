@@ -10,7 +10,7 @@ DB_URL = os.environ.get('DATABASE_URL')
 
 SQL = '''
 -- Drop the existing audit log table and trigger if they exist
-DROP TRIGGER IF EXISTS lead_audit_trigger ON lead;
+DROP TRIGGER IF EXISTS lead_audit_trigger ON leads;
 DROP FUNCTION IF EXISTS audit_lead_changes() CASCADE;
 DROP TABLE IF EXISTS lead_audit_log;
 
@@ -61,7 +61,7 @@ BEGIN
             IF old_val IS DISTINCT FROM new_val THEN
                 EXECUTE format('INSERT INTO lead_audit_log (table_name, row_id, column_name, old_value, new_value, username, changed_at) VALUES (%L, %s, %L, %L, %L, %L, now())',
                     TG_TABLE_NAME,
-                    OLD.id,
+                    OLD.lead_id,
                     col_name,
                     old_val,
                     new_val,
@@ -82,7 +82,7 @@ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_trigger WHERE tgname = 'leads_audit_trigger'
     ) THEN
-        EXECUTE 'CREATE TRIGGER leads_audit_trigger AFTER UPDATE ON lead FOR EACH ROW EXECUTE FUNCTION audit_lead_changes();';
+        EXECUTE 'CREATE TRIGGER leads_audit_trigger AFTER UPDATE ON leads FOR EACH ROW EXECUTE FUNCTION audit_lead_changes();';
     END IF;
 END $$;
 '''

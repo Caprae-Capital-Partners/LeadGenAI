@@ -193,30 +193,40 @@
                         <option value="">Select Field</option>
                         <!-- Basic Information -->
                         <option value="company">Company</option>
-                        <option value="first_name">First Name</option>
-                        <option value="last_name">Last Name</option>
-                        <option value="email">Email</option>
+                        <option value="owner_first_name">First Name</option>
+                        <option value="owner_last_name">Last Name</option>
+                        <option value="owner_email">Email</option>
                         <option value="phone">Phone</option>
-                        <option value="title">Title</option>
+                        <option value="owner_title">Title</option>
+                        <option value="status">Status</option>
+
+                        <!-- Company Information -->
+                        <option value="website">Website</option>
+                        <option value="industry">Industry</option>
+                        <option value="product_category">Product Category</option>
+                        <option value="business_type">Business Type</option>
+                        <option value="employees">Employees Count</option>
+                        <option value="revenue">Revenue</option>
+                        <option value="year_founded">Year Founded</option>
+                        <option value="bbb_rating">BBB Rating</option>
+
+                        <!-- Location Information -->
+                        <option value="street">Street</option>
                         <option value="city">City</option>
                         <option value="state">State</option>
-                        
-                        <!-- Company Details -->
-                        <option value="website">Website URL</option>
-                        <option value="linkedin_url">LinkedIn Profile</option>
-                        <option value="industry">Industry</option>
-                        <option value="revenue">Annual Revenue</option>
-                        <option value="product_service_category">Products/Services</option>
-                        <option value="business_type">Business Type</option>
-                        <option value="employees_range">Employee Range</option>
-                        <option value="year_founded">Year Founded</option>
-                        
+
+                        <!-- Company Contact -->
+                        <option value="company_phone">Company Phone</option>
+                        <option value="company_linkedin">Company LinkedIn</option>
+
                         <!-- Owner Information -->
-                        <option value="owner_linkedin">Owner's LinkedIn</option>
-                        <option value="owner_age">Owner's Age Range</option>
+                        <option value="owner_linkedin">Owner LinkedIn</option>
+                        <option value="owner_phone_number">Owner Phone Number</option>
+
+                        <!-- Source Information -->
+                        <option value="source">Source</option>
                         
                         <!-- Scoring and Notes -->
-                        <option value="status">Status</option>
                         <option value="additional_notes">Additional Notes</option>
                         
                         <!-- Email Customization -->
@@ -283,47 +293,40 @@
                 <table id="leadsTable">
                     <thead>
                         <tr>
-                            <th class="checkbox-col">
-                                <div class="checkbox-wrapper">
-                                    <input type="checkbox" id="headerSelectAll" class="custom-checkbox" onclick="toggleAllCheckboxes()">
-                                </div>
+                            <th class="select-all-header">
+                                <label class="select-all-label">
+                                    <input type="checkbox" id="headerSelectAll" class="custom-checkbox" onclick="toggleAllCheckboxes(this.checked)">
+                                </label>
                             </th>
                             <th class="sticky-col id-col">ID</th>
-                            <!-- Basic Information -->
+                            <!-- Updated column headers -->
                             <th>Company</th>
-                            <th>First Name</th>
-                            <th>Last Name</th>
-                            <th>Email </th>
+                            <th>Owner First Name</th>
+                            <th>Owner Last Name</th>
+                            <th>Owner Email</th>
                             <th>Phone Number</th>
-                            <th>Title</th>
+                            <th>Owner Title</th>
                             <th>Location</th>
-                            <!-- Company Details -->
-                            <th>Website URL</th>
-                            <th>LinkedIn Profile</th>
-                            <th>Industry Sector</th>
-                            <th>Annual Revenue</th>
-                            <th>Products/Services</th>
+                            <!-- Company Info -->
+                            <th>Website</th>
+                            <th>Company LinkedIn</th>
+                            <th>Industry</th>
+                            <th>Revenue</th>
+                            <th>Product Category</th>
                             <th>Business Type</th>
-                            <th>Employee</th>
-                            <th>Established Year</th>
-                            <!-- Customization -->
-                            <th>Owner's LinkedIn</th>
-                            <th>Owner's Age Range</th>
+                            <th>Employees</th>
+                            <th>Year Founded</th>
+                            <th>BBB Rating</th>
+                            <!-- Owner Info -->
+                            <th>Owner LinkedIn</th>
+                            <th>Owner Phone</th>
+                            <th>Company Phone</th>
+                            <th>Source</th>
                             <th>Status</th>
-                            <th>Additional Notes</th>
-                            <!-- Email 1 -->
-                            <!-- <th>Email Subject (1st)</th> -->
-                            <!-- <th>Email Content (1st)</th> -->
-                            <!-- Email 2 -->
-                            <!-- <th>Email Subject (2nd)</th> -->
-                            <!-- <th>Email Content (2nd)</th> -->
-                            <!-- LinkedIn -->
-                            <!-- <th>LinkedIn Message (1st)</th> -->
-                            <!-- <th>LinkedIn Message (2nd)</th> -->
-                            <!-- Timestamps -->
+                            <!-- Dates -->
                             <th class="date-col">Created Date</th>
                             <th class="date-col">Last Updated</th>
-                            <!-- Actions -->
+                            <!-- Actions column -->
                             <th class="actions">Actions</th>
                         </tr>
                     </thead>
@@ -332,48 +335,39 @@
                         <tr class="animate__animated animate__fadeIn" data-index="{{ loop.index }}">
                             <td class="checkbox-col">
                                 <div class="checkbox-wrapper">
-                                    <input type="checkbox" class="lead-checkbox custom-checkbox" value="{{ lead.id }}" onchange="updateExportButton()">
+                                    <input type="checkbox" class="lead-checkbox custom-checkbox" value="{{ lead.lead_id }}" onchange="updateExportButton()">
                                 </div>
                             </td>
-                            <td class="sticky-col id-col">{{ lead.id }}</td>
+                            <td class="sticky-col id-col">{{ lead.lead_id }}</td>
                             <!-- Basic Information -->
                             <td>{{ lead.company or '-' }}</td>
-                            <td>{{ lead.first_name or '-' }}</td>
-                            <td>{{ lead.last_name or '-' }}</td>
-                            <td>{{ lead.email or '-' }}</td>
+                            <td>{{ lead.owner_first_name or '-' }}</td>
+                            <td>{{ lead.owner_last_name or '-' }}</td>
+                            <td>{{ lead.owner_email or '-' }}</td>
                             <td>{{ lead.phone or '-' }}</td>
-                            <td>{{ lead.title or '-' }}</td>
+                            <td>{{ lead.owner_title or '-' }}</td>
                             <td>{{ (lead.city ~ ', ' ~ lead.state) if (lead.city and lead.state) else (lead.city or lead.state or '-') }}</td>
                             <!-- Company Details -->
                             <td>{{ lead.website or '-' }}</td>
-                            <td>{{ lead.linkedin_url or '-' }}</td>
+                            <td>{{ lead.company_linkedin or '-' }}</td>
                             <td>{{ lead.industry or '-' }}</td>
                             <td>{{ lead.revenue or '-' }}</td>
-                            <td class="truncate" title="{{ lead.product_service_category }}">{{ lead.product_service_category or '-' }}</td>
+                            <td class="truncate" title="{{ lead.product_category }}">{{ lead.product_category or '-' }}</td>
                             <td>{{ lead.business_type or '-' }}</td>
-                            <td>{{ lead.employees_range or '-' }}</td>
+                            <td>{{ lead.employees or '-' }}</td>
                             <td>{{ lead.year_founded|int if lead.year_founded else '-' }}</td>
-                            <!-- Customization -->
+                            <td>{{ lead.bbb_rating or '-' }}</td>
                             <td>{{ lead.owner_linkedin or '-' }}</td>
-                            <td>{% if lead.owner_age and lead.owner_age|string|lower != 'nan' %}{{ lead.owner_age|int if lead.owner_age|string|float == lead.owner_age|string|float|int else lead.owner_age }}{% else %}-{% endif %}</td>
+                            <td>{{ lead.owner_phone_number or '-' }}</td>
+                            <td>{{ lead.company_phone or '-' }}</td>
+                            <td>{{ lead.source or '-' }}</td>
                             <td>{{ lead.status|capitalize or 'New' }}</td>
-                            <td class="truncate" title="{{ lead.additional_notes }}">{{ lead.additional_notes or '-' }}</td>
-                            <!-- Email 1 -->
-                            <!-- <td>{{ lead.subject_line_1 or '-' }}</td> -->
-                            <!-- <td class="truncate" title="{{ lead.email_customization_1 }}">{{ lead.email_customization_1 or '-' }}</td> -->
-                            <!-- Email 2 -->
-                            <!-- <td>{{ lead.subject_line_2 or '-' }}</td> -->
-                            <!-- <td class="truncate" title="{{ lead.email_customization_2 }}">{{ lead.email_customization_2 or '-' }}</td> -->
-                            <!-- LinkedIn -->
-                            <!-- <td class="truncate" title="{{ lead.linkedin_customization_1 }}">{{ lead.linkedin_customization_1 or '-' }}</td> -->
-                            <!-- <td class="truncate" title="{{ lead.linkedin_customization_2 }}">{{ lead.linkedin_customization_2 or '-' }}</td> -->
-                            <!-- Timestamps -->
                             <td class="date-col">{{ lead.created_at.strftime('%Y-%m-%d %H:%M') if lead.created_at else '-' }}</td>
                             <td class="date-col">{{ lead.updated_at.strftime('%Y-%m-%d %H:%M') if lead.updated_at else '-' }}</td>
                             <!-- Actions -->
                             <td class="actions">
                                 <!-- Status update for all users -->
-                                <form method="POST" action="{{ url_for('lead.update_status', lead_id=lead.id) }}" style="display: inline-block; margin-right: 10px;">
+                                <form method="POST" action="{{ url_for('lead.update_status', lead_id=lead.lead_id) }}" style="display: inline-block; margin-right: 10px;">
                                     <select name="status" onchange="this.form.submit()" class="status-select" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd;">
                                         <option value="new" {% if lead.status == 'new' %}selected{% endif %}>New</option>
                                         <option value="contacted" {% if lead.status == 'contacted' %}selected{% endif %}>Contacted</option>
@@ -384,7 +378,7 @@
                                 </form>
                                 
                                 {% if current_user.role in ['admin', 'developer'] %}
-                                <a href="{{ url_for('lead.edit_lead', lead_id=lead.id) }}" class="btn btn-edit">
+                                <a href="{{ url_for('lead.edit_lead', lead_id=lead.lead_id) }}" class="btn btn-edit">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -394,7 +388,7 @@
                                 {% endif %}
                                 
                                 {% if current_user.role in ['admin', 'developer'] %}
-                                <a href="{{ url_for('lead.delete_lead', lead_id=lead.id) }}" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this lead?')">
+                                <a href="{{ url_for('lead.delete_lead', lead_id=lead.lead_id) }}" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this lead?')">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="3 6 5 6 21 6"></polyline>
                                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -743,37 +737,31 @@
             const columnMap = {
                 // Checkbox(0), ID(1), then data columns start
                 'company': 2,
-                'first_name': 3,
-                'last_name': 4,
-                'email': 5,
+                'owner_first_name': 3,
+                'owner_last_name': 4,
+                'owner_email': 5,
                 'phone': 6,
-                'title': 7,
+                'owner_title': 7,
                 'location': 8, // Combined city and state
-                'city': 8,
+                'city': 8, 
                 'state': 8,
+                'street': 8,
                 'website': 9,
-                'linkedin_url': 10,
+                'company_linkedin': 10,
                 'industry': 11,
                 'revenue': 12,
-                'product_service_category': 13,
+                'product_category': 13,
                 'business_type': 14,
-                'employees_range': 15,
+                'employees': 15,
                 'year_founded': 16,
-                'owner_linkedin': 17,
-                'owner_age': 18,
-                'status': 19,
-                'additional_notes': 20,
-                'created_at': 21,
-                'updated_at': 22
-                // Removed fields:
-                // 'score': 19,
-                // 'reasoning': 21,
-                // 'subject_line_1': 23,
-                // 'email_customization_1': 24,
-                // 'subject_line_2': 25,
-                // 'email_customization_2': 26,
-                // 'linkedin_customization_1': 27,
-                // 'linkedin_customization_2': 28,
+                'bbb_rating': 17,
+                'owner_linkedin': 18,
+                'owner_phone_number': 19,
+                'company_phone': 20,
+                'source': 21,
+                'status': 22,
+                'created_at': 23,
+                'updated_at': 24
             };
 
             // Skip header row
@@ -1452,30 +1440,40 @@
                     <option value="">Select Field</option>
                     <!-- Basic Information -->
                     <option value="company">Company</option>
-                    <option value="first_name">First Name</option>
-                    <option value="last_name">Last Name</option>
-                    <option value="email">Email</option>
+                    <option value="owner_first_name">First Name</option>
+                    <option value="owner_last_name">Last Name</option>
+                    <option value="owner_email">Email</option>
                     <option value="phone">Phone</option>
-                    <option value="title">Title</option>
+                    <option value="owner_title">Title</option>
+                    <option value="status">Status</option>
+
+                    <!-- Company Information -->
+                    <option value="website">Website</option>
+                    <option value="industry">Industry</option>
+                    <option value="product_category">Product Category</option>
+                    <option value="business_type">Business Type</option>
+                    <option value="employees">Employees Count</option>
+                    <option value="revenue">Revenue</option>
+                    <option value="year_founded">Year Founded</option>
+                    <option value="bbb_rating">BBB Rating</option>
+
+                    <!-- Location Information -->
+                    <option value="street">Street</option>
                     <option value="city">City</option>
                     <option value="state">State</option>
-                    
-                    <!-- Company Details -->
-                    <option value="website">Website URL</option>
-                    <option value="linkedin_url">LinkedIn Profile</option>
-                    <option value="industry">Industry</option>
-                    <option value="revenue">Annual Revenue</option>
-                    <option value="product_service_category">Products/Services</option>
-                    <option value="business_type">Business Type</option>
-                    <option value="employees_range">Employee Range</option>
-                    <option value="year_founded">Year Founded</option>
-                    
+
+                    <!-- Company Contact -->
+                    <option value="company_phone">Company Phone</option>
+                    <option value="company_linkedin">Company LinkedIn</option>
+
                     <!-- Owner Information -->
-                    <option value="owner_linkedin">Owner's LinkedIn</option>
-                    <option value="owner_age">Owner's Age Range</option>
+                    <option value="owner_linkedin">Owner LinkedIn</option>
+                    <option value="owner_phone_number">Owner Phone Number</option>
+
+                    <!-- Source Information -->
+                    <option value="source">Source</option>
                     
                     <!-- Scoring and Notes -->
-                    <option value="status">Status</option>
                     <option value="additional_notes">Additional Notes</option>
                     
                     <!-- Email Customization -->

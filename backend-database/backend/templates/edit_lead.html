@@ -345,416 +345,167 @@
             {% endif %}
         {% endwith %}
         
-        <form method="POST" action="{{ url_for('lead.edit_lead', lead_id=lead.id) }}" id="editLeadForm">
-            <div class="section-title">Basic Information</div>
-            
+        <form method="POST" action="{{ url_for('lead.update', lead_id=lead.lead_id) }}" id="editLeadForm">
+            <div class="section-title">Base Information</div>
             <div class="form-row">
                 <div class="form-group">
-                    <label for="first_name">First Name</label>
-                    <input type="text" id="first_name" name="first_name" value="{{ lead.first_name }}" required>
+                    <label for="company">Company Name *</label>
+                    <input type="text" name="company" id="company" value="{{ lead.company }}" required>
                 </div>
                 <div class="form-group">
-                    <label for="last_name">Last Name</label>
-                    <input type="text" id="last_name" name="last_name" value="{{ lead.last_name }}" required>
+                    <label for="source">Source</label>
+                    <select name="source" id="source">
+                        <option value="manual" {% if lead.source == 'manual' %}selected{% endif %}>Manual</option>
+                        <option value="growjo" {% if lead.source == 'growjo' %}selected{% endif %}>Growjo</option>
+                        <option value="apollo" {% if lead.source == 'apollo' %}selected{% endif %}>Apollo</option>
+                        <option value="both" {% if lead.source == 'both' %}selected{% endif %}>Both</option>
+                    </select>
                 </div>
             </div>
-            
+
+            <div class="section-title">Company Information</div>
             <div class="form-row">
                 <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" value="{{ lead.email }}" required>
+                    <label for="website">Website</label>
+                    <input type="text" name="website" id="website" value="{{ lead.website }}">
                 </div>
                 <div class="form-group">
-                    <label for="phone">Phone</label>
-                    <input type="text" id="phone" name="phone" value="{{ lead.phone }}">
+                    <label for="industry">Industry</label>
+                    <input type="text" name="industry" id="industry" value="{{ lead.industry }}">
                 </div>
             </div>
-            
             <div class="form-row">
                 <div class="form-group">
-                    <label for="company">Company</label>
-                    <input type="text" id="company" name="company" value="{{ lead.company }}" required>
+                    <label for="product_category">Product Category</label>
+                    <input type="text" name="product_category" id="product_category" value="{{ lead.product_category }}">
                 </div>
                 <div class="form-group">
                     <label for="business_type">Business Type</label>
-                    <select id="business_type" name="business_type">
-                        <option value="" {% if not lead.business_type %}selected{% endif %}>Select Type</option>
+                    <select name="business_type" id="business_type">
+                        <option value="" {% if not lead.business_type %}selected{% endif %}>Select...</option>
                         <option value="B2B" {% if lead.business_type == 'B2B' %}selected{% endif %}>B2B</option>
                         <option value="B2C" {% if lead.business_type == 'B2C' %}selected{% endif %}>B2C</option>
                         <option value="B2B2C" {% if lead.business_type == 'B2B2C' %}selected{% endif %}>B2B2C</option>
                     </select>
                 </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="employees">Employees Count</label>
+                    <input type="number" name="employees" id="employees" value="{{ lead.employees }}">
+                </div>
+                <div class="form-group">
+                    <label for="revenue">Revenue</label>
+                    <input type="number" name="revenue" id="revenue" value="{{ lead.revenue }}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="year_founded">Year Founded</label>
+                    <input type="text" name="year_founded" id="year_founded" value="{{ lead.year_founded }}">
+                </div>
+                <div class="form-group">
+                    <label for="bbb_rating">BBB Rating</label>
+                    <input type="text" name="bbb_rating" id="bbb_rating" value="{{ lead.bbb_rating }}">
+                </div>
+            </div>
+
+            <div class="section-title">Location</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="street">Street</label>
+                    <input type="text" name="street" id="street" value="{{ lead.street }}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="city">City</label>
+                    <input type="text" name="city" id="city" value="{{ lead.city }}">
+                </div>
+                <div class="form-group">
+                    <label for="state">State</label>
+                    <input type="text" name="state" id="state" value="{{ lead.state }}">
+                </div>
+            </div>
+
+            <div class="section-title">Company Contact</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="company_phone">Company Phone</label>
+                    <input type="text" name="company_phone" id="company_phone" value="{{ lead.company_phone }}">
+                </div>
+                <div class="form-group">
+                    <label for="company_linkedin">Company LinkedIn</label>
+                    <input type="text" name="company_linkedin" id="company_linkedin" value="{{ lead.company_linkedin }}">
+                </div>
+            </div>
+
+            <div class="section-title">Owner/Contact Information</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="owner_first_name">First Name</label>
+                    <input type="text" name="owner_first_name" id="owner_first_name" value="{{ lead.owner_first_name }}">
+                </div>
+                <div class="form-group">
+                    <label for="owner_last_name">Last Name</label>
+                    <input type="text" name="owner_last_name" id="owner_last_name" value="{{ lead.owner_last_name }}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="owner_title">Title</label>
+                    <input type="text" name="owner_title" id="owner_title" value="{{ lead.owner_title }}">
+                </div>
+                <div class="form-group">
+                    <label for="owner_linkedin">LinkedIn</label>
+                    <input type="text" name="owner_linkedin" id="owner_linkedin" value="{{ lead.owner_linkedin }}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="owner_phone_number">Phone Number</label>
+                    <input type="text" name="owner_phone_number" id="owner_phone_number" value="{{ lead.owner_phone_number }}">
+                </div>
+                <div class="form-group">
+                    <label for="owner_email">Email</label>
+                    <input type="email" name="owner_email" id="owner_email" value="{{ lead.owner_email }}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="phone">Phone</label>
+                    <input type="text" name="phone" id="phone" value="{{ lead.phone }}">
+                </div>
                 <div class="form-group">
                     <label for="status">Status</label>
-                    <select id="status" name="status" required>
+                    <select name="status" id="status">
                         <option value="new" {% if lead.status == 'new' %}selected{% endif %}>New</option>
                         <option value="contacted" {% if lead.status == 'contacted' %}selected{% endif %}>Contacted</option>
-                        <option value="closed" {% if lead.status == 'closed' %}selected{% endif %}>Closed</option>
+                        <option value="qualified" {% if lead.status == 'qualified' %}selected{% endif %}>Qualified</option>
+                        <option value="unqualified" {% if lead.status == 'unqualified' %}selected{% endif %}>Unqualified</option>
+                        <option value="converted" {% if lead.status == 'converted' %}selected{% endif %}>Converted</option>
                     </select>
                 </div>
             </div>
-            
-            <div class="section-title">
-              Existing Additional Fields
-              <div class="info-tooltip">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-                <span class="tooltip-text">Edit or remove existing fields. Deleted fields will be removed when you save.</span>
-              </div>
-            </div>
-            <div id="existing-fields">
-                {% if lead.title %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Title:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.title }}" placeholder="Ex: CEO, CTO, Marketing Director" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="title">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.website %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Website:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.website }}" placeholder="Ex: https://company.com" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="website">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.city %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>City:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.city }}" placeholder="Ex: San Francisco" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="city">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.state %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>State:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.state }}" placeholder="Ex: California" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="state">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.industry %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Industry:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.industry }}" placeholder="Ex: Technology, Healthcare, Finance" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="industry">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.linkedin_url %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>LinkedIn URL:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.linkedin_url }}" placeholder="Ex: https://linkedin.com/company/name" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="linkedin_url">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.revenue %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Revenue:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.revenue }}" placeholder="Ex: $1M-$5M" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="revenue">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.product_service_category %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Product/Service Category:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.product_service_category }}" placeholder="Ex: SaaS, Consulting, Manufacturing" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="product_service_category">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.associated_members %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Associated Members:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.associated_members }}" placeholder="Ex: John Doe, Jane Smith" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="associated_members">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.employees_range %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Employees Range:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.employees_range }}" placeholder="Ex: 10-50, 50-200, 200-500" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="employees_range">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.rev_source %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Revenue Source:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.rev_source }}" placeholder="Ex: Subscriptions, Product Sales" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="rev_source">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.year_founded %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Year Founded:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.year_founded }}" placeholder="Ex: 2015" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="year_founded">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.owner_linkedin %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Owner LinkedIn:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.owner_linkedin }}" placeholder="Ex: https://linkedin.com/in/ownername" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="owner_linkedin">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.owner_age %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Owner Age:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.owner_age }}" placeholder="Ex: 35-45" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="owner_age">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.score %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Score:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.score }}" placeholder="Ex: A, B, C or numerical rating" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="score">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.reasoning %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Reasoning:</label>
-                    <textarea name="dynamic_field_value[]" placeholder="Explanation for the score or rating" required>{{ lead.reasoning }}</textarea>
-                    <input type="hidden" name="dynamic_field_name[]" value="reasoning">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.additional_notes %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Notes:</label>
-                    <textarea name="dynamic_field_value[]" placeholder="Add any additional information here" required>{{ lead.additional_notes }}</textarea>
-                    <input type="hidden" name="dynamic_field_name[]" value="additional_notes">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.email_customization_1 %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Email Customization 1:</label>
-                    <textarea name="dynamic_field_value[]" placeholder="Personalized email content for first outreach" required>{{ lead.email_customization_1 }}</textarea>
-                    <input type="hidden" name="dynamic_field_name[]" value="email_customization_1">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.subject_line_1 %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Subject Line 1:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.subject_line_1 }}" placeholder="Ex: Partnership Opportunity with [Company]" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="subject_line_1">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.email_customization_2 %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Email Customization 2:</label>
-                    <textarea name="dynamic_field_value[]" placeholder="Personalized email content for follow-up" required>{{ lead.email_customization_2 }}</textarea>
-                    <input type="hidden" name="dynamic_field_name[]" value="email_customization_2">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.subject_line_2 %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>Subject Line 2:</label>
-                    <input type="text" name="dynamic_field_value[]" value="{{ lead.subject_line_2 }}" placeholder="Ex: Following up on our previous conversation" required>
-                    <input type="hidden" name="dynamic_field_name[]" value="subject_line_2">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.linkedin_customization_1 %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>LinkedIn Message 1:</label>
-                    <textarea name="dynamic_field_value[]" placeholder="Personalized LinkedIn message for first contact" required>{{ lead.linkedin_customization_1 }}</textarea>
-                    <input type="hidden" name="dynamic_field_name[]" value="linkedin_customization_1">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
-                {% endif %}
-                
-                {% if lead.linkedin_customization_2 %}
-                <div class="existing-field animate__animated animate__fadeIn">
-                    <label>LinkedIn Message 2:</label>
-                    <textarea name="dynamic_field_value[]" placeholder="Personalized LinkedIn message for follow-up" required>{{ lead.linkedin_customization_2 }}</textarea>
-                    <input type="hidden" name="dynamic_field_name[]" value="linkedin_customization_2">
-                    <button type="button" class="remove-btn" onclick="removeExistingField(this)">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                </div>
+
+            <!-- Dynamic fields section -->
+            <div class="section-title">Custom Fields</div>
+            <div id="dynamicFields">
+                {% if dynamic_fields %}
+                    {% for field in dynamic_fields %}
+                        <div class="dynamic-field">
+                            <input type="text" name="dynamic_field_name[]" placeholder="Field Name" value="{{ field.name }}">
+                            <input type="text" name="dynamic_field_value[]" placeholder="Field Value" value="{{ field.value }}">
+                            <button type="button" class="remove-btn" onclick="removeField(this)">&times;</button>
+                        </div>
+                    {% endfor %}
                 {% endif %}
             </div>
-            
-            <div class="section-title">
-              Add New Fields
-              <div class="info-tooltip">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-                <span class="tooltip-text">Add new custom fields to this lead record</span>
-              </div>
-            </div>
-            <div id="dynamic-fields-container">
-                <!-- New dynamic fields will be added here -->
-            </div>
-            <button type="button" id="add-field-btn" class="add-field-btn">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Custom Field
-            </button>
-            <div class="error-message" id="dynamic-fields-error">Please fill in all added fields or remove empty ones</div>
-            
-            <div style="margin-top: 30px; display: flex; gap: 15px;">
-                <button type="submit" class="btn btn-primary pulse-animation">Update Lead</button>
-                <a href="{{ url_for('lead.view_leads') }}" class="btn btn-secondary animate__animated animate__fadeInRight">Cancel</a>
+            <button type="button" class="add-field-btn" onclick="addField()">+ Add Custom Field</button>
+
+            <div class="button-group mt-4">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="{{ url_for('lead.index') }}" class="btn btn-secondary">Cancel</a>
             </div>
         </form>
     </div>

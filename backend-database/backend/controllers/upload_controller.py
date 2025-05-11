@@ -42,6 +42,12 @@ class UploadController:
         return str(website).strip().lower()
 
     @staticmethod
+    def clean_company(company):
+        if pd.isna(company):
+            return None
+        return str(company).strip()
+
+    @staticmethod
     def is_valid_email(email):
         if not email or pd.isna(email):
             return False
@@ -60,6 +66,12 @@ class UploadController:
         if not website or pd.isna(website):
             return False
         return bool(website.strip())
+
+    @staticmethod
+    def is_valid_company(company):
+        if not company or pd.isna(company):
+            return False
+        return bool(company.strip())
 
     @staticmethod
     def is_valid_row(name, email, phone):
@@ -98,9 +110,9 @@ class UploadController:
 
             # Handle first_name and last_name columns if provided
             if first_name_col and first_name_col in df.columns:
-                df['first_name'] = df[first_name_col].fillna("").astype(str).str.strip()
+                df['owner_first_name'] = df[first_name_col].fillna("").astype(str).str.strip()
             if last_name_col and last_name_col in df.columns:
-                df['last_name'] = df[last_name_col].fillna("").astype(str).str.strip()
+                df['owner_last_name'] = df[last_name_col].fillna("").astype(str).str.strip()
 
             # Only process name if name_col is provided and exists in columns
             if name_col and name_col in df.columns:
@@ -116,18 +128,18 @@ class UploadController:
                         return parts[0], ""
                     else:
                         return parts[0], " ".join(parts[1:])
-                df['first_name'], df['last_name'] = zip(*df['name'].map(split_name))
+                df['owner_first_name'], df['owner_last_name'] = zip(*df['name'].map(split_name))
             else:
-                if 'first_name' not in df.columns:
-                    df['first_name'] = ""
-                if 'last_name' not in df.columns:
-                    df['last_name'] = ""
+                if 'owner_first_name' not in df.columns:
+                    df['owner_first_name'] = ""
+                if 'owner_last_name' not in df.columns:
+                    df['owner_last_name'] = ""
                 df['name'] = ""
 
             # Always set name to first_name + last_name if name is empty
-            df['name'] = df.apply(lambda row: row['name'] if 'name' in row and row['name'] else f"{row.get('first_name','')} {row.get('last_name','')}".strip(), axis=1)
+            df['name'] = df.apply(lambda row: row['name'] if 'name' in row and row['name'] else f"{row.get('owner_first_name','')} {row.get('owner_last_name','')}".strip(), axis=1)
 
-            df['email'] = df[email_col].apply(UploadController.clean_email)
+            df['owner_email'] = df[email_col].apply(UploadController.clean_email)
             df['phone'] = df[phone_col].apply(UploadController.clean_phone)
 
             added = 0
@@ -137,10 +149,10 @@ class UploadController:
 
             for idx, row in df.iterrows():
                 name = row['name']
-                email = row['email']
+                email = row['owner_email']
                 phone = row['phone']
-                first_name = row['first_name']
-                last_name = row['last_name']
+                first_name = row['owner_first_name']
+                last_name = row['owner_last_name']
 
                 if not UploadController.is_valid_row(name, email, phone):
                     errors += 1
@@ -159,7 +171,7 @@ class UploadController:
                     continue
 
                 existing_lead = Lead.query.filter(
-                    (Lead.email == email) | (Lead.phone == phone)
+                    (Lead.owner_email == email) | (Lead.phone == phone)
                 ).first()
 
                 if existing_lead:
@@ -180,10 +192,12 @@ class UploadController:
 
                 try:
                     lead_data = {
-                        'first_name': str(first_name).strip() if first_name is not None else '',
-                        'last_name': str(last_name).strip() if last_name is not None else '',
-                        'email': str(email).strip() if email is not None else '',
-                        'phone': str(phone).strip() if phone is not None else ''
+                        'owner_first_name': str(first_name).strip() if first_name is not None else '',
+                        'owner_last_name': str(last_name).strip() if last_name is not None else '',
+                        'owner_email': str(email).strip() if email is not None else '',
+                        'phone': str(phone).strip() if phone is not None else '',
+                        'source': 'manual',  # Default source
+                        'search_keyword': {}  # Empty JSON object as default
                     }
                     # Add dynamic fields
                     if dynamic_fields:
@@ -192,7 +206,8 @@ class UploadController:
                                 value = row[csv_col]
                                 lead_data[db_field] = str(value).strip() if value is not None else ''
                     # Truncate only the fields defined in the model
-                    lead_data = Lead.truncate_fields(lead_data)
+                    if hasattr(Lead, 'truncate_fields'):
+                        lead_data = Lead.truncate_fields(lead_data)
 
                     # Use smart add/update logic
                     from controllers.lead_controller import LeadController

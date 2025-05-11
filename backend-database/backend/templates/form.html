@@ -363,18 +363,18 @@
     
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
       <div class="input-container">
-        <label for="first_name" class="required">First Name</label>
-        <input type="text" id="first_name" name="first_name" required placeholder="Enter first name">
+        <label for="owner_first_name" class="required">First Name</label>
+        <input type="text" id="owner_first_name" name="owner_first_name" required placeholder="Enter first name">
       </div>
       
       <div class="input-container">
-        <label for="last_name" class="required">Last Name</label>
-        <input type="text" id="last_name" name="last_name" required placeholder="Enter last name">
+        <label for="owner_last_name" class="required">Last Name</label>
+        <input type="text" id="owner_last_name" name="owner_last_name" required placeholder="Enter last name">
       </div>
       
       <div class="input-container">
-        <label for="email" class="required">Email</label>
-        <input type="email" id="email" name="email" required placeholder="Enter email address">
+        <label for="owner_email" class="required">Email</label>
+        <input type="email" id="owner_email" name="owner_email" required placeholder="Enter email address">
       </div>
       
       <div class="input-container">
@@ -397,12 +397,12 @@
         </select>
       </div>
       <div class="input-container">
-        <label for="employees_range">Employees</label>
-        <input type="text" id="employees_range" name="employees_range"  placeholder="Enter employees range">
+        <label for="employees">Employees</label>
+        <input type="text" id="employees" name="employees" placeholder="Enter employees count">
       </div>
       <div class="input-container">
-        <label for="revenue"></label>Revenue</label>
-        <input type="text" id="revenue" name="revenue"  placeholder="Enter revenue">
+        <label for="revenue">Revenue</label>
+        <input type="text" id="revenue" name="revenue" placeholder="Enter revenue">
       </div>
 
     </div>
@@ -449,29 +449,21 @@
     
     // Available database fields with placeholder values
     const availableFields = [
-      {name: 'title', label: 'Title', placeholder: 'Ex: CEO, CTO, Marketing Director'},
+      {name: 'owner_title', label: 'Title', placeholder: 'Ex: CEO, CTO, Marketing Director'},
       {name: 'city', label: 'City', placeholder: 'Ex: San Francisco'},
       {name: 'state', label: 'State', placeholder: 'Ex: California'},
       {name: 'website', label: 'Website', placeholder: 'Ex: https://company.com'},
       {name: 'industry', label: 'Industry', placeholder: 'Ex: Technology, Healthcare, Finance'},
-      {name: 'linkedin_url', label: 'LinkedIn URL', placeholder: 'Ex: https://linkedin.com/company/name'},
+      {name: 'company_linkedin', label: 'Company LinkedIn', placeholder: 'Ex: https://linkedin.com/company/name'},
       {name: 'revenue', label: 'Revenue', placeholder: 'Ex: $1M-$5M'},
-      {name: 'product_service_category', label: 'Product/Service Category', placeholder: 'Ex: SaaS, Consulting, Manufacturing'},
-      {name: 'associated_members', label: 'Associated Members', placeholder: 'Ex: John Doe, Jane Smith'},
-      {name: 'employees_range', label: 'Employees Range', placeholder: 'Ex: 10-50, 50-200, 200-500'},
-      {name: 'rev_source', label: 'Revenue Source', placeholder: 'Ex: Subscriptions, Product Sales'},
+      {name: 'product_category', label: 'Product/Service Category', placeholder: 'Ex: SaaS, Consulting, Manufacturing'},
+      {name: 'employees', label: 'Employees Count', placeholder: 'Ex: 50, 100, 500'},
       {name: 'year_founded', label: 'Year Founded', placeholder: 'Ex: 2015'},
       {name: 'owner_linkedin', label: 'Owner LinkedIn', placeholder: 'Ex: https://linkedin.com/in/ownername'},
-      {name: 'owner_age', label: 'Owner Age', placeholder: 'Ex: 35-45'},
-      {name: 'additional_notes', label: 'Notes', placeholder: 'Add any additional information here'},
-      {name: 'score', label: 'Score', placeholder: 'Ex: A, B, C or numerical rating'},
-      {name: 'reasoning', label: 'Reasoning', placeholder: 'Explanation for the score or rating'},
-      {name: 'email_customization_1', label: 'Email Customization 1', placeholder: 'Personalized email content for first outreach'},
-      {name: 'subject_line_1', label: 'Subject Line 1', placeholder: 'Ex: Partnership Opportunity with [Company]'},
-      {name: 'email_customization_2', label: 'Email Customization 2', placeholder: 'Personalized email content for follow-up'},
-      {name: 'subject_line_2', label: 'Subject Line 2', placeholder: 'Ex: Following up on our previous conversation'},
-      {name: 'linkedin_customization_1', label: 'LinkedIn Message 1', placeholder: 'Personalized LinkedIn message for first contact'},
-      {name: 'linkedin_customization_2', label: 'LinkedIn Message 2', placeholder: 'Personalized LinkedIn message for follow-up'}
+      {name: 'owner_phone_number', label: 'Owner Phone Number', placeholder: 'Ex: +1 (555) 123-4567'},
+      {name: 'company_phone', label: 'Company Phone', placeholder: 'Ex: +1 (555) 987-6543'},
+      {name: 'bbb_rating', label: 'BBB Rating', placeholder: 'Ex: A+, A, B+'},
+      {name: 'street', label: 'Street Address', placeholder: 'Ex: 123 Main St'}
     ];
     
     // Form validation function

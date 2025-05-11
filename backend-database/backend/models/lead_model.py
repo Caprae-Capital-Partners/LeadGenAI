@@ -1,51 +1,50 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from sqlalchemy.dialects.postgresql import JSONB
 
 db = SQLAlchemy()
 
 class Lead(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'leads'
+    
+    # Primary key
+    lead_id = db.Column(db.Integer, primary_key=True)
+    
+    # Base data
+    search_keyword = db.Column(JSONB, nullable=False)  # Base64-encoded JSON string
+    draft_data = db.Column(JSONB, nullable=True)  # Draft user data
     
     # Company Information
-    company = db.Column(db.String(100))
-    city = db.Column(db.String(50))
-    state = db.Column(db.String(50))
-    website = db.Column(db.String(255))
-    linkedin_url = db.Column(db.String(255))
-    industry = db.Column(db.String(100))
-    revenue = db.Column(db.String(100))
-    product_service_category = db.Column(db.Text)
-    business_type = db.Column(db.String(100))  # B2B, B2B2C
-    associated_members = db.Column(db.Text)
-    employees_range = db.Column(db.String(100))
-    rev_source = db.Column(db.String(100))
-    year_founded = db.Column(db.String(20))
+    company = db.Column(db.String(100), nullable=False)
+    website = db.Column(db.String(255), nullable=True)
+    industry = db.Column(db.String(100), nullable=True)
+    product_category = db.Column(db.String(100), nullable=True)  # Previously product_service_category
+    business_type = db.Column(db.String(100), nullable=True)
+    employees = db.Column(db.Integer, nullable=True)  # Previously employees_range
+    revenue = db.Column(db.Float, nullable=True)
+    year_founded = db.Column(db.String(20), nullable=True)
+    bbb_rating = db.Column(db.String(10), nullable=True)
     
-    # Contact Information
-    first_name = db.Column(db.String(50))
-    last_name = db.Column(db.String(50))
-    email = db.Column(db.String(120))
-    phone = db.Column(db.String(30))
-    title = db.Column(db.String(100))
+    # Location Information
+    street = db.Column(db.String(255), nullable=True)
+    city = db.Column(db.String(50), nullable=True)
+    state = db.Column(db.String(50), nullable=True)
     
-    # Owner Information
-    owner_linkedin = db.Column(db.String(255))
-    owner_age = db.Column(db.String(20))
+    # Company Contact
+    company_phone = db.Column(db.String(20), nullable=True)  # New field
+    company_linkedin = db.Column(db.String(255), nullable=True)  # Previously linkedin_url
     
-    # Notes and Scoring
-    additional_notes = db.Column(db.Text)
-    score = db.Column(db.String(20))
-    reasoning = db.Column(db.Text)  # Reasoning for r/y/g
+    # Owner/Contact Information
+    owner_first_name = db.Column(db.String(50), nullable=True)  # Previously first_name
+    owner_last_name = db.Column(db.String(50), nullable=True)  # Previously last_name
+    owner_title = db.Column(db.String(100), nullable=True)  # Previously title
+    owner_linkedin = db.Column(db.String(255), nullable=True)
+    owner_phone_number = db.Column(db.String(20), nullable=True)  # New field
+    owner_email = db.Column(db.String(120), nullable=True)  # Previously email
+    phone = db.Column(db.String(20), nullable=True)  # Changed from Integer to String
     
-    # Email Customization
-    email_customization_1 = db.Column(db.Text)
-    subject_line_1 = db.Column(db.String(255))
-    email_customization_2 = db.Column(db.Text)
-    subject_line_2 = db.Column(db.String(255))
-    
-    # LinkedIn Customization
-    linkedin_customization_1 = db.Column(db.Text)
-    linkedin_customization_2 = db.Column(db.Text)
+    # Source information
+    source = db.Column(db.String(50), nullable=False)  # Growjo / Apollo / both
     
     # Metadata
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -53,64 +52,39 @@ class Lead(db.Model):
     deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(20), default='new', nullable=False)
-
-
-    # Only truncate these fields if needed
-    # FIELD_MAX_LENGTHS = {
-    #     'product_service_category': 2000,
-    #     'business_type': 100,
-    # }
-
-    # @classmethod
-    # def truncate_fields(cls, data):
-    #     for field, max_len in cls.FIELD_MAX_LENGTHS.items():
-    #         if field in data and isinstance(data[field], str):
-    #             data[field] = data[field][:max_len]
-    #     return data
-    
-    # @property
-    # def full_name(self):
-    #     """Return the full name of the lead"""
-    #     return f"{self.first_name} {self.last_name}".strip()
     
     def __repr__(self):
-        return f'<Lead {self.company}: {self.first_name} {self.last_name}>'
+        return f'<Lead {self.lead_id}: {self.company}>'
     
     # Helper method to convert to dictionary
     def to_dict(self):
         """Convert Lead object to dictionary for API response"""
         return {
-            'id': self.id,
+            'lead_id': self.lead_id,
+            'search_keyword': self.search_keyword,
+            'draft_data': self.draft_data,
             'company': self.company,
-            'first_name': self.first_name,
-            'last_name': self.last_name,
-            # 'full_name': self.full_name,
-            'email': self.email,
-            'phone': self.phone,
-            'title': self.title,
+            'website': self.website,
+            'industry': self.industry,
+            'product_category': self.product_category,
+            'business_type': self.business_type,
+            'employees': self.employees,
+            'revenue': self.revenue,
+            'year_founded': self.year_founded,
+            'bbb_rating': self.bbb_rating,
+            'street': self.street,
             'city': self.city,
             'state': self.state,
-            'website': self.website,
-            'linkedin_url': self.linkedin_url,
-            'industry': self.industry,
-            'revenue': self.revenue,
-            'product_service_category': self.product_service_category,
-            'business_type': self.business_type,
-            'associated_members': self.associated_members,
-            'employees_range': self.employees_range,
-            'rev_source': self.rev_source,
-            'year_founded': self.year_founded,
+            'company_phone': self.company_phone,
+            'company_linkedin': self.company_linkedin,
+            'owner_first_name': self.owner_first_name,
+            'owner_last_name': self.owner_last_name,
+            'owner_title': self.owner_title,
             'owner_linkedin': self.owner_linkedin,
-            'owner_age': self.owner_age,
-            'additional_notes': self.additional_notes,
-            'score': self.score,
-            'email_customization_1': self.email_customization_1,
-            'subject_line_1': self.subject_line_1,
-            'email_customization_2': self.email_customization_2,
-            'subject_line_2': self.subject_line_2,
-            'linkedin_customization_1': self.linkedin_customization_1,
-            'linkedin_customization_2': self.linkedin_customization_2,
-            'reasoning': self.reasoning,
+            'owner_phone_number': self.owner_phone_number,
+            'owner_email': self.owner_email,
+            'phone': self.phone,
+            'source': self.source,
             'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,

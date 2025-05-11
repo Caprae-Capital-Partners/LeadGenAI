@@ -97,29 +97,29 @@ def view_leads():
     # Get unique values for filters
     companies = sorted(set(lead.company for lead in leads if lead.company))
     locations = sorted(set(f"{lead.city}, {lead.state}" if lead.city and lead.state else (lead.city or lead.state) for lead in leads if (lead.city or lead.state)))
-    roles = sorted(set(lead.title for lead in leads if lead.title))
-    scores = sorted(set(lead.score for lead in leads if lead.score))
+    roles = sorted(set(lead.owner_title for lead in leads if lead.owner_title))
     statuses = sorted(set(lead.status for lead in leads if lead.status))
     
     # Get additional filter options
     industries = sorted(set(lead.industry for lead in leads if lead.industry))
     business_types = sorted(set(lead.business_type for lead in leads if lead.business_type))
     states = sorted(set(lead.state for lead in leads if lead.state))
-    employee_sizes = sorted(set(lead.employees_range for lead in leads if lead.employees_range))
+    employee_sizes = sorted(set(lead.employees for lead in leads if lead.employees))
     revenue_ranges = sorted(set(lead.revenue for lead in leads if lead.revenue))
+    sources = sorted(set(lead.source for lead in leads if lead.source))
     
     return render_template('leads.html', 
                          leads=leads,
                          companies=companies,
                          locations=locations,
                          roles=roles,
-                         scores=scores,
                          statuses=statuses,
                          industries=industries,
                          business_types=business_types,
                          states=states,
                          employee_sizes=employee_sizes,
-                         revenue_ranges=revenue_ranges)
+                         revenue_ranges=revenue_ranges,
+                         sources=sources)
 
 @lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
 @login_required
@@ -143,7 +143,7 @@ def edit_lead(lead_id):
 def update_status(lead_id):
     """Update lead status - All roles can update status"""
     try:
-        lead = Lead.query.get_or_404(lead_id)
+        lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
         new_status = request.form.get('status')
         if new_status:
             lead.status = new_status
@@ -227,7 +227,7 @@ def create_lead():
 @role_required('admin', 'developer')
 def update_lead_api(lead_id):
     """Update a lead via API - Admin and Developer only"""
-    lead = Lead.query.get_or_404(lead_id)
+    lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
     data = request.json
     
     try:
@@ -243,7 +243,7 @@ def update_lead_api(lead_id):
 @login_required
 def update_status_api(lead_id):
     """Update a lead's status via API - All roles can update status"""
-    lead = Lead.query.get_or_404(lead_id)
+    lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
     data = request.json
     
     if 'status' not in data:
@@ -316,23 +316,32 @@ def api_upload_leads():
             return jsonify({"status": "error", "message": "Invalid data format. Expected a list of leads"}), 400
         
         # Initial validation - check required fields only once
-        required_fields = ['email', 'phone', 'website','company']
+        required_fields = ['owner_email', 'phone', 'website', 'company']
         valid_leads = []
         invalid_indices = []
         
         # Pre-validate all leads at once
         for i, lead in enumerate(data):
+            # Check if data uses old 'email' field format and convert to owner_email
+            if 'email' in lead and 'owner_email' not in lead:
+                lead['owner_email'] = lead.pop('email')
+                
             if all(field in lead for field in required_fields):
                 # Clean email and phone
-                lead['email'] = UploadController.clean_email(lead['email'])
+                lead['owner_email'] = UploadController.clean_email(lead['owner_email'])
                 lead['phone'] = UploadController.clean_phone(lead['phone'])
                 lead['website'] = UploadController.clean_website(lead['website'])
                 lead['company'] = UploadController.clean_company(lead['company'])
                 
+                # Set default values for required fields
+                if 'search_keyword' not in lead:
+                    lead['search_keyword'] = {}  # Empty JSON object as default
+                    
                 # Quick validation
-                if UploadController.is_valid_email(lead['email']) and UploadController.is_valid_phone(lead['phone']) and UploadController.is_valid_website(lead['website']) and UploadController.is_valid_company(lead['company']):
+                if UploadController.is_valid_email(lead['owner_email']) and UploadController.is_valid_phone(lead['phone']) and UploadController.is_valid_website(lead['website']) and UploadController.is_valid_company(lead['company']):
                     # Truncate fields to match database limitations
-                    lead = Lead.truncate_fields(lead)
+                    if hasattr(Lead, 'truncate_fields'):
+                        lead = Lead.truncate_fields(lead)
                     valid_leads.append(lead)
                 else:
                     invalid_indices.append(i)
@@ -344,8 +353,8 @@ def api_upload_leads():
         skipped = 0
         
         # Get all existing emails, phones, and websites in one query to check duplicates efficiently
-        existing_leads = db.session.query(Lead.email, Lead.phone, Lead.website, Lead.company).all()
-        existing_emails = {lead.email for lead in existing_leads}
+        existing_leads = db.session.query(Lead.owner_email, Lead.phone, Lead.website, Lead.company).all()
+        existing_emails = {lead.owner_email for lead in existing_leads}
         existing_phones = {lead.phone for lead in existing_leads}
         existing_websites = {lead.website for lead in existing_leads}
         existing_companies = {lead.company for lead in existing_leads}
@@ -355,7 +364,7 @@ def api_upload_leads():
         
         for lead_data in valid_leads:
             # Check if it's a duplicate
-            if lead_data['email'] in existing_emails or lead_data['phone'] in existing_phones or lead_data['website'] in existing_websites or lead_data['company'] in existing_companies:
+            if lead_data['owner_email'] in existing_emails or lead_data['phone'] in existing_phones or lead_data['website'] in existing_websites or lead_data['company'] in existing_companies:
                 skipped += 1
                 continue
                 
@@ -364,7 +373,7 @@ def api_upload_leads():
             new_leads.append(new_lead)
             
             # Update tracking sets to prevent duplicates within the same batch
-            existing_emails.add(lead_data['email'])
+            existing_emails.add(lead_data['owner_email'])
             existing_phones.add(lead_data['phone'])
             existing_websites.add(lead_data['website'])
             existing_companies.add(lead_data['company'])
