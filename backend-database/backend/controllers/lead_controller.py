@@ -7,9 +7,55 @@ from sqlalchemy import text
 class LeadController:
     @staticmethod
     def get_all_leads():
-        """Get all leads for view"""
-        # return Lead.query.filter_by(deleted=False).order_by(Lead.updated_at.desc()).all()
-        return Lead.query.order_by(Lead.updated_at.desc()).all()
+        """Get all leads for view, with optional search and filters from request.args"""
+        query = Lead.query
+        args = request.args
+
+        # Basic search across multiple fields
+        search = args.get('search', '').strip()
+        if search:
+            search_pattern = f"%{search.lower()}%"
+            query = query.filter(
+                db.or_(
+                    db.func.lower(Lead.company).like(search_pattern),
+                    db.func.lower(Lead.owner_first_name).like(search_pattern),
+                    db.func.lower(Lead.owner_last_name).like(search_pattern),
+                    db.func.lower(Lead.owner_email).like(search_pattern),
+                    db.func.lower(Lead.phone).like(search_pattern),
+                    db.func.lower(Lead.owner_title).like(search_pattern),
+                    db.func.lower(Lead.city).like(search_pattern),
+                    db.func.lower(Lead.state).like(search_pattern),
+                    db.func.lower(Lead.website).like(search_pattern),
+                    db.func.lower(Lead.company_linkedin).like(search_pattern),
+                    db.func.lower(Lead.industry).like(search_pattern),
+                    db.func.lower(Lead.product_category).like(search_pattern),
+                    db.func.lower(Lead.business_type).like(search_pattern),
+                    db.func.lower(Lead.status).like(search_pattern),
+                )
+            )
+
+        # Individual filters
+        if args.get('company'):
+            query = query.filter(Lead.company == args.get('company'))
+        if args.get('location'):
+            location = args.get('location')
+            if ',' in location:
+                city, state = [x.strip() for x in location.split(',', 1)]
+                query = query.filter(Lead.city == city, Lead.state == state)
+            else:
+                query = query.filter(db.or_(Lead.city == location, Lead.state == location))
+        if args.get('role'):
+            query = query.filter(Lead.owner_title == args.get('role'))
+        if args.get('status'):
+            query = query.filter(Lead.status == args.get('status'))
+        if args.get('revenue'):
+            try:
+                revenue_val = float(args.get('revenue').replace('$','').replace('M','000000').replace('K','000'))
+                query = query.filter(Lead.revenue >= revenue_val)
+            except:
+                pass
+
+        return query.order_by(Lead.updated_at.desc()).all()
 
     @staticmethod
     def get_lead_by_id(lead_id):

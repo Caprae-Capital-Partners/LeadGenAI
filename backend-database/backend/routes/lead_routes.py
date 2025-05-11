@@ -262,8 +262,9 @@ def update_status_api(lead_id):
 def export_leads():
     """Export selected leads to CSV or Excel - All roles can export"""
     selected_leads = request.form.getlist('selected_leads[]')
-    file_format = request.form.get('file_format', 'csv')
+    file_format = request.form.get('file_format', 'csv', 'excel')
     export_type = request.form.get('export_type', 'selected')
+    print('DEBUG EXPORT file_format:', file_format)
     
     # Get filter parameters if exporting filtered data
     filter_params = None

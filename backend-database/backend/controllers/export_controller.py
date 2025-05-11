@@ -31,7 +31,7 @@ class ExportController:
                 else:
                     query = query.filter((Lead.city == location_parts[0]) | (Lead.state == location_parts[0]))
             if filter_params.get('role'):
-                query = query.filter(Lead.title == filter_params.get('role'))
+                query = query.filter(Lead.owner_title == filter_params.get('role'))
             if filter_params.get('status'):
                 query = query.filter(Lead.status == filter_params.get('status'))
             if filter_params.get('revenue'):
@@ -49,11 +49,11 @@ class ExportController:
                             # Parse each lead's revenue and compare with threshold
                             lead_revenue = ExportController.parse_revenue_value(lead.revenue)
                             if lead_revenue is not None and lead_revenue >= revenue_threshold:
-                                leads_with_revenue.append(lead.id)
+                                leads_with_revenue.append(lead.lead_id)
                         
                         # Update query to only include leads with revenue >= threshold
                         if leads_with_revenue:
-                            query = query.filter(Lead.id.in_(leads_with_revenue))
+                            query = query.filter(Lead.lead_id.in_(leads_with_revenue))
                         else:
                             # No leads match the criteria
                             return None, None, None
@@ -64,18 +64,18 @@ class ExportController:
                 search_term = f"%{filter_params.get('search')}%"
                 query = query.filter(
                     (Lead.company.ilike(search_term)) |
-                    (Lead.first_name.ilike(search_term)) |
-                    (Lead.last_name.ilike(search_term)) |
-                    (Lead.email.ilike(search_term)) |
+                    (Lead.owner_first_name.ilike(search_term)) |
+                    (Lead.owner_last_name.ilike(search_term)) |
+                    (Lead.owner_email.ilike(search_term)) |
                     (Lead.phone.ilike(search_term)) |
-                    (Lead.title.ilike(search_term)) |
+                    (Lead.owner_title.ilike(search_term)) |
                     (Lead.city.ilike(search_term)) |
                     (Lead.state.ilike(search_term))
                 )
         
         # Apply lead_ids filter if provided
         if lead_ids:
-            query = query.filter(Lead.id.in_(lead_ids))
+            query = query.filter(Lead.lead_id.in_(lead_ids))
         
         # Execute query
         leads = query.all()
@@ -88,33 +88,26 @@ class ExportController:
         for lead in leads:
             lead_dict = {
                 'Company': lead.company,
-                'First Name': lead.first_name,
-                'Last Name': lead.last_name,
-                'Email': lead.email,
+                'Owner First Name': lead.owner_first_name,
+                'Owner Last Name': lead.owner_last_name,
+                'Owner Email': lead.owner_email,
                 'Phone': lead.phone,
-                'Title': lead.title,
+                'Owner Title': lead.owner_title,
                 'City': lead.city,
                 'State': lead.state,
                 'Website': lead.website,
-                'LinkedIn URL': lead.linkedin_url,
+                'Company LinkedIn': lead.company_linkedin,
                 'Industry': lead.industry,
                 'Revenue': lead.revenue,
-                'Product/Service Category': lead.product_service_category,
+                'Product Category': lead.product_category,
                 'Business Type': lead.business_type,
-                'Employees Range': lead.employees_range,
+                'Employees': lead.employees,
                 'Year Founded': lead.year_founded,
                 'Owner LinkedIn': lead.owner_linkedin,
-                'Owner Age': lead.owner_age,
-                # 'Score': lead.score,
+                'Owner Phone': lead.owner_phone_number,
+                'Company Phone': lead.company_phone,
+                'Source': lead.source,
                 'Status': lead.status,
-                # 'Reasoning': lead.reasoning,
-                'Notes': lead.additional_notes,
-                # 'Subject Line 1': lead.subject_line_1,
-                # 'Email Content 1': lead.email_customization_1,
-                # 'Subject Line 2': lead.subject_line_2,
-                # 'Email Content 2': lead.email_customization_2,
-                # 'LinkedIn Message 1': lead.linkedin_customization_1,
-                # 'LinkedIn Message 2': lead.linkedin_customization_2,
                 'Created At': lead.created_at,
                 'Updated At': lead.updated_at
             }

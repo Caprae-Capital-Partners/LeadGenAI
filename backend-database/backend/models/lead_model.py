@@ -15,43 +15,43 @@ class Lead(db.Model):
     draft_data = db.Column(JSONB, nullable=True)  # Draft user data
     
     # Company Information
-    company = db.Column(db.String(100), nullable=False)
-    website = db.Column(db.String(255), nullable=True)
-    industry = db.Column(db.String(100), nullable=True)
-    product_category = db.Column(db.String(100), nullable=True)  # Previously product_service_category
-    business_type = db.Column(db.String(100), nullable=True)
+    company = db.Column(db.String(1000), nullable=False)
+    website = db.Column(db.String(1000), nullable=True)
+    industry = db.Column(db.String(1000), nullable=True)
+    product_category = db.Column(db.String(2000), nullable=True)  # Previously product_service_category
+    business_type = db.Column(db.String(1000), nullable=True)
     employees = db.Column(db.Integer, nullable=True)  # Previously employees_range
     revenue = db.Column(db.Float, nullable=True)
     year_founded = db.Column(db.String(20), nullable=True)
     bbb_rating = db.Column(db.String(10), nullable=True)
     
     # Location Information
-    street = db.Column(db.String(255), nullable=True)
-    city = db.Column(db.String(50), nullable=True)
-    state = db.Column(db.String(50), nullable=True)
+    street = db.Column(db.String(1000), nullable=True)
+    city = db.Column(db.String(1000), nullable=True)
+    state = db.Column(db.String(1000), nullable=True)
     
     # Company Contact
     company_phone = db.Column(db.String(20), nullable=True)  # New field
-    company_linkedin = db.Column(db.String(255), nullable=True)  # Previously linkedin_url
+    company_linkedin = db.Column(db.String(1000), nullable=True)  # Previously linkedin_url
     
     # Owner/Contact Information
-    owner_first_name = db.Column(db.String(50), nullable=True)  # Previously first_name
-    owner_last_name = db.Column(db.String(50), nullable=True)  # Previously last_name
-    owner_title = db.Column(db.String(100), nullable=True)  # Previously title
-    owner_linkedin = db.Column(db.String(255), nullable=True)
+    owner_first_name = db.Column(db.String(1000), nullable=True)  # Previously first_name
+    owner_last_name = db.Column(db.String(1000), nullable=True)  # Previously last_name
+    owner_title = db.Column(db.String(1000), nullable=True)  # Previously title
+    owner_linkedin = db.Column(db.String(1000), nullable=True)
     owner_phone_number = db.Column(db.String(20), nullable=True)  # New field
-    owner_email = db.Column(db.String(120), nullable=True)  # Previously email
+    owner_email = db.Column(db.String(1000), nullable=True)  # Previously email
     phone = db.Column(db.String(20), nullable=True)  # Changed from Integer to String
     
     # Source information
-    source = db.Column(db.String(50), nullable=False)  # Growjo / Apollo / both
+    source = db.Column(db.String(1000), nullable=False)  # Growjo / Apollo / both
     
     # Metadata
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime, nullable=True)
-    status = db.Column(db.String(20), default='new', nullable=False)
+    status = db.Column(db.String(1000), default='new', nullable=False)
     
     def __repr__(self):
         return f'<Lead {self.lead_id}: {self.company}>'

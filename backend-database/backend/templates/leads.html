@@ -475,9 +475,9 @@
                     <button onclick="exportLeads('csv')" class="btn" style="width: 100%; background: var(--primary-color); color: white; padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease;">
                         Export as CSV
                     </button>
-                    <button onclick="exportLeads('excel')" class="btn" style="width: 100%; background: var(--success-color); color: white; padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease;">
+                    <!-- <button onclick="exportLeads('excel')" class="btn" style="width: 100%; background: var(--success-color); color: white; padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease;">
                         Export as Excel
-                    </button>
+                    </button> -->
                 </div>
             </div>
             <button onclick="closeExportFormatDialog()" class="btn" style="width: 100%; background: #f1f5f9; color: #475569; padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease; margin-top: 16px;">
@@ -997,8 +997,6 @@
                 }
             });
 
-            // Initialize filters
-            populateFilters();
 
             // Initialize advanced filter field select change listeners
             document.querySelectorAll('.field-select').forEach(select => {
@@ -1829,14 +1827,15 @@
 
         function exportLeads(format) {
             const form = document.getElementById('exportForm');
-            
-            // Add file format
+            // Hapus input file_format yang sudah ada
+            const oldInputs = form.querySelectorAll('input[name="file_format"]');
+            oldInputs.forEach(input => input.remove());
+            // Tambahkan input file_format baru
             let formatInput = document.createElement('input');
             formatInput.type = 'hidden';
             formatInput.name = 'file_format';
             formatInput.value = format;
             form.appendChild(formatInput);
-            
             // Get export type (selected or filtered)
             const exportType = document.querySelector('input[name="exportType"]:checked').value;
             let exportTypeInput = document.createElement('input');
@@ -1844,7 +1843,6 @@
             exportTypeInput.name = 'export_type';
             exportTypeInput.value = exportType;
             form.appendChild(exportTypeInput);
-            
             // If exporting filtered data, add current filter values
             if (exportType === 'filtered') {
                 // Get current filter values
