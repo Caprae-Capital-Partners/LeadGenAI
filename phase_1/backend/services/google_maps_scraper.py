@@ -112,7 +112,7 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
         search_query = f"{industry} in {location}"
         await page.fill("input[name='q']", search_query)
         await page.keyboard.press("Enter")
-        await page.wait_for_selector("div.ecceSd", timeout=10000)  # Wait for the scrollable container to load
+        await page.wait_for_selector("div.ecceSd", timeout=20000)  # Wait for the scrollable container to load
         
         scrollable_container = page.locator("div.ecceSd").nth(1)
 
@@ -148,7 +148,7 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
             return business_list
                 
     except Exception as e:
-        raise RuntimeError(f"An error occurred while scraping: {e}")
+        print(f"Error during scraping: {e}")
         
     finally:
         await manager.stop_browser()

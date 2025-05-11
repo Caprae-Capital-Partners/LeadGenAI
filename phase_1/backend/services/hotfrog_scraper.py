@@ -9,10 +9,10 @@ from playwright.async_api import Locator
 
 # sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
 # from config.browser_config import PlaywrightManager
-from phase_1.backend.services.parser import parse_number
+from backend.services.parser import parse_number
 # from parser import parse_number
 
-from phase_1.backend.config.browser_config import PlaywrightManager
+from backend.config.browser_config import PlaywrightManager
 
 def save_to_csv(businesses, filename='hotfrog_data.csv'):
     """Save extracted business data to CSV file."""

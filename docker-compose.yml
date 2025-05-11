@@ -3,8 +3,8 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend_phase2
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend_phase2/Dockerfile
     container_name: leadgen-api
     ports:
       - "5050:5050"
@@ -18,7 +18,7 @@ services:
       dockerfile: Dockerfile
     container_name: scraper-api
     ports:
-      - "5050:5050"
+      - "5051:5050"
     env_file:
       - .env
     restart: always

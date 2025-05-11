@@ -4,13 +4,13 @@ import pandas as pd
 
 # import sys
 # sys.path.append("backend")
-from phase_1.backend.services.Fuzzymatching import deduplicate_businesses
-from phase_1.backend.services.yellowpages_scraper import scrape_yellowpages
-from phase_1.backend.services.bbb_scraper import scrape_bbb
-from phase_1.backend.services.google_maps_scraper import scrape_lead_by_industry
-from phase_1.backend.services.merge_sources import merge_data_sources
-from phase_1.backend.services.parser import parse_data
-from phase_1.backend.services.hotfrog_scraper import scrape_hotfrog
+from backend.services.Fuzzymatching import deduplicate_businesses
+from backend.services.yellowpages_scraper import scrape_yellowpages
+from backend.services.bbb_scraper import scrape_bbb
+from backend.services.google_maps_scraper import scrape_lead_by_industry
+from backend.services.merge_sources import merge_data_sources
+from backend.services.parser import parse_data
+from backend.services.hotfrog_scraper import scrape_hotfrog
 
 FIELDNAMES = [
     "Company",
