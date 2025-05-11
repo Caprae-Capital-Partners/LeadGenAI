@@ -2,7 +2,6 @@ from flask import Blueprint, request, redirect, render_template, flash, url_for,
 from controllers.lead_controller import LeadController
 from controllers.upload_controller import UploadController
 from controllers.export_controller import ExportController
-from controllers.dashboard_controller import DashboardController
 from models.lead_model import db, Lead
 from flask_login import login_required, current_user
 from utils.decorators import role_required
@@ -16,10 +15,10 @@ import io
 lead_bp = Blueprint('lead', __name__)
 
 @lead_bp.route('/')
+@login_required
 def index():
-    """Display dashboard as home page"""
-    stats = DashboardController.get_dashboard_stats()
-    return render_template('dashboard.html', **stats)
+    """Redirect to view leads page"""
+    return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/form')
 @login_required
@@ -305,13 +304,6 @@ def export_leads():
     except Exception as e:
         flash(f'Error exporting leads: {str(e)}', 'danger')
         return redirect(url_for('lead.view_leads'))
-
-@lead_bp.route('/dashboard')
-@login_required
-def dashboard():
-    """Display dashboard - All roles can access"""
-    stats = DashboardController.get_dashboard_stats()
-    return render_template('dashboard.html', **stats)
 
 @lead_bp.route('/api/upload_leads', methods=['POST'])
 @login_required

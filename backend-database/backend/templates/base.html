@@ -398,10 +398,6 @@
         <!-- Main Navigation -->
         <div class="nav-section">
             <div class="nav-section-title">MAIN</div>
-            <a href="{{ url_for('lead.dashboard') }}" class="nav-item {% if request.endpoint == 'lead.dashboard' %}active{% endif %}">
-                <i class="bi bi-speedometer2"></i>
-                <span>Dashboard</span>
-            </a>
             <a href="{{ url_for('lead.view_leads') }}" class="nav-item {% if request.endpoint == 'lead.view_leads' %}active{% endif %}">
                 <i class="bi bi-pencil-square"></i>
                 <span>Edit & Export Leads</span>

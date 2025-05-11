@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import text
 
@@ -6,8 +6,8 @@ main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
 def index():
-    """Render the main landing page"""
-    return render_template('index.html')
+    """Redirect to leads page"""
+    return redirect(url_for('lead.view_leads'))
 
 @main_bp.route('/docs/user')
 @login_required

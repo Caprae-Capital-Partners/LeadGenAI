@@ -230,336 +230,264 @@
     </div>
 
     <nav class="docs-nav">
-        <a href="#dashboard" class="docs-nav-item">Dashboard</a>
-        <a href="#upload" class="docs-nav-item">Uploading Leads</a>
-        <a href="#search" class="docs-nav-item">Searching & Filtering</a>
-        <a href="#edit" class="docs-nav-item">Editing Leads</a>
-        <a href="#export" class="docs-nav-item">Exporting Data</a>
+        <a href="#getting-started" class="docs-nav-item">Getting Started</a>
+        <a href="#importing-leads" class="docs-nav-item">Importing Leads</a>
+        <a href="#managing-leads" class="docs-nav-item">Managing Leads</a>
+        <a href="#exporting-data" class="docs-nav-item">Exporting Data</a>
+        <a href="#user-management" class="docs-nav-item">User Management</a>
     </nav>
     
-    <div id="dashboard" class="docs-section">
-        <h2 class="section-title">Dashboard</h2>
-        <div class="section-content">
-            <p>
-                The dashboard provides an overview of your lead generation activities and key metrics at a glance.
-            </p>
-
-            <h3>Dashboard Features</h3>
-            <p>
-                From the dashboard, you can:
-            </p>
-            <ul>
-                <li>View total number of leads in the system</li>
-                <li>See lead status distribution</li>
-                <li>Access quick links to common actions like uploading leads or viewing leads</li>
-                <li>Monitor your lead management activities</li>
-            </ul>
+    <div class="docs-content">
+        <div id="getting-started" class="docs-section">
+            <h2 class="section-title">Getting Started</h2>
+            <p>Welcome to the Lead Management System. This guide will help you get started with managing your leads effectively.</p>
             
-            <div class="tip">
-                <div class="tip-title">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    Pro Tip
-                </div>
-                <div class="tip-content">
-                    The dashboard is your starting point for all activities. Check it regularly to stay informed about your lead management activities.
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="upload" class="docs-section">
-        <h2 class="section-title">Uploading Leads</h2>
-        <div class="section-content">
-            <p>
-                LeadGen makes it easy to upload your lead data. You can either import leads in bulk using a CSV file or add them one by one.
-            </p>
-
-            <h3>Bulk Upload with CSV</h3>
-            
-            <div class="step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                    <div class="step-title">Prepare Your CSV File</div>
-                    <div class="step-description">
-                        Ensure your CSV file has the correct format with appropriate column headers. 
-                        Required fields include: Email and Phone. Other fields like Name, Company, and Location are recommended.
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                    <div class="step-title">Navigate to Upload Page</div>
-                    <div class="step-description">
-                        From the dashboard, click on "Bulk Import" in the sidebar or use the quick link on the dashboard.
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <div class="step-title">Map CSV Columns</div>
-                    <div class="step-description">
-                        Upload your CSV file and map the required fields. Specify which columns in your CSV contain the Email, Phone, and Name data. You can also map additional fields as needed.
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">4</div>
-                <div class="step-content">
-                    <div class="step-title">Review Results</div>
-                    <div class="step-description">
-                        After processing, you'll see a summary of the import results, including the number of leads added, skipped (duplicates), and any errors encountered.
-                    </div>
-                </div>
-            </div>
-
-            <div class="tip">
-                <div class="tip-title">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    Pro Tip
-                </div>
-                <div class="tip-content">
-                    The system automatically detects duplicate entries based on email or phone number and will skip these rather than creating duplicates.
-                </div>
-            </div>
-
-            <h3>Adding Individual Leads</h3>
-            <p>
-                To add a single lead manually (Admin and Developer roles only):
-            </p>
+            <h3>Quick Start</h3>
+            <p>To begin managing your leads:</p>
             <ol>
-                <li>Navigate to the "Single Import" page from the sidebar</li>
-                <li>Fill out the lead information form with necessary details</li>
-                <li>Click "Save" to add the lead to your database</li>
+                <li>Log in to your account</li>
+                <li>Navigate to "Edit & Export Leads" to view your leads</li>
+                <li>Use "Single Import" or "Bulk Import" to add new leads</li>
+                <li>Export your data as needed</li>
             </ol>
         </div>
-    </div>
 
-    <div id="search" class="docs-section">
-        <h2 class="section-title">Searching & Filtering Leads</h2>
-        <div class="section-content">
-            <p>
-                LeadGen provides powerful search and filtering capabilities to help you find specific leads quickly.
-            </p>
+        <div id="importing-leads" class="docs-section">
+            <h2 class="section-title">Importing Leads</h2>
+            <p>You can import leads in two ways:</p>
+            
+            <h3>Single Import</h3>
+            <p>Use the single import form to add individual leads:</p>
+            <ol>
+                <li>Click on "Single Import" in the sidebar</li>
+                <li>Fill in the lead's information</li>
+                <li>Click "Submit" to add the lead</li>
+            </ol>
 
-            <h3>Basic Search</h3>
-            <p>
-                Use the search bar at the top of the Leads page to perform a quick search across all fields. This is useful for finding leads by name, email, company, or any other information.
-            </p>
+            <h3>Bulk Import</h3>
+            <p>To import multiple leads at once:</p>
+            <ol>
+                <li>Click on "Bulk Import" in the sidebar</li>
+                <li>Prepare your CSV file with the required columns</li>
+                <li>Upload the file and map the columns</li>
+                <li>Review and confirm the import</li>
+            </ol>
+        </div>
 
-            <h3>Filtering</h3>
-            <p>
-                For more targeted searching, use the filtering options:
-            </p>
+        <div id="managing-leads" class="docs-section">
+            <h2 class="section-title">Managing Leads</h2>
+            <div class="section-content">
+                <p>
+                    LeadGen provides powerful search and filtering capabilities to help you find specific leads quickly.
+                </p>
 
-            <h4>Basic Filters</h4>
-            <ul>
-                <li><strong>Company</strong> - Filter by company name</li>
-                <li><strong>Location</strong> - Filter by city or state</li>
-                <li><strong>Role/Title</strong> - Filter by job title or position</li>
-                <li><strong>Lead Score</strong> - Filter by assigned lead score</li>
-            </ul>
+                <h3>Basic Search</h3>
+                <p>
+                    Use the search bar at the top of the Leads page to perform a quick search across all fields. This is useful for finding leads by name, email, company, or any other information.
+                </p>
 
-            <h4>Advanced Filtering</h4>
-            <p>
-                Click the "Advanced Filters" button to access more powerful filtering options:
-            </p>
-            <ul>
-                <li><strong>Industry</strong> - Filter by industry sector</li>
-                <li><strong>Business Type</strong> - Filter by business model (B2B, B2C, etc.)</li>
-                <li><strong>State</strong> - Filter by specific state</li>
-                <li><strong>Employee Size</strong> - Filter by company size</li>
-                <li><strong>Revenue Range</strong> - Filter by company revenue</li>
-            </ul>
+                <h3>Filtering</h3>
+                <p>
+                    For more targeted searching, use the filtering options:
+                </p>
 
-            <div class="tip">
-                <div class="tip-title">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    Pro Tip
-                </div>
-                <div class="tip-content">
-                    Combine multiple filters to narrow down your results even further. For example, search for leads in a specific industry AND with a particular employee size.
+                <h4>Basic Filters</h4>
+                <ul>
+                    <li><strong>Company</strong> - Filter by company name</li>
+                    <li><strong>Location</strong> - Filter by city or state</li>
+                    <li><strong>Role/Title</strong> - Filter by job title or position</li>
+                    <li><strong>Lead Score</strong> - Filter by assigned lead score</li>
+                </ul>
+
+                <h4>Advanced Filtering</h4>
+                <p>
+                    Click the "Advanced Filters" button to access more powerful filtering options:
+                </p>
+                <ul>
+                    <li><strong>Industry</strong> - Filter by industry sector</li>
+                    <li><strong>Business Type</strong> - Filter by business model (B2B, B2C, etc.)</li>
+                    <li><strong>State</strong> - Filter by specific state</li>
+                    <li><strong>Employee Size</strong> - Filter by company size</li>
+                    <li><strong>Revenue Range</strong> - Filter by company revenue</li>
+                </ul>
+
+                <div class="tip">
+                    <div class="tip-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        Pro Tip
+                    </div>
+                    <div class="tip-content">
+                        Combine multiple filters to narrow down your results even further. For example, search for leads in a specific industry AND with a particular employee size.
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div id="edit" class="docs-section">
-        <h2 class="section-title">Editing Leads</h2>
-        <div class="section-content">
-            <p>
-                You can update lead information as you gather more data or need to make corrections.
-            </p>
+        <div id="exporting-data" class="docs-section">
+            <h2 class="section-title">Exporting Data</h2>
+            <div class="section-content">
+                <p>
+                    LeadGen allows you to export your lead data for use in other systems or for reporting purposes.
+                </p>
 
-            <h3>Updating Lead Status</h3>
-            <p>
-                All users can update the lead status:
-            </p>
-            <div class="step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                    <div class="step-title">Find the Lead</div>
-                    <div class="step-description">
-                        Use the search and filter functions to locate the lead you want to update.
+                <h3>Exporting Selected Leads</h3>
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">Select Leads</div>
+                        <div class="step-description">
+                            Use the checkboxes on the left side of the leads table to select the leads you want to export. 
+                            You can use the "Select All" checkbox at the top to select all leads that match your current search/filter criteria.
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                    <div class="step-title">Change Status</div>
-                    <div class="step-description">
-                        Find the status dropdown in the Actions column for that lead and select the new status (New, Contacted, Qualified, Proposal, Closed).
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">Choose Export Format</div>
+                        <div class="step-description">
+                            Select your preferred export format (CSV or Excel) from the dropdown menu.
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <div class="step-title">Save Changes</div>
-                    <div class="step-description">
-                        The change is automatically saved when you select a new status.
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">Export Data</div>
+                        <div class="step-description">
+                            Click the "Export Selected" button to generate and download your export file.
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <h3>Editing Lead Details</h3>
-            <p>
-                Only Admin and Developer roles can edit full lead details:
-            </p>
-            <div class="step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                    <div class="step-title">Find the Lead</div>
-                    <div class="step-description">
-                        Use the search and filter functions to locate the lead you want to edit.
+                <h3>Export Options</h3>
+                <p>
+                    The system offers two export formats:
+                </p>
+                <ul>
+                    <li><strong>CSV (Comma Separated Values)</strong> - A universal format that can be opened in any spreadsheet application or imported into other systems.</li>
+                    <li><strong>Excel (.xlsx)</strong> - A native Microsoft Excel format that preserves formatting and is ideal for further analysis in Excel.</li>
+                </ul>
+
+                <div class="tip">
+                    <div class="tip-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        Pro Tip
                     </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                    <div class="step-title">Access Edit Mode</div>
-                    <div class="step-description">
-                        Click the "Edit" button in the Actions column for that lead.
+                    <div class="tip-content">
+                        Use filters before exporting to create targeted export lists for specific campaigns or follow-up actions.
                     </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <div class="step-title">Make Changes</div>
-                    <div class="step-description">
-                        Update the lead information in the edit form. You can modify fields like name, contact information, company details, and notes.
-                    </div>
-                </div>
-            </div>
-
-            <div class="step">
-                <div class="step-number">4</div>
-                <div class="step-content">
-                    <div class="step-title">Save Changes</div>
-                    <div class="step-description">
-                        Click the "Save" button to commit your changes to the database.
-                    </div>
-                </div>
-            </div>
-
-            <div class="tip">
-                <div class="tip-title">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    Pro Tip
-                </div>
-                <div class="tip-content">
-                    Keep your lead status updated regularly to maintain an accurate pipeline view and ensure proper follow-up actions.
                 </div>
             </div>
         </div>
-    </div>
 
-    <div id="export" class="docs-section">
-        <h2 class="section-title">Exporting Data</h2>
-        <div class="section-content">
-            <p>
-                LeadGen allows you to export your lead data for use in other systems or for reporting purposes.
-            </p>
+        <div id="user-management" class="docs-section">
+            <h2 class="section-title">User Management</h2>
+            <div class="section-content">
+                <p>
+                    You can update lead information as you gather more data or need to make corrections.
+                </p>
 
-            <h3>Exporting Selected Leads</h3>
-            <div class="step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                    <div class="step-title">Select Leads</div>
-                    <div class="step-description">
-                        Use the checkboxes on the left side of the leads table to select the leads you want to export. 
-                        You can use the "Select All" checkbox at the top to select all leads that match your current search/filter criteria.
+                <h3>Updating Lead Status</h3>
+                <p>
+                    All users can update the lead status:
+                </p>
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">Find the Lead</div>
+                        <div class="step-description">
+                            Use the search and filter functions to locate the lead you want to update.
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                    <div class="step-title">Choose Export Format</div>
-                    <div class="step-description">
-                        Select your preferred export format (CSV or Excel) from the dropdown menu.
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">Change Status</div>
+                        <div class="step-description">
+                            Find the status dropdown in the Actions column for that lead and select the new status (New, Contacted, Qualified, Proposal, Closed).
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <div class="step-title">Export Data</div>
-                    <div class="step-description">
-                        Click the "Export Selected" button to generate and download your export file.
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">Save Changes</div>
+                        <div class="step-description">
+                            The change is automatically saved when you select a new status.
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <h3>Export Options</h3>
-            <p>
-                The system offers two export formats:
-            </p>
-            <ul>
-                <li><strong>CSV (Comma Separated Values)</strong> - A universal format that can be opened in any spreadsheet application or imported into other systems.</li>
-                <li><strong>Excel (.xlsx)</strong> - A native Microsoft Excel format that preserves formatting and is ideal for further analysis in Excel.</li>
-            </ul>
-
-            <div class="tip">
-                <div class="tip-title">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    Pro Tip
+                <h3>Editing Lead Details</h3>
+                <p>
+                    Only Admin and Developer roles can edit full lead details:
+                </p>
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">Find the Lead</div>
+                        <div class="step-description">
+                            Use the search and filter functions to locate the lead you want to edit.
+                        </div>
+                    </div>
                 </div>
-                <div class="tip-content">
-                    Use filters before exporting to create targeted export lists for specific campaigns or follow-up actions.
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">Access Edit Mode</div>
+                        <div class="step-description">
+                            Click the "Edit" button in the Actions column for that lead.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">Make Changes</div>
+                        <div class="step-description">
+                            Update the lead information in the edit form. You can modify fields like name, contact information, company details, and notes.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="step-title">Save Changes</div>
+                        <div class="step-description">
+                            Click the "Save" button to commit your changes to the database.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tip">
+                    <div class="tip-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        Pro Tip
+                    </div>
+                    <div class="tip-content">
+                        Keep your lead status updated regularly to maintain an accurate pipeline view and ensure proper follow-up actions.
+                    </div>
                 </div>
             </div>
         </div>
