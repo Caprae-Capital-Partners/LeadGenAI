@@ -62,7 +62,6 @@ A new feature has been added to provide manual lead entry through a web form int
   /config
     config.py        # Configuration settings
   app.py            # Main Flask application
-  wsgi.py           # WSGI entry point
 ```
 
 ### Data Flow:
@@ -112,29 +111,7 @@ This feature complements the automated lead generation capabilities by allowing 
 ### Running the Application
 There are several ways to run the application:
 
-1. Using Python module syntax (recommended):
-   ```
-   # From the project root directory
-   python -m backend.wsgi
-   ```
-
-2. Using Flask directly:
-   ```
-   # Set the PYTHONPATH first
-   # On Windows PowerShell:
-   $env:PYTHONPATH = "."
-   
-   # On Windows Command Prompt:
-   set PYTHONPATH=.
-   
-   # On Linux/Mac:
-   export PYTHONPATH=.
-   
-   # Then run the application
-   python backend/wsgi.py
-   ```
-
-3. Using Flask CLI:
+1. Using Flask directly (recommended):
    ```
    # Set the Flask application
    # On Windows PowerShell:
@@ -148,6 +125,12 @@ There are several ways to run the application:
    
    # Run Flask
    flask run --port 8000
+   ```
+
+2. Using Python directly:
+   ```
+   # From the project root directory
+   python backend/app.py
    ```
 
 The application will be available at `http://localhost:8000`.
@@ -175,15 +158,8 @@ If you encounter the error: `ImportError: attempted relative import with no know
    - Run the application as a module using the `-m` flag
    - This ensures proper package resolution
    ```
-   python -m backend.wsgi
+   python -m backend.app
    ```
-
-3. **Docker Environment**:
-   - In Docker, the PYTHONPATH is automatically set in the Dockerfile:
-   ```dockerfile
-   ENV PYTHONPATH=/app
-   ```
-   - This is why the application runs without issues in Docker
 
 #### Common Issues:
 1. Make sure you're in the project root directory when running the application

@@ -7,11 +7,27 @@ from config.config import config
 from flask_login import LoginManager, current_user
 from models.user_model import User
 from sqlalchemy import event, text
+from flask_cors import CORS  # Import CORS
 
 def create_app(config_class=config):
     """Create and configure the Flask application"""
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # Initialize CORS
+    CORS(app, resources={
+        r"/api/*": {  # Enable CORS for all routes under /api/
+            "origins": [
+                "http://localhost:3000",     # React development server
+                "http://localhost:5173",     # Vite development server
+                "http://54.166.155.63:3000", # Production frontend
+                "http://54.166.155.63"       # Production frontend without port
+            ],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True     # Allow cookies/credentials
+        }
+    })
 
     # Initialize extensions
     db.init_app(app)
