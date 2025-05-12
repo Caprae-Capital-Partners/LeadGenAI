@@ -176,3 +176,4 @@ cython_debug/
 .streamlit/secrets.toml
 *.csv
 *.xlsx
+node_modules/
