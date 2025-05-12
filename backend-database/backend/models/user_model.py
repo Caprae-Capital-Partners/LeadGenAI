@@ -16,6 +16,10 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
 
+    def get_id(self):
+        """Return user_id as the identifier for Flask-Login"""
+        return str(self.user_id)
+
     def set_password(self, password):
         """Hash and set the password"""
         self.password_hash = generate_password_hash(password)

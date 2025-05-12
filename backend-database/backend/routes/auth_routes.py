@@ -4,7 +4,6 @@ from flask_login import login_required, current_user, login_user, logout_user
 from utils.decorators import role_required
 from models.user_model import User, db
 from werkzeug.security import generate_password_hash, check_password_hash
-import jwt
 import datetime
 import os
 
@@ -12,19 +11,6 @@ auth_bp = Blueprint('auth', __name__)
 
 # Get secret key from environment or use a default for development
 SECRET_KEY = os.environ.get('SECRET_KEY')
-
-def generate_token(user_id):
-    """Generate JWT token for the user"""
-    payload = {
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1),
-        'iat': datetime.datetime.utcnow(),
-        'sub': user_id
-    }
-    return jwt.encode(
-        payload,
-        SECRET_KEY,
-        algorithm='HS256'
-    )
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -150,7 +136,7 @@ def delete_user():
             return redirect(url_for('auth.manage_users'))
         
         # Prevent self-deletion
-        if int(user_id) == current_user.id:
+        if int(user_id) == current_user.user_id:
             flash('You cannot delete your own account', 'danger')
             return redirect(url_for('auth.manage_users'))
         
@@ -187,18 +173,14 @@ def login_api():
     # Log in the user with Flask-Login
     login_user(user)
     
-    # Generate JWT token
-    token = generate_token(user.id)
-    
     return jsonify({
         "message": "Login successful",
         "user": {
-            "id": user.id,
+            "id": user.user_id,
             "email": user.email,
-            "name": user.name,
+            "name": user.username,
             "role": user.role
-        },
-        "token": token
+        }
     })
 
 @auth_bp.route('/api/auth/register', methods=['POST'])
@@ -237,18 +219,14 @@ def register_api():
         # Log in the new user
         login_user(new_user)
         
-        # Generate JWT token
-        token = generate_token(new_user.id)
-        
         return jsonify({
             "message": "Registration successful",
             "user": {
-                "id": new_user.id,
+                "id": new_user.user_id,
                 "email": new_user.email,
-                "name": new_user.name,
+                "name": new_user.username,
                 "role": new_user.role
-            },
-            "token": token
+            }
         }), 201
         
     except Exception as e:
@@ -260,9 +238,9 @@ def register_api():
 def get_user_info():
     """Get current user information"""
     return jsonify({
-        "id": current_user.id,
+        "id": current_user.user_id,
         "email": current_user.email,
-        "name": current_user.name,
+        "name": current_user.username,
         "role": current_user.role
     })
 

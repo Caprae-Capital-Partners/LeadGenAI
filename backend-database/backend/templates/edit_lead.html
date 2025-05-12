@@ -392,21 +392,21 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="employees">Employees Count</label>
-                    <input type="number" name="employees" id="employees" value="{{ lead.employees }}">
+                    <input type="number" name="employees" id="employees" value="{{ lead.employees if lead.employees != None }}" min="0">
                 </div>
                 <div class="form-group">
                     <label for="revenue">Revenue</label>
-                    <input type="number" name="revenue" id="revenue" value="{{ lead.revenue }}">
+                    <input type="number" name="revenue" id="revenue" value="{{ lead.revenue if lead.revenue != None }}" min="0">
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label for="year_founded">Year Founded</label>
-                    <input type="text" name="year_founded" id="year_founded" value="{{ lead.year_founded }}">
+                    <input type="number" name="year_founded" id="year_founded" value="{{ lead.year_founded if lead.year_founded != None }}" min="1800" max="{{ current_year }}">
                 </div>
                 <div class="form-group">
                     <label for="bbb_rating">BBB Rating</label>
-                    <input type="text" name="bbb_rating" id="bbb_rating" value="{{ lead.bbb_rating }}">
+                    <input type="text" name="bbb_rating" id="bbb_rating" value="{{ lead.bbb_rating if lead.bbb_rating != None }}">
                 </div>
             </div>
 
@@ -484,27 +484,18 @@
                         <option value="qualified" {% if lead.status == 'qualified' %}selected{% endif %}>Qualified</option>
                         <option value="unqualified" {% if lead.status == 'unqualified' %}selected{% endif %}>Unqualified</option>
                         <option value="converted" {% if lead.status == 'converted' %}selected{% endif %}>Converted</option>
+                        <option value="deleted" {% if lead.deleted %}selected{% endif %}>Deleted</option>
                     </select>
                 </div>
             </div>
 
-            <!-- Dynamic fields section -->
-            <div class="section-title">Custom Fields</div>
-            <div id="dynamicFields">
-                {% if dynamic_fields %}
-                    {% for field in dynamic_fields %}
-                        <div class="dynamic-field">
-                            <input type="text" name="dynamic_field_name[]" placeholder="Field Name" value="{{ field.name }}">
-                            <input type="text" name="dynamic_field_value[]" placeholder="Field Value" value="{{ field.value }}">
-                            <button type="button" class="remove-btn" onclick="removeField(this)">&times;</button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            </div>
-            <button type="button" class="add-field-btn" onclick="addField()">+ Add Custom Field</button>
-
             <div class="button-group mt-4">
                 <button type="submit" class="btn btn-primary">Save Changes</button>
+                {% if lead.deleted %}
+                <button type="button" class="btn btn-success" onclick="restoreLead('{{ lead.lead_id }}')">Restore Lead</button>
+                {% else %}
+                <button type="button" class="btn btn-danger" onclick="deleteLead('{{ lead.lead_id }}')">Delete Lead</button>
+                {% endif %}
                 <a href="{{ url_for('lead.index') }}" class="btn btn-secondary">Cancel</a>
             </div>
         </form>
@@ -750,6 +741,52 @@
             // Add event listener to the add button
             addFieldBtn.addEventListener('click', addNewField);
         });
+
+        function deleteLead(leadId) {
+            if (confirm('Are you sure you want to delete this lead?')) {
+                fetch(`/leads/${leadId}/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '/leads';
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the lead');
+                });
+            }
+        }
+
+        function restoreLead(leadId) {
+            if (confirm('Are you sure you want to restore this lead?')) {
+                fetch(`/leads/${leadId}/restore`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '/leads';
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while restoring the lead');
+                });
+            }
+        }
     </script>
 </body>
 </html>

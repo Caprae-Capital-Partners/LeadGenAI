@@ -403,6 +403,10 @@
                 <span>Edit & Export Leads</span>
             </a>
             {% if current_user.is_authenticated and (current_user.is_admin() or current_user.role == 'developer') %}
+            <a href="{{ url_for('lead.view_deleted_leads') }}" class="nav-item {% if request.endpoint == 'lead.view_deleted_leads' %}active{% endif %}">
+                <i class="bi bi-trash"></i>
+                <span>Deleted Leads</span>
+            </a>
             <a href="{{ url_for('main.audit_log') }}" class="nav-item {% if request.endpoint == 'main.audit_log' %}active{% endif %}">
                 <i class="bi bi-clipboard-data"></i>
                 <span>Audit Log</span>

@@ -10,6 +10,7 @@ from io import StringIO, BytesIO
 import datetime
 import pandas as pd
 import io
+from werkzeug.exceptions import NotFound
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -157,47 +158,36 @@ def update_status(lead_id):
 
     return redirect(url_for('lead.view_leads'))
 
-@lead_bp.route('/delete/<int:lead_id>')
+@lead_bp.route('/leads/<int:lead_id>/delete', methods=['POST'])
 @login_required
 @role_required('admin', 'developer')
 def delete_lead(lead_id):
     """Soft delete lead - Admin and Developer only"""
     try:
-        # Use the controller method which now implements soft delete
-        # Pass current_user for audit logging
-        success, message = LeadController.delete_lead(lead_id, current_user=current_user)
-        if success:
-            flash('Lead deleted successfully', 'success')
-        else:
-            flash(message, 'danger')
+        success, message = LeadController.delete_lead(lead_id, current_user)
+        return jsonify({'success': success, 'message': message})
+    except NotFound:
+        return jsonify({'success': False, 'message': 'Lead not found or already deleted.'}), 404
     except Exception as e:
-        flash(f'Error deleting lead: {str(e)}', 'danger')
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'message': str(e)}), 500
 
-    return redirect(url_for('lead.view_leads'))
-
-@lead_bp.route('/delete_multiple_leads', methods=['POST'])
+@lead_bp.route('/leads/delete-multiple', methods=['POST'])
 @login_required
 @role_required('admin', 'developer')
 def delete_multiple_leads():
     """Soft delete multiple leads - Admin and Developer only"""
-    selected_leads = request.form.getlist('selected_leads[]')
-    
-    if not selected_leads:
-        flash('No leads selected for deletion', 'danger')
-        return redirect(url_for('lead.view_leads'))
-    
-    # Convert string IDs to integers
-    lead_ids = [int(id) for id in selected_leads if id.isdigit()]
-    
-    # Pass current_user for audit logging
-    success, message = LeadController.delete_multiple_leads(lead_ids, current_user=current_user)
-    
-    if success:
-        flash(message, 'success')
-    else:
-        flash(message, 'danger')
-        
-    return redirect(url_for('lead.view_leads'))
+    try:
+        lead_ids = request.json.get('lead_ids', [])
+        if not lead_ids:
+            return jsonify({'success': False, 'message': 'No leads selected'}), 400
+        success, message = LeadController.delete_multiple_leads(lead_ids, current_user)
+        return jsonify({'success': success, 'message': message})
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @lead_bp.route('/api/leads', methods=['GET'])
 @login_required
@@ -212,9 +202,11 @@ def get_leads():
     company = request.args.get('company', '')
     status = request.args.get('status', '')
     source = request.args.get('source', '')
+    industry = request.args.get('industry', '')
+    location = request.args.get('location', '')
     
     # Build query with filters
-    query = Lead.query.filter(Lead.is_deleted == False)
+    query = Lead.query.filter(Lead.deleted == False)
     
     if search_term:
         query = query.filter(
@@ -233,6 +225,14 @@ def get_leads():
     
     if source:
         query = query.filter(Lead.source == source)
+    
+    if industry:
+        query = query.filter(Lead.industry.ilike(f'%{industry}%'))
+    
+    if location:
+        query = query.filter(
+            (Lead.city.ilike(f'%{location}%')) | (Lead.state.ilike(f'%{location}%'))
+        )
     
     # Execute paginated query
     paginated_leads = query.order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
@@ -403,58 +403,24 @@ def api_upload_leads():
             else:
                 invalid_indices.append(i)
                 
-        # Process all valid leads in bulk
+        # Process all valid leads using add_or_update_lead_by_match
         added = 0
         skipped = 0
-        
-        # Get all existing emails, phones, and websites in one query to check duplicates efficiently
-        existing_leads = db.session.query(Lead.owner_email, Lead.phone, Lead.website, Lead.company).all()
-        existing_emails = {lead.owner_email for lead in existing_leads if lead.owner_email}
-        existing_phones = {lead.phone for lead in existing_leads if lead.phone}
-        existing_websites = {lead.website for lead in existing_leads if lead.website}
-        existing_companies = {lead.company for lead in existing_leads if lead.company}
-        
-        # Prepare lists for bulk operations
-        new_leads = []
+        errors = 0
         
         for lead_data in valid_leads:
-            # Check if it's a duplicate (only if relevant fields are present)
-            is_duplicate = False
-            
-            if lead_data.get('owner_email') and lead_data['owner_email'] in existing_emails:
-                is_duplicate = True
-            elif lead_data.get('phone') and lead_data['phone'] in existing_phones:
-                is_duplicate = True
-            elif lead_data.get('website') and lead_data['website'] in existing_websites:
-                is_duplicate = True
-            elif lead_data['company'] in existing_companies:
-                is_duplicate = True
-                
-            if is_duplicate:
-                skipped += 1
-                continue
-                
-            # Add to new leads list for bulk insert
-            new_lead = Lead(**lead_data)
-            new_leads.append(new_lead)
-            
-            # Update tracking sets to prevent duplicates within the same batch
-            if lead_data.get('owner_email'):
-                existing_emails.add(lead_data['owner_email'])
-            if lead_data.get('phone'):
-                existing_phones.add(lead_data['phone'])
-            if lead_data.get('website'):
-                existing_websites.add(lead_data['website'])
-            existing_companies.add(lead_data['company'])
-            
-        # Bulk insert new leads
-        if new_leads:
-            db.session.bulk_save_objects(new_leads)
-            db.session.commit()
-            added = len(new_leads)
-        
-        # Calculate statistics
-        errors = len(invalid_indices)
+            try:
+                success, message = LeadController.add_or_update_lead_by_match(lead_data)
+                if success:
+                    added += 1
+                else:
+                    if "already in use" in message:
+                        skipped += 1
+                    else:
+                        errors += 1
+            except Exception as e:
+                errors += 1
+                print(f"Error processing lead: {str(e)}")
         
         return jsonify({
             "status": "success",
@@ -494,7 +460,7 @@ def delete_lead_api(lead_id):
 def get_lead_by_id(lead_id):
     """Get detail of a single lead by ID"""
     try:
-        lead = Lead.query.filter_by(lead_id=lead_id, is_deleted=False).first_or_404()
+        lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first_or_404()
         return jsonify(lead.to_dict())
     except Exception as e:
         return jsonify({"error": str(e)}), 404
@@ -582,7 +548,7 @@ def get_stats_summary():
             db.func.count(Lead.lead_id).label('count')
         ).filter(
             Lead.created_at >= start_date,
-            Lead.is_deleted == False
+            Lead.deleted == False
         ).group_by(
             db.func.date(Lead.created_at)
         ).all()
@@ -592,7 +558,7 @@ def get_stats_summary():
             Lead.source,
             db.func.count(Lead.lead_id).label('count')
         ).filter(
-            Lead.is_deleted == False,
+            Lead.deleted == False,
             Lead.source.isnot(None),
             Lead.source != ''
         ).group_by(
@@ -604,7 +570,7 @@ def get_stats_summary():
             Lead.status,
             db.func.count(Lead.lead_id).label('count')
         ).filter(
-            Lead.is_deleted == False,
+            Lead.deleted == False,
             Lead.status.isnot(None),
             Lead.status != ''
         ).group_by(
@@ -617,7 +583,7 @@ def get_stats_summary():
         status_stats = {status: count for status, count in status_query}
         
         # Get total lead count
-        total_leads = db.session.query(Lead).filter(Lead.is_deleted == False).count()
+        total_leads = db.session.query(Lead).filter(Lead.deleted == False).count()
         
         return jsonify({
             "total_leads": total_leads,
@@ -643,7 +609,7 @@ def get_top_sources():
             Lead.source,
             db.func.count(Lead.lead_id).label('count')
         ).filter(
-            Lead.is_deleted == False,
+            Lead.deleted == False,
             Lead.source.isnot(None),
             Lead.source != ''
         )
@@ -672,3 +638,40 @@ def get_top_sources():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@lead_bp.route('/leads/<lead_id>/restore', methods=['POST'])
+@login_required
+def restore_lead(lead_id):
+    """Restore a soft-deleted lead"""
+    success, message = LeadController.restore_lead(lead_id, current_user)
+    return jsonify({'success': success, 'message': message})
+
+@lead_bp.route('/leads/restore-multiple', methods=['POST'])
+@login_required
+def restore_multiple_leads():
+    """Restore multiple soft-deleted leads"""
+    lead_ids = request.json.get('lead_ids', [])
+    success, message = LeadController.restore_multiple_leads(lead_ids, current_user)
+    return jsonify({'success': success, 'message': message})
+
+@lead_bp.route('/leads/deleted', methods=['GET'])
+@login_required
+def view_deleted_leads():
+    """View all soft-deleted leads"""
+    leads = Lead.query.filter_by(deleted=True).order_by(Lead.deleted_at.desc()).all()
+    return render_template('deleted_leads.html', leads=leads)
+
+@lead_bp.route('/leads/<int:lead_id>/permanent-delete', methods=['POST'])
+@login_required
+@role_required('admin', 'developer')
+def permanent_delete_lead(lead_id):
+    """Permanently delete a lead from the database (hard delete)"""
+    try:
+        lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
+        db.session.delete(lead)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Lead permanently deleted.'})
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'message': f'Error permanently deleting lead: {str(e)}'}), 500

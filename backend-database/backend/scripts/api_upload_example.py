@@ -8,58 +8,83 @@ API_ENDPOINT = f"{BASE_URL}/api/upload_leads"
 # Sample data for lead upload - format must match database fields
 sample_leads = [
     {
-        "first_name": "John",
-        "last_name": "Doe",
-        "email": "Doe.doe@example.com",
-        "phone": "9804892245",
+        "owner_first_name": "John",
+        "owner_last_name": "Doe",
+        "owner_email": "Doe.doe@example.com",
+        "owner_phone_number": "9804892245",
+        "phone": "9804899245",
         "company": "ABC Corp",
-        "title": "CEO",
+        "company_phone": "9804892245",
+        "company_linkedin": "https://www.linkedin.com/in/john-doe",
+        "owner_title": "CEO",
         "industry": "Technology",
         "website": "https://www.example.com",
         "city": "New York",
-        "state": "NY"
+        "state": "NY",
+        "source": "Ghaly"
     },
     {
-        "first_name": "Jane",
-        "last_name": "Smith",
-        "email": "Smith.smith@example.com", 
-        "phone": "9804892345",
+        "owner_first_name": "Jane",
+        "owner_last_name": "Smith",
+        "owner_email": "Smith.smith@example.com", 
+        "owner_phone_number": "9804892345",
         "company": "XYZ Inc",
-        "title": "CTO",
+        "company_phone": "9804892345",
+        "company_linkedin": "https://www.linkedin.com/in/jane-smith",
+        "owner_title": "CTO",
         "industry": "Finance",
         "website": "https://www.xyz.com",
         "city": "San Francisco",
-        "state": "CA"
+        "state": "CA",
+        "source": "Ghaly"
     }
 ]
 
-def login_and_get_session_cookie(username, password):
+def login_and_get_session_cookie(email, password):
     """
     Login to the system and get session cookie
     
     Args:
-        username: Username for login
+        email: Email for login
         password: Password for login
     
     Returns:
         Session cookie if login successful, None otherwise
     """
-    login_url = f"{BASE_URL}/login"
+    login_url = f"{BASE_URL}/api/auth/login"
     
-    # Send login request
     session = requests.Session()
     login_data = {
-        "username": username,
+        "email": email,
         "password": password
     }
     
-    response = session.post(login_url, data=login_data)
+    headers = {
+        'Content-Type': 'application/json'
+    }
     
-    if response.status_code == 200:
-        # Return the session cookie
-        return session.cookies.get_dict()
-    else:
-        print(f"Login failed: {response.status_code}")
+    try:
+        print(f"Attempting to login at: {login_url}")
+        print(f"With credentials: email={email}")
+        response = session.post(login_url, json=login_data, headers=headers)
+        print(f"Response status code: {response.status_code}")
+        print(f"Response headers: {response.headers}")
+        print(f"Response content: {response.text}")
+        
+        if response.status_code == 200:
+            cookies = session.cookies.get_dict()
+            print(f"Got cookies: {cookies}")
+            return cookies
+        else:
+            print(f"Login failed with status code: {response.status_code}")
+            print(f"Response content: {response.text}")
+            return None
+    except requests.exceptions.ConnectionError as e:
+        print(f"Connection error: {e}")
+        print("Make sure the Flask server is running at", BASE_URL)
+        return None
+    except Exception as e:
+        print(f"Unexpected error during login: {e}")
         return None
 
 def upload_leads(leads_data, session_cookie=None):
@@ -94,12 +119,12 @@ def upload_leads(leads_data, session_cookie=None):
 
 if __name__ == "__main__":
     # Replace with your actual credentials
-    username = "developer"  # Update with your actual username
+    email = "developer@example.com"  # Changed to email
     password = "developer123"  # Update with your actual password
     
-    # Option 1: Login first to get session cookie
+    print(f"Using server URL: {BASE_URL}")
     print("Attempting to login and get session cookie...")
-    session_cookie = login_and_get_session_cookie(username, password)
+    session_cookie = login_and_get_session_cookie(email, password)
     
     if session_cookie:
         print(f"Login successful, got session cookie: {session_cookie}")

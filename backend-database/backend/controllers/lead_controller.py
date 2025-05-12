@@ -1,5 +1,6 @@
 from flask import request, redirect, render_template, flash, url_for, jsonify
 from models.lead_model import db, Lead
+from models.audit_logs_model import AuditLog
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy import text
@@ -8,7 +9,7 @@ class LeadController:
     @staticmethod
     def get_all_leads():
         """Get all leads for view, with optional search and filters from request.args"""
-        query = Lead.query
+        query = Lead.query.filter_by(deleted=False)
         args = request.args
 
         # Basic search across multiple fields
@@ -140,82 +141,45 @@ class LeadController:
 
     @staticmethod
     def update_lead(lead_id, form_data):
-        """Update existing lead"""
-        lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
-        
-        # Store original email and phone for comparison
-        original_email = lead.owner_email
-        original_phone = lead.phone
-        
-        # Base data
-        if 'search_keyword' in form_data:
-            lead.search_keyword = form_data.get('search_keyword')
-        if 'draft_data' in form_data:
-            lead.draft_data = form_data.get('draft_data')
-            
-        # Company information
-        lead.company = form_data.get('company', lead.company)
-        lead.website = form_data.get('website', lead.website)
-        lead.industry = form_data.get('industry', lead.industry)
-        lead.product_category = form_data.get('product_category', lead.product_category)
-        lead.business_type = form_data.get('business_type', lead.business_type)
-        lead.employees = form_data.get('employees', lead.employees)
-        lead.revenue = form_data.get('revenue', lead.revenue)
-        lead.year_founded = form_data.get('year_founded', lead.year_founded)
-        lead.bbb_rating = form_data.get('bbb_rating', lead.bbb_rating)
-        
-        # Location
-        lead.street = form_data.get('street', lead.street)
-        lead.city = form_data.get('city', lead.city)
-        lead.state = form_data.get('state', lead.state)
-        
-        # Company contact
-        lead.company_phone = form_data.get('company_phone', lead.company_phone)
-        lead.company_linkedin = form_data.get('company_linkedin', lead.company_linkedin)
-        
-        # Owner/contact info
-        lead.owner_first_name = form_data.get('owner_first_name', lead.owner_first_name)
-        lead.owner_last_name = form_data.get('owner_last_name', lead.owner_last_name)
-        lead.owner_title = form_data.get('owner_title', lead.owner_title)
-        lead.owner_linkedin = form_data.get('owner_linkedin', lead.owner_linkedin)
-        lead.owner_phone_number = form_data.get('owner_phone_number', lead.owner_phone_number)
-        lead.owner_email = form_data.get('owner_email', lead.owner_email)
-        lead.phone = form_data.get('phone', lead.phone)
-        
-        # Source
-        lead.source = form_data.get('source', lead.source)
-        
-        # Status
-        lead.status = form_data.get('status', lead.status)
-        
-        # Handle dynamic fields if provided
-        if form_data.getlist('dynamic_field_name[]') and form_data.getlist('dynamic_field_value[]'):
-            field_names = form_data.getlist('dynamic_field_name[]')
-            field_values = form_data.getlist('dynamic_field_value[]')
-            
-            for i in range(len(field_names)):
-                if field_names[i] and field_values[i]:
-                    # Set attribute if it exists on Lead model
-                    field_name = field_names[i]
-                    if hasattr(lead, field_name):
-                        setattr(lead, field_name, field_values[i])
-        
+        """Update lead data"""
         try:
-            # Only commit if email or phone has changed
-            if lead.owner_email != original_email or lead.phone != original_phone:
-                db.session.commit()
-            else:
-                # If no change to unique fields, this should be safe
-                db.session.commit() 
-            return True, "Lead updated successfully!"
-        except IntegrityError as e:
-            db.session.rollback()
-            if "lead_owner_email_key" in str(e):
-                return False, f"Error: Email address '{lead.owner_email}' is already used by another lead. Please use a different email."
-            elif "lead_phone_key" in str(e):
-                return False, f"Error: Phone number '{lead.phone}' is already used by another lead. Please use a different phone number."
-            else:
-                return False, f"Error updating lead: {str(e)}"
+            lead = Lead.query.get(lead_id)
+            if not lead:
+                return False, "Lead not found"
+
+            # Handle numeric fields - convert empty strings to None
+            employees = form_data.get('employees')
+            revenue = form_data.get('revenue')
+            year_founded = form_data.get('year_founded')
+
+            lead.employees = int(employees) if employees and employees.strip() else None
+            lead.revenue = int(revenue) if revenue and revenue.strip() else None
+            lead.year_founded = int(year_founded) if year_founded and year_founded.strip() else None
+
+            # Update other fields
+            lead.company = form_data.get('company')
+            lead.website = form_data.get('website') or None
+            lead.industry = form_data.get('industry') or None
+            lead.product_category = form_data.get('product_category') or None
+            lead.business_type = form_data.get('business_type') or None
+            lead.bbb_rating = form_data.get('bbb_rating') or None
+            lead.street = form_data.get('street') or None
+            lead.city = form_data.get('city') or None
+            lead.state = form_data.get('state') or None
+            lead.company_phone = form_data.get('company_phone') or None
+            lead.company_linkedin = form_data.get('company_linkedin') or None
+            lead.owner_first_name = form_data.get('owner_first_name') or None
+            lead.owner_last_name = form_data.get('owner_last_name') or None
+            lead.owner_email = form_data.get('owner_email') or None
+            lead.owner_title = form_data.get('owner_title') or None
+            lead.owner_linkedin = form_data.get('owner_linkedin') or None
+            lead.owner_phone_number = form_data.get('owner_phone_number') or None
+            lead.source = form_data.get('source')
+            lead.status = form_data.get('status', 'new')
+            lead.updated_at = datetime.utcnow()
+
+            db.session.commit()
+            return True, "Lead updated successfully"
         except Exception as e:
             db.session.rollback()
             return False, f"Error updating lead: {str(e)}"
@@ -223,17 +187,29 @@ class LeadController:
     @staticmethod
     def delete_lead(lead_id, current_user=None):
         """Soft delete lead by ID"""
-        lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
+        lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first_or_404()
 
         try:
-            # Set current user for audit log if provided
-            if current_user:
-                user_name = current_user.username if hasattr(current_user, 'username') else str(current_user)
-                db.session.execute(text("SELECT set_app_user(:username)"), {'username': user_name})
-                
-            # Instead of deleting, mark as deleted
+            # Store old values for audit log
+            old_values = lead.to_dict()
+            
+            # Mark as deleted
             lead.deleted = True
             lead.deleted_at = datetime.utcnow()
+            
+            # Create audit log entry
+            if current_user:
+                AuditLog.log_change(
+                    user_id=getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None) or str(current_user),
+                    action_type='delete',
+                    table_affected='leads',
+                    record_id=str(lead_id),
+                    old_values=old_values,
+                    new_values={'deleted': True, 'deleted_at': lead.deleted_at.isoformat()},
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string
+                )
+            
             db.session.commit()
             return True, "Lead deleted successfully!"
         except Exception as e:
@@ -247,28 +223,110 @@ class LeadController:
             return False, "No leads selected for deletion."
             
         try:
-            # Set current user for audit log if provided
-            if current_user:
-                user_name = current_user.username if hasattr(current_user, 'username') else str(current_user)
-                db.session.execute(text("SELECT set_app_user(:username)"), {'username': user_name})
-                
             # Get all leads to be deleted
+            leads = Lead.query.filter(
+                Lead.lead_id.in_(lead_ids),
+                Lead.deleted == False
+            ).all()
+            
+            if not leads:
+                return False, "No leads found with the specified IDs."
+                
+            now = datetime.utcnow()
+            deleted_count = 0
+            
+            for lead in leads:
+                old_values = lead.to_dict()
+                lead.deleted = True
+                lead.deleted_at = now
+                deleted_count += 1
+                
+                if current_user:
+                    AuditLog.log_change(
+                        user_id=getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None) or str(current_user),
+                        action_type='delete',
+                        table_affected='leads',
+                        record_id=str(lead.lead_id),
+                        old_values=old_values,
+                        new_values={'deleted': True, 'deleted_at': now.isoformat()},
+                        ip_address=request.remote_addr,
+                        user_agent=request.user_agent.string
+                    )
+                
+            db.session.commit()
+            return True, f"{deleted_count} leads deleted successfully!"
+        except Exception as e:
+            db.session.rollback()
+            return False, f"Error deleting leads: {str(e)}"
+
+    @staticmethod
+    def restore_lead(lead_id, current_user=None):
+        """Restore a soft-deleted lead"""
+        lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
+
+        try:
+            # Store old values for audit log
+            old_values = lead.to_dict()
+            
+            # Restore lead
+            lead.deleted = False
+            lead.deleted_at = None
+            
+            # Create audit log entry
+            if current_user:
+                AuditLog.log_change(
+                    user_id=getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None) or str(current_user),
+                    action_type='update',
+                    table_affected='leads',
+                    record_id=str(lead_id),
+                    old_values=old_values,
+                    new_values={'deleted': False, 'deleted_at': None},
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string
+                )
+            
+            db.session.commit()
+            return True, "Lead restored successfully!"
+        except Exception as e:
+            db.session.rollback()
+            return False, f"Error restoring lead: {str(e)}"
+
+    @staticmethod
+    def restore_multiple_leads(lead_ids, current_user=None):
+        """Restore multiple soft-deleted leads"""
+        if not lead_ids:
+            return False, "No leads selected for restoration."
+            
+        try:
+            # Get all leads to be restored
             leads = Lead.query.filter(Lead.lead_id.in_(lead_ids)).all()
             
             if not leads:
                 return False, "No leads found with the specified IDs."
                 
-            # Mark all leads as deleted
-            now = datetime.utcnow()
+            # Restore leads and create audit logs
             for lead in leads:
-                lead.deleted = True
-                lead.deleted_at = now
+                old_values = lead.to_dict()
+                lead.deleted = False
+                lead.deleted_at = None
+                
+                if current_user:
+                    AuditLog.log_change(
+                        user_id=getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None) or str(current_user),
+                        action_type='update',
+                        table_affected='leads',
+                        record_id=str(lead.lead_id),
+                        old_values=old_values,
+                        new_values={'deleted': False, 'deleted_at': None},
+                        ip_address=request.remote_addr,
+                        user_agent=request.user_agent.string
+                    )
                 
             db.session.commit()
-            return True, f"{len(leads)} leads deleted successfully!"
+            return True, f"{len(leads)} leads restored successfully!"
         except Exception as e:
             db.session.rollback()
-            return False, f"Error deleting leads: {str(e)}"
+            return False, f"Error restoring leads: {str(e)}"
 
     @staticmethod
     def get_leads_json():

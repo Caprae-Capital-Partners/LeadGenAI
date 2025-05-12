@@ -38,7 +38,7 @@ def create_lead_access():
         return jsonify({"error": "User not found"}), 404
     
     # Check if lead exists
-    lead = Lead.query.filter_by(lead_id=lead_id, is_deleted=False).first()
+    lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first()
     if not lead:
         return jsonify({"error": "Lead not found"}), 404
     
@@ -53,7 +53,7 @@ def create_lead_access():
             user_id=user_id,
             lead_id=lead_id,
             access_type=access_type,
-            granted_by=current_user.id,
+            granted_by=current_user.user_id,
             expires_at=expires_at
         )
         
@@ -72,12 +72,12 @@ def get_user_access():
     """Get all lead access for the current user"""
     try:
         # Get all active access for the current user
-        access_list = UserLeadAccess.query.filter_by(user_id=current_user.id, is_active=True).all()
+        access_list = UserLeadAccess.query.filter_by(user_id=current_user.user_id, is_active=True).all()
         
         # Format results
         results = []
         for access in access_list:
-            lead = Lead.query.filter_by(lead_id=access.lead_id, is_deleted=False).first()
+            lead = Lead.query.filter_by(lead_id=access.lead_id, deleted=False).first()
             if lead:
                 result = access.to_dict()
                 result['lead'] = {
@@ -125,7 +125,7 @@ def update_lead_access(access_id):
         
         # Log the update
         AuditController.log_action(
-            user_id=current_user.id,
+            user_id=current_user.user_id,
             action_type='update',
             table_affected='user_lead_access',
             record_id=access.id,
@@ -157,7 +157,7 @@ def delete_lead_access(access_id):
         
         # Log the deletion
         AuditController.log_action(
-            user_id=current_user.id,
+            user_id=current_user.user_id,
             action_type='delete',
             table_affected='user_lead_access',
             record_id=access.id,

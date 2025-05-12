@@ -26,14 +26,14 @@ def create_lead_draft():
         return jsonify({"error": "lead_id and draft_data are required"}), 400
     
     # Check if lead exists
-    lead = Lead.query.filter_by(lead_id=lead_id, is_deleted=False).first()
+    lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first()
     if not lead:
         return jsonify({"error": "Lead not found"}), 404
     
     try:
         # Create new draft
         draft = UserLeadDraft(
-            user_id=current_user.id,
+            user_id=current_user.user_id,
             lead_id=lead_id,
             draft_data=draft_data,
             change_summary=change_summary
@@ -43,7 +43,7 @@ def create_lead_draft():
         
         # Log the creation
         AuditController.log_action(
-            user_id=current_user.id,
+            user_id=current_user.user_id,
             action_type='create',
             table_affected='user_lead_drafts',
             record_id=draft.id,
@@ -62,12 +62,12 @@ def get_user_drafts():
     """Get all drafts for the current user"""
     try:
         # Get all non-deleted drafts for the current user
-        drafts = UserLeadDraft.query.filter_by(user_id=current_user.id, is_deleted=False).all()
+        drafts = UserLeadDraft.query.filter_by(user_id=current_user.user_id, deleted=False).all()
         
         # Format results
         results = []
         for draft in drafts:
-            lead = Lead.query.filter_by(lead_id=draft.lead_id, is_deleted=False).first()
+            lead = Lead.query.filter_by(lead_id=draft.lead_id, deleted=False).first()
             if lead:
                 result = draft.to_dict()
                 result['lead'] = {
@@ -87,16 +87,16 @@ def get_user_drafts():
 @login_required
 def get_draft(draft_id):
     """Get a specific draft"""
-    draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
+    draft = UserLeadDraft.query.filter_by(draft_id=draft_id, deleted=False).first()
     if not draft:
         return jsonify({"error": "Draft not found"}), 404
     
     # Check if user has access to this draft
-    if draft.user_id != current_user.id and not current_user.role in ['admin', 'developer']:
+    if draft.user_id != current_user.user_id and not current_user.role in ['admin', 'developer']:
         return jsonify({"error": "You don't have permission to access this draft"}), 403
     
     try:
-        lead = Lead.query.filter_by(lead_id=draft.lead_id, is_deleted=False).first()
+        lead = Lead.query.filter_by(lead_id=draft.lead_id, deleted=False).first()
         result = draft.to_dict()
         if lead:
             result['lead'] = {
@@ -106,7 +106,7 @@ def get_draft(draft_id):
         
         # Log the view
         AuditController.log_action(
-            user_id=current_user.id,
+            user_id=current_user.user_id,
             action_type='view',
             table_affected='user_lead_drafts',
             record_id=draft.id
@@ -127,12 +127,12 @@ def update_draft(draft_id):
     if not data:
         return jsonify({"error": "No input data provided"}), 400
     
-    draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
+    draft = UserLeadDraft.query.filter_by(draft_id=draft_id, deleted=False).first()
     if not draft:
         return jsonify({"error": "Draft not found"}), 404
     
     # Check if user has permission to edit this draft
-    if draft.user_id != current_user.id and not current_user.role in ['admin', 'developer']:
+    if draft.user_id != current_user.user_id and not current_user.role in ['admin', 'developer']:
         return jsonify({"error": "You don't have permission to update this draft"}), 403
     
     try:
@@ -156,7 +156,7 @@ def update_draft(draft_id):
         
         # Log the update
         AuditController.log_action(
-            user_id=current_user.id,
+            user_id=current_user.user_id,
             action_type='update',
             table_affected='user_lead_drafts',
             record_id=draft.id,
@@ -174,24 +174,24 @@ def update_draft(draft_id):
 @login_required
 def delete_draft(draft_id):
     """Soft delete a draft"""
-    draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
+    draft = UserLeadDraft.query.filter_by(draft_id=draft_id, deleted=False).first()
     if not draft:
         return jsonify({"error": "Draft not found"}), 404
     
     # Check if user has permission to delete this draft
-    if draft.user_id != current_user.id and not current_user.role in ['admin', 'developer']:
+    if draft.user_id != current_user.user_id and not current_user.role in ['admin', 'developer']:
         return jsonify({"error": "You don't have permission to delete this draft"}), 403
     
     try:
         # Store old values for audit
         old_values = draft.to_dict()
         
-        # Soft delete by setting is_deleted
-        draft.is_deleted = True
+        # Soft delete by setting deleted
+        draft.deleted = True
         
         # Log the deletion
         AuditController.log_action(
-            user_id=current_user.id,
+            user_id=current_user.user_id,
             action_type='delete',
             table_affected='user_lead_drafts',
             record_id=draft.id,
