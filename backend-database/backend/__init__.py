@@ -26,6 +26,15 @@ def create_app(test_config=None):
     
     # Create database tables if they do not exist
     with app.app_context():
+        # Import all models to ensure they're registered with SQLAlchemy
+        from models.user_model import User
+        from models.lead_model import Lead
+        from models.user_lead_access_model import UserLeadAccess
+        from models.user_lead_drafts_model import UserLeadDraft
+        from models.search_logs_model import SearchLog
+        from models.audit_logs_model import AuditLog
+        
+        # Create all tables
         db.create_all()
     
     # Set up LoginManager
@@ -37,12 +46,16 @@ def create_app(test_config=None):
     def load_user(user_id):
         return User.query.get(int(user_id))
     
-    # Register blueprints
+    # Register blueprints with URL prefixes
     from routes.lead_routes import lead_bp
     from routes.auth_routes import auth_bp
+    from routes.lead_access_routes import access_bp
+    from routes.lead_drafts_routes import drafts_bp
     
-    app.register_blueprint(lead_bp)
-    app.register_blueprint(auth_bp)
+    app.register_blueprint(lead_bp, url_prefix='')
+    app.register_blueprint(auth_bp, url_prefix='')
+    app.register_blueprint(access_bp, url_prefix='')
+    app.register_blueprint(drafts_bp, url_prefix='')
     
     # Create a basic route
     @app.route('/')
