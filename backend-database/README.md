@@ -225,10 +225,13 @@ The CSV file should contain the following columns (column names can be mapped du
 
 This document provides an overview of all available API endpoints in the LeadGen system.
 
+## Base URL
+All API endpoints are prefixed with: `http://54.166.155.63:8000`
+
 ## Authentication
 
 ### Login
-- **URL**: `/api/auth/login`
+- **URL**: `http://54.166.155.63:8000/api/auth/login`
 - **Method**: `POST`
 - **Description**: Authenticate user and get access token
 - **Request Body**:
@@ -253,7 +256,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Register
-- **URL**: `/api/auth/register`
+- **URL**: `http://54.166.155.63:8000/api/auth/register`
 - **Method**: `POST`
 - **Description**: Create a new user account
 - **Request Body**:
@@ -280,7 +283,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Get Current User
-- **URL**: `/api/auth/me`
+- **URL**: `http://54.166.155.63:8000/api/auth/me`
 - **Method**: `GET`
 - **Description**: Get information about the currently logged in user
 - **Headers**: Authorization with Bearer token
@@ -295,7 +298,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Logout
-- **URL**: `/api/auth/logout`
+- **URL**: `http://54.166.155.63:8000/api/auth/logout`
 - **Method**: `POST`
 - **Description**: Logout the current user
 - **Headers**: Authorization with Bearer token
@@ -309,7 +312,7 @@ This document provides an overview of all available API endpoints in the LeadGen
 ## Leads
 
 ### Get All Leads
-- **URL**: `/api/leads`
+- **URL**: `http://54.166.155.63:8000/api/leads`
 - **Method**: `GET`
 - **Description**: Get a paginated list of all leads with optional filtering
 - **Headers**: Authorization with Bearer token
@@ -342,7 +345,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Get Lead by ID
-- **URL**: `/api/leads/{lead_id}`
+- **URL**: `http://54.166.155.63:8000/api/leads/{lead_id}`
 - **Method**: `GET`
 - **Description**: Get details of a specific lead
 - **Headers**: Authorization with Bearer token
@@ -363,7 +366,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Create Lead
-- **URL**: `/api/leads`
+- **URL**: `http://54.166.155.63:8000/api/leads`
 - **Method**: `POST`
 - **Description**: Create a new lead (Admin and Developer only)
 - **Headers**: Authorization with Bearer token
@@ -394,7 +397,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Update Lead
-- **URL**: `/api/leads/{lead_id}`
+- **URL**: `http://54.166.155.63:8000/api/leads/{lead_id}`
 - **Method**: `PUT`
 - **Description**: Update lead details (Admin and Developer only)
 - **Headers**: Authorization with Bearer token
@@ -422,7 +425,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Update Lead Status
-- **URL**: `/api/leads/{lead_id}/status`
+- **URL**: `http://54.166.155.63:8000/api/leads/{lead_id}/status`
 - **Method**: `PUT`
 - **Description**: Update just the status of a lead (All roles)
 - **Headers**: Authorization with Bearer token
@@ -445,7 +448,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Delete Lead
-- **URL**: `/api/leads/{lead_id}`
+- **URL**: `http://54.166.155.63:8000/api/leads/{lead_id}`
 - **Method**: `DELETE`
 - **Description**: Soft delete a lead (Admin and Developer only)
 - **Headers**: Authorization with Bearer token
@@ -457,7 +460,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Upload Multiple Leads
-- **URL**: `/api/upload_leads`
+- **URL**: `http://54.166.155.63:8000/api/upload_leads`
 - **Method**: `POST`
 - **Description**: Upload multiple leads at once
 - **Headers**: Authorization with Bearer token
@@ -495,7 +498,7 @@ This document provides an overview of all available API endpoints in the LeadGen
 ## Sources
 
 ### Get All Sources
-- **URL**: `/api/sources`
+- **URL**: `http://54.166.155.63:8000/api/sources`
 - **Method**: `GET`
 - **Description**: Get a list of all available lead sources
 - **Headers**: Authorization with Bearer token
@@ -514,7 +517,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Add New Source
-- **URL**: `/api/sources`
+- **URL**: `http://54.166.155.63:8000/api/sources`
 - **Method**: `POST`
 - **Description**: Add a new lead source (Admin and Developer only)
 - **Headers**: Authorization with Bearer token
@@ -535,7 +538,7 @@ This document provides an overview of all available API endpoints in the LeadGen
 ## Statistics
 
 ### Get Summary Statistics
-- **URL**: `/api/stats/summary`
+- **URL**: `http://54.166.155.63:8000/api/stats/summary`
 - **Method**: `GET`
 - **Description**: Get lead count summary statistics
 - **Headers**: Authorization with Bearer token
@@ -568,7 +571,7 @@ This document provides an overview of all available API endpoints in the LeadGen
   ```
 
 ### Get Top Sources
-- **URL**: `/api/stats/top-sources`
+- **URL**: `http://54.166.155.63:8000/api/stats/top-sources`
 - **Method**: `GET`
 - **Description**: Get top performing lead sources
 - **Headers**: Authorization with Bearer token
@@ -602,3 +605,49 @@ This document provides an overview of all available API endpoints in the LeadGen
     ]
   }
   ```
+
+## Additional Endpoints
+
+### Restore Lead
+- **URL**: `http://54.166.155.63:8000/leads/{lead_id}/restore`
+- **Method**: `POST`
+
+### Restore Multiple Leads
+- **URL**: `http://54.166.155.63:8000/leads/restore-multiple`
+- **Method**: `POST`
+
+### View Deleted Leads
+- **URL**: `http://54.166.155.63:8000/leads/deleted`
+- **Method**: `GET`
+
+### Permanent Delete Lead
+- **URL**: `http://54.166.155.63:8000/leads/{lead_id}/permanent-delete`
+- **Method**: `POST`
+
+### Delete Multiple Leads
+- **URL**: `http://54.166.155.63:8000/leads/delete-multiple`
+- **Method**: `POST`
+
+### Export Leads
+- **URL**: `http://54.166.155.63:8000/export_leads`
+- **Method**: `POST`
+
+### Upload CSV Leads
+- **URL**: `http://54.166.155.63:8000/upload`
+- **Method**: `POST`
+
+### Submit Single Lead
+- **URL**: `http://54.166.155.63:8000/submit`
+- **Method**: `POST`
+
+## Notes
+1. All endpoints require authentication (`@login_required`)
+2. Some endpoints require specific roles (`admin` or `developer`)
+3. For API endpoints, include the Authorization header with Bearer token
+4. The application is accessible at: `http://54.166.155.63:8000`
+5. For HTML template endpoints, the response will be a web page
+6. For API endpoints, the response will be in JSON format
+7. All delete operations are soft deletes by default (except permanent delete)
+8. File uploads (CSV) have format and data validation requirements
+9. Export supports both CSV and Excel formats
+10. Some endpoints support batch operations for efficiency
