@@ -3,6 +3,7 @@ import asyncio
 import csv
 from typing import List, Dict
 import sys
+from typing import AsyncGenerator
 
 # Uncomment below lines if running this only this file for debugging
 # sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
@@ -100,7 +101,7 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
             "Website": "NA"
         }
 
-async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str, str]]:
+async def scrape_lead_by_industry(industry: str, location: str) -> AsyncGenerator[Dict[str, str], None]:
     """Scrape multiple leads by industry and location from Google Maps."""
     manager = PlaywrightManager(headless=True)
     try:
@@ -135,7 +136,8 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
 
         if current_count == 0:
             print("No businesses found on google maps")
-            return []
+            yield None
+            return
         else:
             # print(f"Found {current_count} leads for {industry}, {location} on google maps")
             business_list = []
@@ -143,9 +145,8 @@ async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str
             for i in range(current_count):
                 container = business_containers.nth(i)
                 result = await scrape_lead_details(container)
-                business_list.append(result)
-            
-            return business_list
+                # business_list.append(result)
+                yield result
                 
     except Exception as e:
         raise RuntimeError(f"An error occurred while scraping: {e}")

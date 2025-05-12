@@ -3,6 +3,7 @@ import os
 import time
 from typing import Dict, List
 import sys
+from typing import AsyncGenerator
 
 # sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
 # from config.browser_config import PlaywrightManager
@@ -11,7 +12,7 @@ from backend.config.browser_config import PlaywrightManager
 
 # FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
 
-async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:  
+async def scrape_bbb(industry: str, location: str) -> AsyncGenerator[Dict[str, str], None]:  
     industry = industry.replace(" ", "+")
     location = location.replace(", ", "%2C")
     BASE_URL = f"https://www.bbb.org/search?find_country=USA&find_loc={location}&find_text={industry}"
@@ -70,7 +71,8 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                         "Business_phone": details['Business_phone'],
                         "BBB_rating": details['BBB_rating']
                     })
-                    lead_list.append(details)
+                    yield details
+                    # lead_list.append(details)
                     
                 except Exception as e:
                     print(f"Error extracting data for card {i}: {e}")
@@ -90,22 +92,25 @@ async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:
                             await next_page_btn.click(timeout=5000)
                             await asyncio.sleep(1)
                         except Exception:
+                            yield None
+                            return
                             # print(f"Error clicking 'Next' button.")
-                            return lead_list
+                            # return lead_list
                                                 
                 else:
                     break
                 
             except Exception as e:
                 print(f"Error during pagination: {e}")
-                return lead_list  # Return the leads collected so far
+                # return lead_list  # Return the leads collected so far
                 
         # print(f"Found {len(lead_list)} leads in BBB")
-        return lead_list
+        # return lead_list
         
     except Exception as e:
         print(f"Error during search: {e}")
-        return []
+        yield None
+        return
     
     finally:
         await browser_manager.stop_browser()

@@ -3,6 +3,7 @@ import pandas as pd
 import asyncio
 import sys
 import os
+import time
 
 os.system('playwright install chromium')
 
@@ -10,6 +11,7 @@ os.system('playwright install chromium')
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from backend.main import fetch_and_merge_data
 from backend.services.parser import parse_address  # <-- Address parser
+from backend.services.background import start_background_scraping
 
 st.set_page_config(page_title="LeadGenAI", layout="wide")
 st.title("📊 LeadGen AI Tool")
@@ -28,6 +30,8 @@ if "enriched_data" not in st.session_state:
     st.session_state.enriched_data = pd.DataFrame()
 if "is_scraping" not in st.session_state:
     st.session_state.is_scraping = False
+if 'get_processed' not in st.session_state:
+    st.session_state.get_processed = None
 
 
 # --- Sidebar Inputs ---
@@ -50,17 +54,92 @@ st.sidebar.write("4. If any unexpected errors occur, please refresh the page and
 
 # --- Fetch Leads ---
 if fetch_button and not st.session_state.is_scraping:
+    st.session_state.get_processed = start_background_scraping(industry, location)
     st.session_state.is_scraping = True  # Immediately set before any other logic
     st.rerun()
+# if st.session_state.is_scraping and not fetch_button:
+#     with st.spinner("Scraping and merging data..."):
+#         # raw_data = asyncio.run(fetch_and_merge_data(industry, location))
+#         # df = pd.DataFrame(raw_data)
+#         # st.session_state.raw_data = df
+#         # st.session_state.enriched_data = pd.DataFrame()  # Reset enrichment
+#         # st.session_state.industry_filter_selection = df["Industry"].dropna().unique().tolist()
+        
+#         status_box = st.empty()
+#         data_box = st.empty()
+
+#         while st.session_state.is_scraping:
+#             raw_data = st.session_state.get_processed()
+
+#             if raw_data:
+#                 elapsed = raw_data["elapsed_time"]
+#                 total = raw_data["total_scraped"]
+#                 processed = raw_data["processed_data"]
+
+#                 with status_box:
+#                     st.info(f"⏱ Elapsed: {elapsed:.2f}s | ✅ Scraped: {total} | 🧹 Processed: {len(processed)}")
+
+#                 if processed:
+#                     df = pd.DataFrame(processed)
+#                     st.session_state.raw_data = df
+#                     st.session_state.enriched_data = pd.DataFrame()  # Reset enrichment
+#                     st.session_state.industry_filter_selection = df["Industry"].dropna().unique().tolist()
+#                     with data_box:
+#                         st.dataframe(df, use_container_width=True)
+
+#                 if raw_data["is_complete"]:
+#                     data_box.empty()
+#                     st.session_state.is_scraping = False
+#                     st.success("✅ Scraping complete!")
+#                     break
+#             else:
+#                 with status_box:
+#                     st.info("⏳ Initializing scraper...")
+#             time.sleep(2)
+#             st.rerun()
 if st.session_state.is_scraping and not fetch_button:
     with st.spinner("Scraping and merging data..."):
-        raw_data = asyncio.run(fetch_and_merge_data(industry, location))
-        df = pd.DataFrame(raw_data)
-        st.session_state.raw_data = df
-        st.session_state.enriched_data = pd.DataFrame()  # Reset enrichment
-        st.session_state.industry_filter_selection = df["Industry"].dropna().unique().tolist()
-    st.session_state.is_scraping = False
-    st.rerun()
+        # Set up placeholders for status and data display
+        status_box = st.empty()
+        data_box = st.empty()
+
+        while st.session_state.is_scraping:
+            raw_data = st.session_state.get_processed()
+
+            if raw_data:
+                elapsed = raw_data["elapsed_time"]
+                total = raw_data["total_scraped"]
+                processed = raw_data["processed_data"]
+
+                # Update the status box with real-time data
+                with status_box:
+                    st.info(f"⏱ Elapsed: {elapsed:.2f}s | ✅ Scraped: {total} | 🧹 Processed: {len(processed)}")
+
+                if processed:
+                    # Display the processed data as a dataframe
+                    df = pd.DataFrame(processed)
+                    st.session_state.raw_data = df
+                    st.session_state.enriched_data = pd.DataFrame()  # Reset enrichment
+                    st.session_state.industry_filter_selection = df["Industry"].dropna().unique().tolist()
+
+                    # Update the data box with the dataframe
+                    with data_box:
+                        st.dataframe(df, use_container_width=True)
+
+                if raw_data["is_complete"]:
+                    # Clear the data box and show completion message
+                    data_box.empty()
+                    st.session_state.is_scraping = False
+                    st.success("✅ Scraping complete!")
+                    break
+            else:
+                # Display initializing message if data is not yet available
+                with status_box:
+                    st.info("⏳ Initializing scraper...")
+
+            # Allow Streamlit to update the interface without blocking the main event loop
+            time.sleep(1)  # Sleep briefly to prevent overwhelming the server
+            # No need for st.rerun(), as Streamlit will automatically rerun when session state changes
 
 def _merge_enrichment(new_rows: pd.DataFrame):
     if st.session_state.enriched_data.empty:
@@ -85,7 +164,7 @@ def _merge_enrichment(new_rows: pd.DataFrame):
 #                 st.write(f"→ {type(item)}")
 
 # --- Display Leads + Filters ---
-if not st.session_state.raw_data.empty:
+if not st.session_state.raw_data.empty and not st.session_state.is_scraping:
     df = st.session_state.raw_data
     st.markdown("### 🎯 Filter by Industry")
 
