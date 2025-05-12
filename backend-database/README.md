@@ -150,19 +150,6 @@ There are several ways to run the application:
    flask run --port 8000
    ```
 
-### Docker Deployment
-The application can be deployed using Docker:
-
-1. Build the Docker image:
-   ```
-   docker build -t leadgen-app .
-   ```
-
-2. Run the container:
-   ```
-   docker run -p 8000:8000 leadgen-app
-   ```
-
 The application will be available at `http://localhost:8000`.
 
 ### Troubleshooting
