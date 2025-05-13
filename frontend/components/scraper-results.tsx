@@ -10,6 +10,8 @@ import { Download, Filter, Search, ArrowRight } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
 import { useLeads } from "@/components/LeadsProvider"
+import { addUniqueIdsToLeads } from "@/lib/leadUtils"
+
 interface ScraperResultsProps {
   data: any[]
 }
@@ -40,8 +42,8 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     return;
   }
   // Normalize the data
-  const normalized = parsedData.map((item, idx) => ({
-    id: item.id ?? idx + 1,
+  const normalizedWithoutIds = parsedData.map((item, idx) => ({
+    id: -1, // Temporary ID that will be replaced by addUniqueIdsToLeads
     company: item.Company || item.company || "",
     website: item.Website || item.website || "",
     industry: item.Industry || item.industry || "",
@@ -51,6 +53,10 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     bbb_rating: item.BBB_rating || item.bbb_rating || "",
     business_phone: item.Business_phone || item.business_phone || "",
   }));
+  
+  // Apply unique IDs using the hash function
+  const normalized = addUniqueIdsToLeads(normalizedWithoutIds);
+  
   setLeads(normalized)
   setGlobalLeads(normalized);
 }, [data]);
@@ -219,12 +225,11 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                         onChange={e => handleCellChange(rowIdx, "website", e.target.value)}
                       />
                     </TableCell>
-                    <TableCell>{result.id}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No results found.
                   </TableCell>
                 </TableRow>
