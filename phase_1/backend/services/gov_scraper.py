@@ -1,6 +1,6 @@
 import requests
 
-HF_TOKEN = "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"
+HF_TOKEN = ""
 URL = "https://fatmagician-gov-leads.hf.space/search"
 
 def search_leads(location: str, category: str) -> dict:
@@ -21,6 +21,6 @@ def search_leads(location: str, category: str) -> dict:
     except requests.exceptions.JSONDecodeError:
         return {"error": "Non-JSON response", "status_code": response.status_code, "text": response.text}
 
-if __name__ == "__main__":
-    result = search_leads("yy glendale xx", "barbers")
-    print(result)
+# if __name__ == "__main__":
+#     result = search_leads("los angeles", "barbershop")
+#     print(result)

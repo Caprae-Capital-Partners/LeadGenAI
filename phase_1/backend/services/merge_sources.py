@@ -26,8 +26,7 @@ def merge_data_sources(fieldnames: List[str],
                        data1: List[Dict[str, str]] = [],
                        data2: List[Dict[str, str]] = [],
                        data3: List[Dict[str, str]] = [],
-                       data4: List[Dict[str, str]] = [],
-                       data5: List[Dict[str, str]] = []) -> List[Dict[str, str]]:
+                       data4: List[Dict[str, str]] = []) -> List[Dict[str, str]]:
     merged = []
     seen_keys = set()  # Used to track unique records by Company and Address
 
@@ -57,9 +56,6 @@ def merge_data_sources(fieldnames: List[str],
         add_record(record)
         
     for record in data4:
-        add_record(record)
-        
-    for record in data5:
         add_record(record)
 
     return merged

@@ -132,7 +132,7 @@ async def scrape_single_page(context, url: str, search_term: str) -> List[Dict[s
     finally:
         await page.close()
 
-async def scrape_hotfrog(search_term: str, location: str, page=None, max_pages: int = 5) -> List[Dict[str, str]]:
+async def scrape_hotfrog(search_term: str, location: str, max_pages: int = 5) -> List[Dict[str, str]]:
     search_term_clean = search_term.lower().replace(' ', '-')
     location_clean = location.lower().replace(', ', '-')
     urls = [
@@ -140,17 +140,13 @@ async def scrape_hotfrog(search_term: str, location: str, page=None, max_pages: 
         else f"https://www.hotfrog.com/search/{location_clean}/{search_term_clean}/{i}"
         for i in range(1, max_pages + 1)
     ]
-    
-    internal_browser = False
-        
-    if page == None:
-        manager = PlaywrightManager(headless=True)
-        page = await manager.start_browser(stealth_on=True)
-        internal_browser = True
+
+    manager = PlaywrightManager(headless=True)
+    await manager.start_browser(stealth_on=True)
 
     try:
         tasks = [
-            scrape_single_page(page.context, url, search_term)
+            scrape_single_page(manager.context, url, search_term)
             for url in urls
         ]
         results_nested = await asyncio.gather(*tasks)
@@ -170,8 +166,7 @@ async def scrape_hotfrog(search_term: str, location: str, page=None, max_pages: 
         print(f"Error during scraping: {e}")
         return []
     finally:
-        if internal_browser:
-            await manager.stop_browser()
+        await manager.stop_browser()
 
 # if __name__ == "__main__":
 #     search_term = "gun stores"
