@@ -10,7 +10,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 export function Dashboard() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const tabParam = searchParams.get("tab")
+  const tabParam = searchParams?.get("tab") // use optional chaining here
   const [activeTab, setActiveTab] = useState(tabParam || "scraper")
 
   useEffect(() => {

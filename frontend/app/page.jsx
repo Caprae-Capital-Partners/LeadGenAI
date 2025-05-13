@@ -1,5 +1,12 @@
-import { Dashboard } from "@/components/dashboard"
+"use client";
+
+import { Suspense } from "react";
+import { Dashboard } from "@/components/dashboard";
 
 export default function Home() {
-  return <Dashboard />
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Dashboard />
+    </Suspense>
+  );
 }
