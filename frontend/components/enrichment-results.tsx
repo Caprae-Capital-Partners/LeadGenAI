@@ -283,16 +283,6 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                 <Filter className="h-4 w-4 mr-2" />
                 {showFilters ? "Hide Filters" : "Show Filters"}
               </Button>
-              <Button
-                onClick={() => downloadCSV(filteredCompanies, "enriched_results.csv")}
-                disabled={filteredCompanies.length === 0}
-                variant="outline"
-                size="sm"
-                className="gap-1"
-              >
-                <Download className="h-4 w-4" />
-                Export CSV
-              </Button>
             </div>
 
             {showFilters && (
@@ -451,6 +441,18 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                 </TableBody>
               </Table>
             </div>
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button
+              onClick={() => downloadCSV(filteredCompanies, "enriched_results.csv")}
+              disabled={filteredCompanies.length === 0}
+              variant="outline"
+              size="sm"
+              className="gap-1"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
           </div>
         </CardContent>
       </Card>
