@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import * as XLSX from "xlsx"
 
 interface ScraperResultsProps {
-  data?: any[] // ← make data optional to handle undefined
+  data: any[]
 }
 
 export function ScraperResults({ data }: ScraperResultsProps) {
@@ -21,8 +21,6 @@ export function ScraperResults({ data }: ScraperResultsProps) {
   const [exportFormat, setExportFormat] = useState("csv")
 
   useEffect(() => {
-    if (!Array.isArray(data)) return // ← guard against undefined or invalid format
-
     const normalized = data.map((item, idx) => ({
       id: item.id ?? idx + 1,
       company: item.Company || item.company || "",
@@ -59,7 +57,7 @@ export function ScraperResults({ data }: ScraperResultsProps) {
 
   const exportCSV = () => {
     const csvRows = [
-      Object.keys(leads[0] || {}).join(","),
+      Object.keys(leads[0]).join(","),
       ...leads.map(row =>
         Object.values(row).map(val => `"${String(val).replace(/"/g, '""')}"`).join(",")
       )

@@ -21,43 +21,30 @@ FIELDNAMES = [
     "Website"
 ]
 
-from typing import List, Dict, Tuple
-
-async def fetch_and_merge_data(industry: str, location: str, offset: int = 0, limit: int = 100) -> Tuple[List[Dict[str, str]], int]:
-    # Run all scrapers concurrently
+async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, str]]:
+    # Running parallel
     bbb_data, google_maps_data, yp_data, hf_data = await asyncio.gather(
         scrape_bbb(industry, location),
         scrape_lead_by_industry(industry, location),
         scrape_yellowpages(industry, location, max_pages=5),
         scrape_hotfrog(industry, location, max_pages=5)
     )
-
-    # ✅ Ensure all are lists, even if the scraper failed and returned None
-    bbb_data = bbb_data or []
-    google_maps_data = google_maps_data or []
-    yp_data = yp_data or []
-    hf_data = hf_data or []
-
+        
     print(f"Fetched: BBB={len(bbb_data)}, GMaps={len(google_maps_data)}, YP={len(yp_data)}, HF={len(hf_data)}")
 
-    # Merge and process the data
+    # Merge data on name and address
     merged_data = merge_data_sources(FIELDNAMES, bbb_data, google_maps_data, yp_data, hf_data)
+    
     df = pd.DataFrame(merged_data)
+
     parsed_data = parse_data(df, FIELDNAMES, location)
-    records = parsed_data.to_dict(orient='records')
-
-    # Deduplicate
-    deduplified_data = deduplicate_businesses(records)
-    total_count = len(deduplified_data)
-    print(f"Total entries after deduplication: {total_count}")
-
-    # Apply pagination
-    paginated_data = deduplified_data[offset : offset + limit]
-    print(f"Returning {len(paginated_data)} records (offset {offset}, limit {limit})")
-
-    return paginated_data, total_count
-
-
+    data = parsed_data.to_dict(orient='records')
+    # De duplify using fuzzy matching    
+    deduplified_data = deduplicate_businesses(data)
+    
+    print(f"Total entries after deduplication: {len(deduplified_data)}")
+    
+    return deduplified_data
 
 async def fetch_and_merge_seq(industry: str, location: str) -> List[Dict[str,str]]:
     bbb_data = []
