@@ -7,19 +7,69 @@ import { Button } from "../components/ui/button"
 import { Checkbox } from "../components/ui/checkbox"
 import { Input } from "../components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
-import { Search, Filter, Download } from "lucide-react"
+import { Search, Filter, Download, X } from "lucide-react"
 import { useLeads } from "./LeadsProvider"
 import type { ApolloCompany, GrowjoCompany, ApolloPerson } from "../types/enrichment"
 import axios from "axios"
+
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
 
 export function DataEnhancement() {
   const [showResults, setShowResults] = useState(false)
   const { leads } = useLeads()
+  const normalizeLeadValue = (val: any) => {
+  return val === null || val === undefined || val === "" || val === "NA" ? "N/A" : val
+  }
+
+  const normalizedLeads = leads.map((lead) => ({
+    ...lead,
+    company: normalizeLeadValue(lead.company),
+    website: normalizeLeadValue(lead.website),
+    industry: normalizeLeadValue(lead.industry),
+    street: normalizeLeadValue(lead.street),
+    city: normalizeLeadValue(lead.city),
+    state: normalizeLeadValue(lead.state),
+    bbb_rating: normalizeLeadValue(lead.bbb_rating),
+    business_phone: normalizeLeadValue(lead.business_phone),
+  }))
+
   const [enrichedResults, setEnrichedResults] = useState<any[]>([])
   const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
   const [selectAll, setSelectAll] = useState(false)
+  const [industryFilter, setIndustryFilter] = useState("")
+  const [cityFilter, setCityFilter] = useState("")
+  const [stateFilter, setStateFilter] = useState("")
+  const [bbbRatingFilter, setBbbRatingFilter] = useState("")
+  const [showFilters, setShowFilters] = useState(false)
+
+  const downloadCSV = (data: any[], filename: string) => {
+  const headers = Object.keys(data[0])
+  const csvRows = [
+    headers.join(","), // header row
+    ...data.map(row =>
+      headers.map(field => `"${(row[field] ?? "").toString().replace(/"/g, '""')}"`).join(",")
+    ),
+  ]
+  const csvContent = csvRows.join("\n")
+  const blob = new Blob([csvContent], { type: "text/csv" })
+  const url = URL.createObjectURL(blob)
+
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+  const filteredLeads = normalizedLeads.filter((company) => {
+    return (
+      company.industry.toLowerCase().includes(industryFilter.toLowerCase()) &&
+      company.city.toLowerCase().includes(cityFilter.toLowerCase()) &&
+      company.state.toLowerCase().includes(stateFilter.toLowerCase()) &&
+      company.bbb_rating.toLowerCase().includes(bbbRatingFilter.toLowerCase())
+    )
+  })
+
 
 //   const companies = [
 //   {
@@ -32,57 +82,13 @@ export function DataEnhancement() {
 //     state: "MA",
 //     phone: "(888) 482-7768",
 //     bbbRating: "A+",
-//   },
-//   {
-//     id: "2",
-//     name: "Datadog",
-//     website: "datadoghq.com",
-//     industry: "Cloud Monitoring",
-//     street: "620 8th Ave",
-//     city: "New York",
-//     state: "NY",
-//     phone: "(866) 329-4466",
-//     bbbRating: "A",
-//   },
-//   {
-//     id: "3",
-//     name: "Snowflake",
-//     website: "snowflake.com",
-//     industry: "Data Warehousing",
-//     street: "450 Concar Dr",
-//     city: "San Mateo",
-//     state: "CA",
-//     phone: "(844) 766-9355",
-//     bbbRating: "A+",
-//   },
-//   {
-//     id: "4",
-//     name: "Zapier",
-//     website: "zapier.com",
-//     industry: "Automation Software",
-//     street: "548 Market St",
-//     city: "San Francisco",
-//     state: "CA",
-//     phone: "(415) 555-1234",
-//     bbbRating: "A-",
-//   },
-//   {
-//     id: "5",
-//     name: "Figma",
-//     website: "figma.com",
-//     industry: "Design Tools",
-//     street: "760 Market St",
-//     city: "San Francisco",
-//     state: "CA",
-//     phone: "(415) 555-5678",
-//     bbbRating: "A",
-//   },
+//   }
 // ]
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedCompanies([])
     } else {
-      setSelectedCompanies(leads.map((company) => company.id))
+      setSelectedCompanies(normalizedLeads.map((company) => company.id))
     }
     setSelectAll(!selectAll)
   }
@@ -94,7 +100,7 @@ export function DataEnhancement() {
     } else {
       const updated = [...selectedCompanies, id]
       setSelectedCompanies(updated)
-      if (updated.length === leads.length) {
+      if (updated.length === normalizedLeads.length) {
         setSelectAll(true)
       }
     }
@@ -119,10 +125,10 @@ const [loading, setLoading] = useState(false)
   setLoading(true)
 
   try {
-    const selected = leads.filter((c) => selectedCompanies.includes(c.id))
+    const selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
     const companyNames = selected.map((c) => c.company)
     const domains = [...new Set(selected.map((c) => normalizeWebsite(c.website)))]
-
+    
     // Step 1: Pre-pass Growjo to fill missing websites
     const companiesMissingWebsites = selected.filter((c) => !normalizeWebsite(c.website))
     const headers = { headers: { "Content-Type": "application/json" } }
@@ -268,16 +274,59 @@ const [loading, setLoading] = useState(false)
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input type="search" placeholder="Search companies..." className="pl-8" />
               </div>
-              <Button variant="outline" size="sm" className="gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => setShowFilters(!showFilters)}
+              >
                 <Filter className="h-4 w-4" />
-                Filter
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1">
-                <Download className="h-4 w-4" />
-                Export
+                {showFilters ? "Hide Filters" : "Show Filters"}
               </Button>
             </div>
+            {showFilters && (
+                <div className="flex flex-wrap gap-4 my-4">
+                  <Input
+                    placeholder="Industry (e.g. Software)"
+                    value={industryFilter}
+                    onChange={(e) => setIndustryFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="City (e.g. Los Angeles)"
+                    value={cityFilter}
+                    onChange={(e) => setCityFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="State (e.g. CA)"
+                    value={stateFilter}
+                    onChange={(e) => setStateFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="BBB Rating (e.g. A+)"
+                    value={bbbRatingFilter}
+                    onChange={(e) => setBbbRatingFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIndustryFilter("")
+                      setCityFilter("")
+                      setStateFilter("")
+                      setBbbRatingFilter("")
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
 
+            
             <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -289,19 +338,18 @@ const [loading, setLoading] = useState(false)
                         aria-label="Select all"
                       />
                     </TableHead>
-                    <TableHead>ID</TableHead>
                     <TableHead>Company</TableHead>
-                    <TableHead>Website</TableHead>
                     <TableHead>Industry</TableHead>
                     <TableHead>Street</TableHead>
                     <TableHead>City</TableHead>
                     <TableHead>State</TableHead>
-                    <TableHead>Company Phone</TableHead>
                     <TableHead>BBB Rating</TableHead>
+                    <TableHead>Company Phone</TableHead>
+                    <TableHead>Website</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {leads.map((company) => (
+                  {filteredLeads.map((company) => (
                     <TableRow key={company.id}>
                       <TableCell>
                         <Checkbox
@@ -310,15 +358,14 @@ const [loading, setLoading] = useState(false)
                           aria-label={`Select ${company.company}`}
                         />
                       </TableCell>
-                      <TableCell>{company.id}</TableCell>
                       <TableCell className="font-medium">{company.company}</TableCell>
-                      <TableCell>{company.website}</TableCell>
                       <TableCell>{company.industry}</TableCell>
                       <TableCell>{company.street}</TableCell>
                       <TableCell>{company.city}</TableCell>
                       <TableCell>{company.state}</TableCell>
-                      <TableCell>{company.business_phone}</TableCell>
                       <TableCell>{company.bbb_rating}</TableCell>
+                      <TableCell>{company.business_phone}</TableCell>
+                      <TableCell>{company.website}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -327,12 +374,23 @@ const [loading, setLoading] = useState(false)
 
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
-                {selectedCompanies.length} of {leads.length} selected
+                {selectedCompanies.length} of {filteredLeads.length} selected
               </p>
               <Button onClick={handleStartEnrichment} disabled={selectedCompanies.length === 0 || loading}>
                 {loading ? "Enriching..." : "Start Enrichment"}
               </Button>
             </div>
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={() => downloadCSV(filteredLeads, "enriched_results.csv")}
+              disabled={filteredLeads.length === 0}
+              variant="outline"
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
           </div>
         </CardContent>
       </Card>

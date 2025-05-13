@@ -14,7 +14,7 @@ interface ScraperResultsProps {
   data: any[]
 }
 
-export function ScraperResults({ data }: ScraperResultsProps) {
+export function ScraperResults({ data }: { data: string | any[] }) {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [leads, setLeads] = useState<any[]>([])
@@ -158,7 +158,6 @@ export function ScraperResults({ data }: ScraperResultsProps) {
                 <TableHead>BBB Rating</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Website</TableHead>
-                <TableHead>Lead ID</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
