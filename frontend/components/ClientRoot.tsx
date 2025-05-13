@@ -1,4 +1,6 @@
 "use client";
+import React from "react"
+
 import { LeadsProvider } from "./LeadsProvider";
 import mockResults from "./mockResults"; // or your real initial data
 

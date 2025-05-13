@@ -1,12 +1,12 @@
 "use client"
-
+import React from "react"
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Progress } from "@/components/ui/progress"
-import { ScraperResults } from "@/components/scraper-results"
+import { Button } from "../components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
+import { Input } from "../components/ui/input"
+import { Label } from "../components/ui/label"
+import { Progress } from "../components/ui/progress"
+import { ScraperResults } from "../components/scraper-results"
 
 export function Scraper() {
   const [isScrapingActive, setIsScrapingActive] = useState(false)
