@@ -1,15 +1,15 @@
 "use client"
-
+import React from "react"
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { EnrichmentResults } from "@/components/enrichment-results"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
+import { EnrichmentResults } from "../components/enrichment-results"
+import { Button } from "../components/ui/button"
+import { Checkbox } from "../components/ui/checkbox"
+import { Input } from "../components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import { Search, Filter, Download } from "lucide-react"
 import { useLeads } from "./LeadsProvider"
-import type { ApolloCompany, GrowjoCompany, ApolloPerson } from "@/types/enrichment"
+import type { ApolloCompany, GrowjoCompany, ApolloPerson } from "../types/enrichment"
 import axios from "axios"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!

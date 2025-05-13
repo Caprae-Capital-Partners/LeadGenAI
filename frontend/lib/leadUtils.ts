@@ -1,4 +1,4 @@
-import { Lead } from "@/components/LeadsProvider";
+import { Lead } from "../components/LeadsProvider";
 import { createHash } from "crypto";
 
 /**

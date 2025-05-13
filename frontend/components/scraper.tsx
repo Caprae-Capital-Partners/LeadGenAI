@@ -12,7 +12,6 @@ import axios from "axios"
 const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/api/lead-scrape`;
 
 
-
 export function Scraper() {
   const [isScrapingActive, setIsScrapingActive] = useState(false)
   const [progress, setProgress] = useState(0)
