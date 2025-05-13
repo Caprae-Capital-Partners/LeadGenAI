@@ -1,30 +1,34 @@
 import asyncio
-import csv
 import os
+import sys
 from typing import Dict, List
-from playwright.async_api import Locator, async_playwright
+from playwright.async_api import Locator, Page
 
-async def save_to_csv(businesses, filename='superpages_data.csv'):
-    """Save extracted business data to CSV file."""
-    if not businesses:
-        print("No data to save to CSV.")
-        return None
+# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
+# from config.browser_config import PlaywrightManager
+
+# async def save_to_csv(businesses, filename='superpages_data.csv'):
+#     import csv
+#     """Save extracted business data to CSV file."""
+#     if not businesses:
+#         print("No data to save to CSV.")
+#         return None
     
-    output_dir = "superpages_data"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+#     output_dir = "superpages_data"
+#     if not os.path.exists(output_dir):
+#         os.makedirs(output_dir)
     
-    filepath = os.path.join(output_dir, filename)
+#     filepath = os.path.join(output_dir, filename)
     
-    with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['Company', 'Phone', 'Website', 'Address', 'Category']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+#     with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+#         fieldnames = ['Company', 'Business_phone', 'Website', 'Address', 'Industry']
+#         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
-        writer.writeheader()
-        for business in businesses:
-            writer.writerow(business)
+#         writer.writeheader()
+#         for business in businesses:
+#             writer.writerow(business)
     
-    print(f"CSV file saved to: {filepath}")
+#     print(f"CSV file saved to: {filepath}")
 
 async def handle_cookie_consent(page):
     """Handle cookie consent dialogs."""
@@ -52,15 +56,15 @@ async def slow_scroll(page):
         await page.evaluate(f"window.scrollTo(0, {int(position)})")
         await asyncio.sleep(0.5)
 
-async def extract_business_details(container: Locator, search_term: str) -> Dict[str, str] | None:
+async def extract_business_details(container: Locator) -> Dict[str, str] | None:
     """Extract business information from a listing container."""
     try:
         info = {
             'Company': 'NA',
-            'Phone': 'NA',
+            'Business_phone': 'NA',
             'Website': 'NA',
             'Address': 'NA',
-            'Category': search_term.title()
+            'Industry': 'NA'
         }
 
         # Extract business name
@@ -74,7 +78,7 @@ async def extract_business_details(container: Locator, search_term: str) -> Dict
             phone_text = await phone.first.text_content()
             digits = ''.join(char for char in phone_text if char.isdigit())
             if digits:
-                info['Phone'] = digits
+                info['Business_phone'] = digits
 
         # Extract website
         website = container.locator('a.weblink-button, a[target="_blank"][rel="nofollow noopener"]')
@@ -87,9 +91,14 @@ async def extract_business_details(container: Locator, search_term: str) -> Dict
         address = container.locator('span.street-address, p:has(span)')
         if await address.count() > 0:
             info['Address'] = (await address.first.text_content()).strip()
+        
+        industry = container.locator('div.categories')
+        if await industry.count() > 0:
+            first_industry = industry.locator('a').first
+            info['Industry'] = (await first_industry.text_content()).strip()
 
         # Only return if we have at least a company name or phone number
-        if info['Company'] != 'NA' or info['Phone'] != 'NA':
+        if info['Company'] != 'NA' or info['Business_phone'] != 'NA':
             return info
         
         return None
@@ -97,12 +106,12 @@ async def extract_business_details(container: Locator, search_term: str) -> Dict
         print(f"Error extracting business details: {e}")
         return None
 
-async def extract_businesses(page, search_term: str) -> List[Dict[str, str]]:
+async def extract_businesses(page) -> List[Dict[str, str]]:
     """Extract all business listings from the current page."""
     results = []
     
     # Wait for the page to load completely
-    await page.wait_for_load_state("networkidle")
+    await page.wait_for_load_state("domcontentloaded")
     
     # Look for business listings with different selectors
     listing_selectors = [
@@ -118,11 +127,11 @@ async def extract_businesses(page, search_term: str) -> List[Dict[str, str]]:
         containers = page.locator(selector)
         count = await containers.count()
         if count > 0:
-            print(f"Found {count} business listings with selector: {selector}")
+            # print(f"Found {count} business listings with selector: {selector}")
             
             for i in range(count):
                 container = containers.nth(i)
-                data = await extract_business_details(container, search_term)
+                data = await extract_business_details(container)
                 if data:
                     results.append(data)
             
@@ -132,131 +141,62 @@ async def extract_businesses(page, search_term: str) -> List[Dict[str, str]]:
     
     return results
 
-async def click_next_page(page) -> bool:
-    """Attempt to click the next page button."""
-    # Simplified selectors for next page buttons
-    next_page_selectors = [
-        '.pagination li:not(.active) a',
-        '.pagination a[rel="next"]',
-        'a.next-page',
-        '.pagination a[data-page]:not(.active)'
-    ]
-    
-    for selector in next_page_selectors:
-        try:
-            next_button = page.locator(selector)
-            if await next_button.count() > 0:
-                await next_button.first.click()
-                await page.wait_for_load_state("networkidle")
-                await asyncio.sleep(2)  # Wait for page to stabilize
-                return True
-        except Exception:
-            continue
-    
-    # If none of the selectors worked, try JavaScript approach
-    try:
-        clicked = await page.evaluate('''() => {
-            const paginationLinks = document.querySelectorAll('.pagination a, a[data-page]');
-            for (let link of paginationLinks) {
-                const text = link.textContent.trim().toLowerCase();
-                if (text === 'next' || text.includes('›') || text.includes('>')) {
-                    link.click();
-                    return true;
-                }
-            }
-            return false;
-        }''')
-        
-        if clicked:
-            await page.wait_for_load_state("networkidle")
-            await asyncio.sleep(2)
-            return True
-    except Exception:
-        pass
-    
-    return False
-
-async def scrape_superpages(search_term: str, location: str, max_pages: int = 5) -> List[Dict[str, str]]:
-    """Scrape Superpages using sequential navigation through paginated results."""
+async def scrape_superpages(search_term: str, location: str, page: Page, max_pages: int = 5) -> List[Dict[str, str]]:
+    """Scrape Superpages using the provided browser page."""
     # Format the search URL
     search_term_clean = search_term.replace(' ', '+')
     location_clean = location.replace(' ', '+').replace(',', '%2C')
     start_url = f"https://www.superpages.com/search?search_terms={search_term_clean}&geo_location_terms={location_clean}"
     
-    print(f"Starting scrape at URL: {start_url}")
-    
-    async with async_playwright() as playwright:
-        # Launch browser and create context
-        browser = await playwright.chromium.launch(headless=True)
-        context = await browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36",
-            viewport={"width": 1280, "height": 800}
-        )
+    # print(f"Starting scrape at URL: {start_url}")
+    try:
+        # Navigate to the first URL
+        await page.goto(start_url, wait_until='domcontentloaded', timeout=60000)
+        await asyncio.sleep(3)
+        await handle_cookie_consent(page)
         
-        # Create a single page for sequential navigation
-        page = await context.new_page()
+        all_results = []
+        current_page = 1
         
-        try:
-            # Navigate to the first URL
-            await page.goto(start_url, wait_until='domcontentloaded', timeout=60000)
-            await asyncio.sleep(3)
-            await handle_cookie_consent(page)
+        # Process each page sequentially
+        while current_page <= max_pages:
+            # print(f"Scraping page {current_page} of {max_pages}")
+            await slow_scroll(page)
             
-            all_results = []
-            current_page = 1
+            # Extract businesses from the current page
+            results = await extract_businesses(page)
+            all_results.extend(results)
+            # print(f"Found {len(results)} businesses on page {current_page}")
             
-            # Process each page sequentially
-            while current_page <= max_pages:
-                print(f"Scraping page {current_page} of {max_pages}")
-                await slow_scroll(page)
-                
-                # Extract businesses from the current page
-                results = await extract_businesses(page, search_term)
-                all_results.extend(results)
-                print(f"Found {len(results)} businesses on page {current_page}")
-                
-                # Check if we've reached the maximum pages
-                if current_page >= max_pages:
-                    break
-                
-                # Try to navigate to the next page
-                print(f"Attempting to navigate to page {current_page + 1}")
-                if await click_next_page(page):
+            # Check if we've reached the maximum pages
+            if current_page >= max_pages:
+                break
+            
+            # Try to navigate to the next page
+            try:
+                next_button = await page.query_selector('a.next.ajax-page')
+                if next_button:
+                    await next_button.click()
+                    await asyncio.sleep(2)  # Wait for the next page to load
                     current_page += 1
                 else:
-                    print("No more pages available")
+                    # print("No more pages available")
                     break
-            
-            # Deduplicate results
-            seen = set()
-            unique = []
-            for item in all_results:
-                key = f"{item['Company']}_{item['Phone']}"
-                if key not in seen:
-                    seen.add(key)
-                    unique.append(item)
-            
-            print(f"Total unique businesses found: {len(unique)}")
-            return unique
+            except Exception as e:
+                print(f"Failed to click next page: {e}")
         
-        except Exception as e:
-            print(f"Error during scraping: {e}")
-            return []
-        finally:
-            # Close the browser
-            await context.close()
-            await browser.close()
-
-if __name__ == "__main__":
-    search_term = input("Enter search term (e.g., 'Italian Restaurants'): ")
-    location = input("Enter location (e.g., 'San Francisco, CA'): ")
-    max_pages = int(input("Enter maximum number of pages to scrape (default 5): ") or "5")
+        # Deduplicate results
+        seen = set()
+        unique = []
+        for item in all_results:
+            key = f"{item['Company']}_{item['Business_phone']}"
+            if key not in seen:
+                seen.add(key)
+                unique.append(item)
+        
+        # print(f"Total unique businesses found: {len(unique)}")
+        return unique
     
-    print(f"Scraping {search_term} in {location} from Superpages.com...")
-    results = asyncio.run(scrape_superpages(search_term, location, max_pages=max_pages))
-    
-    if results:
-        filename = f"{search_term.replace(' ', '_')}_{location.replace(' ', '_').replace(',', '')}.csv"
-        asyncio.run(save_to_csv(results, filename=filename))
-    
-    print(f"Scraped {len(results)} unique businesses.")
+    except Exception as e:
+        print(f"Error during scraping: {e}")
+        return []

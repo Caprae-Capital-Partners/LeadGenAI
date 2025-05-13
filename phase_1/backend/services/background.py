@@ -20,6 +20,11 @@ from backend.services.Fuzzymatching import deduplicate_businesses
 from backend.services.parser import parse_data
 from backend.services.merge_sources import merge_data_sources
 
+from config.browser_config import PlaywrightManager
+
+import psutil
+import time
+
 
 
 # from backend.services.superpages_scraper import scrape_superpages  # Assuming this exists
@@ -55,6 +60,24 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
     # Define the async function to run all scrapers
     async def run_all_scrapers():
         # Create tasks for all scrapers
+        
+        start_time = time.perf_counter()
+        process = psutil.Process(os.getpid())
+        start_mem = process.memory_info().rss / 1024 / 1024  # In MB
+        
+        # Running parallel
+        manager = PlaywrightManager(headless=True)
+        await manager.start_browser(stealth_on=True)
+        
+        start_time = time.perf_counter()
+        process = psutil.Process(os.getpid())
+        start_mem = process.memory_info().rss / 1024 / 1024  # In MB
+        
+        gmaps_page = await manager.context.new_page()
+        bbb_page = await manager.context.new_page()
+        hf_page = await manager.context.new_page()
+        sp_page = await manager.context.new_page()
+    
         tasks = [
             run_scraper(scrape_bbb, "bbb", industry, location),
             run_scraper(scrape_lead_by_industry, "google_maps", industry, location),
@@ -69,6 +92,14 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
         # Mark as complete
         with lock:
             state["is_complete"] = True
+            await manager.stop_browser()
+            
+            end_time = time.perf_counter()
+            end_mem = process.memory_info().rss / 1024 / 1024  # In MB
+            
+            print(f"Time taken: {end_time - start_time:.2f} seconds")
+            print(f"RAM usage: {end_mem - start_mem:.2f} MB")
+    
             print(f"Scraping complete! Total time: {time.time() - state['start_time']:.2f} seconds")
     
     # Function to run a single scraper

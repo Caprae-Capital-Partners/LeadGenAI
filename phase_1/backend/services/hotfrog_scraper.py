@@ -181,9 +181,13 @@ async def scrape_hotfrog(
         else f"https://www.hotfrog.com/search/{location_clean}/{search_term_clean}/{i}"
         for i in range(1, max_pages + 1)
     ]
-
-    manager = PlaywrightManager(headless=True)
-    await manager.start_browser(stealth_on=True)
+    
+    internal_browser = False
+        
+    if page == None:
+        manager = PlaywrightManager(headless=True)
+        page = await manager.start_browser(stealth_on=True)
+        internal_browser = True
 
     seen = set()
 
@@ -196,7 +200,8 @@ async def scrape_hotfrog(
                     seen.add(key)
                     yield item
     finally:
-        await manager.close()
+        if internal_browser:
+            await manager.stop_browser()
 
 # if __name__ == "__main__":
 #     search_term = "gun stores"
