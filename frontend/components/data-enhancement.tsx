@@ -381,17 +381,6 @@ const [loading, setLoading] = useState(false)
               </Button>
             </div>
           </div>
-          <div className="flex justify-end pt-4">
-            <Button
-              onClick={() => downloadCSV(filteredLeads, "enriched_results.csv")}
-              disabled={filteredLeads.length === 0}
-              variant="outline"
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
