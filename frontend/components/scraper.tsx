@@ -17,13 +17,17 @@ export function Scraper() {
   const [progress, setProgress] = useState(0)
   const [showResults, setShowResults] = useState(false)
 
-  // Search criteria state
   const [industry, setIndustry] = useState("")
   const [location, setLocation] = useState("")
   const [scrapedResults, setScrapedResults] = useState<any[]>([])
+
+  const [offset, setOffset] = useState(0)
+  const limit = 100 // You can make this dynamic with a dropdown too
+  const [total, setTotal] = useState(0)
+
   const controllerRef = useRef<AbortController | null>(null)
 
-  const handleStartScraping = async () => {
+  const handleStartScraping = async (newOffset = 0) => {
     setIsScrapingActive(true)
     setProgress(0)
     setShowResults(false)
@@ -32,15 +36,17 @@ export function Scraper() {
     controllerRef.current = controller
 
     try {
+      const url = `${SCRAPER_API}?offset=${newOffset}&limit=${limit}`
       const response = await axios.post(
-        SCRAPER_API,
+        url,
         { industry, location },
         { signal: controller.signal }
       )
 
-      const data = response.data
-      console.log("Scraped Results:", data)
-      setScrapedResults(data)
+      const { results, total: totalCount } = response.data
+      setScrapedResults(results)
+      setTotal(totalCount)
+      setOffset(newOffset)
       setShowResults(true)
     } catch (error: any) {
       if (axios.isCancel(error)) {
@@ -52,6 +58,18 @@ export function Scraper() {
       setIsScrapingActive(false)
       setProgress(100)
       controllerRef.current = null
+    }
+  }
+
+  const handlePrev = () => {
+    if (offset >= limit) {
+      handleStartScraping(offset - limit)
+    }
+  }
+
+  const handleNext = () => {
+    if (offset + limit < total) {
+      handleStartScraping(offset + limit)
     }
   }
 
@@ -96,7 +114,7 @@ export function Scraper() {
           <Button variant="outline">Clear</Button>
           <Button
             className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
-            onClick={handleStartScraping}
+            onClick={() => handleStartScraping()} // 👈 wrap in arrow function
             disabled={isScrapingActive || !industry || !location}
           >
             Find Companies

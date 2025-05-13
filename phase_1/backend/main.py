@@ -21,30 +21,33 @@ FIELDNAMES = [
     "Website"
 ]
 
-async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, str]]:
-    # Running parallel
+async def fetch_and_merge_data(industry: str, location: str, offset: int = 0, limit: int = 100) -> List[Dict[str, str]]:
+    # Run all scrapers concurrently
     bbb_data, google_maps_data, yp_data, hf_data = await asyncio.gather(
         scrape_bbb(industry, location),
         scrape_lead_by_industry(industry, location),
         scrape_yellowpages(industry, location, max_pages=5),
         scrape_hotfrog(industry, location, max_pages=5)
     )
-        
+
     print(f"Fetched: BBB={len(bbb_data)}, GMaps={len(google_maps_data)}, YP={len(yp_data)}, HF={len(hf_data)}")
 
-    # Merge data on name and address
+    # Merge and process the data
     merged_data = merge_data_sources(FIELDNAMES, bbb_data, google_maps_data, yp_data, hf_data)
-    
     df = pd.DataFrame(merged_data)
-
     parsed_data = parse_data(df, FIELDNAMES, location)
-    data = parsed_data.to_dict(orient='records')
-    # De duplify using fuzzy matching    
-    deduplified_data = deduplicate_businesses(data)
-    
+    records = parsed_data.to_dict(orient='records')
+
+    # Deduplicate
+    deduplified_data = deduplicate_businesses(records)
     print(f"Total entries after deduplication: {len(deduplified_data)}")
-    
-    return deduplified_data
+
+    # Apply pagination
+    paginated_data = deduplified_data[offset : offset + limit]
+    print(f"Returning {len(paginated_data)} records (offset {offset}, limit {limit})")
+
+    return paginated_data
+
 
 async def fetch_and_merge_seq(industry: str, location: str) -> List[Dict[str,str]]:
     bbb_data = []
