@@ -14,7 +14,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -129,6 +128,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .venv
 env/
 venv/
@@ -174,17 +174,11 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Environment variables
-.env
-.venv
-venv/
-ENV/
+.streamlit/secrets.toml
+*.csv
+*.xlsx
 
-# IDE
-.idea/
+node_modules/
+
 .vscode/
-*.swp
-*.swo
 
-# Logs
-*.log
