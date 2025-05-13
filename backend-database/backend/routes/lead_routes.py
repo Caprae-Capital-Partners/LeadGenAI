@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from utils.decorators import role_required
 import csv
 from io import StringIO, BytesIO
+import logging
 import datetime
 import pandas as pd
 import io
@@ -94,13 +95,13 @@ def upload_csv():
 def view_leads():
     """View all leads - All roles can access"""
     leads = LeadController.get_all_leads()
-    
+
     # Get unique values for filters
     companies = sorted(set(lead.company for lead in leads if lead.company))
     locations = sorted(set(f"{lead.city}, {lead.state}" if lead.city and lead.state else (lead.city or lead.state) for lead in leads if (lead.city or lead.state)))
     roles = sorted(set(lead.owner_title for lead in leads if lead.owner_title))
     statuses = sorted(set(lead.status for lead in leads if lead.status))
-    
+
     # Get additional filter options
     industries = sorted(set(lead.industry for lead in leads if lead.industry))
     business_types = sorted(set(lead.business_type for lead in leads if lead.business_type))
@@ -108,8 +109,8 @@ def view_leads():
     employee_sizes = sorted(set(lead.employees for lead in leads if lead.employees))
     revenue_ranges = sorted(set(lead.revenue for lead in leads if lead.revenue))
     sources = sorted(set(lead.source for lead in leads if lead.source))
-    
-    return render_template('leads.html', 
+
+    return render_template('leads.html',
                          leads=leads,
                          companies=companies,
                          locations=locations,
@@ -196,7 +197,7 @@ def get_leads():
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    
+
     # Get search and filter parameters
     search_term = request.args.get('search', '')
     company = request.args.get('company', '')
@@ -204,10 +205,10 @@ def get_leads():
     source = request.args.get('source', '')
     industry = request.args.get('industry', '')
     location = request.args.get('location', '')
-    
+
     # Build query with filters
     query = Lead.query.filter(Lead.deleted == False)
-    
+
     if search_term:
         query = query.filter(
             db.or_(
@@ -216,27 +217,27 @@ def get_leads():
                 Lead.owner_email.ilike(f'%{search_term}%')
             )
         )
-    
+
     if company:
         query = query.filter(Lead.company.ilike(f'%{company}%'))
-    
+
     if status:
         query = query.filter(Lead.status == status)
-    
+
     if source:
         query = query.filter(Lead.source == source)
-    
+
     if industry:
         query = query.filter(Lead.industry.ilike(f'%{industry}%'))
-    
+
     if location:
         query = query.filter(
             (Lead.city.ilike(f'%{location}%')) | (Lead.state.ilike(f'%{location}%'))
         )
-    
+
     # Execute paginated query
     paginated_leads = query.order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
-    
+
     # Format results
     results = {
         "total": paginated_leads.total,
@@ -245,7 +246,7 @@ def get_leads():
         "per_page": per_page,
         "leads": [lead.to_dict() for lead in paginated_leads.items]
     }
-    
+
     return jsonify(results)
 
 @lead_bp.route('/api/leads', methods=['POST'])
@@ -255,7 +256,7 @@ def create_lead():
     """Create a new lead via API - Admin and Developer only"""
     data = request.json
     lead = Lead(**data)
-    
+
     try:
         db.session.add(lead)
         db.session.commit()
@@ -271,7 +272,7 @@ def update_lead_api(lead_id):
     """Update a lead via API - Admin and Developer only"""
     lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
     data = request.json
-    
+
     try:
         for key, value in data.items():
             setattr(lead, key, value)
@@ -287,10 +288,10 @@ def update_status_api(lead_id):
     """Update a lead's status via API - All roles can update status"""
     lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
     data = request.json
-    
+
     if 'status' not in data:
         return jsonify({"error": "Status field is required"}), 400
-    
+
     try:
         lead.status = data['status']
         db.session.commit()
@@ -307,7 +308,7 @@ def export_leads():
     file_format = request.form.get('file_format', 'csv', 'excel')
     export_type = request.form.get('export_type', 'selected')
     print('DEBUG EXPORT file_format:', file_format)
-    
+
     # Get filter parameters if exporting filtered data
     filter_params = None
     if export_type == 'filtered':
@@ -321,23 +322,23 @@ def export_leads():
         }
         # Remove empty filters
         filter_params = {k: v for k, v in filter_params.items() if v}
-    
+
     # Check if we're exporting selected leads and if any are selected
     if export_type == 'selected' and not selected_leads:
         flash('Please select at least one lead to export', 'danger')
         return redirect(url_for('lead.view_leads'))
-    
+
     try:
         # Pass either lead_ids or filter_params based on export type
         if export_type == 'selected':
             output, filename, mimetype = ExportController.export_leads_to_file(selected_leads, file_format)
         else:  # filtered
             output, filename, mimetype = ExportController.export_leads_to_file(None, file_format, filter_params)
-        
+
         if output is None:
             flash('No leads found to export', 'danger')
             return redirect(url_for('lead.view_leads'))
-            
+
         return send_file(
             output,
             mimetype=mimetype,
@@ -354,46 +355,46 @@ def api_upload_leads():
     """API endpoint to upload multiple leads"""
     try:
         data = request.get_json()
-        
+
         if not data or not isinstance(data, list) or len(data) == 0:
             return jsonify({"status": "error", "message": "Invalid data format. Expected a list of leads"}), 400
-        
+
         # Initial validation - only require company field
         required_fields = ['company']
         valid_leads = []
         invalid_indices = []
-        
+
         # Pre-validate all leads at once
         for i, lead in enumerate(data):
             # Check if data uses old 'email' field format and convert to owner_email
             if 'email' in lead and 'owner_email' not in lead:
                 lead['owner_email'] = lead.pop('email')
-                
+
             if all(field in lead for field in required_fields):
                 # Clean fields if present
                 if 'owner_email' in lead:
                     lead['owner_email'] = UploadController.clean_email(lead.get('owner_email', ''))
                 else:
                     lead['owner_email'] = ''
-                    
+
                 if 'phone' in lead:
                     lead['phone'] = UploadController.clean_phone(lead.get('phone', ''))
                 else:
                     lead['phone'] = ''
-                    
+
                 if 'website' in lead:
                     lead['website'] = UploadController.clean_website(lead.get('website', ''))
                 else:
                     lead['website'] = ''
-                    
+
                 lead['company'] = UploadController.clean_company(lead['company'])
-                
+
                 # Company validation only
                 if UploadController.is_valid_company(lead['company']):
                     # Set default values for required fields
                     if 'search_keyword' not in lead:
                         lead['search_keyword'] = {}  # Empty JSON object as default
-                        
+
                     # Truncate fields to match database limitations
                     if hasattr(Lead, 'truncate_fields'):
                         lead = Lead.truncate_fields(lead)
@@ -402,12 +403,12 @@ def api_upload_leads():
                     invalid_indices.append(i)
             else:
                 invalid_indices.append(i)
-                
+
         # Process all valid leads using add_or_update_lead_by_match
         added = 0
         skipped = 0
         errors = 0
-        
+
         for lead_data in valid_leads:
             try:
                 success, message = LeadController.add_or_update_lead_by_match(lead_data)
@@ -421,7 +422,7 @@ def api_upload_leads():
             except Exception as e:
                 errors += 1
                 print(f"Error processing lead: {str(e)}")
-        
+
         return jsonify({
             "status": "success",
             "message": f"Upload Complete! Added: {added}, Skipped: {skipped}, Errors: {errors}",
@@ -432,7 +433,7 @@ def api_upload_leads():
                 "invalid_indices": invalid_indices[:10] if invalid_indices else []
             }
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({
@@ -473,13 +474,13 @@ def get_sources():
     try:
         # Query all distinct sources from the leads table
         sources = db.session.query(Lead.source).filter(
-            Lead.source.isnot(None), 
+            Lead.source.isnot(None),
             Lead.source != ''
         ).distinct().all()
-        
+
         # Extract the source strings from the query result
         source_list = [source[0] for source in sources]
-        
+
         return jsonify({
             "total": len(source_list),
             "sources": sorted(source_list)
@@ -494,40 +495,40 @@ def add_source():
     """Add a new source - Admin and Developer only"""
     try:
         data = request.json
-        
+
         if not data or 'name' not in data:
             return jsonify({"error": "Source name is required"}), 400
-            
+
         source_name = data['name'].strip()
-        
+
         if not source_name:
             return jsonify({"error": "Source name cannot be empty"}), 400
-            
+
         # Check if source already exists
         existing_sources = db.session.query(Lead.source).filter(
             Lead.source == source_name
         ).first()
-        
+
         if existing_sources:
             return jsonify({"error": "Source already exists"}), 400
-            
+
         # Create a dummy lead with just the source to add it to the system
         # This is a simple way to add a source without creating a separate table
         # In a production system, you might want a dedicated sources table
         dummy_lead = Lead(
-            company="Source Definition", 
+            company="Source Definition",
             source=source_name,
             status="Source Definition"
         )
-        
+
         db.session.add(dummy_lead)
         db.session.commit()
-        
+
         return jsonify({
             "message": "Source added successfully",
             "source": source_name
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -541,7 +542,7 @@ def get_stats_summary():
         # Get time range parameters (defaults to last 30 days)
         days = request.args.get('days', 30, type=int)
         start_date = datetime.datetime.now() - datetime.timedelta(days=days)
-        
+
         # Get leads count by date
         date_query = db.session.query(
             db.func.date(Lead.created_at).label('date'),
@@ -552,7 +553,7 @@ def get_stats_summary():
         ).group_by(
             db.func.date(Lead.created_at)
         ).all()
-        
+
         # Get leads count by source
         source_query = db.session.query(
             Lead.source,
@@ -564,7 +565,7 @@ def get_stats_summary():
         ).group_by(
             Lead.source
         ).all()
-        
+
         # Get leads count by status
         status_query = db.session.query(
             Lead.status,
@@ -576,22 +577,22 @@ def get_stats_summary():
         ).group_by(
             Lead.status
         ).all()
-        
+
         # Format results
         date_stats = {str(date): count for date, count in date_query}
         source_stats = {source: count for source, count in source_query}
         status_stats = {status: count for status, count in status_query}
-        
+
         # Get total lead count
         total_leads = db.session.query(Lead).filter(Lead.deleted == False).count()
-        
+
         return jsonify({
             "total_leads": total_leads,
             "by_date": date_stats,
             "by_source": source_stats,
             "by_status": status_stats
         })
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -603,7 +604,7 @@ def get_top_sources():
         # Get time range parameters (defaults to all time)
         days = request.args.get('days', None, type=int)
         limit = request.args.get('limit', 5, type=int)
-        
+
         # Build query
         query = db.session.query(
             Lead.source,
@@ -613,29 +614,29 @@ def get_top_sources():
             Lead.source.isnot(None),
             Lead.source != ''
         )
-        
+
         # Add date filter if specified
         if days:
             start_date = datetime.datetime.now() - datetime.timedelta(days=days)
             query = query.filter(Lead.created_at >= start_date)
-        
+
         # Complete query with group by and order
         results = query.group_by(
             Lead.source
         ).order_by(
             db.func.count(Lead.lead_id).desc()
         ).limit(limit).all()
-        
+
         # Format results
         top_sources = [
             {"source": source, "count": count}
             for source, count in results
         ]
-        
+
         return jsonify({
             "top_sources": top_sources
         })
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -675,3 +676,14 @@ def permanent_delete_lead(lead_id):
         import traceback
         print(traceback.format_exc())
         return jsonify({'success': False, 'message': f'Error permanently deleting lead: {str(e)}'}), 500
+
+
+@lead_bp.route('/api/lead_scrape', methods=['POST'])
+def api_search_leads():
+    data = request.get_json()
+    # logging.debug(f"[IN] /api/search_leads data: {data}")
+    industry = data.get("industry", "")
+    location = data.get("location", "")
+    results = LeadController.search_leads_by_industry_location(industry, location)
+    # logging.debug(f"[OUT] /api/search_leads results: {results}")
+    return jsonify(results)
