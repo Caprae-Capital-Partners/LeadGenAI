@@ -32,6 +32,12 @@ async def fetch_and_merge_data(industry: str, location: str, offset: int = 0, li
         scrape_hotfrog(industry, location, max_pages=5)
     )
 
+    # ✅ Ensure all are lists, even if the scraper failed and returned None
+    bbb_data = bbb_data or []
+    google_maps_data = google_maps_data or []
+    yp_data = yp_data or []
+    hf_data = hf_data or []
+
     print(f"Fetched: BBB={len(bbb_data)}, GMaps={len(google_maps_data)}, YP={len(yp_data)}, HF={len(hf_data)}")
 
     # Merge and process the data
