@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, Filter, Download } from "lucide-react"
+import { useLeads } from "./LeadsProvider"
 import type { ApolloCompany, GrowjoCompany, ApolloPerson } from "@/types/enrichment"
 import axios from "axios"
 
@@ -15,8 +16,9 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!
 
 export function DataEnhancement() {
   const [showResults, setShowResults] = useState(false)
+  const { leads } = useLeads()
   const [enrichedResults, setEnrichedResults] = useState<any[]>([])
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
+  const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
   const [selectAll, setSelectAll] = useState(false)
 
   const companies = [
@@ -76,25 +78,23 @@ export function DataEnhancement() {
     bbbRating: "A",
   },
 ]
-
-
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedCompanies([])
     } else {
-      setSelectedCompanies(companies.map((company) => company.id))
+      setSelectedCompanies(leads.map((company) => company.id))
     }
     setSelectAll(!selectAll)
   }
 
-  const handleSelectCompany = (id: string) => {
+  const handleSelectCompany = (id: number) => {
     if (selectedCompanies.includes(id)) {
       setSelectedCompanies(selectedCompanies.filter((companyId) => companyId !== id))
       setSelectAll(false)
     } else {
       const updated = [...selectedCompanies, id]
       setSelectedCompanies(updated)
-      if (updated.length === companies.length) {
+      if (updated.length === leads.length) {
         setSelectAll(true)
       }
     }
@@ -290,16 +290,16 @@ const [loading, setLoading] = useState(false)
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {companies.map((company) => (
+                  {leads.map((company) => (
                     <TableRow key={company.id}>
                       <TableCell>
                         <Checkbox
                           checked={selectedCompanies.includes(company.id)}
                           onCheckedChange={() => handleSelectCompany(company.id)}
-                          aria-label={`Select ${company.name}`}
+                          aria-label={`Select ${company.company}`}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{company.name}</TableCell>
+                      <TableCell className="font-medium">{company.company}</TableCell>
                       <TableCell>{company.website}</TableCell>
                       <TableCell>{company.industry}</TableCell>
                       <TableCell>{company.street}</TableCell>
@@ -315,7 +315,7 @@ const [loading, setLoading] = useState(false)
 
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
-                {selectedCompanies.length} of {companies.length} selected
+                {selectedCompanies.length} of {leads.length} selected
               </p>
               <Button onClick={handleStartEnrichment} disabled={selectedCompanies.length === 0 || loading}>
                 {loading ? "Enriching..." : "Start Enrichment"}

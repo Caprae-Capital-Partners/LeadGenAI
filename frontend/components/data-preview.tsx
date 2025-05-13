@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Search, Filter } from "lucide-react"
+import { useLeads } from "./LeadsProvider"
 
 // Mock data for demonstration - this would come from the scraper results in a real app
 const mockData = [
@@ -67,14 +68,15 @@ const mockData = [
 ]
 
 export function DataPreview() {
-  const [selectedRows, setSelectedRows] = useState<number[]>(mockData.map((row) => row.id))
+  const { leads } = useLeads()
+  const [selectedRows, setSelectedRows] = useState<number[]>(leads.map((row) => row.id))
   const [searchTerm, setSearchTerm] = useState("")
 
   const toggleSelectAll = () => {
-    if (selectedRows.length === mockData.length) {
+    if (selectedRows.length === leads.length) {
       setSelectedRows([])
     } else {
-      setSelectedRows(mockData.map((row) => row.id))
+      setSelectedRows(leads.map((row) => row.id))
     }
   }
 
@@ -86,7 +88,7 @@ export function DataPreview() {
     }
   }
 
-  const filteredData = mockData.filter(
+  const filteredData = leads.filter(
     (row) =>
       row.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
       row.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,7 +123,7 @@ export function DataPreview() {
             <TableRow>
               <TableHead className="w-12">
                 <Checkbox
-                  checked={selectedRows.length === mockData.length && mockData.length > 0}
+                  checked={selectedRows.length === leads.length && leads.length > 0}
                   onCheckedChange={toggleSelectAll}
                 />
               </TableHead>
@@ -160,12 +162,12 @@ export function DataPreview() {
 
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          {selectedRows.length} of {mockData.length} companies selected for enrichment
+          {selectedRows.length} of {leads.length} companies selected for enrichment
         </div>
         <Button
           variant="outline"
-          onClick={() => setSelectedRows(mockData.map((row) => row.id))}
-          disabled={selectedRows.length === mockData.length}
+          onClick={() => setSelectedRows(leads.map((row) => row.id))}
+          disabled={selectedRows.length === leads.length}
         >
           Select All
         </Button>
