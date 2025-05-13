@@ -1,9 +1,10 @@
 import asyncio
 from typing import List, Dict
 import pandas as pd
+import sys
 
 # import sys
-# sys.path.append("backend")
+sys.path.append("backend")
 from backend.services.Fuzzymatching import deduplicate_businesses
 from backend.services.yellowpages_scraper import scrape_yellowpages
 from backend.services.bbb_scraper import scrape_bbb
