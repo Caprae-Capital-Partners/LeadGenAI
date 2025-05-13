@@ -1,296 +1,254 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Search, Download, ArrowLeft, X } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import type { FC } from "react"
+import { Search, Download, ArrowLeft, Filter, X } from "lucide-react"
 
-export function EnrichmentResults() {
+interface EnrichedCompany {
+  id: string
+  company: string
+  website: string
+  industry: string
+  productCategory: string
+  businessType: string
+  employees: number | null
+  revenue: number | null
+  yearFounded: string
+  bbbRating: string
+  street: string
+  city: string
+  state: string
+  companyPhone: string
+  companyLinkedin: string
+  ownerFirstName: string
+  ownerLastName: string
+  ownerTitle: string
+  ownerLinkedin: string
+  ownerPhoneNumber: string
+  ownerEmail: string
+  source: string
+}
+
+interface EnrichmentResultsProps {
+  enrichedCompanies: EnrichedCompany[]
+}
+
+export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanies }) => {
   const router = useRouter()
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>(["1", "2", "3", "4", "5"])
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
   const [selectAll, setSelectAll] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [employeesFilter, setEmployeesFilter] = useState("")
   const [revenueFilter, setRevenueFilter] = useState("")
-  const [filteredCompanies, setFilteredCompanies] = useState<any[]>([])
-
-  const enrichedCompanies = [
-    {
-      id: "1",
-      company: "Acme Inc",
-      website: "acme.com",
-      industry: "Software & Technology",
-      product: "Enterprise Software",
-      businessType: "B2B",
-      employees: 120,
-      employeesDisplay: "120 employees",
-      revenue: 25000000,
-      revenueDisplay: "$25.0M",
-      founded: "2010",
-      address: "123 Tech Blvd, San Francisco, CA",
-      rating: "A+",
-      contactName: "John Smith",
-      title: "CTO",
-      email: "john@acme.com",
-      phone: "+1 (555) 123-4567",
-      linkedin: "linkedin.com/in/johnsmith",
-    },
-    {
-      id: "2",
-      company: "TechCorp",
-      website: "techcorp.io",
-      industry: "Software & Technology",
-      product: "SaaS Platform",
-      businessType: "B2B",
-      employees: 45,
-      employeesDisplay: "45 employees",
-      revenue: 5000000,
-      revenueDisplay: "$5.0M",
-      founded: "2018",
-      address: "456 Innovation Way, Austin, TX",
-      rating: "A",
-      contactName: "Sarah Johnson",
-      title: "CEO",
-      email: "sarah@techcorp.io",
-      phone: "+1 (555) 987-6543",
-      linkedin: "linkedin.com/in/sarahjohnson",
-    },
-    {
-      id: "3",
-      company: "DataSystems",
-      website: "datasystems.co",
-      industry: "Software & Technology",
-      product: "Data Analytics",
-      businessType: "B2B2C",
-      employees: 320,
-      employeesDisplay: "320 employees",
-      revenue: 75000000,
-      revenueDisplay: "$75.0M",
-      founded: "2005",
-      address: "789 Data Drive, New York, NY",
-      rating: "A+",
-      contactName: "Michael Chen",
-      title: "CIO",
-      email: "michael@datasystems.co",
-      phone: "+1 (555) 456-7890",
-      linkedin: "linkedin.com/in/michaelchen",
-    },
-    {
-      id: "4",
-      company: "CloudWorks",
-      website: "cloudworks.net",
-      industry: "Software & Technology",
-      product: "Cloud Infrastructure",
-      businessType: "B2B",
-      employees: 150,
-      employeesDisplay: "150 employees",
-      revenue: 30000000,
-      revenueDisplay: "$30.0M",
-      founded: "2012",
-      address: "321 Cloud Ave, Seattle, WA",
-      rating: "B+",
-      contactName: "Emily Davis",
-      title: "VP of Sales",
-      email: "emily@cloudworks.net",
-      phone: "+1 (555) 234-5678",
-      linkedin: "linkedin.com/in/emilydavis",
-    },
-    {
-      id: "5",
-      company: "AI Solutions",
-      website: "aisolutions.ai",
-      industry: "Software & Technology",
-      product: "Artificial Intelligence",
-      businessType: "B2B",
-      employees: 35,
-      employeesDisplay: "35 employees",
-      revenue: 3000000,
-      revenueDisplay: "$3.0M",
-      founded: "2020",
-      address: "555 AI Parkway, Boston, MA",
-      rating: "A-",
-      contactName: "David Wilson",
-      title: "Founder",
-      email: "david@aisolutions.ai",
-      phone: "+1 (555) 876-5432",
-      linkedin: "linkedin.com/in/davidwilson",
-    },
+  const [businessTypeFilter, setBusinessTypeFilter] = useState("")
+  const [productFilter, setProductFilter] = useState("")
+  const [yearFoundedFilter, setYearFoundedFilter] = useState("")
+  const [bbbRatingFilter, setBbbRatingFilter] = useState("")
+  const [streetFilter, setStreetFilter] = useState("")
+  const [cityFilter, setCityFilter] = useState("")
+  const [stateFilter, setStateFilter] = useState("")
+  const [sourceFilter, setSourceFilter] = useState("")
+  const [filteredCompanies, setFilteredCompanies] = useState<EnrichedCompany[]>([])
+  const [showFilters, setShowFilters] = useState(false)
+  const downloadCSV = (data: any[], filename: string) => {
+  const headers = Object.keys(data[0])
+  const csvRows = [
+    headers.join(","), // header row
+    ...data.map(row =>
+      headers.map(field => `"${(row[field] ?? "").toString().replace(/"/g, '""')}"`).join(",")
+    ),
   ]
+  const csvContent = csvRows.join("\n")
+  const blob = new Blob([csvContent], { type: "text/csv" })
+  const url = URL.createObjectURL(blob)
 
-  // Parse revenue string to number
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+
   const parseRevenue = (revenueStr: string): number | null => {
-    revenueStr = revenueStr.toLowerCase().trim()
-
-    // Remove $ and commas
-    revenueStr = revenueStr.replace(/[$,]/g, "")
-
-    // Handle K, M, B suffixes
+    revenueStr = revenueStr.toLowerCase().trim().replace(/[$,]/g, "")
     let multiplier = 1
-    if (revenueStr.endsWith("k")) {
-      multiplier = 1000
-      revenueStr = revenueStr.slice(0, -1)
-    } else if (revenueStr.endsWith("m")) {
-      multiplier = 1000000
-      revenueStr = revenueStr.slice(0, -1)
-    } else if (revenueStr.endsWith("b")) {
-      multiplier = 1000000000
-      revenueStr = revenueStr.slice(0, -1)
-    }
-
-    const value = Number.parseFloat(revenueStr)
+    if (revenueStr.endsWith("k")) multiplier = 1_000, revenueStr = revenueStr.slice(0, -1)
+    else if (revenueStr.endsWith("m")) multiplier = 1_000_000, revenueStr = revenueStr.slice(0, -1)
+    else if (revenueStr.endsWith("b")) multiplier = 1_000_000_000, revenueStr = revenueStr.slice(0, -1)
+    const value = parseFloat(revenueStr)
     return isNaN(value) ? null : value * multiplier
   }
 
-  // Parse filter string to get operation and value
-  const parseFilter = (  filterStr: string,  isRevenue = false): { operation: string; value: number | null; upper?: number | null } => 
-    {
-      filterStr = filterStr.toLowerCase().trim()
-
-      const result = {
-        operation: "exact",
-        value: null as number | null,
-        upper: null as number | null,
-      }
-
-      // Handle range: e.g., "100 - 400"
-      const rangeMatch = filterStr.match(/^(\d+(?:[kmb]?)?)\s*-\s*(\d+(?:[kmb]?)?)$/)
-      if (rangeMatch) {
-        const val1 = isRevenue ? parseRevenue(rangeMatch[1]) : parseInt(rangeMatch[1])
-        const val2 = isRevenue ? parseRevenue(rangeMatch[2]) : parseInt(rangeMatch[2])
-        result.operation = "between"
-        result.value = val1 ?? null
-        result.upper = val2 ?? null
-        return result
-      }
-
-      // Greater than or equal
-      if (filterStr.startsWith(">=")) {
-        result.operation = "greater than or equal"
-        filterStr = filterStr.slice(2).trim()
-      }
-      // Greater than
-      else if (filterStr.startsWith(">")) {
-        result.operation = "greater than"
-        filterStr = filterStr.slice(1).trim()
-      }
-      // Less than or equal
-      else if (filterStr.startsWith("<=")) {
-        result.operation = "less than or equal"
-        filterStr = filterStr.slice(2).trim()
-      }
-      // Less than
-      else if (filterStr.startsWith("<")) {
-        result.operation = "less than"
-        filterStr = filterStr.slice(1).trim()
-      }
-
-      // Parse value
-      if (isRevenue) {
-        result.value = parseRevenue(filterStr)
-      } else {
-        result.value = parseInt(filterStr)
-      }
-
-      return result
+  const parseFilter = (filterStr: string, isRevenue = false) => {
+    const result = { operation: "exact", value: null as number | null, upper: null as number | null }
+    filterStr = filterStr.toLowerCase().trim()
+    const rangeMatch = filterStr.match(/^(\d+(?:[kmb]?)?)\s*-\s*(\d+(?:[kmb]?)?)$/)
+    if (rangeMatch) {
+      const val1 = isRevenue ? parseRevenue(rangeMatch[1]) : parseInt(rangeMatch[1])
+      const val2 = isRevenue ? parseRevenue(rangeMatch[2]) : parseInt(rangeMatch[2])
+      return { operation: "between", value: val1, upper: val2 }
     }
+    if (filterStr.startsWith(">=")) result.operation = "greater than or equal", filterStr = filterStr.slice(2)
+    else if (filterStr.startsWith(">")) result.operation = "greater than", filterStr = filterStr.slice(1)
+    else if (filterStr.startsWith("<=")) result.operation = "less than or equal", filterStr = filterStr.slice(2)
+    else if (filterStr.startsWith("<")) result.operation = "less than", filterStr = filterStr.slice(1)
+    result.value = isRevenue ? parseRevenue(filterStr) : parseInt(filterStr)
+    return result
+  }
 
-
-  // Apply filters to the data
   useEffect(() => {
     let filtered = [...enrichedCompanies]
 
-    // Apply search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       filtered = filtered.filter(
         (company) =>
-          company.company.toLowerCase().includes(term) ||
-          company.website.toLowerCase().includes(term) ||
-          company.industry.toLowerCase().includes(term) ||
-          company.product.toLowerCase().includes(term) ||
-          company.contactName.toLowerCase().includes(term),
+          company.company?.toLowerCase().includes(term) ||
+          company.website?.toLowerCase().includes(term) ||
+          company.industry?.toLowerCase().includes(term) ||
+          company.productCategory?.toLowerCase().includes(term) ||
+          `${company.ownerFirstName ?? ""} ${company.ownerLastName ?? ""}`.toLowerCase().includes(term)
       )
     }
 
-    // Apply employees filter
     if (employeesFilter) {
       const { operation, value, upper } = parseFilter(employeesFilter)
       if (value !== null) {
         filtered = filtered.filter((company) => {
-          if (operation === "exact") return company.employees === value
-          if (operation === "less than") return company.employees < value
-          if (operation === "less than or equal") return company.employees <= value
-          if (operation === "greater than") return company.employees > value
-          if (operation === "greater than or equal") return company.employees >= value
-          if (operation === "between") return company.employees >= value && company.employees <= (upper ?? value)
+          const val = company.employees ?? 0
+          if (operation === "exact") return val === value
+          if (operation === "less than") return val < value
+          if (operation === "less than or equal") return val <= value
+          if (operation === "greater than") return val > value
+          if (operation === "greater than or equal") return val >= value
+          if (operation === "between") return val >= value && val <= (upper ?? value)
           return true
         })
       }
     }
 
-
-    // Apply revenue filter
     if (revenueFilter) {
       const { operation, value, upper } = parseFilter(revenueFilter, true)
       if (value !== null) {
         filtered = filtered.filter((company) => {
-          if (operation === "exact") return company.revenue === value
-          if (operation === "less than") return company.revenue < value
-          if (operation === "less than or equal") return company.revenue <= value
-          if (operation === "greater than") return company.revenue > value
-          if (operation === "greater than or equal") return company.revenue >= value
-          if (operation === "between") return company.revenue >= value && company.revenue <= (upper ?? value)
+          const val = company.revenue ?? 0
+          if (operation === "exact") return val === value
+          if (operation === "less than") return val < value
+          if (operation === "less than or equal") return val <= value
+          if (operation === "greater than") return val > value
+          if (operation === "greater than or equal") return val >= value
+          if (operation === "between") return val >= value && val <= (upper ?? value)
           return true
         })
       }
     }
 
+    if (businessTypeFilter) {
+      filtered = filtered.filter((c) => c.businessType.toLowerCase().includes(businessTypeFilter.toLowerCase()))
+    }
+    if (productFilter) {
+      filtered = filtered.filter((company) =>
+        company.productCategory?.toLowerCase().includes(productFilter.toLowerCase())
+      )
+    }
+
+    if (yearFoundedFilter) {
+      filtered = filtered.filter((company) =>
+        company.yearFounded?.toLowerCase().includes(yearFoundedFilter.toLowerCase())
+      )
+    }
+
+    if (bbbRatingFilter) {
+      filtered = filtered.filter((company) =>
+        company.bbbRating?.toLowerCase().includes(bbbRatingFilter.toLowerCase())
+      )
+    }
+
+    if (streetFilter) {
+      filtered = filtered.filter((company) =>
+        company.street?.toLowerCase().includes(streetFilter.toLowerCase())
+      )
+    }
+
+    if (cityFilter) {
+      filtered = filtered.filter((company) =>
+        company.city?.toLowerCase().includes(cityFilter.toLowerCase())
+      )
+    }
+
+    if (stateFilter) {
+      filtered = filtered.filter((company) =>
+        company.state?.toLowerCase().includes(stateFilter.toLowerCase())
+      )
+    }
+
+    if (sourceFilter) {
+      filtered = filtered.filter((company) =>
+        company.source?.toLowerCase().includes(sourceFilter.toLowerCase())
+      )
+    }
+
 
     setFilteredCompanies(filtered)
-  }, [searchTerm, employeesFilter, revenueFilter])
+    }, [
+      searchTerm,
+      employeesFilter,
+      revenueFilter,
+      businessTypeFilter,
+      productFilter,
+      yearFoundedFilter,
+      bbbRatingFilter,
+      streetFilter,
+      cityFilter,
+      stateFilter,
+      sourceFilter,
+      enrichedCompanies
+    ])
 
-  // Initialize filtered companies
   useEffect(() => {
     setFilteredCompanies(enrichedCompanies)
-  }, [])
+    setSelectedCompanies(enrichedCompanies.map((c) => c.id))
+  }, [enrichedCompanies])
 
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedCompanies([])
     } else {
-      setSelectedCompanies(filteredCompanies.map((company) => company.id))
+      setSelectedCompanies(filteredCompanies.map((c) => c.id))
     }
     setSelectAll(!selectAll)
   }
 
   const handleSelectCompany = (id: string) => {
     if (selectedCompanies.includes(id)) {
-      setSelectedCompanies(selectedCompanies.filter((companyId) => companyId !== id))
+      setSelectedCompanies(selectedCompanies.filter((cid) => cid !== id))
       setSelectAll(false)
     } else {
-      setSelectedCompanies([...selectedCompanies, id])
-      if (selectedCompanies.length + 1 === filteredCompanies.length) {
+      const updated = [...selectedCompanies, id]
+      setSelectedCompanies(updated)
+      if (updated.length === filteredCompanies.length) {
         setSelectAll(true)
       }
     }
   }
 
-  const handleBack = () => {
-    router.push("?tab=data-enhancement")
-    // Reload the page to reset the state
-    window.location.reload()
+  const clearFilter = (type: "search" | "employees" | "revenue" | "business") => {
+    if (type === "search") setSearchTerm("")
+    if (type === "employees") setEmployeesFilter("")
+    if (type === "revenue") setRevenueFilter("")
+    if (type === "business") setBusinessTypeFilter("")
   }
 
-  const clearFilter = (filterType: "search" | "employees" | "revenue") => {
-    if (filterType === "search") setSearchTerm("")
-    if (filterType === "employees") setEmployeesFilter("")
-    if (filterType === "revenue") setRevenueFilter("")
+  const handleBack = () => {
+    router.push("?tab=data-enhancement")
+    window.location.reload()
   }
 
   return (
@@ -313,140 +271,111 @@ export function EnrichmentResults() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search results..."
-                  className="pl-8"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {searchTerm && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => clearFilter("search")}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="relative min-w-[200px]">
-                      <Input
-                        type="text"
-                        placeholder="Filter by employees..."
-                        value={employeesFilter}
-                        onChange={(e) => setEmployeesFilter(e.target.value)}
-                      />
-                      {employeesFilter && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3"
-                          onClick={() => clearFilter("employees")}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{'>100'} → greater than 100</p>
-                    <p>{'>=100'} → at least 100</p>
-                    <p>{'<100'} → less than 100</p>
-                    <p>{'<=100'} → at most 100</p>
-                    <p>{'100 - 400'} → between 100 and 400</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="relative min-w-[200px]">
-                      <Input
-                        type="text"
-                        placeholder="Filter by revenue..."
-                        value={revenueFilter}
-                        onChange={(e) => setRevenueFilter(e.target.value)}
-                      />
-                      {revenueFilter && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3"
-                          onClick={() => clearFilter("revenue")}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{'>100'} → greater than 100</p>
-                    <p>{'>=100'} → at least 100</p>
-                    <p>{'<100'} → less than 100</p>
-                    <p>{'<=100'} → at most 100</p>
-                    <p>{'100 - 400'} → between 100 and 400</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <Button variant="outline" size="sm" className="gap-1 ml-auto">
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Search companies, keywords, or contact"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-[240px]"
+              />
+              <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
+                <Filter className="h-4 w-4 mr-2" />
+                {showFilters ? "Hide Filters" : "Show Filters"}
+              </Button>
+              <Button
+                onClick={() => downloadCSV(filteredCompanies, "enriched_results.csv")}
+                disabled={filteredCompanies.length === 0}
+                variant="outline"
+                size="sm"
+                className="gap-1"
+              >
                 <Download className="h-4 w-4" />
-                Export
+                Export CSV
               </Button>
             </div>
 
-            {/* Active filters */}
-            {(searchTerm || employeesFilter || revenueFilter) && (
-              <div className="flex flex-wrap gap-2">
-                {searchTerm && (
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    Search: {searchTerm}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-4 w-4 p-0 ml-1"
-                      onClick={() => clearFilter("search")}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </Badge>
-                )}
-                {employeesFilter && (
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    Employees: {employeesFilter}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-4 w-4 p-0 ml-1"
-                      onClick={() => clearFilter("employees")}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </Badge>
-                )}
-                {revenueFilter && (
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    Revenue: {revenueFilter}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-4 w-4 p-0 ml-1"
-                      onClick={() => clearFilter("revenue")}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </Badge>
-                )}
+            {showFilters && (
+              <div className="flex flex-wrap gap-4 my-4">
+                <Input
+                  placeholder="Employees (e.g. >1000, 50-200)"
+                  value={employeesFilter}
+                  onChange={(e) => setEmployeesFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Revenue (e.g. >1M, 500K-2M)"
+                  value={revenueFilter}
+                  onChange={(e) => setRevenueFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Business Type (e.g. B2B)"
+                  value={businessTypeFilter}
+                  onChange={(e) => setBusinessTypeFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Product Category (e.g. SaaS)"
+                  value={productFilter}
+                  onChange={(e) => setProductFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Year Founded (e.g. 2015)"
+                  value={yearFoundedFilter}
+                  onChange={(e) => setYearFoundedFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="BBB Rating (e.g. A+)"
+                  value={bbbRatingFilter}
+                  onChange={(e) => setBbbRatingFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Street"
+                  value={streetFilter}
+                  onChange={(e) => setStreetFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="City"
+                  value={cityFilter}
+                  onChange={(e) => setCityFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="State"
+                  value={stateFilter}
+                  onChange={(e) => setStateFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Source (e.g. Growjo)"
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEmployeesFilter("")
+                    setRevenueFilter("")
+                    setBusinessTypeFilter("")
+                    setProductFilter("")
+                    setYearFoundedFilter("")
+                    setBbbRatingFilter("")
+                    setStreetFilter("")
+                    setCityFilter("")
+                    setStateFilter("")
+                    setSourceFilter("")
+                  }}
+
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
               </div>
             )}
 
@@ -455,27 +384,29 @@ export function EnrichmentResults() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">
-                      <Checkbox
-                        checked={selectAll && filteredCompanies.length > 0}
-                        onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
-                      />
+                      <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
                     </TableHead>
                     <TableHead>Company</TableHead>
                     <TableHead>Website</TableHead>
                     <TableHead>Industry</TableHead>
-                    <TableHead>Product/Service</TableHead>
-                    <TableHead>Business Type</TableHead>
-                    <TableHead>Employees</TableHead>
+                    <TableHead>Product/Service Category</TableHead>
+                    <TableHead>Business Type (B2B, B2B2C)</TableHead>
+                    <TableHead>Employees count</TableHead>
                     <TableHead>Revenue</TableHead>
-                    <TableHead>Founded</TableHead>
-                    <TableHead>Address</TableHead>
+                    <TableHead>Year Founded</TableHead>
                     <TableHead>BBB Rating</TableHead>
-                    <TableHead>Contact Name</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>LinkedIn</TableHead>
+                    <TableHead>Street</TableHead>
+                    <TableHead>City</TableHead>
+                    <TableHead>State</TableHead>
+                    <TableHead>Company Phone</TableHead>
+                    <TableHead>Company LinkedIn</TableHead>
+                    <TableHead>Owner's First Name</TableHead>
+                    <TableHead>Owner's Last Name</TableHead>
+                    <TableHead>Owner's Title</TableHead>
+                    <TableHead>Owner's LinkedIn</TableHead>
+                    <TableHead>Owner's Phone Number</TableHead>
+                    <TableHead>Owner's Email</TableHead>
+                    <TableHead>Source</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -486,42 +417,38 @@ export function EnrichmentResults() {
                           <Checkbox
                             checked={selectedCompanies.includes(company.id)}
                             onCheckedChange={() => handleSelectCompany(company.id)}
-                            aria-label={`Select ${company.company}`}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{company.company}</TableCell>
+                        <TableCell>{company.company}</TableCell>
                         <TableCell>{company.website}</TableCell>
                         <TableCell>{company.industry}</TableCell>
-                        <TableCell>{company.product}</TableCell>
+                        <TableCell>{company.productCategory}</TableCell>
                         <TableCell>{company.businessType}</TableCell>
-                        <TableCell>{company.employeesDisplay}</TableCell>
-                        <TableCell>{company.revenueDisplay}</TableCell>
-                        <TableCell>{company.founded}</TableCell>
-                        <TableCell>{company.address}</TableCell>
-                        <TableCell>{company.rating}</TableCell>
-                        <TableCell>{company.contactName}</TableCell>
-                        <TableCell>{company.title}</TableCell>
-                        <TableCell>{company.email}</TableCell>
-                        <TableCell>{company.phone}</TableCell>
-                        <TableCell>{company.linkedin}</TableCell>
+                        <TableCell>{company.employees ?? ""}</TableCell>
+                        <TableCell>{company.revenue ?? ""}</TableCell>
+                        <TableCell>{company.yearFounded}</TableCell>
+                        <TableCell>{company.bbbRating}</TableCell>
+                        <TableCell>{company.street}</TableCell>
+                        <TableCell>{company.city}</TableCell>
+                        <TableCell>{company.state}</TableCell>
+                        <TableCell>{company.companyPhone}</TableCell>
+                        <TableCell>{company.companyLinkedin}</TableCell>
+                        <TableCell>{company.ownerFirstName}</TableCell>
+                        <TableCell>{company.ownerLastName}</TableCell>
+                        <TableCell>{company.ownerTitle}</TableCell>
+                        <TableCell>{company.ownerLinkedin}</TableCell>
+                        <TableCell>{company.ownerPhoneNumber}</TableCell>
+                        <TableCell>{company.ownerEmail}</TableCell>
+                        <TableCell>{company.source}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={16} className="h-24 text-center">
-                        No results found. Try adjusting your filters.
-                      </TableCell>
+                      <TableCell colSpan={22} className="text-center">No results found.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
               </Table>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">
-                {selectedCompanies.filter((id) => filteredCompanies.some((company) => company.id === id)).length} of{" "}
-                {filteredCompanies.length} selected for export
-              </p>
             </div>
           </div>
         </CardContent>

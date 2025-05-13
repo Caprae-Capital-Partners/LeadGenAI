@@ -128,6 +128,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .venv
 env/
 venv/
@@ -176,4 +177,8 @@ cython_debug/
 .streamlit/secrets.toml
 *.csv
 *.xlsx
+
 node_modules/
+
+.vscode/
+

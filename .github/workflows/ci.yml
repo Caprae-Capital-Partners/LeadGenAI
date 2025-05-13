@@ -21,16 +21,16 @@ jobs:
 
       - name: 📦 Install Dependencies
         run: |
-          pip install -r DataEnhancement/backend/requirements.txt
-          pip install -r DataEnhancement/frontend/requirements.txt
+          pip install -r backend_phase2/requirements.txt
+          pip install -r phase_1/requirements.txt
           pip install flake8 black
 
       - name: ✨ Check Code Format with Black (Allow Failure)
         continue-on-error: true
         run: |
-          black --check DataEnhancement/
+          black --check backend_phase2/ phase_1/
 
       - name: ⚙️ Lint with flake8
         continue-on-error: true
         run: |
-          flake8 DataEnhancement/
+          flake8 backend_phase2/ phase_1/
