@@ -1,12 +1,16 @@
 "use client"
-import React from "react"
-import { useState } from "react"
-import { Button } from "../components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { Progress } from "../components/ui/progress"
-import { ScraperResults } from "../components/scraper-results"
+
+import { useState, useRef } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
+import { ScraperResults } from "@/components/scraper-results"
+import axios from "axios"
+
+const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/api/lead-scrape`;
+
 
 export function Scraper() {
   const [isScrapingActive, setIsScrapingActive] = useState(false)
@@ -16,25 +20,41 @@ export function Scraper() {
   // Search criteria state
   const [industry, setIndustry] = useState("")
   const [location, setLocation] = useState("")
+  const [scrapedResults, setScrapedResults] = useState<any[]>([])
+  const controllerRef = useRef<AbortController | null>(null)
 
-  const handleStartScraping = () => {
+  const handleStartScraping = async () => {
     setIsScrapingActive(true)
     setProgress(0)
     setShowResults(false)
 
-    // Simulate progress
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsScrapingActive(false)
-          setShowResults(true)
-          return 100
-        }
-        return prev + 10
-      })
-    }, 500)
+    const controller = new AbortController()
+    controllerRef.current = controller
+
+    try {
+      const response = await axios.post(
+        SCRAPER_API,
+        { industry, location },
+        { signal: controller.signal }
+      )
+
+      const data = response.data
+      console.log("Scraped Results:", data)
+      setScrapedResults(data)
+      setShowResults(true)
+    } catch (error: any) {
+      if (axios.isCancel(error)) {
+        console.warn("Scraping canceled")
+      } else {
+        console.error("Scraping failed:", error)
+      }
+    } finally {
+      setIsScrapingActive(false)
+      setProgress(100)
+      controllerRef.current = null
+    }
   }
+
 
   return (
     <div className="space-y-6">
@@ -81,7 +101,23 @@ export function Scraper() {
           >
             Find Companies
           </Button>
+           <Button
+            variant="destructive"
+            disabled={!isScrapingActive}
+            onClick={() => {
+              if (controllerRef.current) {
+                controllerRef.current.abort()
+              }
+              setIsScrapingActive(false)
+              setProgress(0)
+              setShowResults(false)
+            }}
+          >
+            Cancel
+          </Button>
         </CardFooter>
+         
+
       </Card>
 
       {isScrapingActive && (
@@ -107,7 +143,7 @@ export function Scraper() {
         </Card>
       )}
 
-      {showResults && <ScraperResults />}
+      {showResults && <ScraperResults data={scrapedResults} />}
     </div>
   )
 }

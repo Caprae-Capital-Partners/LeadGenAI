@@ -12,7 +12,7 @@ import { useLeads } from "./LeadsProvider"
 import type { ApolloCompany, GrowjoCompany, ApolloPerson } from "../types/enrichment"
 import axios from "axios"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
 
 export function DataEnhancement() {
   const [showResults, setShowResults] = useState(false)
