@@ -21,63 +21,63 @@ export function DataEnhancement() {
   const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
   const [selectAll, setSelectAll] = useState(false)
 
-  const companies = [
-  {
-    id: "1",
-    name: "HubSpot",
-    website: "hubspot.com",
-    industry: "CRM Software",
-    street: "25 First Street",
-    city: "Cambridge",
-    state: "MA",
-    phone: "(888) 482-7768",
-    bbbRating: "A+",
-  },
-  {
-    id: "2",
-    name: "Datadog",
-    website: "datadoghq.com",
-    industry: "Cloud Monitoring",
-    street: "620 8th Ave",
-    city: "New York",
-    state: "NY",
-    phone: "(866) 329-4466",
-    bbbRating: "A",
-  },
-  {
-    id: "3",
-    name: "Snowflake",
-    website: "snowflake.com",
-    industry: "Data Warehousing",
-    street: "450 Concar Dr",
-    city: "San Mateo",
-    state: "CA",
-    phone: "(844) 766-9355",
-    bbbRating: "A+",
-  },
-  {
-    id: "4",
-    name: "Zapier",
-    website: "zapier.com",
-    industry: "Automation Software",
-    street: "548 Market St",
-    city: "San Francisco",
-    state: "CA",
-    phone: "(415) 555-1234",
-    bbbRating: "A-",
-  },
-  {
-    id: "5",
-    name: "Figma",
-    website: "figma.com",
-    industry: "Design Tools",
-    street: "760 Market St",
-    city: "San Francisco",
-    state: "CA",
-    phone: "(415) 555-5678",
-    bbbRating: "A",
-  },
-]
+//   const companies = [
+//   {
+//     id: "1",
+//     name: "HubSpot",
+//     website: "hubspot.com",
+//     industry: "CRM Software",
+//     street: "25 First Street",
+//     city: "Cambridge",
+//     state: "MA",
+//     phone: "(888) 482-7768",
+//     bbbRating: "A+",
+//   },
+//   {
+//     id: "2",
+//     name: "Datadog",
+//     website: "datadoghq.com",
+//     industry: "Cloud Monitoring",
+//     street: "620 8th Ave",
+//     city: "New York",
+//     state: "NY",
+//     phone: "(866) 329-4466",
+//     bbbRating: "A",
+//   },
+//   {
+//     id: "3",
+//     name: "Snowflake",
+//     website: "snowflake.com",
+//     industry: "Data Warehousing",
+//     street: "450 Concar Dr",
+//     city: "San Mateo",
+//     state: "CA",
+//     phone: "(844) 766-9355",
+//     bbbRating: "A+",
+//   },
+//   {
+//     id: "4",
+//     name: "Zapier",
+//     website: "zapier.com",
+//     industry: "Automation Software",
+//     street: "548 Market St",
+//     city: "San Francisco",
+//     state: "CA",
+//     phone: "(415) 555-1234",
+//     bbbRating: "A-",
+//   },
+//   {
+//     id: "5",
+//     name: "Figma",
+//     website: "figma.com",
+//     industry: "Design Tools",
+//     street: "760 Market St",
+//     city: "San Francisco",
+//     state: "CA",
+//     phone: "(415) 555-5678",
+//     bbbRating: "A",
+//   },
+// ]
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedCompanies([])
@@ -119,8 +119,8 @@ const [loading, setLoading] = useState(false)
   setLoading(true)
 
   try {
-    const selected = companies.filter((c) => selectedCompanies.includes(c.id))
-    const companyNames = selected.map((c) => c.name)
+    const selected = leads.filter((c) => selectedCompanies.includes(c.id))
+    const companyNames = selected.map((c) => c.company)
     const domains = [...new Set(selected.map((c) => normalizeWebsite(c.website)))]
 
     // Step 1: Pre-pass Growjo to fill missing websites
@@ -129,7 +129,7 @@ const [loading, setLoading] = useState(false)
 
     if (companiesMissingWebsites.length > 0) {
       const preRes = await axios.post(`${BACKEND_URL}/api/scrape-growjo-batch`,
-        companiesMissingWebsites.map(c => ({ company: c.name })), headers)
+        companiesMissingWebsites.map(c => ({ company: c.company})), headers)
 
       companiesMissingWebsites.forEach((c, i) => {
         const r = preRes.data[i]
@@ -155,12 +155,22 @@ const [loading, setLoading] = useState(false)
       ])
     )
 
-    const apolloMap = Object.fromEntries((apolloRes.data as ApolloCompany[]).map((item) => [item.domain, item]))
-    const personMap = Object.fromEntries((personRes.data as ApolloPerson[]).map((item) => [item.domain, item]))
+    const apolloMap = Object.fromEntries(
+      (apolloRes.data as ApolloCompany[])
+        .filter((item) => item && item.domain)
+        .map((item) => [item.domain, item])
+    )
+
+    const personMap = Object.fromEntries(
+      (personRes.data as ApolloPerson[])
+        .filter((item) => item && item.domain)
+        .map((item) => [item.domain, item])
+    )
+
 
     // Step 3: Merge enriched results
     const enriched = selected.map((company) => {
-        const companyLower = company.name.toLowerCase()
+        const companyLower = company.company.toLowerCase()
         const domain = normalizeWebsite(company.website)
 
         const growjo = growjoMap[companyLower] || {}
@@ -197,7 +207,7 @@ const [loading, setLoading] = useState(false)
 
         return {
           id: company.id,
-          company: growjo.company_name || company.name,
+          company: growjo.company_name || company.company,
           website: growjo.company_website || apollo.company_website || company.website,
           industry: growjo.industry || apollo.industry || company.industry,
           productCategory: (growjo.interests && growjo.interests !== "N/A")
@@ -207,11 +217,11 @@ const [loading, setLoading] = useState(false)
           employees: growjo.employee_count || apollo.employee_count || null,
           revenue: growjo.revenue || apollo.annual_revenue_printed || null,
           yearFounded: apollo.founded_year || "",
-          bbbRating: company.bbbRating,
+          bbbRating: company.bbb_rating,
           street: company.street,
           city: growjo.location?.split(", ")[0] || company.city,
           state: growjo.location?.split(", ")[1] || company.state,
-          companyPhone: company.phone,
+          companyPhone: company.business_phone,
           companyLinkedin: apollo.linkedin_url || person.linkedin_url || "",
           ownerFirstName: decider.firstName,
           ownerLastName: decider.lastName,
@@ -305,8 +315,8 @@ const [loading, setLoading] = useState(false)
                       <TableCell>{company.street}</TableCell>
                       <TableCell>{company.city}</TableCell>
                       <TableCell>{company.state}</TableCell>
-                      <TableCell>{company.phone}</TableCell>
-                      <TableCell>{company.bbbRating}</TableCell>
+                      <TableCell>{company.business_phone}</TableCell>
+                      <TableCell>{company.bbb_rating}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
