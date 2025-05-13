@@ -21,7 +21,9 @@ FIELDNAMES = [
     "Website"
 ]
 
-async def fetch_and_merge_data(industry: str, location: str, offset: int = 0, limit: int = 100) -> List[Dict[str, str]]:
+from typing import List, Dict, Tuple
+
+async def fetch_and_merge_data(industry: str, location: str, offset: int = 0, limit: int = 100) -> Tuple[List[Dict[str, str]], int]:
     # Run all scrapers concurrently
     bbb_data, google_maps_data, yp_data, hf_data = await asyncio.gather(
         scrape_bbb(industry, location),
@@ -40,13 +42,15 @@ async def fetch_and_merge_data(industry: str, location: str, offset: int = 0, li
 
     # Deduplicate
     deduplified_data = deduplicate_businesses(records)
-    print(f"Total entries after deduplication: {len(deduplified_data)}")
+    total_count = len(deduplified_data)
+    print(f"Total entries after deduplication: {total_count}")
 
     # Apply pagination
     paginated_data = deduplified_data[offset : offset + limit]
     print(f"Returning {len(paginated_data)} records (offset {offset}, limit {limit})")
 
-    return paginated_data
+    return paginated_data, total_count
+
 
 
 async def fetch_and_merge_seq(industry: str, location: str) -> List[Dict[str,str]]:

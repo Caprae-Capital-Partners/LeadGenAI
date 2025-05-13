@@ -10,15 +10,20 @@ async def scrape():
         industry = data.get('industry')
         location = data.get('location')
 
-        # ✅ Parse from query params instead
+        # ✅ From query params
         offset = int(request.args.get('offset', 0))
         limit = int(request.args.get('limit', 100))
 
         if not industry or not location:
             return jsonify({"error": "Missing industry or location"}), 400
 
-        results = await fetch_and_merge_data(industry, location, offset=offset, limit=limit)
-        return jsonify(results), 200
+        # ✅ Updated to return both results and total
+        results, total = await fetch_and_merge_data(industry, location, offset=offset, limit=limit)
+
+        return jsonify({
+            "results": results,
+            "total": total
+        }), 200
 
     except Exception as e:
         return jsonify({"Internal error": str(e)}), 500
