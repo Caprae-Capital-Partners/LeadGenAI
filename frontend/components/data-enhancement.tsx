@@ -289,6 +289,7 @@ const [loading, setLoading] = useState(false)
                         aria-label="Select all"
                       />
                     </TableHead>
+                    <TableHead>ID</TableHead>
                     <TableHead>Company</TableHead>
                     <TableHead>Website</TableHead>
                     <TableHead>Industry</TableHead>
@@ -309,6 +310,7 @@ const [loading, setLoading] = useState(false)
                           aria-label={`Select ${company.company}`}
                         />
                       </TableCell>
+                      <TableCell>{company.id}</TableCell>
                       <TableCell className="font-medium">{company.company}</TableCell>
                       <TableCell>{company.website}</TableCell>
                       <TableCell>{company.industry}</TableCell>

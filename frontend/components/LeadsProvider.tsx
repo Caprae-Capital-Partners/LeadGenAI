@@ -23,12 +23,12 @@ const LeadsContext = createContext<LeadsContextType | undefined>(undefined);
 
 export const LeadsProvider = ({
   children,
-  initialLeads,
+  initialLeads = [],
 }: {
   children: React.ReactNode;
-  initialLeads: Lead[];
+  initialLeads?: Lead[];
 }) => {
-  const [leads, setLeads] = useState<Lead[]>(addUniqueIdsToLeads(initialLeads));
+  const [leads, setLeads] = useState<Lead[]>(addUniqueIdsToLeads(initialLeads || []));
   return (
     <LeadsContext.Provider value={{ leads, setLeads }}>
       {children}

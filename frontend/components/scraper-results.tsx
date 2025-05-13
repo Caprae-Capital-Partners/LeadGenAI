@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Download, Filter, Search, ArrowRight } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
-
+import { useLeads } from "@/components/LeadsProvider"
 interface ScraperResultsProps {
   data: any[]
 }
@@ -19,21 +19,42 @@ export function ScraperResults({ data }: ScraperResultsProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [leads, setLeads] = useState<any[]>([])
   const [exportFormat, setExportFormat] = useState("csv")
+  const { setLeads: setGlobalLeads } = useLeads()
 
   useEffect(() => {
-    const normalized = data.map((item, idx) => ({
-      id: item.id ?? idx + 1,
-      company: item.Company || item.company || "",
-      website: item.Website || item.website || "",
-      industry: item.Industry || item.industry || "",
-      street: item.Street || item.street || "",
-      city: item.City || item.city || "",
-      state: item.State || item.state || "",
-      bbb_rating: item.BBB_rating || item.bbb_rating || "",
-      business_phone: item.Business_phone || item.business_phone || ""
-    }))
-    setLeads(normalized)
-  }, [data])
+  let parsedData;
+  try {
+    // Replace NaN with null in the JSON string if data is a string
+    const sanitizedData = typeof data === "string" ? data.replace(/NaN/g, "null") : data;
+    // Parse the sanitized data
+    parsedData = typeof sanitizedData === "string" ? JSON.parse(sanitizedData) : sanitizedData;
+    // Validate that parsedData is an array
+    if (!Array.isArray(parsedData)) {
+      console.error("Invalid data format: expected an array", parsedData);
+      setLeads([]);
+      return;
+    }
+  } catch (error) {
+    console.error("Failed to parse data:", error);
+    setLeads([]);
+    return;
+  }
+  // Normalize the data
+  const normalized = parsedData.map((item, idx) => ({
+    id: item.id ?? idx + 1,
+    company: item.Company || item.company || "",
+    website: item.Website || item.website || "",
+    industry: item.Industry || item.industry || "",
+    street: item.Street || item.street || "",
+    city: item.City || item.city || "",
+    state: item.State || item.state || "",
+    bbb_rating: item.BBB_rating || item.bbb_rating || "",
+    business_phone: item.Business_phone || item.business_phone || "",
+  }));
+  setLeads(normalized)
+  setGlobalLeads(normalized);
+}, [data]);
+
 
   const handleCellChange = (rowIdx: number, field: string, value: string) => {
     setLeads(prev =>
