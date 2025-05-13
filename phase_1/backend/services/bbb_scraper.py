@@ -12,7 +12,7 @@ from backend.config.browser_config import PlaywrightManager
 
 # FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
 
-async def scrape_bbb(industry: str, location: str, page) -> AsyncGenerator[Dict[str, str], None]:  
+async def scrape_bbb(industry: str, location: str, page=None) -> AsyncGenerator[Dict[str, str], None]:  
     industry = industry.replace(" ", "+")
     location = location.replace(",", "%2C").strip()
     BASE_URL = f"https://www.bbb.org/search?find_country=USA&find_loc={location}&find_text={industry}"

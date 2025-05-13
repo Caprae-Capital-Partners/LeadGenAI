@@ -79,8 +79,8 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
         sp_page = await manager.context.new_page()
     
         tasks = [
-            run_scraper(scrape_bbb, "bbb", industry, location),
-            run_scraper(scrape_lead_by_industry, "google_maps", industry, location),
+            run_scraper(scrape_bbb, "bbb", industry, location, page=bbb_page),
+            run_scraper(scrape_lead_by_industry, "google_maps", industry, location, page=gmaps_page),
             run_scraper(scrape_yellowpages, "yellowpages", industry, location, max_pages=5),
             run_scraper(scrape_hotfrog, "hotfrog", industry, location, max_pages=5),
             # run_scraper(scrape_superpages, "superpages", industry, location)

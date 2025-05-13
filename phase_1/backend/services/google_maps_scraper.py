@@ -101,7 +101,7 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
             "Website": "NA"
         }
 
-async def scrape_lead_by_industry(industry: str, location: str) -> AsyncGenerator[Dict[str, str], None]:
+async def scrape_lead_by_industry(industry: str, location: str, page=None) -> AsyncGenerator[Dict[str, str], None]:
     """Scrape multiple leads by industry and location from Google Maps."""
     internal_browser = False
     manager = PlaywrightManager(headless=True)
