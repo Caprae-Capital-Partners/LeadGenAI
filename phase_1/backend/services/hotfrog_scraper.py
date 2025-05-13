@@ -11,6 +11,8 @@ from playwright.async_api import Locator
 # from config.browser_config import PlaywrightManager
 from backend.services.parser import parse_number
 # from parser import parse_number
+from typing import AsyncGenerator, Dict
+
 
 from backend.config.browser_config import PlaywrightManager
 
@@ -132,7 +134,46 @@ async def scrape_single_page(context, url: str, search_term: str) -> List[Dict[s
     finally:
         await page.close()
 
-async def scrape_hotfrog(search_term: str, location: str, max_pages: int = 5) -> List[Dict[str, str]]:
+# async def scrape_hotfrog(search_term: str, location: str, max_pages: int = 5) -> List[Dict[str, str]]:
+#     search_term_clean = search_term.lower().replace(' ', '-')
+#     location_clean = location.lower().replace(', ', '-')
+#     urls = [
+#         f"https://www.hotfrog.com/search/{location_clean}/{search_term_clean}" if i == 1
+#         else f"https://www.hotfrog.com/search/{location_clean}/{search_term_clean}/{i}"
+#         for i in range(1, max_pages + 1)
+#     ]
+
+#     manager = PlaywrightManager(headless=True)
+#     await manager.start_browser(stealth_on=True)
+
+#     try:
+#         tasks = [
+#             scrape_single_page(manager.context, url, search_term)
+#             for url in urls
+#         ]
+#         results_nested = await asyncio.gather(*tasks)
+#         all_results = [item for sublist in results_nested for item in sublist]
+
+#         # Deduplicate
+#         seen = set()
+#         unique = []
+#         for item in all_results:
+#             key = f"{item['Company']}_{item['Business_phone']}"
+#             if key not in seen:
+#                 seen.add(key)
+#                 unique.append(item)
+#         return unique
+    
+#     except Exception as e:
+#         print(f"Error during scraping: {e}")
+#         return []
+#     finally:
+#         await manager.stop_browser()
+async def scrape_hotfrog(
+    search_term: str,
+    location: str,
+    max_pages: int = 5
+) -> AsyncGenerator[Dict[str, str], None]:
     search_term_clean = search_term.lower().replace(' ', '-')
     location_clean = location.lower().replace(', ', '-')
     urls = [
@@ -144,29 +185,18 @@ async def scrape_hotfrog(search_term: str, location: str, max_pages: int = 5) ->
     manager = PlaywrightManager(headless=True)
     await manager.start_browser(stealth_on=True)
 
-    try:
-        tasks = [
-            scrape_single_page(manager.context, url, search_term)
-            for url in urls
-        ]
-        results_nested = await asyncio.gather(*tasks)
-        all_results = [item for sublist in results_nested for item in sublist]
+    seen = set()
 
-        # Deduplicate
-        seen = set()
-        unique = []
-        for item in all_results:
-            key = f"{item['Company']}_{item['Business_phone']}"
-            if key not in seen:
-                seen.add(key)
-                unique.append(item)
-        return unique
-    
-    except Exception as e:
-        print(f"Error during scraping: {e}")
-        return []
+    try:
+        for url in urls:
+            results = await scrape_single_page(manager.context, url, search_term)
+            for item in results:
+                key = f"{item['Company']}_{item['Business_phone']}"
+                if key not in seen:
+                    seen.add(key)
+                    yield item
     finally:
-        await manager.stop_browser()
+        await manager.close()
 
 # if __name__ == "__main__":
 #     search_term = "gun stores"

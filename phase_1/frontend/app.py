@@ -120,7 +120,11 @@ if st.session_state.is_scraping and not fetch_button:
                     df = pd.DataFrame(processed)
                     st.session_state.raw_data = df
                     st.session_state.enriched_data = pd.DataFrame()  # Reset enrichment
-                    st.session_state.industry_filter_selection = df["Industry"].dropna().unique().tolist()
+                    # st.session_state.industry_filter_selection = df["Industry"].dropna().unique().tolist()
+                    if "Industry" in df.columns:
+                        st.session_state.industry_filter_selection = df["Industry"].dropna().unique().tolist()
+                    # else:
+                    #     st.session_state.industry_filter_selection = []
 
                     # Update the data box with the dataframe
                     with data_box:
