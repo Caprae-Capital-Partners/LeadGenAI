@@ -9,7 +9,7 @@ def remove_last_word(text, word):
         start, end = last_match.span()
         text = text[:start] + text[end:]
     return re.sub(r'(,\s*)+', ', ', text.strip())
-    
+#fixed the regex to remove extra commas
 def parse_address(address: str, location: str) -> pd.DataFrame:
     places = pd.DataFrame()
     places['Address'] = [address]
