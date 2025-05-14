@@ -23,6 +23,29 @@ services:
       - .env
     restart: always
 
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: leadgen-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: always
+
   watchtower:
     image: containrrr/watchtower
     container_name: watchtower

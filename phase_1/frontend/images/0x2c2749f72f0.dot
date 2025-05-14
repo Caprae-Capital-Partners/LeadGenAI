@@ -1,0 +1,13 @@
+digraph ObjectGraph {
+  node[shape=box, style=filled, fillcolor=white];
+  o3032610966320[fontcolor=red];
+  o3032610966320[label="module\n__main__"];
+  o3032610966320[fillcolor="0.3,1,1"];
+  o3032610966320 -> o3032609463104 [label="__dict__",weight=10];
+  o3032609463104[label="dict\n27 items"];
+  o3032609463104[fillcolor="0,0,0.65"];
+  o3032609463104 -> o3034203517680 [label="o",weight=2];
+  o3034203517680[label="SessionState\nSessionState(_old_state={'industry_filte"];
+  o3034203517680[fillcolor="0,0,0.3"];
+  o3034203517680[fontcolor=white];
+}
