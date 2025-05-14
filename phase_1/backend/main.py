@@ -1,22 +1,12 @@
 import asyncio
 from typing import List, Dict
 import pandas as pd
-<<<<<<< HEAD
-import sys
-import os
-
-# import sys
-# sys.path.append("backend")
-sys.path.append(os.path.abspath("C:/Work/Internship/Web Scraper Caprae/LeadGenAI/phase_1/"))
-
-=======
 import os
 import sys
 # sys.path.append("backend")
 # sys.path.append(os.path.abspath("C:/Work/Internship/Web Scraper Caprae/LeadGenAI/phase_1/"))
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
->>>>>>> 78be9c19546baca4dd0d5f3025e02c4d0763dfaa
 from backend.services.Fuzzymatching import deduplicate_businesses
 from backend.services.yellowpages_scraper import scrape_yellowpages
 from backend.services.bbb_scraper import scrape_bbb
