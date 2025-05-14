@@ -429,7 +429,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                         <TableCell>{company.ownerTitle}</TableCell>
                         <TableCell>{company.ownerLinkedin}</TableCell>
                         <TableCell>{company.ownerPhoneNumber}</TableCell>
-                        <TableCell>{company.ownerEmail}</TableCell>
+                        <TableCell>{company.ownerEmail === "email_not_unlocked@domain.com" ? "N/A" : company.ownerEmail}</TableCell>
                         <TableCell>{company.source}</TableCell>
                       </TableRow>
                     ))

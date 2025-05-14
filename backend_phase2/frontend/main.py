@@ -326,6 +326,12 @@ if (
             apollo_person = apollo_person_map.get(website_norm, {})
 
             def fill(col, val1, val2):
+                # Replace locked Apollo email with 'N/A' before filling
+                if col == "Email":
+                    if val1 == "email_not_unlocked@domain.com":
+                        val1 = "N/A"
+                    if val2 == "email_not_unlocked@domain.com":
+                        val2 = "N/A"
                 if col in row and not str(row[col]).strip():
                     rows_to_update.at[idx, col] = val1 or val2 or ""
 
@@ -447,6 +453,10 @@ if (
 
         for col in rows_to_update.columns:
             enhanced_df.loc[rows_to_update.index, col] = rows_to_update[col]
+
+        # After enrichment, replace locked Apollo emails with 'N/A' in the Email column
+        if "Email" in enhanced_df.columns:
+            enhanced_df["Email"] = enhanced_df["Email"].replace("email_not_unlocked@domain.com", "N/A")
 
         elapsed_time = time.time() - start_time
         st.success(f"✅ Enrichment complete in {elapsed_time / 60:.2f} minutes!")

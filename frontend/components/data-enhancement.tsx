@@ -198,14 +198,14 @@ const [loading, setLoading] = useState(false)
         const decider = useApollo ? {
           firstName: person.first_name || "",
           lastName: person.last_name || "",
-          email: person.email || "",
+          email: person.email === "email_not_unlocked@domain.com" ? "N/A" : (person.email || ""),
           phone: person.phone_number || "",
           linkedin: person.linkedin_url || "",
           title: person.title || "",
         } : {
           firstName: growjo.decider_name?.split(" ")[0] || "",
           lastName: growjo.decider_name?.split(" ").slice(1).join(" ") || "",
-          email: growjo.decider_email || "",
+          email: growjo.decider_email === "email_not_unlocked@domain.com" ? "N/A" : (growjo.decider_email || ""),
           phone: growjo.decider_phone || "",
           linkedin: growjo.decider_linkedin || "",
           title: growjo.decider_title || "",

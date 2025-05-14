@@ -56,7 +56,11 @@ def enrich_person(first_name, last_name, domain):
     if response.status_code != 200:
         return None
 
-    return response.json().get("person", {})
+    person = response.json().get("person", {})
+    # Replace locked email with 'not found'
+    if person.get("email", "") == "email_not_unlocked@domain.com":
+        person["email"] = "N/A"
+    return person
 
 
 def find_best_person(domain):
@@ -105,8 +109,12 @@ def find_best_person(domain):
         "email": best_person.get("email", ""),
         "phone_number": best_person.get("organization", {})
         .get("primary_phone", {})
-        .get("sanitized_number", "No phone found"),
+        .get("sanitized_number", "N/A"),
     }
+
+    # Replace locked email with 'not found' in original
+    if combined_result["email"] == "email_not_unlocked@domain.com":
+        combined_result["email"] = "N/A"
 
     # Override with enriched fields if available
     if enriched:
