@@ -9,72 +9,68 @@ def remove_last_word(text, word):
         start, end = last_match.span()
         text = text[:start] + text[end:]
     return re.sub(r'(,\s*)+', ', ', text.strip())
-#fixed the regex to remove extra commas
+    
 def parse_address(address: str, location: str) -> pd.DataFrame:
     places = pd.DataFrame()
-    places['Address'] = [address]
-    places['Street'] = pd.NA
-    places['City'] = pd.NA
-    places['State'] = pd.NA
+    places['Address'] = [address if not pd.isna(address) else "NA"]
+    places['Street'] = ["NA"]
+    places['City'] = ["NA"]
+    places['State'] = ["NA"]
     
-    location_parts = location.split(',')
-
     if pd.isna(address):
         return places
+    
+    location_parts = location.split(',') if not pd.isna(location) else []
     
     if address.startswith("[G]"):
         places['Address'] = [address.replace("[G]", "")]
         places['Street'] = [address.replace("[G]", "")]
         if len(location_parts) > 1:
-            places['State'] = [location_parts[-1].strip().upper()]
-            places['City'] = [location_parts[-2].strip().title()]
+            places['State'] = [location_parts[-1].strip().upper() or "NA"]
+            places['City'] = [location_parts[-2].strip().title() or "NA"]
         return places
+        
     if address.startswith("[H]"):
         places['Address'] = [address.replace("[H]", "")]
         if places['Address'].iloc[0].upper() == "NA":
             places['City'] = ["NA"]
-            places['State'] = [location_parts[-1].strip().upper()]
+            places['State'] = [location_parts[-1].strip().upper() if location_parts else "NA"]
             return places
         
         address_parts = address.replace("[H]", "").split(',')
-
         if len(address_parts) > 4:
-            places['Street'] = [address_parts[0].strip()]
-            places['City'] = [address_parts[-3].strip()]
-            places['State'] = re.sub(r'[\d\s\-]', '', address_parts[-2].strip())
+            places['Street'] = [address_parts[0].strip() or "NA"]
+            places['City'] = [address_parts[-3].strip() or "NA"]
+            state = re.sub(r'[\d\s\-]', '', address_parts[-2].strip())
+            places['State'] = [state if state else "NA"]
         elif len(address_parts) == 4:
-            # Format: Street, City, State
-            places['Street'] = [address_parts[0].strip()]
-            places['City'] = [address_parts[1].strip()]
-            places['State'] = re.sub(r'[\d\s\-]', '', address_parts[2].strip())
+            places['Street'] = [address_parts[0].strip() or "NA"]
+            places['City'] = [address_parts[1].strip() or "NA"]
+            state = re.sub(r'[\d\s\-]', '', address_parts[2].strip())
+            places['State'] = [state if state else "NA"]
         elif len(address_parts) == 3:
-            # Format: City, State
             places['Street'] = ["NA"]
-            places['City'] = [address_parts[0].strip()]
-            places['State'] = re.sub(r'[\d\s\-]', '', address_parts[1].strip())
+            places['City'] = [address_parts[0].strip() or "NA"]
+            state = re.sub(r'[\d\s\-]', '', address_parts[1].strip())
+            places['State'] = [state if state else "NA"]
         elif len(address_parts) == 1:
-            # Format: Only Street or incomplete address
-            places['Street'] = [address_parts[0].strip()]
-            places['City'] = ["NA"]
-            places['State'] = [location_parts[-1].strip().upper()]
-
+            places['Street'] = [address_parts[0].strip() or "NA"]
         return places
-
-    address = address.split(',')
-    if len(address) >= 3:
-        places['Address'] = [address]
-        places['Street'] = [address[0]]
-        places['City'] = [address[1].strip()]
-        places['State'] = re.sub(r'[\d\s\-]', '', address[2].strip())
-
-    if len(address) == 2:
-        places['Address'] = [address]
-        places['City'] = [address[0].strip()]
-        places['State'] = re.sub(r'[\d\s\-]', '', address[1].strip())
-
+    
+    # Handle regular address format (not [G] or [H])
+    address_parts = address.split(',')
+    
+    if len(address_parts) >= 3:
+        places['Street'] = [address_parts[0].strip() or "NA"]
+        places['City'] = [address_parts[1].strip() or "NA"]
+        state = re.sub(r'[\d\s\-]', '', address_parts[2].strip())
+        places['State'] = [state if state else "NA"]
+    elif len(address_parts) == 2:
+        places['Street'] = [address_parts[0].strip() or "NA"]
+        places['City'] = [address_parts[1].strip() or "NA"]
     else:
-        places['Street'] = [address[0]]
-
+        places['Street'] = [address_parts[0].strip() or "NA"]
+    
     return places
 
 def parse_number(raw: str) -> str:
