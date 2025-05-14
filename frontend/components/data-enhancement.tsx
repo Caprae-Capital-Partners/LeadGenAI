@@ -20,64 +20,8 @@ export function DataEnhancement() {
   const [enrichedResults, setEnrichedResults] = useState<any[]>([])
   const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
   const [selectAll, setSelectAll] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
 
-//   const companies = [
-//   {
-//     id: "1",
-//     name: "HubSpot",
-//     website: "hubspot.com",
-//     industry: "CRM Software",
-//     street: "25 First Street",
-//     city: "Cambridge",
-//     state: "MA",
-//     phone: "(888) 482-7768",
-//     bbbRating: "A+",
-//   },
-//   {
-//     id: "2",
-//     name: "Datadog",
-//     website: "datadoghq.com",
-//     industry: "Cloud Monitoring",
-//     street: "620 8th Ave",
-//     city: "New York",
-//     state: "NY",
-//     phone: "(866) 329-4466",
-//     bbbRating: "A",
-//   },
-//   {
-//     id: "3",
-//     name: "Snowflake",
-//     website: "snowflake.com",
-//     industry: "Data Warehousing",
-//     street: "450 Concar Dr",
-//     city: "San Mateo",
-//     state: "CA",
-//     phone: "(844) 766-9355",
-//     bbbRating: "A+",
-//   },
-//   {
-//     id: "4",
-//     name: "Zapier",
-//     website: "zapier.com",
-//     industry: "Automation Software",
-//     street: "548 Market St",
-//     city: "San Francisco",
-//     state: "CA",
-//     phone: "(415) 555-1234",
-//     bbbRating: "A-",
-//   },
-//   {
-//     id: "5",
-//     name: "Figma",
-//     website: "figma.com",
-//     industry: "Design Tools",
-//     street: "760 Market St",
-//     city: "San Francisco",
-//     state: "CA",
-//     phone: "(415) 555-5678",
-//     bbbRating: "A",
-//   },
-// ]
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedCompanies([])
@@ -113,137 +57,145 @@ export function DataEnhancement() {
     if (a) return "Apollo"
     return "N/A"
   }
-const [loading, setLoading] = useState(false)
+  
+  const [loading, setLoading] = useState(false)
 
   const handleStartEnrichment = async () => {
-  setLoading(true)
+    setLoading(true)
 
-  try {
-    const selected = leads.filter((c) => selectedCompanies.includes(c.id))
-    const companyNames = selected.map((c) => c.company)
-    const domains = [...new Set(selected.map((c) => normalizeWebsite(c.website)))]
+    try {
+      const selected = leads.filter((c) => selectedCompanies.includes(c.id))
+      const companyNames = selected.map((c) => c.company)
+      const domains = [...new Set(selected.map((c) => normalizeWebsite(c.website)))]
 
-    // Step 1: Pre-pass Growjo to fill missing websites
-    const companiesMissingWebsites = selected.filter((c) => !normalizeWebsite(c.website))
-    const headers = { headers: { "Content-Type": "application/json" } }
+      // Step 1: Pre-pass Growjo to fill missing websites
+      const companiesMissingWebsites = selected.filter((c) => !normalizeWebsite(c.website))
+      const headers = { headers: { "Content-Type": "application/json" } }
 
-    if (companiesMissingWebsites.length > 0) {
-      const preRes = await axios.post(`${BACKEND_URL}/api/scrape-growjo-batch`,
-        companiesMissingWebsites.map(c => ({ company: c.company})), headers)
+      if (companiesMissingWebsites.length > 0) {
+        const preRes = await axios.post(`${BACKEND_URL}/api/scrape-growjo-batch`,
+          companiesMissingWebsites.map(c => ({ company: c.company})), headers)
 
-      companiesMissingWebsites.forEach((c, i) => {
-        const r = preRes.data[i]
-        if (r?.company_website && r.company_website.toLowerCase() !== "not found") {
-          c.website = r.company_website
-        }
-      })
-    }
-
-    const updatedDomains = [...new Set(selected.map((c) => normalizeWebsite(c.website)))]
-
-    // Step 2: Batch API calls
-    const [growjoRes, apolloRes, personRes] = await Promise.all([
-      axios.post(`${BACKEND_URL}/api/scrape-growjo-batch`, companyNames.map((c) => ({ company: c })), headers),
-      axios.post(`${BACKEND_URL}/api/apollo-scrape-batch`, { domains: updatedDomains }, headers),
-      axios.post(`${BACKEND_URL}/api/find-best-person-batch`, { domains: updatedDomains }, headers),
-    ])
-
-    const growjoMap = Object.fromEntries(
-      (growjoRes.data as GrowjoCompany[]).map((item) => [
-        item.company_name?.toLowerCase() || item.input_name?.toLowerCase(),
-        item,
-      ])
-    )
-
-    const apolloMap = Object.fromEntries(
-      (apolloRes.data as ApolloCompany[])
-        .filter((item) => item && item.domain)
-        .map((item) => [item.domain, item])
-    )
-
-    const personMap = Object.fromEntries(
-      (personRes.data as ApolloPerson[])
-        .filter((item) => item && item.domain)
-        .map((item) => [item.domain, item])
-    )
-
-
-    // Step 3: Merge enriched results
-    const enriched = selected.map((company) => {
-        const companyLower = company.company.toLowerCase()
-        const domain = normalizeWebsite(company.website)
-
-        const growjo = growjoMap[companyLower] || {}
-        const apollo = apolloMap[domain] || {}
-        const person = personMap[domain] || {}
-
-        const growjoScore = [
-          growjo.decider_email, growjo.decider_name, growjo.decider_phone,
-          growjo.decider_title, growjo.decider_linkedin
-        ].filter(Boolean).length
-
-        const apolloScore = [
-          person.email, person.first_name, person.last_name,
-          person.title, person.linkedin_url
-        ].filter(Boolean).length
-
-        const useApollo = apolloScore > growjoScore
-
-        const decider = useApollo ? {
-          firstName: person.first_name || "",
-          lastName: person.last_name || "",
-          email: person.email || "",
-          phone: person.phone_number || "",
-          linkedin: person.linkedin_url || "",
-          title: person.title || "",
-        } : {
-          firstName: growjo.decider_name?.split(" ")[0] || "",
-          lastName: growjo.decider_name?.split(" ").slice(1).join(" ") || "",
-          email: growjo.decider_email || "",
-          phone: growjo.decider_phone || "",
-          linkedin: growjo.decider_linkedin || "",
-          title: growjo.decider_title || "",
-        }
-
-        return {
-          id: company.id,
-          company: growjo.company_name || company.company,
-          website: growjo.company_website || apollo.company_website || company.website,
-          industry: growjo.industry || apollo.industry || company.industry,
-          productCategory: (growjo.interests && growjo.interests !== "N/A")
-            ? growjo.interests
-            : Array.isArray(apollo.keywords) ? apollo.keywords.join(", ") : apollo.keywords || "",
-          businessType: apollo.business_type || "",
-          employees: growjo.employee_count || apollo.employee_count || null,
-          revenue: growjo.revenue || apollo.annual_revenue_printed || null,
-          yearFounded: apollo.founded_year || "",
-          bbbRating: company.bbb_rating,
-          street: company.street,
-          city: growjo.location?.split(", ")[0] || company.city,
-          state: growjo.location?.split(", ")[1] || company.state,
-          companyPhone: company.business_phone,
-          companyLinkedin: apollo.linkedin_url || person.linkedin_url || "",
-          ownerFirstName: decider.firstName,
-          ownerLastName: decider.lastName,
-          ownerTitle: decider.title,
-          ownerLinkedin: decider.linkedin,
-          ownerPhoneNumber: decider.phone,
-          ownerEmail: decider.email,
-          source: getSource(growjo, apollo, person),
-        }
+        companiesMissingWebsites.forEach((c, i) => {
+          const r = preRes.data[i]
+          if (r?.company_website && r.company_website.toLowerCase() !== "not found") {
+            c.website = r.company_website
+          }
+        })
       }
-  )
 
-    setEnrichedResults(enriched)
-    setShowResults(true)
-  } catch (error) {
-    console.error("Enrichment failed:", error)
-  } finally {
-    setLoading(false)
+      const updatedDomains = [...new Set(selected.map((c) => normalizeWebsite(c.website)))]
+
+      // Step 2: Batch API calls
+      const [growjoRes, apolloRes, personRes] = await Promise.all([
+        axios.post(`${BACKEND_URL}/api/scrape-growjo-batch`, companyNames.map((c) => ({ company: c })), headers),
+        axios.post(`${BACKEND_URL}/api/apollo-scrape-batch`, { domains: updatedDomains }, headers),
+        axios.post(`${BACKEND_URL}/api/find-best-person-batch`, { domains: updatedDomains }, headers),
+      ])
+
+      const growjoMap = Object.fromEntries(
+        (growjoRes.data as GrowjoCompany[]).map((item) => [
+          item.company_name?.toLowerCase() || item.input_name?.toLowerCase(),
+          item,
+        ])
+      )
+
+      const apolloMap = Object.fromEntries(
+        (apolloRes.data as ApolloCompany[])
+          .filter((item) => item && item.domain)
+          .map((item) => [item.domain, item])
+      )
+
+      const personMap = Object.fromEntries(
+        (personRes.data as ApolloPerson[])
+          .filter((item) => item && item.domain)
+          .map((item) => [item.domain, item])
+      )
+
+
+      // Step 3: Merge enriched results
+      const enriched = selected.map((company) => {
+          const companyLower = company.company.toLowerCase()
+          const domain = normalizeWebsite(company.website)
+
+          const growjo = growjoMap[companyLower] || {}
+          const apollo = apolloMap[domain] || {}
+          const person = personMap[domain] || {}
+
+          const growjoScore = [
+            growjo.decider_email, growjo.decider_name, growjo.decider_phone,
+            growjo.decider_title, growjo.decider_linkedin
+          ].filter(Boolean).length
+
+          const apolloScore = [
+            person.email, person.first_name, person.last_name,
+            person.title, person.linkedin_url
+          ].filter(Boolean).length
+
+          const useApollo = apolloScore > growjoScore
+
+          const decider = useApollo ? {
+            firstName: person.first_name || "",
+            lastName: person.last_name || "",
+            email: person.email || "",
+            phone: person.phone_number || "",
+            linkedin: person.linkedin_url || "",
+            title: person.title || "",
+          } : {
+            firstName: growjo.decider_name?.split(" ")[0] || "",
+            lastName: growjo.decider_name?.split(" ").slice(1).join(" ") || "",
+            email: growjo.decider_email || "",
+            phone: growjo.decider_phone || "",
+            linkedin: growjo.decider_linkedin || "",
+            title: growjo.decider_title || "",
+          }
+
+          return {
+            id: company.id,
+            company: growjo.company_name || company.company,
+            website: growjo.company_website || apollo.company_website || company.website,
+            industry: growjo.industry || apollo.industry || company.industry,
+            productCategory: (growjo.interests && growjo.interests !== "N/A")
+              ? growjo.interests
+              : Array.isArray(apollo.keywords) ? apollo.keywords.join(", ") : apollo.keywords || "",
+            businessType: apollo.business_type || "",
+            employees: growjo.employee_count || apollo.employee_count || null,
+            revenue: growjo.revenue || apollo.annual_revenue_printed || null,
+            yearFounded: apollo.founded_year || "",
+            bbbRating: company.bbb_rating,
+            street: company.street,
+            city: growjo.location?.split(", ")[0] || company.city,
+            state: growjo.location?.split(", ")[1] || company.state,
+            companyPhone: company.business_phone,
+            companyLinkedin: apollo.linkedin_url || person.linkedin_url || "",
+            ownerFirstName: decider.firstName,
+            ownerLastName: decider.lastName,
+            ownerTitle: decider.title,
+            ownerLinkedin: decider.linkedin,
+            ownerPhoneNumber: decider.phone,
+            ownerEmail: decider.email,
+            source: getSource(growjo, apollo, person),
+          }
+        }
+    )
+
+      setEnrichedResults(enriched)
+      setShowResults(true)
+    } catch (error) {
+      console.error("Enrichment failed:", error)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
-
+  // Filter companies based on search term
+  const filteredLeads = leads.filter(
+    (company) =>
+      company.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      company.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      company.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      company.state.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   if (showResults) {
     return <EnrichmentResults enrichedCompanies={enrichedResults} />
@@ -266,7 +218,13 @@ const [loading, setLoading] = useState(false)
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Search companies..." className="pl-8" />
+                <Input 
+                  type="search" 
+                  placeholder="Search companies..." 
+                  className="pl-8" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
               <Button variant="outline" size="sm" className="gap-1">
                 <Filter className="h-4 w-4" />
@@ -301,7 +259,7 @@ const [loading, setLoading] = useState(false)
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {leads.map((company) => (
+                  {filteredLeads.map((company) => (
                     <TableRow key={company.id}>
                       <TableCell>
                         <Checkbox
@@ -327,7 +285,7 @@ const [loading, setLoading] = useState(false)
 
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
-                {selectedCompanies.length} of {leads.length} selected
+                {selectedCompanies.length} of {filteredLeads.length} selected ({leads.length} total)
               </p>
               <Button onClick={handleStartEnrichment} disabled={selectedCompanies.length === 0 || loading}>
                 {loading ? "Enriching..." : "Start Enrichment"}
