@@ -11,6 +11,17 @@ const mockResults: Lead[] = [
     state: "CA",
     business_phone: "(415) 555-5678",
     bbb_rating: "A",
+  },
+  {
+    id: 4,
+    company: "Zoom",
+    website: "zoom.us",
+    industry: "Design Tools",
+    street: "760 Market St",
+    city: "Los Angeles",
+    state: "CA",
+    business_phone: "(415) 666-990",
+    bbb_rating: "A-",
   }
 ];
 

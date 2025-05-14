@@ -228,7 +228,7 @@ const [loading, setLoading] = useState(false)
           city: growjo.location?.split(", ")[0] || company.city,
           state: growjo.location?.split(", ")[1] || company.state,
           companyPhone: company.business_phone,
-          companyLinkedin: apollo.linkedin_url || person.linkedin_url || "",
+          companyLinkedin: apollo.linkedin_url || "",
           ownerFirstName: decider.firstName,
           ownerLastName: decider.lastName,
           ownerTitle: decider.title,
