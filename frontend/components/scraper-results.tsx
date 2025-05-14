@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +22,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   const [leads, setLeads] = useState<any[]>([])
   const [exportFormat, setExportFormat] = useState("csv")
   const { setLeads: setGlobalLeads } = useLeads()
+  const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
 
   useEffect(() => {
   let parsedData;
@@ -61,6 +62,36 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   setGlobalLeads(normalized);
 }, [data]);
 
+  // Auto-resize textareas
+  useEffect(() => {
+    const resizeTextareas = () => {
+      textareaRefs.current.forEach(textarea => {
+        if (textarea) {
+          textarea.style.height = 'auto';
+          textarea.style.height = textarea.scrollHeight + 'px';
+        }
+      });
+    };
+    
+    resizeTextareas();
+    
+    // Reset references when leads change
+    textareaRefs.current = textareaRefs.current.slice(0, leads.length * 3);
+  }, [leads.length]);
+
+  // Auto-resize all textareas when leads data changes
+  useEffect(() => {
+    if (leads.length > 0) {
+      setTimeout(() => {
+        textareaRefs.current.forEach(textarea => {
+          if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+          }
+        });
+      }, 0);
+    }
+  }, [leads]);
 
   const handleCellChange = (rowIdx: number, field: string, value: string) => {
     setLeads(prev =>
@@ -68,6 +99,19 @@ export function ScraperResults({ data }: { data: string | any[] }) {
         idx === rowIdx ? { ...row, [field]: value } : row
       )
     )
+    
+    // Resize the textarea after content change
+    setTimeout(() => {
+      const index = field === "company" ? rowIdx * 3 : 
+                  field === "industry" ? rowIdx * 3 + 1 : 
+                  field === "street" ? rowIdx * 3 + 2 : -1;
+      
+      if (index >= 0 && textareaRefs.current[index]) {
+        const textarea = textareaRefs.current[index];
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+      }
+    }, 0);
   }
 
   const handleNext = () => {
@@ -154,68 +198,80 @@ export function ScraperResults({ data }: { data: string | any[] }) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border overflow-auto">
-          <Table>
+        <div className="rounded-md border">
+          <Table className="w-full" fixedLayout={false}>
             <TableHeader>
               <TableRow>
-                <TableHead>Company</TableHead>
-                <TableHead>Industry</TableHead>
-                <TableHead>Address</TableHead>
-                <TableHead>BBB Rating</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Website</TableHead>
+                <TableHead className="w-[18%] break-words">Company</TableHead>
+                <TableHead className="w-[15%] break-words">Industry</TableHead>
+                <TableHead className="w-[25%] break-words">Address</TableHead>
+                <TableHead className="w-[10%] break-words">BBB Rating</TableHead>
+                <TableHead className="w-[12%] break-words">Phone</TableHead>
+                <TableHead className="w-[20%]">Website</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredResults.length > 0 ? (
                 filteredResults.map((result, rowIdx) => (
                   <TableRow key={result.id}>
-                    <TableCell>
-                      <input
-                        className="font-medium border-b w-full bg-transparent"
+                    <TableCell className="break-words">
+                      <textarea
+                        className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
                         value={result.company}
                         onChange={e => handleCellChange(rowIdx, "company", e.target.value)}
+                        rows={1}
+                        ref={(el) => {
+                          textareaRefs.current[rowIdx * 3] = el;
+                        }}
                       />
                     </TableCell>
-                    <TableCell>
-                      <input
-                        className="border-b w-full bg-transparent"
+                    <TableCell className="break-words">
+                      <textarea
+                        className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
                         value={result.industry}
                         onChange={e => handleCellChange(rowIdx, "industry", e.target.value)}
+                        rows={1}
+                        ref={(el) => {
+                          textareaRefs.current[rowIdx * 3 + 1] = el;
+                        }}
                       />
                     </TableCell>
-                    <TableCell>
-                      <input
-                        className="border-b w-full bg-transparent"
+                    <TableCell className="break-words">
+                      <textarea
+                        className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
                         value={result.street}
                         onChange={e => handleCellChange(rowIdx, "street", e.target.value)}
                         placeholder="Street"
+                        rows={1}
+                        ref={(el) => {
+                          textareaRefs.current[rowIdx * 3 + 2] = el;
+                        }}
                       />
                       <div className="flex gap-1 mt-1">
                         <input
-                          className="border-b w-1/2 bg-transparent text-sm text-muted-foreground"
+                          className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
                           value={result.city}
                           onChange={e => handleCellChange(rowIdx, "city", e.target.value)}
                           placeholder="City"
                         />
                         <input
-                          className="border-b w-1/2 bg-transparent text-sm text-muted-foreground"
+                          className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
                           value={result.state}
                           onChange={e => handleCellChange(rowIdx, "state", e.target.value)}
                           placeholder="State"
                         />
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="break-words">
                       <input
-                        className="border-b w-full bg-transparent"
+                        className="border-b w-full bg-transparent break-words"
                         value={result.bbb_rating}
                         onChange={e => handleCellChange(rowIdx, "bbb_rating", e.target.value)}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="break-words">
                       {(result.business_phone || "").split(",").map((phone: string, i: number) => (
-                        <div key={i} className="truncate">{phone.trim()}</div>
+                        <div key={i} className="break-words">{phone.trim()}</div>
                       ))}
                     </TableCell>
                     <TableCell>
