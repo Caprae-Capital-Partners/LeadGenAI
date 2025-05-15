@@ -9,8 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { ScraperResults } from "@/components/scraper-results"
 import axios from "axios"
 
-const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/api/lead-scrape`;
-// const SCRAPER_API = `http://127.0.0.1:5050/api/lead-scrape`;
+const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/lead-scrape`;
 
 
 export function Scraper() {

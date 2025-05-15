@@ -171,6 +171,10 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     else if (exportFormat === "excel") exportExcel()
     else if (exportFormat === "json") exportJSON()
   }
+  const normalizeDisplayValue = (value: any) => {
+    return value === null || value === undefined || value === "" ? "N/A" : value
+  }
+  
 
   return (
     <Card>
@@ -217,7 +221,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                     <TableCell className="break-words">
                       <textarea
                         className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                        value={result.company}
+                        value={normalizeDisplayValue(result.company)}
                         onChange={e => handleCellChange(rowIdx, "company", e.target.value)}
                         rows={1}
                         ref={(el) => {
@@ -228,7 +232,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                     <TableCell className="break-words">
                       <textarea
                         className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                        value={result.industry}
+                        value={normalizeDisplayValue(result.industry)}
                         onChange={e => handleCellChange(rowIdx, "industry", e.target.value)}
                         rows={1}
                         ref={(el) => {
@@ -239,7 +243,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                     <TableCell className="break-words">
                       <textarea
                         className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                        value={result.street}
+                        value={normalizeDisplayValue(result.street)}
                         onChange={e => handleCellChange(rowIdx, "street", e.target.value)}
                         placeholder="Street"
                         rows={1}
@@ -250,13 +254,13 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                       <div className="flex gap-1 mt-1">
                         <input
                           className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
-                          value={result.city}
+                          value={normalizeDisplayValue(result.city)}
                           onChange={e => handleCellChange(rowIdx, "city", e.target.value)}
                           placeholder="City"
                         />
                         <input
                           className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
-                          value={result.state}
+                          value={normalizeDisplayValue(result.state)}
                           onChange={e => handleCellChange(rowIdx, "state", e.target.value)}
                           placeholder="State"
                         />
@@ -265,19 +269,23 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                     <TableCell className="break-words">
                       <input
                         className="border-b w-full bg-transparent break-words"
-                        value={result.bbb_rating}
+                        value={normalizeDisplayValue(result.bbb_rating)}
                         onChange={e => handleCellChange(rowIdx, "bbb_rating", e.target.value)}
                       />
                     </TableCell>
                     <TableCell className="break-words">
-                      {(result.business_phone || "").split(",").map((phone: string, i: number) => (
-                        <div key={i} className="break-words">{phone.trim()}</div>
-                      ))}
+                      {normalizeDisplayValue(result.business_phone)
+                        .split(",")
+                        .map((phone: string, i: number) => (
+                          <div key={i} className="break-words">
+                            {normalizeDisplayValue(phone.trim())}
+                          </div>
+                        ))}
                     </TableCell>
                     <TableCell>
                       <input
                         className="border-b w-full bg-transparent"
-                        value={result.website}
+                        value={normalizeDisplayValue(result.website)}
                         onChange={e => handleCellChange(rowIdx, "website", e.target.value)}
                       />
                     </TableCell>

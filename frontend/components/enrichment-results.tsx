@@ -59,12 +59,24 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
   const [showFilters, setShowFilters] = useState(false)
   const downloadCSV = (data: any[], filename: string) => {
   const headers = Object.keys(data[0])
+  const normalizeCSVValue = (field: string, value: any) => {
+    if (field === "source") {
+      return value === null || value === undefined || value === "" || value === "N/A"
+        ? "Not available in any source"
+        : value
+    }
+    return value === null || value === undefined || value === "" ? "N/A" : value
+  }
+  
+  
   const csvRows = [
-    headers.join(","), // header row
+    headers.join(","),
     ...data.map(row =>
-      headers.map(field => `"${(row[field] ?? "").toString().replace(/"/g, '""')}"`).join(",")
+      headers.map(field =>
+        `"${normalizeCSVValue(field, row[field]).toString().replace(/"/g, '""')}"`
+      ).join(",")
     ),
-  ]
+  ]  
   const csvContent = csvRows.join("\n")
   const blob = new Blob([csvContent], { type: "text/csv" })
   const url = URL.createObjectURL(blob)
@@ -77,15 +89,30 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
 }
 
 
-  const parseRevenue = (revenueStr: string): number | null => {
-    revenueStr = revenueStr.toLowerCase().trim().replace(/[$,]/g, "")
-    let multiplier = 1
-    if (revenueStr.endsWith("k")) multiplier = 1_000, revenueStr = revenueStr.slice(0, -1)
-    else if (revenueStr.endsWith("m")) multiplier = 1_000_000, revenueStr = revenueStr.slice(0, -1)
-    else if (revenueStr.endsWith("b")) multiplier = 1_000_000_000, revenueStr = revenueStr.slice(0, -1)
-    const value = parseFloat(revenueStr)
-    return isNaN(value) ? null : value * multiplier
+const parseRevenue = (revenueStr: string): number | null => {
+  revenueStr = revenueStr.toLowerCase().trim().replace(/[$,]/g, "")
+  let multiplier = 1
+
+  if (revenueStr.endsWith("k")) {
+    multiplier = 1_000
+    revenueStr = revenueStr.slice(0, -1)
+  } else if (revenueStr.endsWith("m")) {
+    multiplier = 1_000_000
+    revenueStr = revenueStr.slice(0, -1)
+  } else if (revenueStr.endsWith("b")) {
+    multiplier = 1_000_000_000
+    revenueStr = revenueStr.slice(0, -1)
+  } else {
+    // If there's no suffix, treat as-is (e.g. user inputs "50000")
+    multiplier = 1
   }
+
+  const value = parseFloat(revenueStr)
+  return isNaN(value) ? null : value * multiplier
+}
+
+
+
 
   const parseFilter = (filterStr: string, isRevenue = false) => {
     const result = { operation: "exact", value: null as number | null, upper: null as number | null }
@@ -139,7 +166,11 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
       const { operation, value, upper } = parseFilter(revenueFilter, true)
       if (value !== null) {
         filtered = filtered.filter((company) => {
-          const val = company.revenue ?? 0
+          const val = typeof company.revenue === "string"
+            ? parseRevenue(company.revenue)
+            : company.revenue ?? 0
+    
+          if (val === null) return false
           if (operation === "exact") return val === value
           if (operation === "less than") return val < value
           if (operation === "less than or equal") return val <= value
@@ -150,6 +181,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
         })
       }
     }
+    
 
     if (businessTypeFilter) {
       filtered = filtered.filter((c) => c.businessType.toLowerCase().includes(businessTypeFilter.toLowerCase()))
@@ -238,6 +270,9 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
         setSelectAll(true)
       }
     }
+  }
+  const normalizeDisplayValue = (value: any) => {
+    return value === null || value === undefined || value === "" ? "N/A" : value
   }
 
   const clearFilter = (type: "search" | "employees" | "revenue" | "business") => {
@@ -369,7 +404,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                 </Button>
               </div>
             )}
-
+            
             <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -410,27 +445,32 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                             onCheckedChange={() => handleSelectCompany(company.id)}
                           />
                         </TableCell>
-                        <TableCell>{company.company}</TableCell>
-                        <TableCell>{company.website}</TableCell>
-                        <TableCell>{company.industry}</TableCell>
-                        <TableCell>{company.productCategory}</TableCell>
-                        <TableCell>{company.businessType}</TableCell>
-                        <TableCell>{company.employees ?? ""}</TableCell>
-                        <TableCell>{company.revenue ?? ""}</TableCell>
-                        <TableCell>{company.yearFounded}</TableCell>
-                        <TableCell>{company.bbbRating}</TableCell>
-                        <TableCell>{company.street}</TableCell>
-                        <TableCell>{company.city}</TableCell>
-                        <TableCell>{company.state}</TableCell>
-                        <TableCell>{company.companyPhone}</TableCell>
-                        <TableCell>{company.companyLinkedin}</TableCell>
-                        <TableCell>{company.ownerFirstName}</TableCell>
-                        <TableCell>{company.ownerLastName}</TableCell>
-                        <TableCell>{company.ownerTitle}</TableCell>
-                        <TableCell>{company.ownerLinkedin}</TableCell>
-                        <TableCell>{company.ownerPhoneNumber}</TableCell>
-                        <TableCell>{company.ownerEmail}</TableCell>
-                        <TableCell>{company.source}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.company)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.website)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.industry)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.productCategory)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.businessType)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.employees)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.revenue)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.yearFounded)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.bbbRating)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.street)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.city)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.state)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.companyPhone)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.companyLinkedin)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.ownerFirstName)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.ownerLastName)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.ownerTitle)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.ownerLinkedin)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.ownerPhoneNumber)}</TableCell>
+                        <TableCell>{company.ownerEmail === "email_not_unlocked@domain.com" ? "N/A" : normalizeDisplayValue(company.ownerEmail)}</TableCell>
+                        <TableCell>
+                          {normalizeDisplayValue(company.source) === "N/A"
+                            ? "Not available in any source"
+                            : normalizeDisplayValue(company.source)}
+                        </TableCell>
+
                       </TableRow>
                     ))
                   ) : (
