@@ -774,3 +774,138 @@ def get_industries():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@lead_bp.route('/api/leads/enrichment-status', methods=['GET'])
+@login_required
+def get_leads_enrichment_status():
+    """Get enrichment status for leads"""
+    try:
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        # Build base query
+        query = Lead.query.filter(Lead.deleted == False)
+        
+        # Get leads with their enrichment status
+        leads = query.paginate(page=page, per_page=per_page)
+        
+        # Check enrichment status for each lead
+        enriched_leads = []
+        for lead in leads.items:
+            lead_dict = lead.to_dict()
+            
+            # Check required fields
+            required_fields = {
+                'owner_email': bool(lead.owner_email),
+                'owner_phone_number': bool(lead.owner_phone_number),
+                'website': bool(lead.website),
+                'owner_linkedin': bool(lead.owner_linkedin)
+            }
+            
+            # Calculate enrichment status
+            missing_fields = [field for field, has_value in required_fields.items() if not has_value]
+            is_fully_enriched = len(missing_fields) == 0
+            
+            # Add enrichment info to lead data
+            lead_dict.update({
+                'enrichment_status': {
+                    'is_fully_enriched': is_fully_enriched,
+                    'missing_fields': missing_fields,
+                    'last_enriched_at': lead.updated_at.isoformat() if lead.updated_at else None,
+                    'needs_enrichment': not is_fully_enriched
+                }
+            })
+            
+            enriched_leads.append(lead_dict)
+        
+        return jsonify({
+            "total": leads.total,
+            "pages": leads.pages,
+            "current_page": page,
+            "per_page": per_page,
+            "leads": enriched_leads
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@lead_bp.route('/api/leads/<int:lead_id>/enrich', methods=['POST'])
+@login_required
+def enrich_lead(lead_id):
+    """Enrich a single lead's data"""
+    try:
+        lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
+        
+        # Check if lead needs enrichment
+        required_fields = {
+            'owner_email': bool(lead.owner_email),
+            'owner_phone_number': bool(lead.owner_phone_number),
+            'website': bool(lead.website),
+            'owner_linkedin': bool(lead.owner_linkedin)
+        }
+        
+        missing_fields = [field for field, has_value in required_fields.items() if not has_value]
+        
+        if not missing_fields:
+            return jsonify({
+                "message": "Lead already fully enriched",
+                "lead": lead.to_dict()
+            })
+            
+        # TODO: Implement enrichment logic here
+        # This would be where you call your scraping service
+        
+        # Update lead with new data
+        lead.updated_at = datetime.datetime.now()
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Lead enriched successfully",
+            "lead": lead.to_dict(),
+            "enriched_fields": missing_fields
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@lead_bp.route('/api/leads/check-missing', methods=['POST'])
+@login_required
+def check_missing_fields():
+    """
+    Check which required fields are missing for a batch of leads.
+    Request body: { "lead_ids": [1, 2, 3, ...] }
+    Response: {
+      "results": [
+        {"lead_id": 1, "missing_fields": ["owner_email", ...], "status": "ok"},
+        {"lead_id": 2, "missing_fields": [], "status": "ok"},
+        {"lead_id": 3, "missing_fields": null, "status": "not_found"}
+      ]
+    }
+    """
+    lead_ids = request.json.get('lead_ids', [])
+    required_fields = ['owner_email', 'owner_phone_number', 'website', 'owner_linkedin']
+    results = []
+    for lead_id in lead_ids:
+        lead = Lead.query.get(lead_id)
+        if not lead:
+            results.append({
+                "lead_id": lead_id,
+                "missing_fields": None,
+                "status": "not_found"
+            })
+            continue
+        missing = [field for field in required_fields if not getattr(lead, field)]
+        results.append({
+            "lead_id": lead_id,
+            "missing_fields": missing,
+            "status": "ok"
+        })
+    return jsonify({"results": results})
+
+
+@lead_bp.route('/enrichment-test')
+@login_required
+def enrichment_test_page():
+    return render_template('enrichment_test.html')
