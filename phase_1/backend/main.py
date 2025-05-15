@@ -19,9 +19,6 @@ from backend.config.browser_config import PlaywrightManager
 
 from config.browser_config import PlaywrightManager
 
-import psutil
-import time
-
 FIELDNAMES = [
     "Company",
     "Industry",
@@ -32,19 +29,11 @@ FIELDNAMES = [
 ]
 
 async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, str]]:
-    
-    start_time = time.perf_counter()
-    process = psutil.Process(os.getpid())
-    start_mem = process.memory_info().rss / 1024 / 1024  # In MB
-    
+      
     # Running parallel
     manager = PlaywrightManager(headless=True)
     await manager.start_browser(stealth_on=True)
-    
-    start_time = time.perf_counter()
-    process = psutil.Process(os.getpid())
-    start_mem = process.memory_info().rss / 1024 / 1024  # In MB
-    
+       
     gmaps_page = await manager.context.new_page()
     bbb_page = await manager.context.new_page()
     hf_page = await manager.context.new_page()
@@ -74,13 +63,7 @@ async def fetch_and_merge_data(industry: str, location: str) -> List[Dict[str, s
     deduplified_data = deduplicate_businesses(data)
       
     print(f"Total entries after deduplication: {len(deduplified_data)}")
-    
-    end_time = time.perf_counter()
-    end_mem = process.memory_info().rss / 1024 / 1024  # In MB
-    
-    print(f"Time taken: {end_time - start_time:.2f} seconds")
-    print(f"RAM usage: {end_mem - start_mem:.2f} MB")
-    
+       
     return deduplified_data
 
 if __name__ == "__main__":

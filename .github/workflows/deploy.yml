@@ -41,7 +41,7 @@ jobs:
             echo "${{ secrets.FRONTEND_ENV_VARS }}" > frontend/.env
             # 🚀 Pull latest code & deploy
             docker compose down
-            docker compose build --no-cache
+            docker compose build
             docker compose up -d
           EOF
 
