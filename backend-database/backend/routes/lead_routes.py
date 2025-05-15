@@ -710,7 +710,7 @@ def api_search_leads():
     return jsonify(results)
 
 @lead_bp.route('/api/industries', methods=['GET'])
-@login_required
+# @login_required
 def get_industries():
     """Get all unique industries (normalized) for selection in frontend"""
     try:
