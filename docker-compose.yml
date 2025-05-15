@@ -39,11 +39,13 @@ services:
     container_name: nginx-proxy
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - frontend
       - backend
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro  # ✅ mount certs into container
     restart: always
 
   watchtower:
