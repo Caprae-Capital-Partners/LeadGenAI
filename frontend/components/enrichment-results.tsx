@@ -59,6 +59,8 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
   const [showFilters, setShowFilters] = useState(false)
   const downloadCSV = (data: any[], filename: string) => {
   const headers = Object.keys(data[0])
+  
+  
   const csvRows = [
     headers.join(","), // header row
     ...data.map(row =>
@@ -239,6 +241,9 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
       }
     }
   }
+  const normalizeDisplayValue = (value: any) => {
+    return value === null || value === undefined || value === "" ? "N/A" : value
+  }
 
   const clearFilter = (type: "search" | "employees" | "revenue" | "business") => {
     if (type === "search") setSearchTerm("")
@@ -369,7 +374,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                 </Button>
               </div>
             )}
-
+            
             <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -410,27 +415,32 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                             onCheckedChange={() => handleSelectCompany(company.id)}
                           />
                         </TableCell>
-                        <TableCell>{company.company}</TableCell>
-                        <TableCell>{company.website}</TableCell>
-                        <TableCell>{company.industry}</TableCell>
-                        <TableCell>{company.productCategory}</TableCell>
-                        <TableCell>{company.businessType}</TableCell>
-                        <TableCell>{company.employees ?? ""}</TableCell>
-                        <TableCell>{company.revenue ?? ""}</TableCell>
-                        <TableCell>{company.yearFounded}</TableCell>
-                        <TableCell>{company.bbbRating}</TableCell>
-                        <TableCell>{company.street}</TableCell>
-                        <TableCell>{company.city}</TableCell>
-                        <TableCell>{company.state}</TableCell>
-                        <TableCell>{company.companyPhone}</TableCell>
-                        <TableCell>{company.companyLinkedin}</TableCell>
-                        <TableCell>{company.ownerFirstName}</TableCell>
-                        <TableCell>{company.ownerLastName}</TableCell>
-                        <TableCell>{company.ownerTitle}</TableCell>
-                        <TableCell>{company.ownerLinkedin}</TableCell>
-                        <TableCell>{company.ownerPhoneNumber}</TableCell>
-                        <TableCell>{company.ownerEmail === "email_not_unlocked@domain.com" ? "N/A" : company.ownerEmail}</TableCell>
-                        <TableCell>{company.source}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.company)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.website)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.industry)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.productCategory)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.businessType)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.employees)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.revenue)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.yearFounded)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.bbbRating)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.street)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.city)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.state)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.companyPhone)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.companyLinkedin)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.ownerFirstName)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.ownerLastName)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.ownerTitle)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.ownerLinkedin)}</TableCell>
+                        <TableCell>{normalizeDisplayValue(company.ownerPhoneNumber)}</TableCell>
+                        <TableCell>{company.ownerEmail === "email_not_unlocked@domain.com" ? "N/A" : normalizeDisplayValue(company.ownerEmail)}</TableCell>
+                        <TableCell>
+                          {normalizeDisplayValue(company.source) === "N/A"
+                            ? "Not available in any source"
+                            : normalizeDisplayValue(company.source)}
+                        </TableCell>
+
                       </TableRow>
                     ))
                   ) : (

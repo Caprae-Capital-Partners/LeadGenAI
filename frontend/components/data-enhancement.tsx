@@ -19,8 +19,10 @@ export function DataEnhancement() {
   const [showResults, setShowResults] = useState(false)
   const { leads } = useLeads()
   const normalizeLeadValue = (val: any) => {
-  return val === null || val === undefined || val === "" || val === "NA" ? "N/A" : val
+    return val === null || val === undefined || val === "" || val === "NA" || val === "N/A" ? "N/A" : val
   }
+  
+  
 
   const normalizedLeads = leads.map((lead) => ({
     ...lead,
@@ -121,21 +123,21 @@ export function DataEnhancement() {
   }
 const [loading, setLoading] = useState(false)
 
-  const handleStartEnrichment = async () => {
+const handleStartEnrichment = async () => {
   setLoading(true)
 
   try {
-    const selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
-    const companyNames = selected.map((c) => c.company)
-    const domains = [...new Set(selected.map((c) => normalizeWebsite(c.website)))]
-    
-    // Step 1: Pre-pass Growjo to fill missing websites
-    const companiesMissingWebsites = selected.filter((c) => !normalizeWebsite(c.website))
+    let selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
     const headers = { headers: { "Content-Type": "application/json" } }
 
+    // Step 1: Fill websites using Growjo
+    const companiesMissingWebsites = selected.filter((c) => !normalizeWebsite(c.website))
     if (companiesMissingWebsites.length > 0) {
-      const preRes = await axios.post(`${BACKEND_URL}/api/scrape-growjo-batch`,
-        companiesMissingWebsites.map(c => ({ company: c.company})), headers)
+      const preRes = await axios.post(
+        `${BACKEND_URL}/api/scrape-growjo-batch`,
+        companiesMissingWebsites.map(c => ({ company: c.company })),
+        headers
+      )
 
       companiesMissingWebsites.forEach((c, i) => {
         const r = preRes.data[i]
@@ -145,14 +147,38 @@ const [loading, setLoading] = useState(false)
       })
     }
 
-    const updatedDomains = [...new Set(selected.map((c) => normalizeWebsite(c.website)))]
+    // 🔁 Recompute everything
+    selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
+    const companyNames = selected.map((c) => c.company)
 
-    // Step 2: Batch API calls
-    const [growjoRes, apolloRes, personRes] = await Promise.all([
-      axios.post(`${BACKEND_URL}/api/scrape-growjo-batch`, companyNames.map((c) => ({ company: c })), headers),
-      axios.post(`${BACKEND_URL}/api/apollo-scrape-batch`, { domains: updatedDomains }, headers),
-      axios.post(`${BACKEND_URL}/api/find-best-person-batch`, { domains: updatedDomains }, headers),
-    ])
+    // ✅ Only keep companies with a valid website (not N/A, not blank)
+    const selectedWithWebsites = selected.filter(c => {
+      const website = normalizeWebsite(c.website)
+      return website && website !== "n/a"
+    })
+    const updatedDomains = [...new Set(selectedWithWebsites.map((c) => normalizeWebsite(c.website)))]
+
+
+
+    // Step 2: Always run Growjo
+    const growjoRes = await axios.post(
+      `${BACKEND_URL}/api/scrape-growjo-batch`,
+      companyNames.map((c) => ({ company: c })),
+      headers
+    )
+
+    let apolloRes = { data: [] }
+    let personRes = { data: [] }
+
+    // Step 3: Only run Apollo + Person enrichment if valid domains exist
+    if (updatedDomains.length > 0) {
+      [apolloRes, personRes] = await Promise.all([
+        axios.post(`${BACKEND_URL}/api/apollo-scrape-batch`, { domains: updatedDomains }, headers),
+        axios.post(`${BACKEND_URL}/api/find-best-person-batch`, { domains: updatedDomains }, headers),
+      ])
+    } else {
+      console.warn("🚫 No valid domains found after Growjo enrichment. Apollo and Person APIs skipped.")
+    }
 
     const growjoMap = Object.fromEntries(
       (growjoRes.data as GrowjoCompany[]).map((item) => [
@@ -228,7 +254,7 @@ const [loading, setLoading] = useState(false)
           city: growjo.location?.split(", ")[0] || company.city,
           state: growjo.location?.split(", ")[1] || company.state,
           companyPhone: company.business_phone,
-          companyLinkedin: apollo.linkedin_url || person.linkedin_url || "",
+          companyLinkedin: apollo.linkedin_url || "",
           ownerFirstName: decider.firstName,
           ownerLastName: decider.lastName,
           ownerTitle: decider.title,

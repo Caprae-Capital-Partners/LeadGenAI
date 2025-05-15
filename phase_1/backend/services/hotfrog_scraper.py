@@ -1,41 +1,13 @@
 from ast import parse
 import asyncio
-import csv
 import os
 import sys
 from typing import Dict, List
 from playwright.async_api import Locator
-# from playwright_stealth import stealth_async
+from playwright_stealth import stealth_async
 
-# sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
-# from config.browser_config import PlaywrightManager
 from backend.services.parser import parse_number
-# from parser import parse_number
-
 from backend.config.browser_config import PlaywrightManager
-
-def save_to_csv(businesses, filename='hotfrog_data.csv'):
-    """Save extracted business data to CSV file."""
-    if not businesses:
-        print("No data to save to CSV.")
-        return None
-    
-    output_dir = "yellowpages_data"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    filepath = os.path.join(output_dir, filename)
-    
-    with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['Company', 'Industry', 'Address', 'Business_phone']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        
-        writer.writeheader()
-        for business in businesses:
-            writer.writerow(business)
-    
-    print(f"CSV file saved to: {filepath}")
-
 
 async def handle_cookie_consent(page):
     consent_selectors = [
@@ -117,63 +89,54 @@ async def extract_businesses(page, search_term: str) -> List[Dict[str, str]]:
                 results.append(data)
     return results
 
-async def scrape_single_page(context, url: str, search_term: str) -> List[Dict[str, str]]:
-    page = await context.new_page()
-    try:
-        # await stealth_async(page)
-        await page.goto(url, wait_until='domcontentloaded')
-        await asyncio.sleep(2)
-        await handle_cookie_consent(page)
-        await slow_scroll(page)
-        return await extract_businesses(page, search_term)
-    except Exception as e:
-        print(f"Error scraping {url}: {e}")
-        return []
-    finally:
-        await page.close()
-
-async def scrape_hotfrog(search_term: str, location: str, max_pages: int = 5) -> List[Dict[str, str]]:
+async def scrape_hotfrog(search_term: str, location: str, page=None, max_pages: int = 5) -> List[Dict[str, str]]:
     search_term_clean = search_term.lower().replace(' ', '-')
     location_clean = location.lower().replace(', ', '-')
-    urls = [
-        f"https://www.hotfrog.com/search/{location_clean}/{search_term_clean}" if i == 1
-        else f"https://www.hotfrog.com/search/{location_clean}/{search_term_clean}/{i}"
-        for i in range(1, max_pages + 1)
-    ]
+    start_url = f"https://www.hotfrog.com/search/{location_clean}/{search_term_clean}"
 
-    manager = PlaywrightManager(headless=True)
-    await manager.start_browser(stealth_on=True)
+    internal_browser = False
+
+    if page is None:
+        manager = PlaywrightManager(headless=True)
+        page = await manager.start_browser(stealth_on=True)
+        internal_browser = True
+
+    all_results = []
+    seen = set()
 
     try:
-        tasks = [
-            scrape_single_page(manager.context, url, search_term)
-            for url in urls
-        ]
-        results_nested = await asyncio.gather(*tasks)
-        all_results = [item for sublist in results_nested for item in sublist]
+        await stealth_async(page)
+        await page.goto(start_url, wait_until='domcontentloaded')
+        await asyncio.sleep(2)
+        await handle_cookie_consent(page)
 
-        # Deduplicate
-        seen = set()
-        unique = []
-        for item in all_results:
-            key = f"{item['Company']}_{item['Business_phone']}"
-            if key not in seen:
-                seen.add(key)
-                unique.append(item)
-        return unique
-    
+        for current_page in range(1, max_pages + 1):
+            await slow_scroll(page)
+
+            results = await extract_businesses(page, search_term)
+            for item in results:
+                key = f"{item['Company']}_{item['Business_phone']}"
+                if key not in seen:
+                    seen.add(key)
+                    all_results.append(item)
+
+            next_button = page.locator('nav[aria-label="Pagination"] a:has-text("Next")')
+            if await next_button.count() == 0:
+                break
+
+            href = await next_button.get_attribute("href")
+            if not href:
+                break
+
+            next_url = f"https://www.hotfrog.com{href}"
+            await page.goto(next_url, wait_until='domcontentloaded')
+            await asyncio.sleep(2)
+
     except Exception as e:
         print(f"Error during scraping: {e}")
         return []
     finally:
-        await manager.stop_browser()
+        if internal_browser:
+            await manager.stop_browser()
 
-# if __name__ == "__main__":
-#     search_term = "gun stores"
-#     location = "san diego, ca"
-#     results = asyncio.run(scrape_hotfrog(search_term, location, max_pages=5))
-    
-#     filename = f"{search_term.replace(' ', '_')}_{location.replace(' ', '_')}.csv"
-#     save_to_csv(results, filename=filename)
-    
-    
+    return all_results
