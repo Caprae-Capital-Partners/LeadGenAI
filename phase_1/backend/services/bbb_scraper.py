@@ -11,18 +11,15 @@ from backend.config.browser_config import PlaywrightManager
 
 # FIELDNAMES = ["Name", "Industry", "Address", "Business_phone", "BBB_rating"]
 
-async def scrape_bbb(industry: str, location: str, page=None) -> List[Dict[str,str]]:  
+async def scrape_bbb(industry: str, location: str) -> List[Dict[str,str]]:  
     industry = industry.replace(" ", "+")
-    location = location.replace(",", "%2C").strip()
+    location = location.replace(", ", "%2C")
     BASE_URL = f"https://www.bbb.org/search?find_country=USA&find_loc={location}&find_text={industry}"
     lead_list = []
-    internal_browser = False
    
     try:
-        if page == None:
-            browser_manager = PlaywrightManager(headless=True)
-            page = await browser_manager.start_browser(stealth_on=True)
-            internal_browser = True
+        browser_manager = PlaywrightManager(headless=True)
+        page = await browser_manager.start_browser(stealth_on=True)
         await page.goto(BASE_URL)
         
         while True:
@@ -111,8 +108,7 @@ async def scrape_bbb(industry: str, location: str, page=None) -> List[Dict[str,s
         return []
     
     finally:
-        if internal_browser:
-            await browser_manager.stop_browser()
+        await browser_manager.stop_browser()
     
 # if __name__ == "__main__":
 #     query = "swimming pool contractors"

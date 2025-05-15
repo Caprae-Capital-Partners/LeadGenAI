@@ -100,15 +100,11 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
             "Website": "NA"
         }
 
-async def scrape_lead_by_industry(industry: str, location: str, page=None) -> List[Dict[str, str]]:
+async def scrape_lead_by_industry(industry: str, location: str) -> List[Dict[str, str]]:
     """Scrape multiple leads by industry and location from Google Maps."""
-    internal_browser = False
     manager = PlaywrightManager(headless=True)
     try:
-        if page == None:
-            page = await manager.start_browser(stealth_on=False)
-            internal_browser = True
-            
+        page = await manager.start_browser(stealth_on=False)
         await page.goto(BASE_URL)
         await asyncio.sleep(2)
         
@@ -116,7 +112,7 @@ async def scrape_lead_by_industry(industry: str, location: str, page=None) -> Li
         search_query = f"{industry} in {location}"
         await page.fill("input[name='q']", search_query)
         await page.keyboard.press("Enter")
-        await page.wait_for_selector("div.ecceSd", timeout=10000)  # Wait for the scrollable container to load
+        await page.wait_for_selector("div.ecceSd", timeout=20000)  # Wait for the scrollable container to load
         
         scrollable_container = page.locator("div.ecceSd").nth(1)
 
@@ -152,11 +148,10 @@ async def scrape_lead_by_industry(industry: str, location: str, page=None) -> Li
             return business_list
                 
     except Exception as e:
-        raise RuntimeError(f"An error occurred while scraping: {e}")
+        print(f"Error during scraping: {e}")
         
     finally:
-        if internal_browser:
-            await manager.stop_browser()
+        await manager.stop_browser()
 
 if __name__ == "__main__":
     print(asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca")))
