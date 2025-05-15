@@ -435,7 +435,11 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
                         <TableCell>{normalizeDisplayValue(company.ownerLinkedin)}</TableCell>
                         <TableCell>{normalizeDisplayValue(company.ownerPhoneNumber)}</TableCell>
                         <TableCell>{company.ownerEmail === "email_not_unlocked@domain.com" ? "N/A" : normalizeDisplayValue(company.ownerEmail)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.source)}</TableCell>
+                        <TableCell>
+                          {normalizeDisplayValue(company.source) === "N/A"
+                            ? "Not available in any source"
+                            : normalizeDisplayValue(company.source)}
+                        </TableCell>
 
                       </TableRow>
                     ))
