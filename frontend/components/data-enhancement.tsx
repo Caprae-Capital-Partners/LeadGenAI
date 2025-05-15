@@ -129,48 +129,44 @@ const handleStartEnrichment = async () => {
   try {
     let selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
     const headers = { headers: { "Content-Type": "application/json" } }
-
-    // Step 1: Fill websites using Growjo
-    const companiesMissingWebsites = selected.filter((c) => !normalizeWebsite(c.website))
-    if (companiesMissingWebsites.length > 0) {
-      const preRes = await axios.post(
-        `${BACKEND_URL}/api/scrape-growjo-batch`,
-        companiesMissingWebsites.map(c => ({ company: c.company })),
-        headers
-      )
-
-      companiesMissingWebsites.forEach((c, i) => {
-        const r = preRes.data[i]
-        if (r?.company_website && r.company_website.toLowerCase() !== "not found") {
-          c.website = r.company_website
-        }
-      })
-    }
-
-    // 🔁 Recompute everything
-    selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
-    const companyNames = selected.map((c) => c.company)
-
-    // ✅ Only keep companies with a valid website (not N/A, not blank)
-    const selectedWithWebsites = selected.filter(c => {
-      const website = normalizeWebsite(c.website)
-      return website && website !== "n/a"
-    })
-    const updatedDomains = [...new Set(selectedWithWebsites.map((c) => normalizeWebsite(c.website)))]
-
-
-
-    // Step 2: Always run Growjo
+  
+    // Step 1: Always run Growjo enrichment for all selected companies
     const growjoRes = await axios.post(
       `${BACKEND_URL}/api/scrape-growjo-batch`,
-      companyNames.map((c) => ({ company: c })),
+      selected.map((c) => ({ company: c.company })),
       headers
     )
-
+  
+    const growjoMap = Object.fromEntries(
+      (growjoRes.data as GrowjoCompany[]).map((item) => [
+        item.company_name?.toLowerCase() || item.input_name?.toLowerCase(),
+        item
+      ])
+    )
+  
+    // Step 2: Update websites from Growjo result
+    selected = selected.map((company) => {
+      const growjo = growjoMap[company.company.toLowerCase()] || {}
+      return {
+        ...company,
+        website:
+          growjo.company_website && growjo.company_website.toLowerCase() !== "not found"
+            ? growjo.company_website
+            : company.website,
+      }
+    })
+  
+    // Step 3: Get valid domains from updated companies
+    const selectedWithWebsites = selected.filter((c) => {
+      const domain = normalizeWebsite(c.website)
+      return domain && domain !== "n/a"
+    })
+    const updatedDomains = [...new Set(selectedWithWebsites.map((c) => normalizeWebsite(c.website)))]
+  
+    // Step 4: Conditionally run Apollo + Person enrichments
     let apolloRes = { data: [] }
     let personRes = { data: [] }
-
-    // Step 3: Only run Apollo + Person enrichment if valid domains exist
+  
     if (updatedDomains.length > 0) {
       [apolloRes, personRes] = await Promise.all([
         axios.post(`${BACKEND_URL}/api/apollo-scrape-batch`, { domains: updatedDomains }, headers),
@@ -179,13 +175,8 @@ const handleStartEnrichment = async () => {
     } else {
       console.warn("🚫 No valid domains found after Growjo enrichment. Apollo and Person APIs skipped.")
     }
+  
 
-    const growjoMap = Object.fromEntries(
-      (growjoRes.data as GrowjoCompany[]).map((item) => [
-        item.company_name?.toLowerCase() || item.input_name?.toLowerCase(),
-        item,
-      ])
-    )
 
     const apolloMap = Object.fromEntries(
       (apolloRes.data as ApolloCompany[])
