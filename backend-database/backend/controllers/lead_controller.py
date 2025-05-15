@@ -433,3 +433,16 @@ class LeadController:
             execution_time_ms=exec_time
         )
         return results
+
+    @staticmethod
+    def get_unique_industries():
+        """Return a normalized, unique, sorted list of industries from the Lead table."""
+        industries_query = db.session.query(Lead.industry).filter(
+            Lead.industry.isnot(None),
+            Lead.industry != '',
+            Lead.deleted == False
+        ).distinct().all()
+        industries = [row[0] for row in industries_query]
+        # Normalize: strip, remove empty, deduplicate, sort
+        normalized = sorted(set(i.strip() for i in industries if i and i.strip()))
+        return normalized

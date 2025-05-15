@@ -687,3 +687,27 @@ def api_search_leads():
     results = LeadController.search_leads_by_industry_location(industry, location)
     # logging.debug(f"[OUT] /api/search_leads results: {results}")
     return jsonify(results)
+
+@lead_bp.route('/api/industries', methods=['GET'])
+@login_required
+def get_industries():
+    """Get all unique industries (normalized) for selection in frontend"""
+    try:
+        # Use controller logic if available, else query directly
+        industries = LeadController.get_unique_industries() if hasattr(LeadController, 'get_unique_industries') else None
+        if industries is None:
+            # Fallback: query directly
+            industries_query = db.session.query(Lead.industry).filter(
+                Lead.industry.isnot(None),
+                Lead.industry != '',
+                Lead.deleted == False
+            ).distinct().all()
+            industries = [row[0] for row in industries_query]
+        # Normalize: strip, lower, remove duplicates, sort
+        normalized = sorted(set(i.strip() for i in industries if i and i.strip()))
+        return jsonify({
+            "total": len(normalized),
+            "industries": normalized
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
