@@ -3,7 +3,7 @@ from flask_cors import CORS
 from routes.enrich import enrich_bp
 
 app = Flask(__name__)
-CORS(app, allow_origin="*")
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route("/health")
 def health_check():
