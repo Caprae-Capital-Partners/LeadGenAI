@@ -59,14 +59,24 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
   const [showFilters, setShowFilters] = useState(false)
   const downloadCSV = (data: any[], filename: string) => {
   const headers = Object.keys(data[0])
+  const normalizeCSVValue = (field: string, value: any) => {
+    if (field === "source") {
+      return value === null || value === undefined || value === "" || value === "N/A"
+        ? "Not available in any source"
+        : value
+    }
+    return value === null || value === undefined || value === "" ? "N/A" : value
+  }
   
   
   const csvRows = [
-    headers.join(","), // header row
+    headers.join(","),
     ...data.map(row =>
-      headers.map(field => `"${(row[field] ?? "").toString().replace(/"/g, '""')}"`).join(",")
+      headers.map(field =>
+        `"${normalizeCSVValue(field, row[field]).toString().replace(/"/g, '""')}"`
+      ).join(",")
     ),
-  ]
+  ]  
   const csvContent = csvRows.join("\n")
   const blob = new Blob([csvContent], { type: "text/csv" })
   const url = URL.createObjectURL(blob)
@@ -79,15 +89,30 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
 }
 
 
-  const parseRevenue = (revenueStr: string): number | null => {
-    revenueStr = revenueStr.toLowerCase().trim().replace(/[$,]/g, "")
-    let multiplier = 1
-    if (revenueStr.endsWith("k")) multiplier = 1_000, revenueStr = revenueStr.slice(0, -1)
-    else if (revenueStr.endsWith("m")) multiplier = 1_000_000, revenueStr = revenueStr.slice(0, -1)
-    else if (revenueStr.endsWith("b")) multiplier = 1_000_000_000, revenueStr = revenueStr.slice(0, -1)
-    const value = parseFloat(revenueStr)
-    return isNaN(value) ? null : value * multiplier
+const parseRevenue = (revenueStr: string): number | null => {
+  revenueStr = revenueStr.toLowerCase().trim().replace(/[$,]/g, "")
+  let multiplier = 1
+
+  if (revenueStr.endsWith("k")) {
+    multiplier = 1_000
+    revenueStr = revenueStr.slice(0, -1)
+  } else if (revenueStr.endsWith("m")) {
+    multiplier = 1_000_000
+    revenueStr = revenueStr.slice(0, -1)
+  } else if (revenueStr.endsWith("b")) {
+    multiplier = 1_000_000_000
+    revenueStr = revenueStr.slice(0, -1)
+  } else {
+    // If there's no suffix, treat as-is (e.g. user inputs "50000")
+    multiplier = 1
   }
+
+  const value = parseFloat(revenueStr)
+  return isNaN(value) ? null : value * multiplier
+}
+
+
+
 
   const parseFilter = (filterStr: string, isRevenue = false) => {
     const result = { operation: "exact", value: null as number | null, upper: null as number | null }
@@ -141,7 +166,11 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
       const { operation, value, upper } = parseFilter(revenueFilter, true)
       if (value !== null) {
         filtered = filtered.filter((company) => {
-          const val = company.revenue ?? 0
+          const val = typeof company.revenue === "string"
+            ? parseRevenue(company.revenue)
+            : company.revenue ?? 0
+    
+          if (val === null) return false
           if (operation === "exact") return val === value
           if (operation === "less than") return val < value
           if (operation === "less than or equal") return val <= value
@@ -152,6 +181,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
         })
       }
     }
+    
 
     if (businessTypeFilter) {
       filtered = filtered.filter((c) => c.businessType.toLowerCase().includes(businessTypeFilter.toLowerCase()))
