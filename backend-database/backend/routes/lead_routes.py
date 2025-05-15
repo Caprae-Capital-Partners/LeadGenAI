@@ -255,12 +255,33 @@ def get_leads():
 def create_lead():
     """Create a new lead via API - Admin and Developer only"""
     data = request.json
-    lead = Lead(**data)
 
+    company = data.get('company')
+    owner_email = data.get('owner_email')
+
+    if not company:
+        return jsonify({"error": "Company field is required"}), 400
+
+    query = Lead.query.filter_by(company=company, deleted=False)
+    if owner_email:
+        query = query.filter_by(owner_email=owner_email)
+    existing_lead = query.first()
+    if existing_lead:
+        return jsonify({
+            "message": "Lead already exists, skipping creation.",
+            "lead": existing_lead.to_dict(),
+            "skipped": True
+        }), 200
+
+    lead = Lead(**data)
     try:
         db.session.add(lead)
         db.session.commit()
-        return jsonify({"message": "Lead created successfully", "lead": lead.to_dict()}), 201
+        return jsonify({
+            "message": "Lead created successfully",
+            "lead": lead.to_dict(),
+            "skipped": False
+        }), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
