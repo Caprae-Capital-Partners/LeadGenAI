@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { ScraperResults } from "@/components/scraper-results"
 import axios from "axios"
 
 const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/lead-scrape`;
+const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/api/industries`;
 
 
 export function Scraper() {
@@ -17,11 +18,49 @@ export function Scraper() {
   const [progress, setProgress] = useState(0)
   const [showResults, setShowResults] = useState(false)
 
+  // Industry dropdown states
+  const [industries, setIndustries] = useState<string[]>([]); // Full list from API
+  const [filteredIndustries, setFilteredIndustries] = useState<string[]>([]); // Filtered list
+  const [showDropdown, setShowDropdown] = useState(false);
+
   // Search criteria state
   const [industry, setIndustry] = useState("")
   const [location, setLocation] = useState("")
   const [scrapedResults, setScrapedResults] = useState<any[]>([])
   const controllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    const fetchIndustries = async () => {
+      try {
+        const response = await fetch(FETCH_INDUSTRIES_API);
+        const data = await response.json();
+        if (data && data.industries) {
+          setIndustries(data.industries);
+        } else {
+          console.error("Invalid API response format:", data);
+        }
+      } catch (error) {
+        console.error('Error fetching industries:', error);
+      }
+    };
+
+  fetchIndustries();
+}, []);
+
+  const handleIndustryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setIndustry(value);
+
+    if (value) {
+      const filtered = industries.filter((ind) =>
+        ind.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredIndustries(filtered);
+      setShowDropdown(true);
+    } else {
+      setShowDropdown(false);
+    }
+  };
 
   const handleStartScraping = async () => {
     setIsScrapingActive(true)
@@ -78,8 +117,29 @@ export function Scraper() {
                 id="industry"
                 placeholder="Enter industry (e.g. Software, Healthcare)"
                 value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
+                onChange={handleIndustryChange}
+                onFocus={() => {
+                  if (industry.trim() !== "") {
+                    setShowDropdown(true); // Show dropdown only if input is non-empty
+                  }
+                }}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 200)} // Hide dropdown on blur
               />
+              {showDropdown && (
+              <ul className="dropdown">
+                {filteredIndustries.map((ind, index) => (
+                  <li
+                    key={index}
+                    onClick={() => {
+                      setIndustry(ind);
+                      setShowDropdown(false);
+                    }}
+                  >
+                    {ind}
+                  </li>
+                ))}
+              </ul>
+            )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
