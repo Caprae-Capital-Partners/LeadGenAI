@@ -4,12 +4,17 @@ import { cn } from "@/lib/utils"
 
 const Table = React.forwardRef<
   HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-x-auto overflow-y-hidden">
+  React.HTMLAttributes<HTMLTableElement> & { fixedLayout?: boolean }
+>(({ className, fixedLayout, ...props }, ref) => (
+  <div className={fixedLayout === false ? "relative w-full" : "relative w-full overflow-x-auto overflow-y-hidden"}>
     <table
       ref={ref}
-      className={cn("min-w-[1200px] w-full caption-bottom text-sm", className)}
+      className={cn(
+        fixedLayout === false 
+          ? "w-full caption-bottom text-sm" 
+          : "min-w-[1200px] w-full caption-bottom text-sm",
+        className
+      )}
       {...props}
     />
   </div>
