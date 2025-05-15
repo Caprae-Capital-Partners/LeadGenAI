@@ -73,7 +73,7 @@ def upload_csv():
     dynamic_fields = {name: value for name, value in zip(dynamic_field_names, dynamic_field_values) if name and value}
 
     try:
-        added, skipped_duplicates, errors = UploadController.process_csv_file(
+        added, skipped_duplicates, skipped_empty_company, errors = UploadController.process_csv_file(
             file,
             name_col,
             email_col,
@@ -83,7 +83,26 @@ def upload_csv():
             last_name_col=last_name_col
         )
         db.session.commit()
-        flash(f'Upload Complete! Added: {added}, Skipped: {skipped_duplicates}, Errors: {errors}', 'success')
+        
+        # More informative success message
+        message = 'Upload Complete! '
+        if isinstance(added, tuple) and len(added) == 2:
+            # If added is a tuple with new entries and updated entries
+            new_entries, updated_entries = added
+            message += f'Added: {new_entries}, Updated: {updated_entries}, '
+        else:
+            # Original format
+            message += f'Added: {added}, '
+        
+        message += f'Skipped Duplicates: {skipped_duplicates}, '
+        message += f'Skipped Empty Company: {skipped_empty_company}, '
+        message += f'Errors: {errors}'
+        
+        # Add information to view log if there are errors or skips
+        if errors > 0 or skipped_duplicates > 0 or skipped_empty_company > 0:
+            message += ' (See upload_errors.log for details)'
+        
+        flash(message, 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error during upload: {str(e)}', 'danger')
@@ -262,7 +281,12 @@ def create_lead():
     if not company:
         return jsonify({"error": "Company field is required"}), 400
 
-    query = Lead.query.filter_by(company=company, deleted=False)
+    # Make case-insensitive search
+    query = Lead.query.filter(
+        db.func.lower(Lead.company) == db.func.lower(company),
+        Lead.deleted == False
+    )
+    
     if owner_email:
         query = query.filter_by(owner_email=owner_email)
     existing_lead = query.first()
@@ -277,6 +301,13 @@ def create_lead():
     try:
         db.session.add(lead)
         db.session.commit()
+        
+        # Verify lead was actually created
+        verify_lead = Lead.query.filter_by(lead_id=lead.lead_id).first()
+        if not verify_lead:
+            db.session.rollback()
+            return jsonify({"error": "Failed to create lead - verification check failed"}), 500
+            
         return jsonify({
             "message": "Lead created successfully",
             "lead": lead.to_dict(),
@@ -284,6 +315,10 @@ def create_lead():
         }), 201
     except Exception as e:
         db.session.rollback()
+        # Log the error for debugging
+        print(f"API create_lead error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 400
 
 @lead_bp.route('/api/leads/<int:lead_id>', methods=['PUT'])
@@ -426,7 +461,8 @@ def api_upload_leads():
                 invalid_indices.append(i)
 
         # Process all valid leads using add_or_update_lead_by_match
-        added = 0
+        added_new = 0
+        updated = 0
         skipped = 0
         errors = 0
 
@@ -434,9 +470,14 @@ def api_upload_leads():
             try:
                 success, message = LeadController.add_or_update_lead_by_match(lead_data)
                 if success:
-                    added += 1
+                    if "updated successfully" in message:
+                        updated += 1
+                    elif "already up to date" in message:
+                        updated += 1  # Count as updated but wasn't changed
+                    else:
+                        added_new += 1
                 else:
-                    if "already in use" in message:
+                    if "already in use" in message or "already exists" in message:
                         skipped += 1
                     else:
                         errors += 1
@@ -446,9 +487,10 @@ def api_upload_leads():
 
         return jsonify({
             "status": "success",
-            "message": f"Upload Complete! Added: {added}, Skipped: {skipped}, Errors: {errors}",
+            "message": f"Upload Complete! Added: {added_new}, Updated: {updated}, Skipped: {skipped}, Errors: {errors}",
             "stats": {
-                "added": added,
+                "added_new": added_new,
+                "updated": updated,
                 "skipped_duplicates": skipped,
                 "errors": errors,
                 "invalid_indices": invalid_indices[:10] if invalid_indices else []

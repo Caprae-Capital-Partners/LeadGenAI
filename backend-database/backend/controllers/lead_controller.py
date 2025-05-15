@@ -341,6 +341,22 @@ class LeadController:
     def add_or_update_lead_by_match(lead_data):
         """Add a new lead or update existing lead by matching email or phone"""
         try:
+            # Log for debugging
+            print(f"Processing lead: {lead_data.get('company')}")
+            
+            if lead_data.get('company'):
+                # Make search case-insensitive
+                company_name = lead_data['company']
+                existing_lead = Lead.query.filter(
+                    db.func.lower(Lead.company) == db.func.lower(company_name),
+                    Lead.deleted == False
+                ).first()
+                
+                if existing_lead:
+                    # Log for debugging
+                    print(f"Found duplicate company: {existing_lead.company}")
+                    return (False, f"Company '{lead_data['company']}' already exists")
+                    
             # Only check for duplicates if email or phone is not empty
             query = Lead.query
             conditions = []
@@ -353,40 +369,59 @@ class LeadController:
                 lead_data['phone'] = str(lead_data['phone']).strip()
                 conditions.append(Lead.phone == lead_data['phone'])
 
+            existing_lead = None
             if conditions:
                 existing_lead = query.filter(db.or_(*conditions)).first()
-            else:
-                existing_lead = None
 
             if existing_lead:
                 # Update existing lead with new data
+                updated = False
                 for key, value in lead_data.items():
-                    if hasattr(existing_lead, key) and value is not None:
-                        setattr(existing_lead, key, value)
-                db.session.commit()
-                return (True, "Lead updated successfully")
+                    if hasattr(existing_lead, key) and value is not None and value != "":
+                        # Only update if the value is different from what's already there
+                        current_value = getattr(existing_lead, key)
+                        if current_value != value:
+                            setattr(existing_lead, key, value)
+                            updated = True
+                            print(f"Updated field '{key}': '{current_value}' -> '{value}'")
+                try:
+                    if updated:
+                        db.session.commit()
+                        print(f"Updated lead with ID: {existing_lead.lead_id}")
+                        return (True, "Lead updated successfully")
+                    else:
+                        print(f"No changes needed for lead with ID: {existing_lead.lead_id}")
+                        return (True, "Lead already up to date")
+                except Exception as e:
+                    db.session.rollback()
+                    print(f"Failed to update lead: {str(e)}")
+                    return (False, f"Error updating lead: {str(e)}")
             else:
                 # Create new lead
                 # Remove any None values to avoid SQLAlchemy errors
-                clean_data = {k: v for k, v in lead_data.items() if v is not None}
+                clean_data = {k: v for k, v in lead_data.items() if v is not None and v != ""}
                 try:
                     lead = Lead(**clean_data)
                     db.session.add(lead)
                     db.session.commit()
+                    print(f"Added new lead with ID: {lead.lead_id}")
                     return (True, "Lead added successfully")
                 except Exception as e:
                     db.session.rollback()
+                    print(f"Failed to create lead: {str(e)}")
                     return (False, f"Error creating lead: {str(e)}")
         except IntegrityError as e:
             db.session.rollback()
+            print(f"IntegrityError: {str(e)}")
             if "lead_owner_email_key" in str(e):
                 return (False, f"Email address '{lead_data.get('owner_email')}' is already in use")
             elif "lead_phone_key" in str(e):
                 return (False, f"Phone number '{lead_data.get('phone')}' is already in use")
             else:
-                return (False, "Duplicate data detected")
+                return (False, f"Duplicate data detected: {str(e)}")
         except Exception as e:
             db.session.rollback()
+            print(f"General exception: {str(e)}")
             return (False, f"Error adding/updating lead: {str(e)}")
 
     @staticmethod
