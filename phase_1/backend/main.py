@@ -17,8 +17,6 @@ from backend.services.hotfrog_scraper import scrape_hotfrog
 from backend.services.superpages import scrape_superpages
 from backend.config.browser_config import PlaywrightManager
 
-from config.browser_config import PlaywrightManager
-
 import psutil
 import time
 
