@@ -1,24 +1,23 @@
-from quart import Blueprint, request, jsonify
+# phase_1/backend/api/routes/scraper.py
+from quart import Blueprint, request, jsonify, abort
 from backend.main import fetch_and_merge_data
 
-scraper_bp = Blueprint('scraper', __name__)
+scraper_bp = Blueprint("scraper", __name__)
 
-@scraper_bp.route('/lead-scrape', methods=['POST'])
-async def scrape():
+@scraper_bp.post("/lead-scrape")
+async def lead_scrape():
+    payload = await request.get_json()
+    if not payload:
+        abort(400, description="Missing JSON body")
+
+    industry = (payload.get("industry") or "").strip()
+    location = (payload.get("location") or "").strip()
+    if not industry or not location:
+        abort(400, description="Both 'industry' and 'location' are required")
+
     try:
-        # Get the request data
-        data = await request.get_json()
-        industry = data.get('industry')
-        location = data.get('location')
-        
-        if not industry or not location:
-            return jsonify({"error": "Missing industry or location"}), 400
-        
-        try:
-            results = await fetch_and_merge_data(industry, location)
-        except Exception as e:
-            return jsonify({"Scraping failed": str(e)}), 500
-        
-        return jsonify(results), 200
+        results = await fetch_and_merge_data(industry, location)
+        return jsonify(results)
     except Exception as e:
-        return jsonify({"Internal error": str(e)}), 500
+        # logs full traceback server-side if you configure logging
+        abort(500, description=f"Scraping failed: {e}")
