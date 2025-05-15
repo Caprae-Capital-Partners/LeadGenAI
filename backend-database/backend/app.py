@@ -19,7 +19,8 @@ def create_app(config_class=config):
         r"/api/*": {  # Enable CORS for all routes under /api/
             "origins": [
                 "http://localhost:3000",     # React development server
-                "http://localhost:5173",     # Vite development server
+                "http://localhost:5173",  
+                "http://35.165.209.201",   # Vite development server
                 "http://54.166.155.63:3000", # Production frontend
                 "http://54.166.155.63"       # Production frontend without port
             ],

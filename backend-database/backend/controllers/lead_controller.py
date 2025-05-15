@@ -4,6 +4,9 @@ from models.audit_logs_model import AuditLog
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy import text
+from controllers.search_log_controller import SearchLogController
+from flask_login import current_user
+import time
 
 class LeadController:
     @staticmethod
@@ -77,7 +80,7 @@ class LeadController:
         lead = Lead(
             # Base data
             search_keyword=form_data.get('search_keyword', {}),
-            
+
             # Company info
             company=form_data.get('company', ''),
             website=form_data.get('website', ''),
@@ -88,16 +91,16 @@ class LeadController:
             revenue=form_data.get('revenue', None),
             year_founded=form_data.get('year_founded', ''),
             bbb_rating=form_data.get('bbb_rating', ''),
-            
+
             # Location
             street=form_data.get('street', ''),
             city=form_data.get('city', ''),
             state=form_data.get('state', ''),
-            
+
             # Company contact
             company_phone=form_data.get('company_phone', ''),
             company_linkedin=form_data.get('company_linkedin', ''),
-            
+
             # Owner/contact info
             owner_first_name=form_data.get('owner_first_name', ''),
             owner_last_name=form_data.get('owner_last_name', ''),
@@ -106,23 +109,23 @@ class LeadController:
             owner_phone_number=form_data.get('owner_phone_number', ''),
             owner_email=form_data.get('owner_email', ''),
             phone=form_data.get('phone', ''),
-            
+
             # Source
             source=form_data.get('source', 'manual')
         )
-        
+
         # Handle dynamic fields if provided
         if form_data.getlist('dynamic_field_name[]') and form_data.getlist('dynamic_field_value[]'):
             field_names = form_data.getlist('dynamic_field_name[]')
             field_values = form_data.getlist('dynamic_field_value[]')
-            
+
             for i in range(len(field_names)):
                 if field_names[i] and field_values[i]:
                     # Set attribute if it exists on Lead model
                     field_name = field_names[i]
                     if hasattr(lead, field_name):
                         setattr(lead, field_name, field_values[i])
-        
+
         try:
             db.session.add(lead)
             db.session.commit()
@@ -192,11 +195,11 @@ class LeadController:
         try:
             # Store old values for audit log
             old_values = lead.to_dict()
-            
+
             # Mark as deleted
             lead.deleted = True
             lead.deleted_at = datetime.utcnow()
-            
+
             # Create audit log entry
             if current_user:
                 AuditLog.log_change(
@@ -209,7 +212,7 @@ class LeadController:
                     ip_address=request.remote_addr,
                     user_agent=request.user_agent.string
                 )
-            
+
             db.session.commit()
             return True, "Lead deleted successfully!"
         except Exception as e:
@@ -221,26 +224,26 @@ class LeadController:
         """Soft delete multiple leads by their IDs"""
         if not lead_ids:
             return False, "No leads selected for deletion."
-            
+
         try:
             # Get all leads to be deleted
             leads = Lead.query.filter(
                 Lead.lead_id.in_(lead_ids),
                 Lead.deleted == False
             ).all()
-            
+
             if not leads:
                 return False, "No leads found with the specified IDs."
-                
+
             now = datetime.utcnow()
             deleted_count = 0
-            
+
             for lead in leads:
                 old_values = lead.to_dict()
                 lead.deleted = True
                 lead.deleted_at = now
                 deleted_count += 1
-                
+
                 if current_user:
                     AuditLog.log_change(
                         user_id=getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None) or str(current_user),
@@ -252,7 +255,7 @@ class LeadController:
                         ip_address=request.remote_addr,
                         user_agent=request.user_agent.string
                     )
-                
+
             db.session.commit()
             return True, f"{deleted_count} leads deleted successfully!"
         except Exception as e:
@@ -267,11 +270,11 @@ class LeadController:
         try:
             # Store old values for audit log
             old_values = lead.to_dict()
-            
+
             # Restore lead
             lead.deleted = False
             lead.deleted_at = None
-            
+
             # Create audit log entry
             if current_user:
                 AuditLog.log_change(
@@ -284,7 +287,7 @@ class LeadController:
                     ip_address=request.remote_addr,
                     user_agent=request.user_agent.string
                 )
-            
+
             db.session.commit()
             return True, "Lead restored successfully!"
         except Exception as e:
@@ -296,20 +299,20 @@ class LeadController:
         """Restore multiple soft-deleted leads"""
         if not lead_ids:
             return False, "No leads selected for restoration."
-            
+
         try:
             # Get all leads to be restored
             leads = Lead.query.filter(Lead.lead_id.in_(lead_ids)).all()
-            
+
             if not leads:
                 return False, "No leads found with the specified IDs."
-                
+
             # Restore leads and create audit logs
             for lead in leads:
                 old_values = lead.to_dict()
                 lead.deleted = False
                 lead.deleted_at = None
-                
+
                 if current_user:
                     AuditLog.log_change(
                         user_id=getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None) or str(current_user),
@@ -321,7 +324,7 @@ class LeadController:
                         ip_address=request.remote_addr,
                         user_agent=request.user_agent.string
                     )
-                
+
             db.session.commit()
             return True, f"{len(leads)} leads restored successfully!"
         except Exception as e:
@@ -341,7 +344,7 @@ class LeadController:
             # Only check for duplicates if email or phone is not empty
             query = Lead.query
             conditions = []
-            
+
             # Clean and validate the data
             if lead_data.get('owner_email'):
                 lead_data['owner_email'] = str(lead_data['owner_email']).strip().lower()
@@ -349,7 +352,7 @@ class LeadController:
             if lead_data.get('phone'):
                 lead_data['phone'] = str(lead_data['phone']).strip()
                 conditions.append(Lead.phone == lead_data['phone'])
-                
+
             if conditions:
                 existing_lead = query.filter(db.or_(*conditions)).first()
             else:
@@ -385,3 +388,61 @@ class LeadController:
         except Exception as e:
             db.session.rollback()
             return (False, f"Error adding/updating lead: {str(e)}")
+
+    @staticmethod
+    def search_leads_by_industry_location(industry, location):
+        """Search leads by industry and location (for API), with search_logs caching"""
+        start_time = time.time()
+        # Normalize and hash the search
+        search_hash = SearchLogController.normalize_and_hash(industry, location)
+        # Check if log exists
+        log = SearchLogController.get_log_by_hash(search_hash)
+        if log and log.search_parameters:
+            # Increment result_count and update timestamp
+            log.result_count += 1
+            log.searched_at = datetime.utcnow()
+            db.session.commit()
+            return log.search_parameters  # Already JSON serializable
+        # If not found, search leads
+        query = Lead.query.filter_by(deleted=False)
+        if industry:
+            query = query.filter(Lead.industry.ilike(f"%{industry}%"))
+        if location:
+            if ',' in location:
+                city, state = [x.strip() for x in location.split(',', 1)]
+                query = query.filter(
+                    Lead.city.ilike(f"%{city}%"),
+                    Lead.state.ilike(f"%{state}%")
+                )
+            else:
+                query = query.filter(
+                    (Lead.city.ilike(f"%{location}%")) | (Lead.state.ilike(f"%{location}%"))
+                )
+        results = [lead.to_dict() for lead in query.all()]
+        exec_time = int((time.time() - start_time) * 1000)
+        # Log the search
+        # user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None) or 0
+        user_id = 1  # TEMP: static user_id for logging
+        search_query = f"industry: {industry}, location: {location}"
+        SearchLogController.log_search(
+            user_id=user_id,
+            search_query=search_query,
+            search_hash=search_hash,
+            search_parameters=results,
+            result_count=len(results),
+            execution_time_ms=exec_time
+        )
+        return results
+
+    @staticmethod
+    def get_unique_industries():
+        """Return a normalized, unique, sorted list of industries from the Lead table."""
+        industries_query = db.session.query(Lead.industry).filter(
+            Lead.industry.isnot(None),
+            Lead.industry != '',
+            Lead.deleted == False
+        ).distinct().all()
+        industries = [row[0] for row in industries_query]
+        # Normalize: strip, remove empty, deduplicate, sort
+        normalized = sorted(set(i.strip() for i in industries if i and i.strip()))
+        return normalized
