@@ -132,7 +132,7 @@ const handleStartEnrichment = async () => {
   
     // Step 1: Always run Growjo enrichment for all selected companies
     const growjoRes = await axios.post(
-      `${BACKEND_URL}/api/scrape-growjo-batch`,
+      `${BACKEND_URL}/scrape-growjo-batch`,
       selected.map((c) => ({ company: c.company })),
       headers
     )
@@ -169,8 +169,8 @@ const handleStartEnrichment = async () => {
   
     if (updatedDomains.length > 0) {
       [apolloRes, personRes] = await Promise.all([
-        axios.post(`${BACKEND_URL}/api/apollo-scrape-batch`, { domains: updatedDomains }, headers),
-        axios.post(`${BACKEND_URL}/api/find-best-person-batch`, { domains: updatedDomains }, headers),
+        axios.post(`${BACKEND_URL}/apollo-scrape-batch`, { domains: updatedDomains }, headers),
+        axios.post(`${BACKEND_URL}/find-best-person-batch`, { domains: updatedDomains }, headers),
       ])
     } else {
       console.warn("🚫 No valid domains found after Growjo enrichment. Apollo and Person APIs skipped.")
