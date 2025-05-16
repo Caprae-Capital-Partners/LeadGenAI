@@ -22,6 +22,7 @@ def create_app(config_class=config):
                 "http://localhost:5173",
                 "https://capraeleadseekers.site",
                 "https://35.165.209.201",  
+                "https://main.d2fzqm2i2qb7f3.amplifyapp.com",
                 "http://35.165.209.201", 
                 "http://54.166.155.63:3000", # Production frontend
                 "http://54.166.155.63"       # Production frontend without port
