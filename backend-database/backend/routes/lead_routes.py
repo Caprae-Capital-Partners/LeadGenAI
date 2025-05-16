@@ -416,7 +416,7 @@ def api_upload_leads():
             return jsonify({"status": "error", "message": "Invalid data format. Expected a list of leads"}), 400
 
         # Initial validation - only require company field
-        required_fields = ['company', 'website', 'owner_phone_number', 'owner_linkedin']
+        required_fields = ['company', 'website', 'owner_linkedin']
         valid_leads = []
         invalid_indices = []
 
