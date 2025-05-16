@@ -23,16 +23,16 @@ services:
       - .env
     restart: always
 
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    container_name: leadgen-frontend
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
-    restart: always
+  # frontend:
+  #   build:
+  #     context: .
+  #     dockerfile: frontend/Dockerfile
+  #   container_name: leadgen-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   env_file:
+  #     - .env
+  #   restart: always
 
   nginx:
     image: nginx:latest
