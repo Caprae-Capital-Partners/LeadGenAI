@@ -153,7 +153,20 @@ export function DataPreview() {
                 </TableCell>
                 <TableCell>{row.bbb_rating}</TableCell>
                 <TableCell>{row.business_phone}</TableCell>
-                <TableCell>{row.website}</TableCell>
+                <TableCell>
+                  {row.website && row.website !== "N/A" ? (
+                    <a 
+                      href={row.website.startsWith('http') ? row.website : `https://${row.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:text-blue-700 hover:underline"
+                    >
+                      {row.website}
+                    </a>
+                  ) : (
+                    row.website || "N/A"
+                  )}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

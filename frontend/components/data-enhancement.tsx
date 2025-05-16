@@ -469,7 +469,20 @@ const handleStartEnrichment = async () => {
                         <TableCell>{company.state}</TableCell>
                         <TableCell>{company.bbb_rating}</TableCell>
                         <TableCell>{company.business_phone}</TableCell>
-                        <TableCell>{company.website}</TableCell>
+                        <TableCell>
+                          {company.website && company.website !== "N/A" ? (
+                            <a 
+                              href={company.website.toString().startsWith('http') ? company.website : `https://${company.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700 hover:underline"
+                            >
+                              {company.website}
+                            </a>
+                          ) : (
+                            company.website || "N/A"
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (

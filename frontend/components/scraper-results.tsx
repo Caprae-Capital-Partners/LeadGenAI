@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Download, Search, ArrowRight } from "lucide-react"
+import { Download, Search, ArrowRight, ExternalLink } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
 import { useLeads } from "@/components/LeadsProvider"
@@ -280,11 +280,25 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                         ))}
                     </TableCell>
                     <TableCell>
-                      <input
-                        className="border-b w-full bg-transparent"
-                        value={normalizeDisplayValue(result.website)}
-                        onChange={e => handleCellChange(rowIdx, "website", e.target.value)}
-                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          className="border-b w-full bg-transparent"
+                          value={normalizeDisplayValue(result.website)}
+                          onChange={e => handleCellChange(rowIdx, "website", e.target.value)}
+                        />
+                        {result.website && normalizeDisplayValue(result.website) !== "NA" && (
+                          <a
+                            href={result.website.toString().startsWith('http') ? result.website : `https://${result.website}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-700"
+                            title="Open website in new tab"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

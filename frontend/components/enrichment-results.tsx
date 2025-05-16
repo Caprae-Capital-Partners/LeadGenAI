@@ -446,7 +446,20 @@ const parseRevenue = (revenueStr: string): number | null => {
                         />
                       </TableCell>
                       <TableCell>{normalizeDisplayValue(company.company)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.website)}</TableCell>
+                      <TableCell>
+                        {company.website && normalizeDisplayValue(company.website) !== "N/A" ? (
+                          <a 
+                            href={company.website.toString().startsWith('http') ? company.website : `https://${company.website}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-700 hover:underline"
+                          >
+                            {normalizeDisplayValue(company.website)}
+                          </a>
+                        ) : (
+                          normalizeDisplayValue(company.website)
+                        )}
+                      </TableCell>
                       <TableCell>{normalizeDisplayValue(company.industry)}</TableCell>
                       <TableCell>{normalizeDisplayValue(company.productCategory)}</TableCell>
                       <TableCell>{normalizeDisplayValue(company.businessType)}</TableCell>
@@ -458,11 +471,37 @@ const parseRevenue = (revenueStr: string): number | null => {
                       <TableCell>{normalizeDisplayValue(company.city)}</TableCell>
                       <TableCell>{normalizeDisplayValue(company.state)}</TableCell>
                       <TableCell>{normalizeDisplayValue(company.companyPhone)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.companyLinkedin)}</TableCell>
+                      <TableCell>
+                        {company.companyLinkedin && normalizeDisplayValue(company.companyLinkedin) !== "N/A" ? (
+                          <a 
+                            href={company.companyLinkedin.toString().startsWith('http') ? company.companyLinkedin : `https://${company.companyLinkedin}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-700 hover:underline"
+                          >
+                            {normalizeDisplayValue(company.companyLinkedin)}
+                          </a>
+                        ) : (
+                          normalizeDisplayValue(company.companyLinkedin)
+                        )}
+                      </TableCell>
                       <TableCell>{normalizeDisplayValue(company.ownerFirstName)}</TableCell>
                       <TableCell>{normalizeDisplayValue(company.ownerLastName)}</TableCell>
                       <TableCell>{normalizeDisplayValue(company.ownerTitle)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.ownerLinkedin)}</TableCell>
+                      <TableCell>
+                        {company.ownerLinkedin && normalizeDisplayValue(company.ownerLinkedin) !== "N/A" ? (
+                          <a 
+                            href={company.ownerLinkedin.toString().startsWith('http') ? company.ownerLinkedin : `https://${company.ownerLinkedin}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-700 hover:underline"
+                          >
+                            {normalizeDisplayValue(company.ownerLinkedin)}
+                          </a>
+                        ) : (
+                          normalizeDisplayValue(company.ownerLinkedin)
+                        )}
+                      </TableCell>
                       <TableCell>{normalizeDisplayValue(company.ownerPhoneNumber)}</TableCell>
                       <TableCell>
                         {company.ownerEmail === "email_not_unlocked@domain.com"
