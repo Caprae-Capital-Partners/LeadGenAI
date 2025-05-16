@@ -11,6 +11,7 @@ import axios from "axios"
 
 const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/lead-scrape`;
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/api/industries`;
+const FETCH_DB_API = `${process.env. NEXT_PUBLIC_DATABASE_URL}/api/lead_scrape`;
 
 
 export function Scraper() {
@@ -94,6 +95,49 @@ export function Scraper() {
     }
   }
 
+  const handleCollectData = async () => {
+    setIsScrapingActive(true)
+    setProgress(0)
+    setShowResults(false)
+
+    const controller = new AbortController()
+    controllerRef.current = controller
+
+    try {
+      const response = await axios.post(
+        FETCH_DB_API,
+        { industry, location },
+        { signal: controller.signal }
+      )
+
+      const data = response.data
+      const formattedData = data.map((item, idx) => ({
+        id: -1, // Temporary ID that will be replaced by addUniqueIdsToLeads
+        company: item.Company || item.company || "",
+        website: item.Website || item.website || "",
+        industry: item.Industry || item.industry || "",
+        street: item.Street || item.street || "",
+        city: item.City || item.city || "",
+        state: item.State || item.state || "",
+        bbb_rating: item.BBB_rating || item.bbb_rating || "",
+        business_phone: item.phone || item.phone || "",
+      }));
+      console.log("Scraped Results:", formattedData)
+      setScrapedResults(formattedData)
+      setShowResults(true)
+    } catch (error: any) {
+      if (axios.isCancel(error)) {
+        console.warn("Scraping canceled")
+      } else {
+        console.error("Scraping failed:", error)
+      }
+    } finally {
+      setIsScrapingActive(false)
+      setProgress(100)
+      controllerRef.current = null
+    }
+  }
+
 
   return (
     <div className="space-y-6">
@@ -156,7 +200,7 @@ export function Scraper() {
           <Button variant="outline">Clear</Button>
           <Button
             className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
-            onClick={handleStartScraping}
+            onClick={ handleCollectData}
             disabled={isScrapingActive || !industry || !location}
           >
             Find Companies
