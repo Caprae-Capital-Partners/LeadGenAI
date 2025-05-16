@@ -9,7 +9,7 @@ import { Input } from "../components/ui/input"
 import { Checkbox } from "../components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import type { FC } from "react"
-import { Search, Download, ArrowLeft, Filter, X } from "lucide-react"
+import { Search, Download, ArrowLeft, Filter, X, ExternalLink } from "lucide-react"
 
 interface EnrichedCompany {
   id: string
@@ -272,7 +272,26 @@ const parseRevenue = (revenueStr: string): number | null => {
     }
   }
   const normalizeDisplayValue = (value: any) => {
-    return value === null || value === undefined || value === "" ? "N/A" : value
+    if (value === null || value === undefined || value === "") return "N/A";
+    if (value === "NA") return "N/A";
+    return value;
+  }
+
+  // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
+  const cleanUrlForDisplay = (url: string): string => {
+    if (!url || url === "N/A" || url === "NA") return url;
+    
+    // First remove http://, https://, and www.
+    let cleanUrl = url.toString().replace(/^(https?:\/\/)?(www\.)?/i, "");
+    
+    // Then truncate everything after the domain (matches common TLDs)
+    const domainMatch = cleanUrl.match(/^([^\/\?#]+\.(com|org|net|io|ai|co|gov|edu|app|dev|me|info|biz|us|uk|ca|au|de|fr|jp|ru|br|in|cn|nl|se)).*$/i);
+    if (domainMatch) {
+      return domainMatch[1];
+    }
+    
+    // If no common TLD found, just truncate at the first slash, question mark or hash
+    return cleanUrl.split(/[\/\?#]/)[0];
   }
 
   const clearFilter = (type: "search" | "employees" | "revenue" | "business") => {
@@ -447,18 +466,21 @@ const parseRevenue = (revenueStr: string): number | null => {
                       </TableCell>
                       <TableCell>{normalizeDisplayValue(company.company)}</TableCell>
                       <TableCell>
-                        {company.website && normalizeDisplayValue(company.website) !== "N/A" ? (
-                          <a 
-                            href={company.website.toString().startsWith('http') ? company.website : `https://${company.website}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:text-blue-700 hover:underline"
-                          >
-                            {normalizeDisplayValue(company.website)}
-                          </a>
-                        ) : (
-                          normalizeDisplayValue(company.website)
-                        )}
+                        <div className="flex items-center gap-2">
+                          {company.website ? cleanUrlForDisplay(normalizeDisplayValue(company.website)) : "N/A"}
+                          {company.website && normalizeDisplayValue(company.website) !== "N/A" && normalizeDisplayValue(company.website) !== "NA" && (
+                            <a
+                              href={company.website.toString().startsWith('http') ? company.website : `https://${company.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700"
+                              title="Open website in new tab"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>{normalizeDisplayValue(company.industry)}</TableCell>
                       <TableCell>{normalizeDisplayValue(company.productCategory)}</TableCell>
@@ -472,35 +494,41 @@ const parseRevenue = (revenueStr: string): number | null => {
                       <TableCell>{normalizeDisplayValue(company.state)}</TableCell>
                       <TableCell>{normalizeDisplayValue(company.companyPhone)}</TableCell>
                       <TableCell>
-                        {company.companyLinkedin && normalizeDisplayValue(company.companyLinkedin) !== "N/A" ? (
-                          <a 
-                            href={company.companyLinkedin.toString().startsWith('http') ? company.companyLinkedin : `https://${company.companyLinkedin}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:text-blue-700 hover:underline"
-                          >
-                            {normalizeDisplayValue(company.companyLinkedin)}
-                          </a>
-                        ) : (
-                          normalizeDisplayValue(company.companyLinkedin)
-                        )}
+                        <div className="flex items-center gap-2">
+                          {company.companyLinkedin ? cleanUrlForDisplay(normalizeDisplayValue(company.companyLinkedin)) : "N/A"}
+                          {company.companyLinkedin && normalizeDisplayValue(company.companyLinkedin) !== "N/A" && normalizeDisplayValue(company.companyLinkedin) !== "NA" && (
+                            <a
+                              href={company.companyLinkedin.toString().startsWith('http') ? company.companyLinkedin : `https://${company.companyLinkedin}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700"
+                              title="Open LinkedIn in new tab"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>{normalizeDisplayValue(company.ownerFirstName)}</TableCell>
                       <TableCell>{normalizeDisplayValue(company.ownerLastName)}</TableCell>
                       <TableCell>{normalizeDisplayValue(company.ownerTitle)}</TableCell>
                       <TableCell>
-                        {company.ownerLinkedin && normalizeDisplayValue(company.ownerLinkedin) !== "N/A" ? (
-                          <a 
-                            href={company.ownerLinkedin.toString().startsWith('http') ? company.ownerLinkedin : `https://${company.ownerLinkedin}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:text-blue-700 hover:underline"
-                          >
-                            {normalizeDisplayValue(company.ownerLinkedin)}
-                          </a>
-                        ) : (
-                          normalizeDisplayValue(company.ownerLinkedin)
-                        )}
+                        <div className="flex items-center gap-2">
+                          {company.ownerLinkedin ? cleanUrlForDisplay(normalizeDisplayValue(company.ownerLinkedin)) : "N/A"}
+                          {company.ownerLinkedin && normalizeDisplayValue(company.ownerLinkedin) !== "N/A" && normalizeDisplayValue(company.ownerLinkedin) !== "NA" && (
+                            <a
+                              href={company.ownerLinkedin.toString().startsWith('http') ? company.ownerLinkedin : `https://${company.ownerLinkedin}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700"
+                              title="Open LinkedIn in new tab"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>{normalizeDisplayValue(company.ownerPhoneNumber)}</TableCell>
                       <TableCell>

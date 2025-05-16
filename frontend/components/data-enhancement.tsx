@@ -7,7 +7,7 @@ import { Button } from "../components/ui/button"
 import { Checkbox } from "../components/ui/checkbox"
 import { Input } from "../components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
-import { Search, Filter, Download, X } from "lucide-react"
+import { Search, Filter, Download, X, ExternalLink } from "lucide-react"
 import { useLeads } from "./LeadsProvider"
 import type { ApolloCompany, GrowjoCompany, ApolloPerson } from "../types/enrichment"
 import axios from "axios"
@@ -23,7 +23,22 @@ export function DataEnhancement() {
     return val === null || val === undefined || val === "" || val === "NA" || val === "N/A" ? "N/A" : val
   }
   
-  
+  // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
+  const cleanUrlForDisplay = (url: string): string => {
+    if (!url || url === "N/A" || url === "NA") return url;
+    
+    // First remove http://, https://, and www.
+    let cleanUrl = url.toString().replace(/^(https?:\/\/)?(www\.)?/i, "");
+    
+    // Then truncate everything after the domain (matches common TLDs)
+    const domainMatch = cleanUrl.match(/^([^\/\?#]+\.(com|org|net|io|ai|co|gov|edu|app|dev|me|info|biz|us|uk|ca|au|de|fr|jp|ru|br|in|cn|nl|se)).*$/i);
+    if (domainMatch) {
+      return domainMatch[1];
+    }
+    
+    // If no common TLD found, just truncate at the first slash, question mark or hash
+    return cleanUrl.split(/[\/\?#]/)[0];
+  }
 
   const normalizedLeads = leads.map((lead) => ({
     ...lead,
@@ -470,18 +485,21 @@ const handleStartEnrichment = async () => {
                         <TableCell>{company.bbb_rating}</TableCell>
                         <TableCell>{company.business_phone}</TableCell>
                         <TableCell>
-                          {company.website && company.website !== "N/A" ? (
-                            <a 
-                              href={company.website.toString().startsWith('http') ? company.website : `https://${company.website}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:text-blue-700 hover:underline"
-                            >
-                              {company.website}
-                            </a>
-                          ) : (
-                            company.website || "N/A"
-                          )}
+                          <div className="flex items-center gap-2">
+                            {company.website ? cleanUrlForDisplay(company.website) : "N/A"}
+                            {company.website && company.website !== "N/A" && company.website !== "NA" && (
+                              <a
+                                href={company.website.toString().startsWith('http') ? company.website : `https://${company.website}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:text-blue-700"
+                                title="Open website in new tab"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

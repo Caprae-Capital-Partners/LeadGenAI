@@ -171,8 +171,28 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     else if (exportFormat === "excel") exportExcel()
     else if (exportFormat === "json") exportJSON()
   }
+
+  // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
+  const cleanUrlForDisplay = (url: string): string => {
+    if (!url || typeof url !== 'string' || url === "N/A" || url === "NA") return url;
+    
+    // First remove http://, https://, and www.
+    let cleanUrl = url.replace(/^(https?:\/\/)?(www\.)?/i, "");
+    
+    // Then truncate everything after the domain (matches common TLDs)
+    const domainMatch = cleanUrl.match(/^([^\/\?#]+\.(com|org|net|io|ai|co|gov|edu|app|dev|me|info|biz|us|uk|ca|au|de|fr|jp|ru|br|in|cn|nl|se)).*$/i);
+    if (domainMatch) {
+      return domainMatch[1];
+    }
+    
+    // If no common TLD found, just truncate at the first slash, question mark or hash
+    return cleanUrl.split(/[\/\?#]/)[0];
+  }
+
   const normalizeDisplayValue = (value: any) => {
-    return value === null || value === undefined || value === "" ? "N/A" : value
+    if (value === null || value === undefined || value === "") return "N/A";
+    if (value === "NA") return "N/A";
+    return value;
   }
   
 
@@ -285,8 +305,9 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                           className="border-b w-full bg-transparent"
                           value={normalizeDisplayValue(result.website)}
                           onChange={e => handleCellChange(rowIdx, "website", e.target.value)}
+                          placeholder="Website (without http:// or www.)"
                         />
-                        {result.website && normalizeDisplayValue(result.website) !== "NA" && (
+                        {result.website && normalizeDisplayValue(result.website) !== "N/A" && normalizeDisplayValue(result.website) !== "NA" && (
                           <a
                             href={result.website.toString().startsWith('http') ? result.website : `https://${result.website}`}
                             target="_blank"

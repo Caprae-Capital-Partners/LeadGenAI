@@ -5,7 +5,7 @@ import { Button } from "../components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import { Checkbox } from "../components/ui/checkbox"
 import { Input } from "../components/ui/input"
-import { Search, Filter } from "lucide-react"
+import { Search, Filter, ExternalLink } from "lucide-react"
 import { useLeads } from "./LeadsProvider"
 
 // Mock data for demonstration - this would come from the scraper results in a real app
@@ -71,6 +71,30 @@ export function DataPreview() {
   const { leads } = useLeads()
   const [selectedRows, setSelectedRows] = useState<number[]>(leads.map((row) => row.id))
   const [searchTerm, setSearchTerm] = useState("")
+
+  // Function to normalize display values
+  const normalizeDisplayValue = (value: any) => {
+    if (value === null || value === undefined || value === "") return "N/A";
+    if (value === "NA") return "N/A";
+    return value;
+  }
+
+  // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
+  const cleanUrlForDisplay = (url: string): string => {
+    if (!url || url === "N/A" || url === "NA") return url;
+    
+    // First remove http://, https://, and www.
+    let cleanUrl = url.replace(/^(https?:\/\/)?(www\.)?/i, "");
+    
+    // Then truncate everything after the domain (matches common TLDs)
+    const domainMatch = cleanUrl.match(/^([^\/\?#]+\.(com|org|net|io|ai|co|gov|edu|app|dev|me|info|biz|us|uk|ca|au|de|fr|jp|ru|br|in|cn|nl|se)).*$/i);
+    if (domainMatch) {
+      return domainMatch[1];
+    }
+    
+    // If no common TLD found, just truncate at the first slash, question mark or hash
+    return cleanUrl.split(/[\/\?#]/)[0];
+  }
 
   const toggleSelectAll = () => {
     if (selectedRows.length === leads.length) {
@@ -142,30 +166,33 @@ export function DataPreview() {
                   <Checkbox checked={selectedRows.includes(row.id)} onCheckedChange={() => toggleSelectRow(row.id)} />
                 </TableCell>
                 <TableCell>
-                  <div className="font-medium">{row.company}</div>
+                  <div className="font-medium">{normalizeDisplayValue(row.company)}</div>
                 </TableCell>
-                <TableCell>{row.industry}</TableCell>
+                <TableCell>{normalizeDisplayValue(row.industry)}</TableCell>
                 <TableCell>
-                  <div>{row.street}</div>
+                  <div>{normalizeDisplayValue(row.street)}</div>
                   <div className="text-sm text-muted-foreground">
-                    {row.city}, {row.state}
+                    {normalizeDisplayValue(row.city)}, {normalizeDisplayValue(row.state)}
                   </div>
                 </TableCell>
-                <TableCell>{row.bbb_rating}</TableCell>
-                <TableCell>{row.business_phone}</TableCell>
+                <TableCell>{normalizeDisplayValue(row.bbb_rating)}</TableCell>
+                <TableCell>{normalizeDisplayValue(row.business_phone)}</TableCell>
                 <TableCell>
-                  {row.website && row.website !== "N/A" ? (
-                    <a 
-                      href={row.website.startsWith('http') ? row.website : `https://${row.website}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:text-blue-700 hover:underline"
-                    >
-                      {row.website}
-                    </a>
-                  ) : (
-                    row.website || "N/A"
-                  )}
+                  <div className="flex items-center gap-2">
+                    {row.website ? normalizeDisplayValue(cleanUrlForDisplay(row.website)) : "N/A"}
+                    {row.website && row.website !== "N/A" && row.website !== "NA" && (
+                      <a
+                        href={row.website.startsWith('http') ? row.website : `https://${row.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:text-blue-700"
+                        title="Open website in new tab"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
