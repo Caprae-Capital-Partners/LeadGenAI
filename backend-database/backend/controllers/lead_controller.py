@@ -343,7 +343,7 @@ class LeadController:
         try:
             # Log for debugging
             print(f"Processing lead: {lead_data.get('company')}")
-            
+
             if lead_data.get('company'):
                 # Make search case-insensitive
                 company_name = lead_data['company']
@@ -351,12 +351,12 @@ class LeadController:
                     db.func.lower(Lead.company) == db.func.lower(company_name),
                     Lead.deleted == False
                 ).first()
-                
+
                 if existing_lead:
                     # Log for debugging
                     print(f"Found duplicate company: {existing_lead.company}")
                     return (False, f"Company '{lead_data['company']}' already exists")
-                    
+
             # Only check for duplicates if email or phone is not empty
             query = Lead.query
             conditions = []
@@ -443,16 +443,24 @@ class LeadController:
         if industry:
             query = query.filter(Lead.industry.ilike(f"%{industry}%"))
         if location:
-            if ',' in location:
-                city, state = [x.strip() for x in location.split(',', 1)]
+            if hasattr(Lead, 'location'):
+                # Search in city, state, and location columns
                 query = query.filter(
-                    Lead.city.ilike(f"%{city}%"),
-                    Lead.state.ilike(f"%{state}%")
+                    (Lead.city.ilike(f"%{location}%")) |
+                    (Lead.state.ilike(f"%{location}%")) |
+                    (Lead.location.ilike(f"%{location}%"))
                 )
             else:
-                query = query.filter(
-                    (Lead.city.ilike(f"%{location}%")) | (Lead.state.ilike(f"%{location}%"))
-                )
+                # Fallback: only city and state
+                if ',' in location:
+                    city, state = [x.strip() for x in location.split(',', 1)]
+                    query = query.filter(
+                        Lead.city.ilike(f"%{city}%"),
+                        Lead.state.ilike(f"%{state}%"),
+                        # Lead.location.ilike(f"%{location}%")
+                    )
+
+
         results = [lead.to_dict() for lead in query.all()]
         exec_time = int((time.time() - start_time) * 1000)
         # Log the search
