@@ -406,80 +406,86 @@ const parseRevenue = (revenueStr: string): number | null => {
             )}
             
             <div className="rounded-md border overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
-                    </TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Website</TableHead>
-                    <TableHead>Industry</TableHead>
-                    <TableHead>Product/Service Category</TableHead>
-                    <TableHead>Business Type (B2B, B2B2C)</TableHead>
-                    <TableHead>Employees count</TableHead>
-                    <TableHead>Revenue</TableHead>
-                    <TableHead>Year Founded</TableHead>
-                    <TableHead>BBB Rating</TableHead>
-                    <TableHead>Street</TableHead>
-                    <TableHead>City</TableHead>
-                    <TableHead>State</TableHead>
-                    <TableHead>Company Phone</TableHead>
-                    <TableHead>Company LinkedIn</TableHead>
-                    <TableHead>Owner's First Name</TableHead>
-                    <TableHead>Owner's Last Name</TableHead>
-                    <TableHead>Owner's Title</TableHead>
-                    <TableHead>Owner's LinkedIn</TableHead>
-                    <TableHead>Owner's Phone Number</TableHead>
-                    <TableHead>Owner's Email</TableHead>
-                    <TableHead>Source</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCompanies.length > 0 ? (
-                    filteredCompanies.map((company) => (
-                      <TableRow key={company.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedCompanies.includes(company.id)}
-                            onCheckedChange={() => handleSelectCompany(company.id)}
-                          />
-                        </TableCell>
-                        <TableCell>{normalizeDisplayValue(company.company)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.website)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.industry)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.productCategory)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.businessType)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.employees)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.revenue)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.yearFounded)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.bbbRating)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.street)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.city)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.state)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.companyPhone)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.companyLinkedin)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.ownerFirstName)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.ownerLastName)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.ownerTitle)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.ownerLinkedin)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.ownerPhoneNumber)}</TableCell>
-                        <TableCell>{company.ownerEmail === "email_not_unlocked@domain.com" ? "N/A" : normalizeDisplayValue(company.ownerEmail)}</TableCell>
-                        <TableCell>
-                          {normalizeDisplayValue(company.source) === "N/A"
-                            ? "Not available in any source"
-                            : normalizeDisplayValue(company.source)}
-                        </TableCell>
-
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={22} className="text-center">No results found.</TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
+                  </TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Website</TableHead>
+                  <TableHead>Industry</TableHead>
+                  <TableHead>Product/Service Category</TableHead>
+                  <TableHead>Business Type (B2B, B2B2C)</TableHead>
+                  <TableHead>Employees count</TableHead>
+                  <TableHead>Revenue</TableHead>
+                  <TableHead>Year Founded</TableHead>
+                  <TableHead>BBB Rating</TableHead>
+                  <TableHead>Street</TableHead>
+                  <TableHead>City</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead>Company Phone</TableHead>
+                  <TableHead>Company LinkedIn</TableHead>
+                  <TableHead>Owner's First Name</TableHead>
+                  <TableHead>Owner's Last Name</TableHead>
+                  <TableHead>Owner's Title</TableHead>
+                  <TableHead>Owner's LinkedIn</TableHead>
+                  <TableHead>Owner's Phone Number</TableHead>
+                  <TableHead>Owner's Email</TableHead>
+                  <TableHead>Source</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredCompanies.length > 0 ? (
+                  filteredCompanies.map((company, index) => (
+                    <TableRow key={company.id || `${company.company}-${index}`}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedCompanies.includes(company.id)}
+                          onCheckedChange={() => handleSelectCompany(company.id)}
+                        />
+                      </TableCell>
+                      <TableCell>{normalizeDisplayValue(company.company)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.website)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.industry)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.productCategory)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.businessType)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.employees)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.revenue)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.yearFounded)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.bbbRating)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.street)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.city)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.state)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.companyPhone)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.companyLinkedin)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.ownerFirstName)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.ownerLastName)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.ownerTitle)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.ownerLinkedin)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.ownerPhoneNumber)}</TableCell>
+                      <TableCell>
+                        {company.ownerEmail === "email_not_unlocked@domain.com"
+                          ? "N/A"
+                          : normalizeDisplayValue(company.ownerEmail)}
+                      </TableCell>
+                      <TableCell>
+                        {normalizeDisplayValue(company.source) === "N/A"
+                          ? "Not available in any source"
+                          : normalizeDisplayValue(company.source)}
+                      </TableCell>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  ))
+                ) : (
+                  <TableRow key="no-results">
+                    <TableCell colSpan={22} className="text-center">
+                      No results found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
             </div>
           </div>
           <div className="flex justify-end mt-4">
