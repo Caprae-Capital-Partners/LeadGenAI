@@ -10,24 +10,22 @@ def local_css(file_name):
 local_css("style/custom_theme.css")
 
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("Please log in first.")
-    st.stop()
+    st.switch_page('pages/login.py')
 
 
- Hydralit NavBar for modern navigation (fixed API usage)
+ #Hydralit NavBar for modern navigation (fixed API usage)
 menu_data = [
-    {'icon': "fa fa-home", 'label': "Main", 'id': 'main'},
     {'icon': "fa fa-upload", 'label': "Upload", 'id': 'upload'},
     {'icon': "fa fa-sign-in", 'label': "Login", 'id': 'login'},
 ]
 over_theme = {
-    'txc_inactive': 'FFFFFF',
-    'menu_background': '183153',
+    'txc_inactive': '#FFFFFF',
+    'menu_background': '#1e3a5c',
     'txc_active': 'ff6f61',
     'option_active': 'ffb347',
-    'option_background': '1e656d',
-    'pg_content_bg': 'f6f8fa',
-    'icon_color': 'fff',
+    'option_background': '#2563eb',
+    'pg_content_bg': '#eaf1fb',
+    'icon_color': '#fff',
     'font_family': 'Segoe UI,Roboto,Arial,sans-serif',
 }
 menu_id = hc.nav_bar(
@@ -38,12 +36,12 @@ menu_id = hc.nav_bar(
     sticky_nav=True,
     sticky_mode='pinned',
 )
- Navbar page switching
+# Navbar page switching
 if menu_id == 'upload':
     st.switch_page('pages/upload.py')
 elif menu_id == 'login':
     st.switch_page('pages/login.py')
- Add login/logout button at the top right
+ #Add login/logout button at the top right
 from streamlit_elements import mui
 with elements("navbar-login-btn"):
     if "logged_in" in st.session_state and st.session_state.logged_in:
@@ -52,13 +50,13 @@ with elements("navbar-login-btn"):
     else:
         if mui.Button('Login', color='success', variant='contained', sx={"float": "right", "marginTop": "-3.5rem", "marginRight": "2rem"}, onClick=lambda: st.switch_page('pages/login.py')):
             pass
- Animated login success popup
+ #Animated login success popup
 if st.session_state.get("just_logged_in"):
     from hydralit_components import hy_loader
     hy_loader('Login Successful!', animation=True, color='1e656d')
     st.session_state.pop("just_logged_in")
 
- Material UI Card with fade-in animation for main dashboard content
+ #Material UI Card with fade-in animation for main dashboard content
 with elements("main-dashboard-card"):
     mui.Card(
         [

@@ -213,7 +213,11 @@ class GrowjoScraper:
             except:
                 pass
 
-            # Revenue
+            # Revenue with multiple fallbacks
+            # Initialize with default value
+            details["revenue"] = "N/A"
+            
+            # Fallback 1: Try the primary revenue section
             try:
                 revenue_section = driver.find_element(
                     By.XPATH,
@@ -225,11 +229,60 @@ class GrowjoScraper:
 
                     import re
 
+                    # Try to match standard currency format first
                     match = re.search(r"\$[0-9\.]+[BMK]?", revenue_text)
                     if match:
                         details["revenue"] = match.group(0)
-            except:
-                pass
+                    else:
+                        # Try to match any number with a currency symbol nearby
+                        match = re.search(r"(\$)?\s*([0-9\.]+)\s*(million|billion|M|B|K)?", revenue_text, re.IGNORECASE)
+                        if match:
+                            amount = match.group(2)
+                            unit = match.group(3)
+                            if unit:
+                                if unit.lower() in ['billion', 'b']:
+                                    details["revenue"] = f"${amount}B"
+                                elif unit.lower() in ['million', 'm']:
+                                    details["revenue"] = f"${amount}M"
+                                elif unit.lower() == 'k':
+                                    details["revenue"] = f"${amount}K"
+                            else:
+                                details["revenue"] = f"${amount}"
+            except Exception as e:
+                print(f"[DEBUG] Error in primary revenue extraction: {e}")
+                
+            # Fallback 2: Try alternative revenue section
+            if details["revenue"] == "N/A":
+                try:
+                    # Look for any text containing 'revenue' and a dollar amount
+                    revenue_elements = driver.find_elements(
+                        By.XPATH,
+                        "//li[contains(text(), 'revenue') or contains(text(), 'Revenue')]",
+                    )
+                    
+                    for elem in revenue_elements:
+                        revenue_text = elem.text.strip()
+                        match = re.search(r"\$[0-9\.]+[BMK]?", revenue_text)
+                        if match:
+                            details["revenue"] = match.group(0)
+                            break
+                except Exception as e:
+                    print(f"[DEBUG] Error in fallback revenue extraction: {e}")
+                    
+            # Fallback 3: Try to infer from company size if still no revenue
+            if details["revenue"] == "N/A" and "employees" in details and details["employees"] != "N/A":
+                try:
+                    emp_count = int(details["employees"])
+                    # Very rough revenue estimate based on employee count
+                    # Average revenue per employee varies by industry, but we'll use a general estimate
+                    if emp_count > 1000:
+                        details["revenue"] = f"~${emp_count * 500000 / 1000000:.1f}M (est. from employee count)"
+                    elif emp_count > 100:
+                        details["revenue"] = f"~${emp_count * 300000 / 1000000:.1f}M (est. from employee count)"
+                    elif emp_count > 10:
+                        details["revenue"] = f"~${emp_count * 200000 / 1000000:.1f}M (est. from employee count)"
+                except Exception as e:
+                    print(f"[DEBUG] Error in employee-based revenue estimation: {e}")
 
             # Employees
             try:

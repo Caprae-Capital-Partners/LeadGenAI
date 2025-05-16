@@ -1,5 +1,5 @@
 import streamlit as st
-st.set_page_config(page_title="🔐 Login", layout="centered")   <-- FIRST Streamlit command
+st.set_page_config(page_title="🔐 Login", layout="centered")
 import requests
 import jwt
 from streamlit_cookies_controller import CookieController
@@ -18,7 +18,7 @@ token = cookies.get("auth_token")
 
 if token and "logged_in" not in st.session_state:
     try:
-         Decode token without verifying signature
+        # Decode token without verifying signature
         decoded = jwt.decode(token, options={"verify_signature": False})
         st.session_state.logged_in = True
         st.session_state.token = token
@@ -39,7 +39,7 @@ elif not st.session_state.get("logged_in"):
                 background: linear-gradient(135deg, f6f8fa 0%, e8ecf4 100%) !important;
             }
             .login-card-bg {
-                background: fff;
+                background: #fff;
                 border-radius: 24px;
                 box-shadow: 0 4px 24px rgba(30,101,109,0.08);
                 max-width: 420px;
@@ -48,7 +48,7 @@ elif not st.session_state.get("logged_in"):
             }
             .stTextInput>div>div>input {
                 background: 232a34 !important;
-                color: fff !important;
+                color: #fff !important;
                 border-radius: 8px !important;
                 border: none !important;
                 font-size: 1.08rem !important;
@@ -97,7 +97,7 @@ elif not st.session_state.get("logged_in"):
                 display: block !important;
             }
             .forgot-link {
-                color: fff !important;
+                color: #fff !important;
                 float: right;
                 font-size: 0.98rem;
                 margin-bottom: 1.2rem;
@@ -108,13 +108,13 @@ elif not st.session_state.get("logged_in"):
             """, unsafe_allow_html=True)
             username = st.text_input("Email address", key="login_username", help="Enter your email", placeholder="Enter your email")
             password = st.text_input("Password", type="password", key="login_password", help="Enter your password", placeholder="Password")
-            st.markdown('<div class="forgot-link"><a href="" style="color:fff;">Forgot password?</a></div>', unsafe_allow_html=True)
-             No checkbox, st.empty, or extra Streamlit widget
-             Style the login button once, after the input fields
+            st.markdown('<div class="forgot-link"><a href="" style="color:#fff;">Forgot password?</a></div>', unsafe_allow_html=True)
+            # No checkbox, st.empty, or extra Streamlit widget
+            # Style the login button once, after the input fields
             st.markdown("""
             <style>
             .custom-login-box-btn {
-                background: fff;
+                background: #fff;
                 color: 2196f3;
                 font-weight: 800;
                 border-radius: 1.5rem;
@@ -140,11 +140,11 @@ elif not st.session_state.get("logged_in"):
             .hide-streamlit-btn > button { display: none !important; }
             </style>
             """, unsafe_allow_html=True)
-             Only use the Streamlit button, styled as a white box with blue border and text
+            # Only use the Streamlit button, styled as a white box with blue border and text
             st.markdown("""
             <style>
             .stButton > button {
-                background: fff !important;
+                background: #fff !important;
                 color: 2196f3 !important;
                 font-weight: 800 !important;
                 border-radius: 1.5rem !important;

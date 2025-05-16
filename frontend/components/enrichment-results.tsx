@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+// Remove router dependency for simplicity
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
@@ -41,7 +41,11 @@ interface EnrichmentResultsProps {
 }
 
 export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanies }) => {
-  const router = useRouter()
+  // Use a function for navigation instead of router
+  const goBack = () => {
+    window.history.back()
+  }
+  
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
   const [selectAll, setSelectAll] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -283,8 +287,9 @@ const parseRevenue = (revenueStr: string): number | null => {
   }
 
   const handleBack = () => {
-    router.push("?tab=data-enhancement")
-    window.location.reload()
+    // Use window.location instead of router
+    window.location.href = "?tab=data-enhancement"
+    // No need to reload as changing location will refresh the page
   }
 
   return (

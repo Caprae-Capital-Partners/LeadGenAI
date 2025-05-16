@@ -13,7 +13,7 @@ def local_css(file_name):
 local_css("style/custom_theme.css")
 JWT_SECRET = "fallback_secret_change_me_in_production"
 JWT_ALGORITHM = "HS256"
-BACKEND_URL = "http://localhost:5000"
+from config import BACKEND_URL
 
 cookies = CookieController()
 token = cookies.get("auth_token")
@@ -67,7 +67,7 @@ from streamlit_elements import elements, mui, html
 from st_aggrid import AgGrid
 
 st.markdown("""
-    <div style='max-width: 800px; margin: 2rem auto; background: fff; border-radius: 1.5rem; box-shadow: 0 2px 12px rgba(24,49,83,0.08); padding: 2.5rem 2rem;'>
+    <div style='max-width: 800px; margin: 2rem auto; background: #fff; border-radius: 1.5rem; box-shadow: 0 2px 12px rgba(24,49,83,0.08); padding: 2.5rem 2rem;'>
         <h1 style='color:183153; font-weight:800; font-size:2rem; margin-bottom:1rem;'>📤 Upload & Normalize Lead Data</h1>
         <div style='color:1e656d; margin-bottom:1.5rem; font-weight:600;'>Upload your leads CSV, normalize columns, select rows, and enrich with Apollo, LinkedIn, and Growjo data!</div>
     </div>
@@ -216,7 +216,7 @@ if st.session_state.normalized_df is not None and st.session_state.confirmed_sel
             if not str(row["Product/Service Category"]).strip():
                 rows_to_update.at[idx, "Product/Service Category"] = linkedin.get("Specialties", "")
 
-             === Growjo Contact Info Integration ===
+             #=== Growjo Contact Info Integration ===
             growjo_res = requests.post(f"{BACKEND_URL}/api/growjo", json={"company": domain, "headless": True}, headers=auth_headers())
             if growjo_res.status_code == 200:
                 people = growjo_res.json()
