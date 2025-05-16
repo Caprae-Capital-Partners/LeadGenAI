@@ -232,7 +232,8 @@ def get_leads():
         query = query.filter(
             db.or_(
                 Lead.company.ilike(f'%{search_term}%'),
-                Lead.owner_name.ilike(f'%{search_term}%'),
+                Lead.owner_first_name.ilike(f'%{search_term}%'),
+                Lead.owner_last_name.ilike(f'%{search_term}%'),
                 Lead.owner_email.ilike(f'%{search_term}%')
             )
         )
