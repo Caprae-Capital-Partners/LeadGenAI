@@ -17,19 +17,19 @@ from werkzeug.exceptions import NotFound
 lead_bp = Blueprint('lead', __name__)
 
 @lead_bp.route('/')
-@login_required
+#@login_required
 def index():
     """Redirect to view leads page"""
     return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/form')
-@login_required
+#@login_required
 def form():
     """Display form to add new lead"""
     return render_template('form.html')
 
 @lead_bp.route('/submit', methods=['POST'])
-@login_required
+# #@login_required
 @role_required('admin', 'developer')
 def submit():
     """Submit new lead - Admin and Developer only"""
@@ -43,13 +43,13 @@ def submit():
     return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/upload_page')
-@login_required
+# #@login_required
 def upload_page():
     """Display CSV upload page"""
     return render_template('upload.html')
 
 @lead_bp.route('/upload', methods=['POST'])
-@login_required
+# #@login_required
 def upload_csv():
     """Handle CSV file upload"""
     if 'file' not in request.files:
@@ -83,7 +83,7 @@ def upload_csv():
             last_name_col=last_name_col
         )
         db.session.commit()
-        
+
         # More informative success message
         message = 'Upload Complete! '
         if isinstance(added, tuple) and len(added) == 2:
@@ -93,15 +93,15 @@ def upload_csv():
         else:
             # Original format
             message += f'Added: {added}, '
-        
+
         message += f'Skipped Duplicates: {skipped_duplicates}, '
         message += f'Skipped Empty Company: {skipped_empty_company}, '
         message += f'Errors: {errors}'
-        
+
         # Add information to view log if there are errors or skips
         if errors > 0 or skipped_duplicates > 0 or skipped_empty_company > 0:
             message += ' (See upload_errors.log for details)'
-        
+
         flash(message, 'success')
     except Exception as e:
         db.session.rollback()
@@ -110,7 +110,7 @@ def upload_csv():
     return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/view_leads')
-@login_required
+#@login_required
 def view_leads():
     """View all leads - All roles can access"""
     leads = LeadController.get_all_leads()
@@ -143,7 +143,7 @@ def view_leads():
                          sources=sources)
 
 @lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
-@login_required
+#@login_required
 @role_required('admin', 'developer')
 def edit_lead(lead_id):
     """Edit lead - Admin and Developer only"""
@@ -160,7 +160,7 @@ def edit_lead(lead_id):
     return render_template('edit_lead.html', lead=lead)
 
 @lead_bp.route('/update_status/<int:lead_id>', methods=['POST'])
-@login_required
+#@login_required
 def update_status(lead_id):
     """Update lead status - All roles can update status"""
     try:
@@ -179,7 +179,7 @@ def update_status(lead_id):
     return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/leads/<int:lead_id>/delete', methods=['POST'])
-@login_required
+#@login_required
 @role_required('admin', 'developer')
 def delete_lead(lead_id):
     """Soft delete lead - Admin and Developer only"""
@@ -194,7 +194,7 @@ def delete_lead(lead_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @lead_bp.route('/leads/delete-multiple', methods=['POST'])
-@login_required
+#@login_required
 @role_required('admin', 'developer')
 def delete_multiple_leads():
     """Soft delete multiple leads - Admin and Developer only"""
@@ -210,7 +210,7 @@ def delete_multiple_leads():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @lead_bp.route('/api/leads', methods=['GET'])
-@login_required
+#@login_required
 def get_leads():
     """API endpoint to get all leads with pagination, search and filtering"""
     # Get pagination parameters
@@ -269,7 +269,7 @@ def get_leads():
     return jsonify(results)
 
 @lead_bp.route('/api/leads', methods=['POST'])
-@login_required
+#@login_required
 @role_required('admin', 'developer')
 def create_lead():
     """Create a new lead via API - Admin and Developer only"""
@@ -286,7 +286,7 @@ def create_lead():
         db.func.lower(Lead.company) == db.func.lower(company),
         Lead.deleted == False
     )
-    
+
     if owner_email:
         query = query.filter_by(owner_email=owner_email)
     existing_lead = query.first()
@@ -301,13 +301,13 @@ def create_lead():
     try:
         db.session.add(lead)
         db.session.commit()
-        
+
         # Verify lead was actually created
         verify_lead = Lead.query.filter_by(lead_id=lead.lead_id).first()
         if not verify_lead:
             db.session.rollback()
             return jsonify({"error": "Failed to create lead - verification check failed"}), 500
-            
+
         return jsonify({
             "message": "Lead created successfully",
             "lead": lead.to_dict(),
@@ -322,7 +322,7 @@ def create_lead():
         return jsonify({"error": str(e)}), 400
 
 @lead_bp.route('/api/leads/<int:lead_id>', methods=['PUT'])
-@login_required
+#@login_required
 @role_required('admin', 'developer')
 def update_lead_api(lead_id):
     """Update a lead via API - Admin and Developer only"""
@@ -339,7 +339,7 @@ def update_lead_api(lead_id):
         return jsonify({"error": str(e)}), 400
 
 @lead_bp.route('/api/leads/<int:lead_id>/status', methods=['PUT'])
-@login_required
+#@login_required
 def update_status_api(lead_id):
     """Update a lead's status via API - All roles can update status"""
     lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
@@ -357,7 +357,7 @@ def update_status_api(lead_id):
         return jsonify({"error": str(e)}), 400
 
 @lead_bp.route('/export_leads', methods=['POST'])
-@login_required
+#@login_required
 def export_leads():
     """Export selected leads to CSV or Excel - All roles can export"""
     selected_leads = request.form.getlist('selected_leads[]')
@@ -406,7 +406,7 @@ def export_leads():
         return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/api/upload_leads', methods=['POST'])
-@login_required
+# #@login_required
 def api_upload_leads():
     """API endpoint to upload multiple leads"""
     try:
@@ -505,7 +505,7 @@ def api_upload_leads():
         }), 500
 
 @lead_bp.route('/api/leads/<int:lead_id>', methods=['DELETE'])
-@login_required
+#@login_required
 @role_required('admin', 'developer')
 def delete_lead_api(lead_id):
     """Soft delete a lead via API - Admin and Developer only"""
@@ -520,7 +520,7 @@ def delete_lead_api(lead_id):
         return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/api/leads/<int:lead_id>', methods=['GET'])
-@login_required
+#@login_required
 def get_lead_by_id(lead_id):
     """Get detail of a single lead by ID"""
     try:
@@ -531,7 +531,7 @@ def get_lead_by_id(lead_id):
 
 # Sources Management Endpoints
 @lead_bp.route('/api/sources', methods=['GET'])
-@login_required
+#@login_required
 def get_sources():
     """Get all available lead sources"""
     try:
@@ -552,7 +552,7 @@ def get_sources():
         return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/api/sources', methods=['POST'])
-@login_required
+#@login_required
 @role_required('admin', 'developer')
 def add_source():
     """Add a new source - Admin and Developer only"""
@@ -598,7 +598,7 @@ def add_source():
 
 # Stats Endpoints
 @lead_bp.route('/api/stats/summary', methods=['GET'])
-@login_required
+#@login_required
 def get_stats_summary():
     """Get lead count summary statistics"""
     try:
@@ -660,7 +660,7 @@ def get_stats_summary():
         return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/api/stats/top-sources', methods=['GET'])
-@login_required
+#@login_required
 def get_top_sources():
     """Get top performing lead sources"""
     try:
@@ -704,14 +704,14 @@ def get_top_sources():
         return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/leads/<lead_id>/restore', methods=['POST'])
-@login_required
+#@login_required
 def restore_lead(lead_id):
     """Restore a soft-deleted lead"""
     success, message = LeadController.restore_lead(lead_id, current_user)
     return jsonify({'success': success, 'message': message})
 
 @lead_bp.route('/leads/restore-multiple', methods=['POST'])
-@login_required
+#@login_required
 def restore_multiple_leads():
     """Restore multiple soft-deleted leads"""
     lead_ids = request.json.get('lead_ids', [])
@@ -719,14 +719,14 @@ def restore_multiple_leads():
     return jsonify({'success': success, 'message': message})
 
 @lead_bp.route('/leads/deleted', methods=['GET'])
-@login_required
+# #@login_required
 def view_deleted_leads():
     """View all soft-deleted leads"""
     leads = Lead.query.filter_by(deleted=True).order_by(Lead.deleted_at.desc()).all()
     return render_template('deleted_leads.html', leads=leads)
 
 @lead_bp.route('/leads/<int:lead_id>/permanent-delete', methods=['POST'])
-@login_required
+# #@login_required
 @role_required('admin', 'developer')
 def permanent_delete_lead(lead_id):
     """Permanently delete a lead from the database (hard delete)"""
@@ -752,7 +752,7 @@ def api_search_leads():
     return jsonify(results)
 
 @lead_bp.route('/api/industries', methods=['GET'])
-# @login_required
+# #@login_required
 def get_industries():
     """Get all unique industries (normalized) for selection in frontend"""
     try:
@@ -776,25 +776,25 @@ def get_industries():
         return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/api/leads/enrichment-status', methods=['GET'])
-@login_required
+#@login_required
 def get_leads_enrichment_status():
     """Get enrichment status for leads"""
     try:
         # Get pagination parameters
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
-        
+
         # Build base query
         query = Lead.query.filter(Lead.deleted == False)
-        
+
         # Get leads with their enrichment status
         leads = query.paginate(page=page, per_page=per_page)
-        
+
         # Check enrichment status for each lead
         enriched_leads = []
         for lead in leads.items:
             lead_dict = lead.to_dict()
-            
+
             # Check required fields
             required_fields = {
                 'owner_email': bool(lead.owner_email),
@@ -802,11 +802,11 @@ def get_leads_enrichment_status():
                 'website': bool(lead.website),
                 'owner_linkedin': bool(lead.owner_linkedin)
             }
-            
+
             # Calculate enrichment status
             missing_fields = [field for field, has_value in required_fields.items() if not has_value]
             is_fully_enriched = len(missing_fields) == 0
-            
+
             # Add enrichment info to lead data
             lead_dict.update({
                 'enrichment_status': {
@@ -816,9 +816,9 @@ def get_leads_enrichment_status():
                     'needs_enrichment': not is_fully_enriched
                 }
             })
-            
+
             enriched_leads.append(lead_dict)
-        
+
         return jsonify({
             "total": leads.total,
             "pages": leads.pages,
@@ -826,17 +826,17 @@ def get_leads_enrichment_status():
             "per_page": per_page,
             "leads": enriched_leads
         })
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/api/leads/<int:lead_id>/enrich', methods=['POST'])
-@login_required
+# #@login_required
 def enrich_lead(lead_id):
     """Enrich a single lead's data"""
     try:
         lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
-        
+
         # Check if lead needs enrichment
         required_fields = {
             'owner_email': bool(lead.owner_email),
@@ -844,34 +844,34 @@ def enrich_lead(lead_id):
             'website': bool(lead.website),
             'owner_linkedin': bool(lead.owner_linkedin)
         }
-        
+
         missing_fields = [field for field, has_value in required_fields.items() if not has_value]
-        
+
         if not missing_fields:
             return jsonify({
                 "message": "Lead already fully enriched",
                 "lead": lead.to_dict()
             })
-            
+
         # TODO: Implement enrichment logic here
         # This would be where you call your scraping service
-        
+
         # Update lead with new data
         lead.updated_at = datetime.datetime.now()
         db.session.commit()
-        
+
         return jsonify({
             "message": "Lead enriched successfully",
             "lead": lead.to_dict(),
             "enriched_fields": missing_fields
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/api/leads/check-missing', methods=['POST'])
-@login_required
+# #@login_required
 def check_missing_fields():
     """
     Check which required fields are missing for a batch of leads.
@@ -906,6 +906,6 @@ def check_missing_fields():
 
 
 @lead_bp.route('/enrichment-test')
-@login_required
+# @login_required
 def enrichment_test_page():
     return render_template('enrichment_test.html')
