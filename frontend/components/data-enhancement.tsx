@@ -325,16 +325,16 @@ const handleStartEnrichment = async (): Promise<void> => {
     // Create maps for Apollo and Person data for easier lookup
     const apolloMap: Record<string, ApolloCompany> = Object.fromEntries(
       // Use explicit type checking to avoid TypeScript errors
-      apolloResData.filter((item): item is ApolloCompany => 
+      apolloResData.filter((item: any): item is ApolloCompany => 
         !!item && typeof item.domain === 'string' && item.domain !== ""
-      ).map((item) => [item.domain || "", item])
+      ).map((item: ApolloCompany) => [item.domain || "", item])
     )
 
     const personMap: Record<string, ApolloPerson> = Object.fromEntries(
       // Use explicit type checking to avoid TypeScript errors
-      personResData.filter((item): item is ApolloPerson => 
+      personResData.filter((item: any): item is ApolloPerson => 
         !!item && typeof item.domain === 'string' && item.domain !== ""
-      ).map((item) => [item.domain || "", item])
+      ).map((item: ApolloPerson) => [item.domain || "", item])
     )
 
     // Step 5: Merge enriched results
@@ -401,8 +401,13 @@ const handleStartEnrichment = async (): Promise<void> => {
           yearFounded: apollo.founded_year || "",
           bbbRating: company.bbb_rating || "",
           street: company.street || "",
-          city: growjo.location?.split(", ")[0] || company.city || "",
-          state: growjo.location?.split(", ")[1] || company.state || "",
+          // Use a safer approach for optional chaining with a type guard
+          city: (growjo.location && typeof growjo.location === 'string') 
+            ? growjo.location.split(", ")[0] || company.city || ""
+            : company.city || "",
+          state: (growjo.location && typeof growjo.location === 'string')
+            ? growjo.location.split(", ")[1] || company.state || ""
+            : company.state || "",
           companyPhone: company.business_phone || "",
           companyLinkedin: apollo.linkedin_url || "",
           ownerFirstName: decider.firstName || "",
