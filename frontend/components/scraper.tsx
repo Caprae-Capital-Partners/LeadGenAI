@@ -130,9 +130,9 @@ export function Scraper() {
         }
       }
       
-      console.log("Raw API Response:", data)
-      console.log("Response type:", typeof data)
-      console.log("Is Array?", Array.isArray(data))
+      // console.log("Raw API Response:", data)
+      // console.log("Response type:", typeof data)
+      // console.log("Is Array?", Array.isArray(data))
       
       // Format the new data in the same way as handleCollectData
       const formattedData = data.map((item: LeadData): FormattedLead => ({
@@ -268,20 +268,23 @@ export function Scraper() {
                 onBlur={() => setTimeout(() => setShowDropdown(false), 200)} // Hide dropdown on blur
               />
               {showDropdown && (
-              <ul className="dropdown">
-                {filteredIndustries.map((ind, index) => (
-                  <li
-                    key={index}
-                    onClick={() => {
-                      setIndustry(ind);
-                      setShowDropdown(false);
-                    }}
-                  >
-                    {ind}
-                  </li>
-                ))}
-              </ul>
-            )}
+                <ul
+                  className="absolute bg-white border border-gray-300 rounded max-h-52 overflow-y-auto w-[38%] z-[1000] shadow-lg mt-1"
+                >
+                  {filteredIndustries.map((ind, index) => (
+                    <li
+                      key={index}
+                      className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                      onClick={() => {
+                        setIndustry(ind);
+                        setShowDropdown(false);
+                      }}
+                    >
+                      {ind}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
