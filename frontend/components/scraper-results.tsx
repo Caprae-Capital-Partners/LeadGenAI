@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Download, Filter, Search, ArrowRight } from "lucide-react"
+import { Download, Search, ArrowRight } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
 import { useLeads } from "@/components/LeadsProvider"
@@ -195,9 +195,6 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline" size="icon">
-              <Filter className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </CardHeader>
