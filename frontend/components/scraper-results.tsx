@@ -11,6 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import * as XLSX from "xlsx"
 import { useLeads } from "@/components/LeadsProvider"
 import { addUniqueIdsToLeads } from "@/lib/leadUtils"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 interface ScraperResultsProps {
   data: any[]
@@ -23,6 +32,10 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   const [exportFormat, setExportFormat] = useState("csv")
   const { setLeads: setGlobalLeads } = useLeads()
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(25)
 
   useEffect(() => {
   let parsedData;
@@ -60,6 +73,8 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   
   setLeads(normalized)
   setGlobalLeads(normalized);
+  // Reset to first page when data changes
+  setCurrentPage(1);
 }, [data]);
 
   // Auto-resize textareas
@@ -93,6 +108,11 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     }
   }, [leads]);
 
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const handleCellChange = (rowIdx: number, field: string, value: string) => {
     setLeads(prev =>
       prev.map((row, idx) =>
@@ -125,6 +145,57 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       result.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
       result.state.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(filteredResults.length / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredResults.slice(indexOfFirstItem, indexOfLastItem)
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    
+    if (totalPages <= 7) {
+      // Show all pages if there are 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Always show first and last page, with ellipsis for hidden pages
+      pageNumbers.push(1);
+      
+      // Determine range to show around current page
+      let startPage = Math.max(2, currentPage - 2);
+      let endPage = Math.min(totalPages - 1, currentPage + 2);
+      
+      // Adjust if we're near the beginning or end
+      if (currentPage <= 4) {
+        endPage = 5;
+      } else if (currentPage >= totalPages - 3) {
+        startPage = totalPages - 4;
+      }
+      
+      // Add ellipsis if needed
+      if (startPage > 2) {
+        pageNumbers.push('ellipsis');
+      }
+      
+      // Add middle pages
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+      
+      // Add ellipsis if needed
+      if (endPage < totalPages - 1) {
+        pageNumbers.push('ellipsis');
+      }
+      
+      pageNumbers.push(totalPages);
+    }
+    
+    return pageNumbers;
+  };
 
   const exportCSV = () => {
     const csvRows = [
@@ -202,7 +273,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Company Search Results</CardTitle>
-            <CardDescription>{leads.length} companies found</CardDescription>
+            <CardDescription>{filteredResults.length} companies found</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -219,6 +290,66 @@ export function ScraperResults({ data }: { data: string | any[] }) {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Pagination controls */}
+        {filteredResults.length > 0 && (
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredResults.length)} of {filteredResults.length} results
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                setItemsPerPage(Number(value));
+                setCurrentPage(1); // Reset to first page when changing items per page
+              }}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Items per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                  <SelectItem value="100">100 per page</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      aria-disabled={currentPage === 1}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  
+                  {getPageNumbers().map((page, index) => (
+                    <PaginationItem key={index}>
+                      {page === 'ellipsis' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          isActive={page === currentPage}
+                          onClick={() => setCurrentPage(Number(page))}
+                        >
+                          {page}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      aria-disabled={currentPage === totalPages}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          </div>
+        )}
+        
         <div className="rounded-md border">
           <Table className="w-full" fixedLayout={false}>
             <TableHeader>
@@ -232,97 +363,101 @@ export function ScraperResults({ data }: { data: string | any[] }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredResults.length > 0 ? (
-                filteredResults.map((result, rowIdx) => (
-                  <TableRow key={result.id}>
-                    <TableCell className="break-words">
-                      <textarea
-                        className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                        value={normalizeDisplayValue(result.company)}
-                        onChange={e => handleCellChange(rowIdx, "company", e.target.value)}
-                        rows={1}
-                        ref={(el) => {
-                          textareaRefs.current[rowIdx * 3] = el;
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell className="break-words">
-                      <textarea
-                        className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                        value={normalizeDisplayValue(result.industry)}
-                        onChange={e => handleCellChange(rowIdx, "industry", e.target.value)}
-                        rows={1}
-                        ref={(el) => {
-                          textareaRefs.current[rowIdx * 3 + 1] = el;
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell className="break-words">
-                      <textarea
-                        className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                        value={normalizeDisplayValue(result.street)}
-                        onChange={e => handleCellChange(rowIdx, "street", e.target.value)}
-                        placeholder="Street"
-                        rows={1}
-                        ref={(el) => {
-                          textareaRefs.current[rowIdx * 3 + 2] = el;
-                        }}
-                      />
-                      <div className="flex gap-1 mt-1">
-                        <input
-                          className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
-                          value={normalizeDisplayValue(result.city)}
-                          onChange={e => handleCellChange(rowIdx, "city", e.target.value)}
-                          placeholder="City"
+              {currentItems.length > 0 ? (
+                currentItems.map((result, rowIdx) => {
+                  // Calculate the actual index in the filtered results
+                  const actualIndex = indexOfFirstItem + rowIdx;
+                  return (
+                    <TableRow key={result.id}>
+                      <TableCell className="break-words">
+                        <textarea
+                          className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
+                          value={normalizeDisplayValue(result.company)}
+                          onChange={e => handleCellChange(actualIndex, "company", e.target.value)}
+                          rows={1}
+                          ref={(el) => {
+                            textareaRefs.current[actualIndex * 3] = el;
+                          }}
                         />
-                        <input
-                          className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
-                          value={normalizeDisplayValue(result.state)}
-                          onChange={e => handleCellChange(rowIdx, "state", e.target.value)}
-                          placeholder="State"
+                      </TableCell>
+                      <TableCell className="break-words">
+                        <textarea
+                          className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
+                          value={normalizeDisplayValue(result.industry)}
+                          onChange={e => handleCellChange(actualIndex, "industry", e.target.value)}
+                          rows={1}
+                          ref={(el) => {
+                            textareaRefs.current[actualIndex * 3 + 1] = el;
+                          }}
                         />
-                      </div>
-                    </TableCell>
-                    <TableCell className="break-words">
-                      <input
-                        className="border-b w-full bg-transparent break-words"
-                        value={normalizeDisplayValue(result.bbb_rating)}
-                        onChange={e => handleCellChange(rowIdx, "bbb_rating", e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell className="break-words">
-                      {normalizeDisplayValue(result.business_phone)
-                        .split(",")
-                        .map((phone: string, i: number) => (
-                          <div key={i} className="break-words">
-                            {normalizeDisplayValue(phone.trim())}
-                          </div>
-                        ))}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <input
-                          className="border-b w-full bg-transparent"
-                          value={normalizeDisplayValue(result.website)}
-                          onChange={e => handleCellChange(rowIdx, "website", e.target.value)}
-                          placeholder="Website (without http:// or www.)"
+                      </TableCell>
+                      <TableCell className="break-words">
+                        <textarea
+                          className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
+                          value={normalizeDisplayValue(result.street)}
+                          onChange={e => handleCellChange(actualIndex, "street", e.target.value)}
+                          placeholder="Street"
+                          rows={1}
+                          ref={(el) => {
+                            textareaRefs.current[actualIndex * 3 + 2] = el;
+                          }}
                         />
-                        {result.website && normalizeDisplayValue(result.website) !== "N/A" && normalizeDisplayValue(result.website) !== "NA" && (
-                          <a
-                            href={result.website.toString().startsWith('http') ? result.website : `https://${result.website}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:text-blue-700"
-                            title="Open website in new tab"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                        <div className="flex gap-1 mt-1">
+                          <input
+                            className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
+                            value={normalizeDisplayValue(result.city)}
+                            onChange={e => handleCellChange(actualIndex, "city", e.target.value)}
+                            placeholder="City"
+                          />
+                          <input
+                            className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
+                            value={normalizeDisplayValue(result.state)}
+                            onChange={e => handleCellChange(actualIndex, "state", e.target.value)}
+                            placeholder="State"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="break-words">
+                        <input
+                          className="border-b w-full bg-transparent break-words"
+                          value={normalizeDisplayValue(result.bbb_rating)}
+                          onChange={e => handleCellChange(actualIndex, "bbb_rating", e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell className="break-words">
+                        {normalizeDisplayValue(result.business_phone)
+                          .split(",")
+                          .map((phone: string, i: number) => (
+                            <div key={i} className="break-words">
+                              {normalizeDisplayValue(phone.trim())}
+                            </div>
+                          ))}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <input
+                            className="border-b w-full bg-transparent"
+                            value={result.website ? cleanUrlForDisplay(normalizeDisplayValue(result.website)) : ""}
+                            onChange={e => handleCellChange(actualIndex, "website", e.target.value)}
+                            placeholder="Website (domain only)"
+                          />
+                          {result.website && normalizeDisplayValue(result.website) !== "N/A" && normalizeDisplayValue(result.website) !== "NA" && (
+                            <a
+                              href={result.website.toString().startsWith('http') ? result.website : `https://${result.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700"
+                              title="Open website in new tab"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center">
