@@ -360,37 +360,42 @@ const handleStartEnrichment = async () => {
           ? "N/A"
           : val;
       
-      const validLeads = newlyEnriched
-        .map((lead) => ({
-          company: normalizeValue(lead.company),
-          website: normalizeValue(lead.website),
-          industry: normalizeValue(lead.industry),
-          product_category: normalizeValue(lead.productCategory),
-          business_type: normalizeValue(lead.businessType),
-          employees: typeof lead.employees === "number" ? lead.employees : parseInt(lead.employees) || 0,
-          revenue: normalizeValue(lead.revenue),
-          year_founded: typeof lead.yearFounded === "number" ? lead.yearFounded : parseInt(lead.yearFounded) || 0,
-          bbb_rating: normalizeValue(lead.bbbRating),
-          street: normalizeValue(lead.street),
-          city: normalizeValue(lead.city),
-          state: normalizeValue(lead.state),
-          company_phone: normalizeValue(lead.companyPhone),
-          company_linkedin: normalizeValue(lead.companyLinkedin),
-          owner_first_name: normalizeValue(lead.ownerFirstName),
-          owner_last_name: normalizeValue(lead.ownerLastName),
-          owner_title: normalizeValue(lead.ownerTitle),
-          owner_linkedin: normalizeValue(lead.owner_linkedin),
-          owner_phone_number: normalizeValue(lead.owner_phone_number),
-          owner_email: normalizeValue(lead.ownerEmail),
-          phone: normalizeValue(lead.owner_phone_number),
-          source: normalizeValue(lead.source),
-        }))
-        .filter(
-          (lead) =>
-            lead.company !== "N/A" &&
-            lead.owner_email !== "N/A" &&
-            lead.owner_phone_number !== "N/A"
-        );
+          const validLeads = newlyEnriched
+          .map((lead) => {
+            const normalized = {
+              company: normalizeValue(lead.company),
+              website: normalizeValue(lead.website),
+              industry: normalizeValue(lead.industry),
+              product_category: normalizeValue(lead.productCategory),
+              business_type: normalizeValue(lead.businessType),
+              employees: typeof lead.employees === "number" ? lead.employees : parseInt(lead.employees) || 0,
+              revenue: normalizeValue(lead.revenue).replace(/[^\d]/g, ""), // strip M/K
+              year_founded: typeof lead.yearFounded === "number" ? lead.yearFounded : parseInt(lead.yearFounded) || 0,
+              bbb_rating: normalizeValue(lead.bbbRating),
+              street: normalizeValue(lead.street),
+              city: normalizeValue(lead.city),
+              state: normalizeValue(lead.state),
+              company_phone: normalizeValue(lead.companyPhone),
+              company_linkedin: normalizeValue(lead.companyLinkedin),
+              owner_first_name: normalizeValue(lead.ownerFirstName),
+              owner_last_name: normalizeValue(lead.ownerLastName),
+              owner_title: normalizeValue(lead.ownerTitle),
+              owner_linkedin: normalizeValue(lead.owner_linkedin),
+              owner_phone_number: normalizeValue(lead.owner_phone_number),
+              owner_email: normalizeValue(lead.ownerEmail),
+              phone: normalizeValue(lead.owner_phone_number),
+              source: normalizeValue(lead.source)
+            }
+        
+            return normalized
+          })
+          .filter(
+            (lead) =>
+              lead.company !== "N/A" &&
+              lead.owner_email !== "N/A" &&
+              lead.owner_phone_number !== "N/A"
+          )
+        
       
             
 
