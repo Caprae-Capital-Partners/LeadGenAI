@@ -284,30 +284,42 @@ const handleStartEnrichment = async () => {
 
       // 3. Upload enriched leads to DB
       
+      const normalizeValue = (val: any) =>
+        val === null || val === undefined || val === "" || val === "NA" || val === "N/A"
+          ? "N/A"
+          : val
+      
       const validLeads = newlyEnriched
-      .filter((lead) =>
-        lead.company &&
-        lead.ownerEmail &&
-        lead.owner_phone_number &&
-        lead.source &&
-        !["n/a", "not found", "N/A", "", null].includes((lead.owner_phone_number || "").toLowerCase())
-      )
-      .map((lead) => ({
-        company: lead.company,
-        website: lead.website,
-        owner_linkedin: lead.owner_linkedin,
-        owner_phone_number: lead.owner_phone_number,
-        owner_first_name: lead.ownerFirstName || "",
-        owner_last_name: lead.ownerLastName || "",
-        owner_email: lead.ownerEmail || "",
-        company_phone: lead.companyPhone || "",
-        company_linkedin: lead.companyLinkedin || "",
-        owner_title: lead.ownerTitle || "",
-        industry: lead.industry || "",
-        city: lead.city || "",
-        state: lead.state || "",
-        source: lead.source || "N/A"
-      }));
+        .map((lead) => ({
+          company: normalizeValue(lead.company),
+          website: normalizeValue(lead.website),
+          owner_linkedin: normalizeValue(lead.owner_linkedin),
+          owner_phone_number: normalizeValue(lead.owner_phone_number),
+          owner_first_name: normalizeValue(lead.ownerFirstName),
+          owner_last_name: normalizeValue(lead.ownerLastName),
+          owner_email: normalizeValue(lead.ownerEmail),
+          owner_title: normalizeValue(lead.ownerTitle),
+          company_phone: normalizeValue(lead.companyPhone),
+          company_linkedin: normalizeValue(lead.companyLinkedin),
+          industry: normalizeValue(lead.industry),
+          productCategory: normalizeValue(lead.productCategory),
+          businessType: normalizeValue(lead.businessType),
+          employees: normalizeValue(lead.employees),
+          revenue: normalizeValue(lead.revenue),
+          yearFounded: normalizeValue(lead.yearFounded),
+          bbb_rating: normalizeValue(lead.bbbRating),
+          street: normalizeValue(lead.street),
+          city: normalizeValue(lead.city),
+          state: normalizeValue(lead.state),
+          source: normalizeValue(lead.source)
+        }))
+        .filter(
+          (lead) =>
+            lead.company !== "N/A" &&
+            lead.owner_email !== "N/A" &&
+            lead.owner_phone_number !== "N/A"
+        )
+      
 
       console.log("📦 Uploading sanitized leads:", validLeads);
       console.log("🚀 Payload shape:", JSON.stringify(validLeads, null, 2));

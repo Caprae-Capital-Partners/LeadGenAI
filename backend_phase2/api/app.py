@@ -5,10 +5,18 @@ app = Flask(__name__)
 
 # 🔧 No Flask CORS — NGINX handles it in production
 
+# @app.after_request
+# def after_request(response):
+#     response.headers["Access-Control-Allow-Origin"] = "http://localhost:3000"
+#     response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+#     response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
+#     return response
+
 @app.after_request
 def after_request(response):
     # 🧼 Strip any automatic CORS headers if added by some libs (Flask-CORS should be removed)
     return response
+
 
 @app.route("/health")
 def health_check():
