@@ -391,6 +391,7 @@ const handleStartEnrichment = async () => {
             lead.owner_email !== "N/A" &&
             lead.owner_phone_number !== "N/A"
         );
+      
             
 
       console.log("📦 Uploading sanitized leads:", validLeads);
