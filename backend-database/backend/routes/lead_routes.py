@@ -913,7 +913,7 @@ def enrichment_test_page():
 
 @lead_bp.route('/api/leads/batch', methods=['PUT'])
 def batch_update_leads():
-    """Batch update multiple leads via API - Admin and Developer only"""
+    """Batch update multiple leads via API"""
     data = request.get_json()
     if not data or not isinstance(data, list):
         return jsonify({"error": "Request body must be a list of lead objects"}), 400
