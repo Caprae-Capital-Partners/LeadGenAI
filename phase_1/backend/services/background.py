@@ -205,7 +205,7 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
                 #     k: {"done": not state["in_progress"][k], "count": len(v)} 
                 #     for k, v in state["results"].items()
                 # }
-                "processed_data": flatten(state["results"].values()),  # Combine all sources
+                "processed_data": deepcopy(processed_state["processed_data"]),  # Combine all sources
                 "elapsed_time": time.time() - state["start_time"],
                 "total_scraped": sum(len(r) for r in state["results"].values()),
                 "is_complete": state["is_complete"]
