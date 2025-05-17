@@ -358,30 +358,31 @@ const handleStartEnrichment = async () => {
       const normalizeValue = (val: any) =>
         val === null || val === undefined || val === "" || val === "NA" || val === "N/A"
           ? "N/A"
-          : val
+          : val;
       
       const validLeads = newlyEnriched
         .map((lead) => ({
           company: normalizeValue(lead.company),
           website: normalizeValue(lead.website),
-          owner_linkedin: normalizeValue(lead.owner_linkedin),
-          owner_phone_number: normalizeValue(lead.owner_phone_number),
-          owner_first_name: normalizeValue(lead.ownerFirstName),
-          owner_last_name: normalizeValue(lead.ownerLastName),
-          owner_email: normalizeValue(lead.ownerEmail),
-          owner_title: normalizeValue(lead.ownerTitle),
-          company_phone: normalizeValue(lead.companyPhone),
-          company_linkedin: normalizeValue(lead.companyLinkedin),
           industry: normalizeValue(lead.industry),
           product_category: normalizeValue(lead.productCategory),
           business_type: normalizeValue(lead.businessType),
-          employees: normalizeValue(lead.employees),
+          employees: typeof lead.employees === "number" ? lead.employees : parseInt(lead.employees) || 0,
           revenue: normalizeValue(lead.revenue),
-          year_founded: normalizeValue(lead.yearFounded),
+          year_founded: typeof lead.yearFounded === "number" ? lead.yearFounded : parseInt(lead.yearFounded) || 0,
           bbb_rating: normalizeValue(lead.bbbRating),
           street: normalizeValue(lead.street),
           city: normalizeValue(lead.city),
           state: normalizeValue(lead.state),
+          company_phone: normalizeValue(lead.companyPhone),
+          company_linkedin: normalizeValue(lead.companyLinkedin),
+          owner_first_name: normalizeValue(lead.ownerFirstName),
+          owner_last_name: normalizeValue(lead.ownerLastName),
+          owner_title: normalizeValue(lead.ownerTitle),
+          owner_linkedin: normalizeValue(lead.owner_linkedin),
+          owner_phone_number: normalizeValue(lead.owner_phone_number),
+          owner_email: normalizeValue(lead.ownerEmail),
+          phone: normalizeValue(lead.owner_phone_number),
           source: normalizeValue(lead.source),
         }))
         .filter(
@@ -389,8 +390,8 @@ const handleStartEnrichment = async () => {
             lead.company !== "N/A" &&
             lead.owner_email !== "N/A" &&
             lead.owner_phone_number !== "N/A"
-
-        );      
+        );
+            
 
       console.log("📦 Uploading sanitized leads:", validLeads);
       console.log("🚀 Payload shape:", JSON.stringify(validLeads, null, 2));
