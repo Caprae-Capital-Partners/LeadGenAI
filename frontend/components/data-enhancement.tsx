@@ -71,6 +71,7 @@ export function DataEnhancement() {
   const [bbbRatingFilter, setBbbRatingFilter] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
@@ -79,6 +80,7 @@ export function DataEnhancement() {
   useEffect(() => {
     setCurrentPage(1);
   }, [industryFilter, cityFilter, stateFilter, bbbRatingFilter]);
+
 
   const downloadCSV = (data: any[], filename: string) => {
   const headers = Object.keys(data[0])
@@ -107,6 +109,7 @@ export function DataEnhancement() {
     )
   })
   
+
   // Calculate pagination values
   const totalPages = Math.ceil(filteredLeads.length / itemsPerPage)
   const indexOfLastItem = currentPage * itemsPerPage
@@ -157,6 +160,7 @@ export function DataEnhancement() {
     
     return pageNumbers;
   };
+
 
 //   const companies = [
 //   {
@@ -369,24 +373,24 @@ const handleStartEnrichment = async () => {
           company_phone: normalizeValue(lead.companyPhone),
           company_linkedin: normalizeValue(lead.companyLinkedin),
           industry: normalizeValue(lead.industry),
-          productCategory: normalizeValue(lead.productCategory),
-          businessType: normalizeValue(lead.businessType),
+          product_category: normalizeValue(lead.productCategory),
+          business_type: normalizeValue(lead.businessType),
           employees: normalizeValue(lead.employees),
           revenue: normalizeValue(lead.revenue),
-          yearFounded: normalizeValue(lead.yearFounded),
+          year_founded: normalizeValue(lead.yearFounded),
           bbb_rating: normalizeValue(lead.bbbRating),
           street: normalizeValue(lead.street),
           city: normalizeValue(lead.city),
           state: normalizeValue(lead.state),
-          source: normalizeValue(lead.source)
+          source: normalizeValue(lead.source),
         }))
         .filter(
           (lead) =>
             lead.company !== "N/A" &&
             lead.owner_email !== "N/A" &&
             lead.owner_phone_number !== "N/A"
-        )
-      
+
+        );      
 
       console.log("📦 Uploading sanitized leads:", validLeads);
       console.log("🚀 Payload shape:", JSON.stringify(validLeads, null, 2));
@@ -605,8 +609,9 @@ const handleStartEnrichment = async () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentItems.length > 0 ? (
-                    currentItems.map((company) => (
+
+                  {filteredLeads.length > 0 ? (
+                    filteredLeads.map((company) => (
                       <TableRow key={company.id}>
                         <TableCell>
                           <Checkbox
