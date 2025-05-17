@@ -22,39 +22,94 @@ export function Scraper() {
   const [industry, setIndustry] = useState("")
   const [location, setLocation] = useState("")
   const [scrapedResults, setScrapedResults] = useState<any[]>([])
-  const controllerRef = useRef<AbortController | null>(null)
+  // const controllerRef = useRef<AbortController | null>(null)
+  const controllerRef = useRef<{ abort: () => void } | null>(null)
 
-  const handleStartScraping = async () => {
-    setIsScrapingActive(true)
-    setProgress(0)
-    setShowResults(false)
 
-    const controller = new AbortController()
-    controllerRef.current = controller
+  // const handleStartScraping = async () => {
+  //   setIsScrapingActive(true)
+  //   setProgress(0)
+  //   setShowResults(false)
 
-    try {
-      const response = await axios.post(
-        SCRAPER_API,
-        { industry, location },
-        { signal: controller.signal }
-      )
+  //   const controller = new AbortController()
+  //   controllerRef.current = controller
 
-      const data = response.data
-      console.log("Scraped Results:", data)
-      setScrapedResults(data)
-      setShowResults(true)
-    } catch (error: any) {
-      if (axios.isCancel(error)) {
-        console.warn("Scraping canceled")
-      } else {
-        console.error("Scraping failed:", error)
-      }
-    } finally {
-      setIsScrapingActive(false)
-      setProgress(100)
-      controllerRef.current = null
-    }
+  //   try {
+  //     const response = await axios.post(
+  //       SCRAPER_API,
+  //       { industry, location },
+  //       { signal: controller.signal }
+  //     )
+
+  //     const data = response.data
+  //     console.log("Scraped Results:", data)
+  //     setScrapedResults(data)
+  //     setShowResults(true)
+  //   } catch (error: any) {
+  //     if (axios.isCancel(error)) {
+  //       console.warn("Scraping canceled")
+  //     } else {
+  //       console.error("Scraping failed:", error)
+  //     }
+  //   } finally {
+  //     setIsScrapingActive(false)
+  //     setProgress(100)
+  //     controllerRef.current = null
+  //   }
+  // }
+const handleStartScraping = async () => {
+  setIsScrapingActive(true)
+  setProgress(0)
+  setShowResults(true)
+  setScrapedResults([])
+
+  const queryParams = new URLSearchParams({ industry, location })
+  const url = `http://127.0.0.1:8000/scrape-stream?${queryParams.toString()}`
+  const eventSource = new EventSource(url)
+
+  controllerRef.current = {
+    abort: () => eventSource.close()
   }
+
+  eventSource.addEventListener("init", (event) => {
+    console.log("Init:", event.data)
+    setProgress(5)
+  })
+
+  eventSource.addEventListener("batch", (event) => {
+    try {
+      const parsed = JSON.parse(event.data)
+      const newItems = parsed.new_items ?? []
+
+      if (!Array.isArray(newItems)) {
+        console.warn("Expected new_items to be an array, got:", newItems)
+        return
+      }
+
+      console.log("Batch received:", parsed)
+      setScrapedResults((prev) => [...prev, ...newItems])
+      setProgress((prev) => Math.min(prev + 10, 95))
+    } catch (err) {
+      console.error("Failed to parse batch event:", err)
+    }
+  })
+
+  eventSource.addEventListener("done", (event) => {
+    console.log("Done:", event.data)
+    setProgress(100)
+    setIsScrapingActive(false)
+    setShowResults(true)
+    eventSource.close()
+  })
+
+  eventSource.onerror = (err) => {
+    console.error("Streaming error:", err)
+    setIsScrapingActive(false)
+    setProgress(100)
+    eventSource.close()
+  }
+}
+
 
 
   return (
@@ -100,9 +155,9 @@ export function Scraper() {
             onClick={handleStartScraping}
             disabled={isScrapingActive || !industry || !location}
           >
-            Find Companies
+            Scrape Leads
           </Button>
-           <Button
+           {/* <Button
             variant="destructive"
             disabled={!isScrapingActive}
             onClick={() => {
@@ -115,7 +170,22 @@ export function Scraper() {
             }}
           >
             Cancel
-          </Button>
+          </Button> */}
+          <Button
+            variant="destructive"
+            disabled={!isScrapingActive}
+            onClick={() => {
+              if (controllerRef.current) {
+                controllerRef.current.abort()
+              }
+              setIsScrapingActive(false)
+              setProgress(0)
+              setShowResults(false)
+              setScrapedResults([])
+          }}
+        >
+          Cancel
+        </Button>
         </CardFooter>
          
 
