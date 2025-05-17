@@ -115,16 +115,16 @@ def view_leads():
     """View all leads - All roles can access"""
     leads = LeadController.get_all_leads()
 
-    # Get unique values for filters
+    # Get unique, normalized values for filters
     companies = sorted(set(lead.company for lead in leads if lead.company))
-    locations = sorted(set(f"{lead.city}, {lead.state}" if lead.city and lead.state else (lead.city or lead.state) for lead in leads if (lead.city or lead.state)))
+    cities = sorted(set(city.strip().title() for city in (lead.city for lead in leads) if city and city.strip()))
+    states = sorted(set(state.strip().upper() for state in (lead.state for lead in leads) if state and state.strip()))
     roles = sorted(set(lead.owner_title for lead in leads if lead.owner_title))
     statuses = sorted(set(lead.status for lead in leads if lead.status))
 
     # Get additional filter options
     industries = sorted(set(lead.industry for lead in leads if lead.industry))
     business_types = sorted(set(lead.business_type for lead in leads if lead.business_type))
-    states = sorted(set(lead.state for lead in leads if lead.state))
     employee_sizes = sorted(set(lead.employees for lead in leads if lead.employees))
     revenue_ranges = sorted(set(lead.revenue for lead in leads if lead.revenue))
     sources = sorted(set(lead.source for lead in leads if lead.source))
@@ -132,12 +132,12 @@ def view_leads():
     return render_template('leads.html',
                          leads=leads,
                          companies=companies,
-                         locations=locations,
+                         cities=cities,
+                         states=states,
                          roles=roles,
                          statuses=statuses,
                          industries=industries,
                          business_types=business_types,
-                         states=states,
                          employee_sizes=employee_sizes,
                          revenue_ranges=revenue_ranges,
                          sources=sources)
@@ -910,3 +910,65 @@ def check_missing_fields():
 # @login_required
 def enrichment_test_page():
     return render_template('enrichment_test.html')
+
+@lead_bp.route('/api/leads/batch', methods=['PUT'])
+def batch_update_leads():
+    """Batch update multiple leads via API - Admin and Developer only"""
+    data = request.get_json()
+    if not data or not isinstance(data, list):
+        return jsonify({"error": "Request body must be a list of lead objects"}), 400
+
+    success_count = 0
+    skipped_count = 0
+    failed = []
+    details = []
+
+    for item in data:
+        lead_id = item.get('lead_id')
+        if not lead_id:
+            failed.append({"lead_id": None, "error": "Missing lead_id"})
+            continue
+        lead = Lead.query.filter_by(lead_id=lead_id).first()
+        if not lead:
+            failed.append({"lead_id": lead_id, "error": "Lead not found"})
+            continue
+
+        changed = False
+        unchanged_fields = []
+        changed_fields = []
+        try:
+            for key, value in item.items():
+                if key != 'lead_id' and hasattr(lead, key):
+                    current_value = getattr(lead, key)
+                    if current_value != value:
+                        setattr(lead, key, value)
+                        changed = True
+                        changed_fields.append(key)
+                    else:
+                        unchanged_fields.append(key)
+            if changed:
+                db.session.commit()
+                success_count += 1
+                details.append({
+                    "lead_id": lead_id,
+                    "status": "updated",
+                    "changed_fields": changed_fields
+                })
+            else:
+                skipped_count += 1
+                details.append({
+                    "lead_id": lead_id,
+                    "status": "skipped",
+                    "unchanged_fields": unchanged_fields
+                })
+        except Exception as e:
+            db.session.rollback()
+            failed.append({"lead_id": lead_id, "error": str(e)})
+
+    return jsonify({
+        "updated": success_count,
+        "skipped": skipped_count,
+        "failed": failed,
+        "details": details,
+        "message": f"Batch update complete. Updated: {success_count}, Skipped (no change): {skipped_count}, Failed: {len(failed)}"
+    })
