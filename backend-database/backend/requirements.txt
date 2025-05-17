@@ -23,3 +23,4 @@ gunicorn
 pytest
 pytest-cov
 requests
+gunicorn

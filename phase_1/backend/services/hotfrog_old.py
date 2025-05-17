@@ -107,8 +107,8 @@ async def extract_business_details(container: Locator, search_term: str) -> Dict
         #         business_info['Website'] = href
         #         break
         
-        if ((business_info['Company'] != 'N/A' and business_info['Company'] != '') or 
-            (business_info['Business_phone'] != 'N/A' and business_info['Business_phone'] != '')):
+        if ((business_info['Company'] != 'NA' and business_info['Company'] != '') or 
+            (business_info['Business_phone'] != 'NA' and business_info['Business_phone'] != '')):
             return business_info
         return None
     

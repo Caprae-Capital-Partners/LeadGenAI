@@ -76,8 +76,21 @@ class UploadController:
         log_file = "upload_errors.log"
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         with open(log_file, "a", encoding='utf-8') as f:
-            f.write(f"[{timestamp}] {filename} Row {row_number}: {reason} ")
-            f.write(f"Data: {data}\n")
+            f.write(f"[{timestamp}] {filename} Row {row_number}: ")
+            
+            if "Success" in reason:
+                company = data.get('company', 'Unknown')
+                f.write(f"SUCCESS - Company: '{company}' - {reason}\n")
+            elif "Skipped" in reason:
+                company = data.get('company', 'Unknown')
+                f.write(f"SKIPPED - {reason}\n")
+            elif "Error" in reason:
+                company = data.get('company', 'Unknown')
+                f.write(f"ERROR - Company: '{company}' - {reason}\n")
+                f.write(f"       Data: {data}\n")
+            else:
+                f.write(f"{reason}\n")
+                f.write(f"Data: {data}\n")
 
     @staticmethod
     def write_log_separator(filename):
@@ -217,25 +230,47 @@ class UploadController:
             df['phone'] = "" if phone_col not in df.columns else df[phone_col].apply(lambda x: UploadController.clean_phone(x) if str(x).strip() != "-" else "")
 
             # Set company field - use name if company column doesn't exist
-            if 'company' not in df.columns:
-                df['company'] = df['name']
-            else:
-                df['company'] = df['company'].apply(lambda x: str(x).strip() if str(x).strip() != "-" else "Unknown Company")
+            # Normalize column names first
+            df.columns = df.columns.str.lower()
 
-            added = 0
+            if 'company' not in df.columns:
+                raise Exception("CSV file must contain a 'company' column.")
+            else:
+                df['company'] = df['company'].apply(lambda x: str(x).strip() if str(x).strip() != "-" else "")
+
+            added_new = 0
+            updated = 0
             skipped_duplicates = 0
+            skipped_empty_company = 0
             errors = 0
             skipped_details = []
 
             for idx, row in df.iterrows():
                 try:
-                    # Start with basic fields that are always required
+                    # Get company value and skip if empty
+                    company_value = str(row.get('company', '')).strip()
+                    if not company_value:
+                        skipped_empty_company += 1
+                        error_message = f"Row {idx+2}: Empty company value, skipped."
+                        skipped_details.append(error_message)
+                        UploadController.log_error(filename, idx + 2, row.to_dict(), f"Skipped (empty company): Company value is empty")
+                        continue  # Skip this row
+                        
                     lead_data = {
                         'search_keyword': {},
                         'source': 'manual',
-                        'company': str(row.get('company', '')).strip() or "Unknown Company",
+                        'company': company_value,
                         'status': 'new'
                     }
+
+                    company_name = lead_data['company']
+                    existing_lead = Lead.query.filter_by(company=company_name, deleted=False).first()
+                    if existing_lead:
+                        skipped_duplicates += 1
+                        error_message = f"Row {idx+2}: Duplicate company '{company_name}' skipped."
+                        skipped_details.append(error_message)
+                        UploadController.log_error(filename, idx + 2, lead_data, f"Skipped (duplicate): Company '{company_name}' already exists in database")
+                        continue
 
                     # Map and clean all fields from the CSV
                     for column in df.columns:
@@ -330,17 +365,45 @@ class UploadController:
                             if not isinstance(clean_lead_data, dict):
                                 raise ValueError("Lead data must be a dictionary")
                                 
+                            # Debugging to ensure the request is correct
+                            print(f"Attempting to add/update lead: {clean_lead_data.get('company')}")
+                            
                             result = LeadController.add_or_update_lead_by_match(clean_lead_data)
                             
                             # Handle the tuple return value
                             if isinstance(result, tuple) and len(result) == 2:
                                 success, message = result
                                 if success:
-                                    added += 1
-                                    UploadController.log_error(filename, idx + 2, clean_lead_data, f"Success: {message}")
+                                    if "updated successfully" in message:
+                                        updated += 1
+                                    elif "already up to date" in message:
+                                        updated += 1  # Count as updated but wasn't changed
+                                    else:
+                                        added_new += 1
+                                        
+                                    # Verify lead actually exists in database
+                                    verify_company = clean_lead_data.get('company')
+                                    if verify_company:
+                                        verify_lead = Lead.query.filter(
+                                            db.func.lower(Lead.company) == db.func.lower(verify_company),
+                                            Lead.deleted == False
+                                        ).first()
+                                        if verify_lead:
+                                            if "updated successfully" in message:
+                                                log_message = f"Success: {message} - Verified in DB with ID {verify_lead.lead_id}"
+                                            elif "already up to date" in message:
+                                                log_message = f"Success: {message} - No changes needed (ID {verify_lead.lead_id})"
+                                            else:
+                                                log_message = f"Success: {message} - Verified in DB with ID {verify_lead.lead_id}"
+                                        else:
+                                            log_message = f"Warning: {message} but not found in database verification check"
+                                    else:
+                                        log_message = f"Success: {message} - Unable to verify (no company name)"
+                                    
+                                    UploadController.log_error(filename, idx + 2, clean_lead_data, log_message)
                                 else:
                                     # Check if it's a duplicate
-                                    if "already in use" in message:
+                                    if "already exists" in message or "already in use" in message:
                                         skipped_duplicates += 1
                                         skipped_details.append(f"Row {idx+2}: {message}")
                                         UploadController.log_error(filename, idx + 2, clean_lead_data, f"Skipped (duplicate): {message}")
@@ -358,6 +421,11 @@ class UploadController:
                             reason = f"Error adding lead: {str(e)}"
                             UploadController.log_error(filename, idx + 2, clean_lead_data, reason)
                             skipped_details.append(f"Row {idx+2}: {reason}")
+                            
+                            # Try to print detailed error traceback
+                            import traceback
+                            print(f"Error traceback for row {idx+2}:")
+                            traceback.print_exc()
                     except Exception as e:
                         errors += 1
                         reason = f"Error processing row: {str(e)}"
@@ -370,7 +438,7 @@ class UploadController:
                     UploadController.log_error(filename, idx + 2, row.to_dict(), reason)
                     skipped_details.append(f"Row {idx+2}: {reason}")
 
-            return added, skipped_duplicates, errors
+            return (added_new, updated), skipped_duplicates, skipped_empty_company, errors
 
         except pd.errors.EmptyDataError:
             UploadController.log_error(filename, 0, {}, "The CSV file is empty")

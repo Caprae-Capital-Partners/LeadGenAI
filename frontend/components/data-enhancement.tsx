@@ -1,6 +1,6 @@
 "use client"
 import React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { EnrichmentResults } from "../components/enrichment-results"
 import { Button } from "../components/ui/button"
@@ -11,6 +11,16 @@ import { Search, Filter, Download, X, ExternalLink } from "lucide-react"
 import { useLeads } from "./LeadsProvider"
 import type { ApolloCompany, GrowjoCompany, ApolloPerson } from "../types/enrichment"
 import axios from "axios"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
@@ -62,6 +72,16 @@ export function DataEnhancement() {
   const [showFilters, setShowFilters] = useState(false)
   
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(25)
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [industryFilter, cityFilter, stateFilter, bbbRatingFilter]);
+
+
   const downloadCSV = (data: any[], filename: string) => {
   const headers = Object.keys(data[0])
   const csvRows = [
@@ -89,6 +109,57 @@ export function DataEnhancement() {
     )
   })
   
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredLeads.slice(indexOfFirstItem, indexOfLastItem)
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    
+    if (totalPages <= 7) {
+      // Show all pages if there are 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Always show first and last page, with ellipsis for hidden pages
+      pageNumbers.push(1);
+      
+      // Determine range to show around current page
+      let startPage = Math.max(2, currentPage - 2);
+      let endPage = Math.min(totalPages - 1, currentPage + 2);
+      
+      // Adjust if we're near the beginning or end
+      if (currentPage <= 4) {
+        endPage = 5;
+      } else if (currentPage >= totalPages - 3) {
+        startPage = totalPages - 4;
+      }
+      
+      // Add ellipsis if needed
+      if (startPage > 2) {
+        pageNumbers.push('ellipsis');
+      }
+      
+      // Add middle pages
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+      
+      // Add ellipsis if needed
+      if (endPage < totalPages - 1) {
+        pageNumbers.push('ellipsis');
+      }
+      
+      pageNumbers.push(totalPages);
+    }
+    
+    return pageNumbers;
+  };
 
 
 //   const companies = [
@@ -318,9 +389,8 @@ const handleStartEnrichment = async () => {
             lead.company !== "N/A" &&
             lead.owner_email !== "N/A" &&
             lead.owner_phone_number !== "N/A"
-        );
 
-      
+        );      
 
       console.log("📦 Uploading sanitized leads:", validLeads);
       console.log("🚀 Payload shape:", JSON.stringify(validLeads, null, 2));
@@ -457,6 +527,65 @@ const handleStartEnrichment = async () => {
                 </div>
               )}
 
+            {/* Pagination controls */}
+            {filteredLeads.length > 0 && (
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredLeads.length)} of {filteredLeads.length} results
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1); // Reset to first page when changing items per page
+                  }}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Items per page" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25 per page</SelectItem>
+                      <SelectItem value="50">50 per page</SelectItem>
+                      <SelectItem value="100">100 per page</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          aria-disabled={currentPage === 1}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                      
+                      {getPageNumbers().map((page, index) => (
+                        <PaginationItem key={index}>
+                          {page === 'ellipsis' ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              isActive={page === currentPage}
+                              onClick={() => setCurrentPage(Number(page))}
+                            >
+                              {page}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          aria-disabled={currentPage === totalPages}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </div>
+            )}
             
             <div className="rounded-md border overflow-x-auto">
               <Table>
@@ -480,6 +609,7 @@ const handleStartEnrichment = async () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+
                   {filteredLeads.length > 0 ? (
                     filteredLeads.map((company) => (
                       <TableRow key={company.id}>
@@ -528,10 +658,10 @@ const handleStartEnrichment = async () => {
               </Table>
             </div>
 
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
                 {selectedCompanies.length} of {filteredLeads.length} selected
-              </p>
+              </div>
               <Button onClick={handleStartEnrichment} disabled={selectedCompanies.length === 0 || loading}>
                 {loading ? "Enriching..." : "Start Enrichment"}
               </Button>
