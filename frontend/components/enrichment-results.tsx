@@ -81,13 +81,12 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
   const downloadCSV = (data: any[], filename: string) => {
   const headers = Object.keys(data[0])
   const normalizeCSVValue = (field: string, value: any) => {
-    if (field === "source") {
-      return value === null || value === undefined || value === "" || value === "N/A"
-        ? "Not available in any source"
-        : value
-    }
-    return value === null || value === undefined || value === "" ? "N/A" : value
+    const normalized = normalizeDisplayValue(value)
+    return field === "source" && normalized === "N/A"
+      ? "Not available in any source"
+      : normalized
   }
+  
   
   
   const csvRows = [
@@ -331,10 +330,22 @@ const parseRevenue = (revenueStr: string): number | null => {
     }
   }
   const normalizeDisplayValue = (value: any) => {
-    if (value === null || value === undefined || value === "") return "N/A";
-    if (value === "NA") return "N/A";
-    return value;
+    if (
+      value === null ||
+      value === undefined ||
+      value.toString().trim() === "" ||
+      value.toString().trim().toUpperCase() === "NA" ||
+      value.toString().trim().toUpperCase() === "N/A" ||
+      value.toString().trim().toUpperCase() === "not" ||
+      value.toString().trim().toUpperCase() === "found" ||
+      value.toString().trim().toLowerCase() === "not found"
+    ) {
+      return "N/A"
+    }
+    
+    return value
   }
+  
 
   // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
   const cleanUrlForDisplay = (url: string): string => {

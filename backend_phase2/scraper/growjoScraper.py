@@ -12,9 +12,15 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.edge.service import Service as EdgeService
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from openai import OpenAI
 
 load_dotenv()
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
+client = OpenAI(
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com/v1",
+    )
 GROWJO_LOGIN_URL = "https://growjo.com/login"
 GROWJO_SEARCH_URL = "https://growjo.com/"
 LOGIN_EMAIL = os.getenv("GROWJO_EMAIL")
@@ -80,6 +86,45 @@ class GrowjoScraper:
             print(f"[ERROR] Login error: {e}")
             raise
 
+
+
+    def deepseek_guess_website(self, company_name):
+        import re
+        prompt = (
+            f"You are an AI assistant. Given a company name, guess the most likely website domain (e.g., example.com). "
+            f"Only respond with this JSON format:\n"
+            f'{{"domain": "..."}}\n\n'
+            f"Company name: {company_name}"
+        )
+        try:
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+            )
+            text = response.choices[0].message.content.strip()
+
+            # Try parsing JSON
+            try:
+                import json
+                parsed = json.loads(text)
+                raw_domain = parsed.get("domain", "not found")
+            except json.JSONDecodeError:
+                print(f"[WARN] DeepSeek returned invalid JSON: {text}. Attempting regex fallback...")
+                match = re.search(r'([\w\.-]+\.[a-z]{2,})', text, re.IGNORECASE)
+                raw_domain = match.group(1) if match else "not found"
+
+            # Normalize domain (strip protocol and trailing slash)
+            website = re.sub(r"^https?://", "", raw_domain).rstrip("/")
+            return {"website": website}
+
+        except Exception as e:
+            print(f"[ERROR] DeepSeek fallback failed: {e}")
+            return {"website": "not found"}
+
+
+
+        
     def search_company(self, driver, wait, company_name):
         """
         Search for a company on Growjo and click its link if matched.
@@ -460,49 +505,66 @@ class GrowjoScraper:
             }
 
     def scrape_full_pipeline(self, company_name):
-        """Master method to run full scraping pipeline."""
+        """Master method to run full Growjo scraping pipeline, with DeepSeek fallback if company not found."""
         try:
-            # Step 1: Public scrape
-            if not self.search_company(self.driver_public, self.wait_public, company_name):
-                return {"error": "Company not found."}
+            # Step 1: Try Growjo
+            found = self.search_company(self.driver_public, self.wait_public, company_name)
+            if not found:
+                print("[DEBUG] Growjo failed to find company — falling back to DeepSeek...")
+                inferred = self.deepseek_guess_website(company_name)
+                return {
+                    "company_name": company_name,
+                    "company_website": inferred.get("website", "not found"),
+                    "revenue": "not found",
+                    "location": "not found",
+                    "industry": "not found",
+                    "interests": "not found",
+                    "employee_count": "not found",
+                    "decider_name": "not found",
+                    "decider_title": "not found",
+                    "decider_email": "not found",
+                    "decider_phone": "not found",
+                    "decider_linkedin": "not found"
+                }
 
+            # Step 2: Scrape company details
             company_info = self.extract_company_details(self.driver_public, company_name)
-            decision_maker = self.find_decision_maker(
-                self.driver_public, self.wait_public, company_name
-            )
+            decision_maker = self.find_decision_maker(self.driver_public, self.wait_public, company_name)
 
-            if not decision_maker:
-                return {"error": "No decision maker found."}
+            # Step 3: If decider found, get sensitive info
+            sensitive_info = {
+                "email": "not found",
+                "phone": "not found",
+                "linkedin": "not found"
+            }
+            if decision_maker:
+                profile_url = decision_maker["profile_url"]
+                if not self.logged_in:
+                    self.login_logged_in_browser()
+                sensitive_info = self.scrape_decision_maker_details(profile_url, self.driver_logged_in)
 
-            profile_url = decision_maker["profile_url"]
-
-            # Step 2: Logged-in scrape
-            if not self.logged_in:
-                self.login_logged_in_browser()
-
-            sensitive_info = self.scrape_decision_maker_details(profile_url, self.driver_logged_in)
-
+            # Step 4: Return final combined result
             return {
                 "company_name": company_info.get("company", company_name),
                 "company_website": company_info.get("website", "not found"),
                 "revenue": company_info.get("revenue", "not found"),
-                "location": ", ".join(
-                    filter(None, [company_info.get("city", ""), company_info.get("state", "")])
-                )
-                or "not found",
+                "location": ", ".join(filter(None, [company_info.get("city", ""), company_info.get("state", "")])) or "not found",
                 "industry": company_info.get("industry", "not found"),
                 "interests": company_info.get("specialties", "not found"),
                 "employee_count": company_info.get("employees", "not found"),
-                "decider_name": decision_maker.get("name", "not found"),
-                "decider_title": decision_maker.get("title", "not found"),
+                "decider_name": decision_maker.get("name", "not found") if decision_maker else "not found",
+                "decider_title": decision_maker.get("title", "not found") if decision_maker else "not found",
                 "decider_email": sensitive_info.get("email", "not found"),
                 "decider_phone": sensitive_info.get("phone", "not found"),
-                "decider_linkedin": sensitive_info.get("linkedin", "not found"),
+                "decider_linkedin": sensitive_info.get("linkedin", "not found")
             }
+
         except Exception as e:
             print(f"[ERROR] Full pipeline error: {str(e)}")
             return {"error": str(e)}
 
+
+    
     def close(self):
         """Close both browser instances."""
         try:
