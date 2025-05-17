@@ -609,9 +609,8 @@ const handleStartEnrichment = async () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-
-                  {filteredLeads.length > 0 ? (
-                    filteredLeads.map((company) => (
+                  {currentItems.length > 0 ? (
+                    currentItems.map((company) => (
                       <TableRow key={company.id}>
                         <TableCell>
                           <Checkbox
