@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify
 from routes.enrich import enrich_bp
 
 app = Flask(__name__)
@@ -12,10 +12,7 @@ app = Flask(__name__)
 #     response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
 #     return response
 
-@app.before_request
-def handle_options_request():
-    if request.method == 'OPTIONS':
-        return make_response('', 204)
+
 
 @app.after_request
 def after_request(response):
