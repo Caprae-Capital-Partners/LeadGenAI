@@ -261,7 +261,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   }
 
   const normalizeDisplayValue = (value: any) => {
-    if (value === null || value === undefined || value === "") return "N/A";
+    if (value === null || value === undefined) return "N/A";
     if (value === "NA") return "N/A";
     return value;
   }
