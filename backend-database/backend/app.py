@@ -20,10 +20,11 @@ def create_app(config_class=config):
             "origins": [
                 "http://localhost:3000",     # React development server
                 "http://localhost:5173",
-                "https://capraeleadseekers.site",
+                "https://capraeleadseekers.site", # Development frontend
                 "https://35.165.209.201",  
-                "https://main.d2fzqm2i2qb7f3.amplifyapp.com",
+                "https://main.d2fzqm2i2qb7f3.amplifyapp.com", # Production frontend
                 "http://35.165.209.201", 
+                "https://www.saasquatchleads.com", # Production frontend
                 "http://54.166.155.63:3000", # Production frontend
                 "http://54.166.155.63"       # Production frontend without port
             ],
