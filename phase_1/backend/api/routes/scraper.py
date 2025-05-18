@@ -4,7 +4,7 @@ from backend.main import fetch_and_merge_data
 
 scraper_bp = Blueprint("scraper", __name__)
 
-@scraper_bp.post("/lead-scrape")
+@scraper_bp.route("/lead-scrape", methods=["POST"])
 async def lead_scrape():
     payload = await request.get_json()
     if not payload:
