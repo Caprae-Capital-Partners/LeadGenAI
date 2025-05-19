@@ -4,6 +4,9 @@ import "./globals.css"
 import { ThemeProvider } from "../components/theme-provider"
 import ClientRoot from "../components/ClientRoot"
 import { LeadsProvider } from "../components/LeadsProvider"
+import { Toaster } from 'sonner'
+
+<Toaster />
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -28,6 +31,7 @@ export default function RootLayout({
             </ClientRoot>
           </LeadsProvider>
         </ThemeProvider>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   )

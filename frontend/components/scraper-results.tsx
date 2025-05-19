@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Download, Search, ArrowRight, ExternalLink } from "lucide-react"
+import { Download, Search, ArrowRight, ExternalLink, Save } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
-import { useLeads } from "@/components/LeadsProvider"
+import { Lead, useLeads } from "@/components/LeadsProvider"
 import { addUniqueIdsToLeads } from "@/lib/leadUtils"
+import { toast } from "sonner";
 import {
   Pagination,
   PaginationContent,
@@ -20,10 +21,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-
-interface ScraperResultsProps {
-  data: any[]
-}
+import axios from "axios"
 
 export function ScraperResults({ data }: { data: string | any[] }) {
   const router = useRouter()
@@ -32,6 +30,11 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   const [exportFormat, setExportFormat] = useState("csv")
   const { setLeads: setGlobalLeads } = useLeads()
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
+
+  // Updation state
+  const [updatedLeads, setUpdatedLeads] = useState<{ lead_id: number }[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const UPDATE_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/batch`;
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -55,17 +58,20 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     setLeads([]);
     return;
   }
+   const defaultNA = (val: any) =>
+    val === undefined || val === null || val === "" || val === "NA" ? "N/A" : val;
+
   // Normalize the data
   const normalizedWithoutIds = parsedData.map((item, idx) => ({
-    id: -1, // Temporary ID that will be replaced by addUniqueIdsToLeads
-    company: item.Company || item.company || "",
-    website: item.Website || item.website || "",
-    industry: item.Industry || item.industry || "",
-    street: item.Street || item.street || "",
-    city: item.City || item.city || "",
-    state: item.State || item.state || "",
-    bbb_rating: item.BBB_rating || item.bbb_rating || "",
-    business_phone: item.Business_phone || item.business_phone || "",
+    lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
+    company: defaultNA(item.Company || item.company),
+    website: defaultNA(item.Website || item.website),
+    industry: defaultNA(item.Industry || item.industry),
+    street: defaultNA(item.Street || item.street),
+    city: defaultNA(item.City || item.city),
+    state: defaultNA(item.State || item.state),
+    bbb_rating: defaultNA(item.BBB_rating || item.bbb_rating),
+    business_phone: defaultNA(item.Business_phone || item.business_phone)
   }));
   
   // Apply unique IDs using the hash function
@@ -118,25 +124,65 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       prev.map((row, idx) =>
         idx === rowIdx ? { ...row, [field]: value } : row
       )
-    )
-    
+    );
+  
+    const leadId = leads[rowIdx].lead_id;
+  
+    setUpdatedLeads((prev: { lead_id: number }[]) => {
+      const existing = prev.find((item: { lead_id: number }) => item.lead_id === leadId);
+      
+      if (existing) {
+        return prev.map((item: { lead_id: number }) =>
+          item.lead_id === leadId
+            ? { ...item, [field]: value }
+            : item
+        );
+      } else {
+        return [...prev, { lead_id: leadId, [field]: value }];
+      }
+    });
+  
     // Resize the textarea after content change
     setTimeout(() => {
-      const index = field === "company" ? rowIdx * 3 : 
-                  field === "industry" ? rowIdx * 3 + 1 : 
-                  field === "street" ? rowIdx * 3 + 2 : -1;
-      
+      const index = field === "company" ? rowIdx * 3 :
+                    field === "industry" ? rowIdx * 3 + 1 :
+                    field === "street" ? rowIdx * 3 + 2 : -1;
+  
       if (index >= 0 && textareaRefs.current[index]) {
         const textarea = textareaRefs.current[index];
         textarea.style.height = 'auto';
         textarea.style.height = textarea.scrollHeight + 'px';
       }
     }, 0);
-  }
+  };
 
   const handleNext = () => {
     router.push("?tab=enhancement")
   }
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Make API call to batch update endpoint
+      const response = await axios.put(UPDATE_DB_API,updatedLeads)
+      const result = response.data;
+
+      toast.success(`Updated ${result.updated || updatedLeads.length} lead(s) successfully.`);
+
+      if (result.failed && result.failed.length > 0) {
+        toast.warning(`${result.failed.length} lead(s) failed to update.`);
+      }
+      setUpdatedLeads([]);
+      setGlobalLeads(leads)
+           
+    } catch (error: any) {
+      console.error('Error saving leads:', error);
+      toast.error('Failed to save leads. Please try again.');
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
 
   const filteredResults = leads.filter(
     (result) =>
@@ -261,7 +307,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   }
 
   const normalizeDisplayValue = (value: any) => {
-    if (value === null || value === undefined || value === "") return "N/A";
+    if (value === null || value === undefined) return "";
     if (value === "NA") return "N/A";
     return value;
   }
@@ -372,9 +418,14 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                       <TableCell className="break-words">
                         <textarea
                           className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                          value={normalizeDisplayValue(result.company)}
+                          value={normalizeDisplayValue(result.company ?? "")}
                           onChange={e => handleCellChange(actualIndex, "company", e.target.value)}
                           rows={1}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "company", "N/A")
+                            }
+                          }}
                           ref={(el) => {
                             textareaRefs.current[actualIndex * 3] = el;
                           }}
@@ -383,9 +434,14 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                       <TableCell className="break-words">
                         <textarea
                           className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                          value={normalizeDisplayValue(result.industry)}
+                          value={normalizeDisplayValue(result.industry ?? "")}
                           onChange={e => handleCellChange(actualIndex, "industry", e.target.value)}
                           rows={1}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "industry", "N/A")
+                            }
+                          }}
                           ref={(el) => {
                             textareaRefs.current[actualIndex * 3 + 1] = el;
                           }}
@@ -398,6 +454,11 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                           onChange={e => handleCellChange(actualIndex, "street", e.target.value)}
                           placeholder="Street"
                           rows={1}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "street", "N/A")
+                            }
+                          }}
                           ref={(el) => {
                             textareaRefs.current[actualIndex * 3 + 2] = el;
                           }}
@@ -407,12 +468,22 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                             className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
                             value={normalizeDisplayValue(result.city)}
                             onChange={e => handleCellChange(actualIndex, "city", e.target.value)}
+                            onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "city", "N/A")
+                            }
+                          }}
                             placeholder="City"
                           />
                           <input
                             className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
                             value={normalizeDisplayValue(result.state)}
                             onChange={e => handleCellChange(actualIndex, "state", e.target.value)}
+                            onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "state", "N/A")
+                            }
+                          }}
                             placeholder="State"
                           />
                         </div>
@@ -439,6 +510,11 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                             className="border-b w-full bg-transparent"
                             value={result.website ? cleanUrlForDisplay(normalizeDisplayValue(result.website)) : ""}
                             onChange={e => handleCellChange(actualIndex, "website", e.target.value)}
+                            onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "website", "N/A")
+                            }
+                          }}
                             placeholder="Website (domain only)"
                           />
                           {result.website && normalizeDisplayValue(result.website) !== "N/A" && normalizeDisplayValue(result.website) !== "NA" && (
@@ -472,6 +548,14 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       <CardFooter className="flex justify-between">
         <div className="text-sm text-muted-foreground" />
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
           <Button
             className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
             onClick={handleNext}

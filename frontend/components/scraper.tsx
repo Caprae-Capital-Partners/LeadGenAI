@@ -10,7 +10,7 @@ import { ScraperResults } from "@/components/scraper-results"
 import axios from "axios"
 import { AlertCircle, DatabaseIcon } from "lucide-react"
 
-const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/lead-scrape`;
+const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/scraper`;
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/industries`;
 const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/lead_scrape`;
 
@@ -31,12 +31,13 @@ interface LeadData {
   BBB_rating?: string;
   bbb_rating?: string;
   Business_phone?: string;
+  lead_id: number;
   phone?: string;
   [key: string]: any; // For any other properties we might not know about
 }
 
 interface FormattedLead {
-  id: number;
+  lead_id: number;
   company: string;
   website: string;
   industry: string;
@@ -53,7 +54,6 @@ export function Scraper() {
   const [showResults, setShowResults] = useState(false)
   const [needMoreLeads, setNeedMoreLeads] = useState(false)
   const [scrapingSource, setScrapingSource] = useState<'database' | 'scraper'>('database')
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Industry dropdown states
   const [industries, setIndustries] = useState<string[]>([]); // Full list from API
@@ -65,8 +65,6 @@ export function Scraper() {
   const [location, setLocation] = useState("")
   const [scrapedResults, setScrapedResults] = useState<any[]>([])
   const controllerRef = useRef<AbortController | null>(null)
-
-  
 
   useEffect(() => {
     const fetchIndustries = async () => {
@@ -83,8 +81,8 @@ export function Scraper() {
       }
     };
 
-    fetchIndustries();
-  }, []);
+  fetchIndustries();
+}, []);
 
   const handleIndustryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -103,6 +101,7 @@ export function Scraper() {
 
   const handleStartScraping = async () => {
     setIsScrapingActive(true)
+    setProgress(0)
     setScrapingSource('scraper')
     // Don't hide results if we're appending to existing results
     if (scrapedResults.length === 0) {
@@ -138,7 +137,7 @@ export function Scraper() {
       
       // Format the new data in the same way as handleCollectData
       const formattedData = data.map((item: LeadData): FormattedLead => ({
-        id: -1, // Temporary ID that will be replaced by addUniqueIdsToLeads
+        lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
         company: item.Company || item.company || "",
         website: item.Website || item.website || "",
         industry: item.Industry || item.industry || "",
@@ -177,15 +176,15 @@ export function Scraper() {
         console.error("Scraping failed:", error)
       }
     } finally {
-      if (!axios.isCancel(controllerRef.current?.signal)) {
-      }
       setIsScrapingActive(false)
+      setProgress(100)
       controllerRef.current = null
     }
   }
 
   const handleCollectData = async () => {
     setIsScrapingActive(true)
+    setProgress(0)
     setShowResults(false)
     setScrapingSource('database')
 
@@ -201,7 +200,7 @@ export function Scraper() {
 
       const data = response.data
       const formattedData = data.map((item: LeadData): FormattedLead => ({
-        id: -1, // Temporary ID that will be replaced by addUniqueIdsToLeads
+        lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
         company: item.Company || item.company || "",
         website: item.Website || item.website || "",
         industry: item.Industry || item.industry || "",
@@ -211,7 +210,7 @@ export function Scraper() {
         bbb_rating: item.BBB_rating || item.bbb_rating || "",
         business_phone: item.phone || item.phone || "",
       }));
-      console.log("Scraped Results:", formattedData)
+      // console.log("Scraped Results:", formattedData)
       setScrapedResults(formattedData)
       setShowResults(true)
       setNeedMoreLeads(formattedData.length < 250)
@@ -222,9 +221,8 @@ export function Scraper() {
         console.error("Scraping failed:", error)
       }
     } finally {
-      if (!axios.isCancel(controllerRef.current?.signal)) {
-      }
       setIsScrapingActive(false)
+      setProgress(100)
       controllerRef.current = null
     }
   }
@@ -272,12 +270,12 @@ export function Scraper() {
               />
               {showDropdown && (
                 <ul
-                  className="absolute bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded max-h-52 overflow-y-auto w-[38%] z-[1000] shadow-lg mt-1"
+                  className="absolute border border-border rounded max-h-52 overflow-y-auto w-[38%] z-[1000] shadow-lg mt-1 bg-background text-foreground transition-colors duration-150"
                 >
                   {filteredIndustries.map((ind, index) => (
                     <li
                       key={index}
-                      className="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200"
+                      className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors duration-100"
                       onClick={() => {
                         setIndustry(ind);
                         setShowDropdown(false);
@@ -306,30 +304,28 @@ export function Scraper() {
             setLocation('');
             setShowResults(false);
           }}>Clear</Button>
-          <div className="flex space-x-2">
-            <Button
-              className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
-              onClick={handleCollectData}
-              disabled={isScrapingActive || !industry || !location}
-            >
-              <DatabaseIcon className="mr-2 h-4 w-4" />
-              Find Companies
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={!isScrapingActive}
-              onClick={() => {
-                if (controllerRef.current) {
-                  controllerRef.current.abort()
-                }
-                setIsScrapingActive(false)
-                setProgress(0)
-                setShowResults(false)
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
+          <Button
+            className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
+            onClick={handleCollectData}
+            disabled={isScrapingActive || !industry || !location}
+          >
+            <DatabaseIcon className="mr-2 h-4 w-4" />
+            Find Companies
+          </Button>
+           <Button
+            variant="destructive"
+            disabled={!isScrapingActive}
+            onClick={() => {
+              if (controllerRef.current) {
+                controllerRef.current.abort()
+              }
+              setIsScrapingActive(false)
+              setProgress(0)
+              setShowResults(false)
+            }}
+          >
+            Cancel
+          </Button>
         </CardFooter>
          
       </Card>
