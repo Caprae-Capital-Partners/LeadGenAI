@@ -329,29 +329,42 @@ const handleStartEnrichment = async () => {
               linkedin: growjo.decider_linkedin || "",
               title: growjo.decider_title || "",
             }
-
+        
+        const preferValue = (growjoVal: any, apolloVal: any, fallback: any = "") => {
+          const clean = (v: any) => {
+            const s = (v || "").toString().trim().toLowerCase()
+            return s === "not found" || s === "n/a" || s === "na" || s === "" ? null : v
+          }
+        
+          return clean(growjoVal) || clean(apolloVal) || fallback
+        }
+            
         return {
-          company: growjo.company_name || company.company,
-          website: growjo.company_website || apollo.company_website || company.website,
-          owner_phone_number: decider.phone,
-          owner_linkedin: decider.linkedin,
-          street: company.street || "",
-          // Extra fields (optional)
-          industry: growjo.industry || apollo.industry || company.industry,
-          productCategory: growjo.interests || (Array.isArray(apollo.keywords) ? apollo.keywords.join(", ") : apollo.keywords || ""),
-          businessType: apollo.business_type || "",
-          employees: growjo.employee_count || apollo.employee_count,
-          revenue: growjo.revenue || apollo.annual_revenue_printed,
-          yearFounded: apollo.founded_year || "",
-          city: growjo.location?.split(", ")[0] || company.city,
-          state: growjo.location?.split(", ")[1] || company.state,
+          company: preferValue(growjo.company_name, company.company),
+          website: preferValue(growjo.company_website, apollo.website_url, company.website),
+          industry: preferValue(growjo.industry, apollo.industry, company.industry),
+          productCategory: preferValue(
+            growjo.interests,
+            Array.isArray(apollo.keywords) ? apollo.keywords.join(", ") : apollo.keywords
+          ),
+          businessType: preferValue("", apollo.business_type),
+          employees: preferValue(growjo.employee_count, apollo.employee_count),
+          revenue: preferValue(growjo.revenue, apollo.annual_revenue_printed),
+          yearFounded: preferValue("", apollo.founded_year),
+          city: preferValue(growjo.location?.split(", ")[0], company.city),
+          state: preferValue(growjo.location?.split(", ")[1], company.state),
           bbbRating: company.bbb_rating,
+          street: company.street || "",
           companyPhone: company.business_phone,
-          companyLinkedin: apollo.linkedin_url || "",
-          ownerFirstName: decider.firstName,
-          ownerLastName: decider.lastName,
-          ownerTitle: decider.title,
-          ownerEmail: decider.email,
+          companyLinkedin: preferValue("", apollo.linkedin_url),
+        
+          // Decider data
+          ownerFirstName: preferValue(decider.firstName, ""),
+          ownerLastName: preferValue(decider.lastName, ""),
+          ownerTitle: preferValue(decider.title, ""),
+          ownerEmail: preferValue(decider.email, ""),
+          ownerPhoneNumber: preferValue(decider.phone, ""),
+          ownerLinkedin: preferValue(decider.linkedin, ""),
           source: getSource(growjo, apollo, person),
         }
       })
@@ -387,10 +400,10 @@ const handleStartEnrichment = async () => {
             owner_first_name: normalizeValue(lead.ownerFirstName),
             owner_last_name: normalizeValue(lead.ownerLastName),
             owner_title: normalizeValue(lead.ownerTitle),
-            owner_linkedin: normalizeValue(lead.owner_linkedin),
-            owner_phone_number: normalizeValue(lead.owner_phone_number),
+            owner_linkedin: normalizeValue(lead.ownerLinkedin),
+            owner_phone_number: normalizeValue(lead.ownerPhoneNumber),
             owner_email: normalizeValue(lead.ownerEmail),
-            phone: normalizeValue(lead.owner_phone_number),
+            phone: normalizeValue(lead.companyPhone),
             source: normalizeValue(lead.source),
           }
       
