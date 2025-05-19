@@ -10,7 +10,7 @@ import { ScraperResults } from "@/components/scraper-results"
 import axios from "axios"
 import { AlertCircle, DatabaseIcon } from "lucide-react"
 
-const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/scraper`;
+const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/lead-scrape`;
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/industries`;
 const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/lead_scrape`;
 
