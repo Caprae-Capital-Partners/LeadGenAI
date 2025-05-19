@@ -493,6 +493,11 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                           className="border-b w-full bg-transparent break-words"
                           value={normalizeDisplayValue(result.bbb_rating)}
                           onChange={e => handleCellChange(actualIndex, "bbb_rating", e.target.value)}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "bbb_rating", "N/A")
+                            }
+                          }}
                         />
                       </TableCell>
                       <TableCell className="break-words">
