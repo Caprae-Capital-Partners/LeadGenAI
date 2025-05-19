@@ -80,13 +80,31 @@ def find_best_person(domain):
 
     response = requests.post(APOLLO_SEARCH_URL, headers=headers, params=params)
     if response.status_code != 200:
-        return None
+        return {
+            "company": "N/A",
+            "domain": domain,
+            "first_name": "N/A",
+            "last_name": "N/A",
+            "title": "N/A",
+            "linkedin_url": "N/A",
+            "email": "N/A",
+            "phone_number": "N/A",
+        }
 
     data = response.json()
     people = data.get("people", [])
 
     if not people:
-        return None
+        return {
+            "company": "N/A",
+            "domain": domain,
+            "first_name": "N/A",
+            "last_name": "N/A",
+            "title": "N/A",
+            "linkedin_url": "N/A",
+            "email": "N/A",
+            "phone_number": "N/A",
+        }
 
     people_sorted = sorted(people, key=lambda x: get_priority_rank(x.get("title")))
     best_person = people_sorted[0]
@@ -97,32 +115,33 @@ def find_best_person(domain):
         last_name=best_person.get("last_name", ""),
         domain=domain,
     )
-
+    def normalize(value):
+        val = (value or "").strip().lower()
+        if val in ["", "not", "found", "not found", "none"]:
+            return "N/A"
+        return value.strip()
+    
     # --- Combine original + enriched ---
     combined_result = {
-        "company": best_person.get("organization", {}).get("name", ""),
+        "company": normalize(best_person.get("organization", {}).get("name")),
         "domain": domain,
-        "first_name": best_person.get("first_name", ""),
-        "last_name": best_person.get("last_name", ""),
-        "title": best_person.get("title", ""),
-        "linkedin_url": best_person.get("linkedin_url", ""),
-        "email": best_person.get("email", ""),
-        "phone_number": best_person.get("organization", {})
-        .get("primary_phone", {})
-        .get("sanitized_number", "N/A"),
+        "first_name": normalize(best_person.get("first_name")),
+        "last_name": normalize(best_person.get("last_name")),
+        "title": normalize(best_person.get("title")),
+        "linkedin_url": normalize(best_person.get("linkedin_url")),
+        "email": normalize(best_person.get("email")),
+        "phone_number": normalize(best_person.get("organization", {}).get("primary_phone", {}).get("sanitized_number")),
     }
 
-    # Replace locked email with 'not found' in original
+    # Replace locked email
     if combined_result["email"] == "email_not_unlocked@domain.com":
         combined_result["email"] = "N/A"
 
-    # Override with enriched fields if available
+    # Override with enriched values if available
     if enriched:
-        if enriched.get("email"):
-            combined_result["email"] = enriched["email"]
-        if enriched.get("linkedin_url"):
-            combined_result["linkedin_url"] = enriched["linkedin_url"]
-        if enriched.get("phone_number"):
-            combined_result["phone_number"] = enriched["phone_number"]
+        combined_result["email"] = enriched.get("email", combined_result["email"]) or "N/A"
+        combined_result["linkedin_url"] = enriched.get("linkedin_url", combined_result["linkedin_url"]) or "N/A"
+        combined_result["phone_number"] = enriched.get("phone_number", combined_result["phone_number"]) or "N/A"
 
     return combined_result
+

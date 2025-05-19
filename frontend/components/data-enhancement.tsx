@@ -30,7 +30,10 @@ export function DataEnhancement() {
   const [showResults, setShowResults] = useState(false)
   const { leads } = useLeads()
   const normalizeLeadValue = (val: any) => {
-    return val === null || val === undefined || val === "" || val === "NA" || val === "N/A" ? "N/A" : val
+    const v = (val || "").toString().trim().toLowerCase()
+    return v === "" || v === "na" || v === "n/a" || v === "none" || v === "not" || v === "found" || v === "not found"
+      ? "N/A"
+      : val
   }
   
   // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
@@ -355,10 +358,10 @@ const handleStartEnrichment = async () => {
 
       // 3. Upload enriched leads to DB
       
-      const normalizeValue = (val: any) =>
-        val === null || val === undefined || val === "" || val === "NA" || val === "N/A"
-          ? "N/A"
-          : val;
+      const normalizeValue = (val: any): string => {
+        const v = (val || "").toString().trim().toLowerCase()
+        return ["", "na", "n/a", "none", "not", "found", "not found"].includes(v) ? "N/A" : val.toString().trim()
+      }
       
           const validLeads = newlyEnriched
           .map((lead) => {

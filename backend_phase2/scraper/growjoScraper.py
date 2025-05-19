@@ -63,39 +63,70 @@ class GrowjoScraper:
         self.wait_logged_in = WebDriverWait(self.driver_logged_in, 10)
 
     def login_logged_in_browser(self):
-        """Login into Growjo on the logged-in driver."""
+        """Login into Growjo on the logged-in driver, with retry if initial attempt fails."""
         print("[DEBUG] Logging into Growjo (logged-in driver)...")
-        self.driver_logged_in.get(GROWJO_LOGIN_URL)
-        time.sleep(1)
-        try:
-            email_field = self.driver_logged_in.find_element(By.ID, "email")
-            password_field = self.driver_logged_in.find_element(By.ID, "password")
-            email_field.clear()
-            email_field.send_keys(LOGIN_EMAIL)
-            password_field.clear()
-            password_field.send_keys(LOGIN_PASSWORD)
-            form = self.driver_logged_in.find_element(By.TAG_NAME, "form")
-            form.submit()
-            time.sleep(1)
-            if "/login" not in self.driver_logged_in.current_url:
-                print("[DEBUG] Login successful.")
-                self.logged_in = True
-            else:
-                raise Exception("Login failed.")
-        except Exception as e:
-            print(f"[ERROR] Login error: {e}")
-            raise
+
+        max_retries = 3
+        retry_delay = 1.5  # seconds
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                print(f"[DEBUG] Login attempt {attempt}/{max_retries}")
+                self.driver_logged_in.get(GROWJO_LOGIN_URL)
+                time.sleep(1.5)
+
+                email_field = self.driver_logged_in.find_element(By.ID, "email")
+                password_field = self.driver_logged_in.find_element(By.ID, "password")
+                email_field.clear()
+                email_field.send_keys(LOGIN_EMAIL)
+                password_field.clear()
+                password_field.send_keys(LOGIN_PASSWORD)
+
+                form = self.driver_logged_in.find_element(By.TAG_NAME, "form")
+                form.submit()
+
+                time.sleep(2)  # Give some time for redirect
+
+                if "/login" not in self.driver_logged_in.current_url:
+                    print("[DEBUG] Login successful.")
+                    self.logged_in = True
+                    return  # Exit on success
+
+                else:
+                    print("[WARN] Still on login page. Possibly failed credentials or slow load.")
+
+            except Exception as e:
+                print(f"[ERROR] Login attempt {attempt} failed: {e}")
+
+            if attempt < max_retries:
+                print(f"[DEBUG] Retrying login after {retry_delay}s...")
+                time.sleep(retry_delay)
+
+        print("[ERROR] All login attempts failed.")
+        raise Exception("Login failed after multiple attempts.")
 
 
 
-    def deepseek_guess_website(self, company_name):
+
+    def deepseek_guess_website(self, company_name, street=None, city=None, state=None):
         import re
+        import json
+
+        # Build location string from available inputs
+        location_parts = [part for part in [street, city, state] if part]
+        location_context = ", ".join(location_parts)
+
+        # Create prompt with conditional location info
         prompt = (
             f"You are an AI assistant. Given a company name, guess the most likely website domain (e.g., example.com). "
             f"Only respond with this JSON format:\n"
             f'{{"domain": "..."}}\n\n'
             f"Company name: {company_name}"
         )
+
+        if location_context:
+            prompt += f"\nLocation context: {location_context}"
+
         try:
             response = client.chat.completions.create(
                 model="deepseek-chat",
@@ -106,7 +137,6 @@ class GrowjoScraper:
 
             # Try parsing JSON
             try:
-                import json
                 parsed = json.loads(text)
                 raw_domain = parsed.get("domain", "not found")
             except json.JSONDecodeError:
@@ -123,12 +153,12 @@ class GrowjoScraper:
             return {"website": "not found"}
 
 
-
         
     def search_company(self, driver, wait, company_name):
         """
         Search for a company on Growjo and click its link if matched.
         Use similarity score between intended and found company name.
+        Retries up to 3x per query variant before trimming.
         """
         try:
             print(f"\n[DEBUG] Searching for company: '{company_name}'")
@@ -156,44 +186,53 @@ class GrowjoScraper:
                     words.pop()
                     continue
 
-                company_links = driver.find_elements(
-                    By.XPATH, "//table//tbody//a[starts-with(@href, '/company/')]"
-                )
+                max_retries = 3
+                retry_delay = 1.5  # seconds
+                attempt = 0
+                similarity = 0.0
+                link = None
 
-                if company_links:
-                    link = company_links[0]
-                    href = link.get_attribute("href")
-                    if href and "/company/" in href:
-                        href_company_part = href.split("/company/")[1]
-                        link_full_text = href_company_part.replace("_", " ").lower()
-                    else:
-                        link_full_text = link.text.strip().lower()
+                while attempt < max_retries:
+                    try:
+                        company_links = driver.find_elements(
+                            By.XPATH, "//table//tbody//a[starts-with(@href, '/company/')]"
+                        )
+                        if not company_links:
+                            print(f"[DEBUG] Attempt {attempt + 1}: No company links found.")
+                            break
 
-                    print(f"[DEBUG] First result (reconstructed): '{link_full_text}'")
-
-                    similarity = self._calculate_similarity(intended, link_full_text)
-                    print(f"[DEBUG] Similarity score: {similarity:.2f}")
-
-                    if similarity >= 0.65:
-                        print(f"[DEBUG] Found good match: '{link_full_text}', clicking...")
-                        driver.execute_script("arguments[0].click();", link)
-                        time.sleep(1)
-
-                        if "/company/" in driver.current_url:
-                            print(f"[DEBUG] Landed on company page: {driver.current_url}")
-                            return True
+                        link = company_links[0]
+                        href = link.get_attribute("href")
+                        if href and "/company/" in href:
+                            href_company_part = href.split("/company/")[1]
+                            link_full_text = href_company_part.replace("_", " ").lower()
                         else:
-                            print(f"[ERROR] After click, not redirected properly.")
-                            return False
-                    else:
-                        print(f"[DEBUG] Similarity too low for '{link_full_text}'. Trimming...")
+                            link_full_text = link.text.strip().lower()
 
-                else:
-                    print(f"[DEBUG] No company links found for '{query}'.")
+                        similarity = self._calculate_similarity(intended, link_full_text)
+                        print(f"[DEBUG] Attempt {attempt + 1}: Result='{link_full_text}' | Similarity={similarity:.2f}")
+
+                        if similarity >= 0.7:
+                            print(f"[DEBUG] Accepting result '{link_full_text}' with score {similarity:.2f}")
+                            driver.execute_script("arguments[0].click();", link)
+                            time.sleep(1)
+                            return "/company/" in driver.current_url
+
+                    except Exception as e:
+                        print(f"[ERROR] Attempt {attempt + 1} failed: {str(e)}")
+
+                    attempt += 1
+                    if attempt < max_retries:
+                        time.sleep(retry_delay)
+
+                # After retries exhausted
+                print(f"[WARN] All {max_retries} retries failed for query: '{query}'")
 
                 if len(words) <= 1:
                     print(f"[ERROR] No good match after all trims for '{company_name}'.")
                     return False
+
+                print(f"[DEBUG] Trimming query and retrying with fewer words...")
                 words.pop()
 
             print(f"[ERROR] Company '{company_name}' not found after all attempts.")
