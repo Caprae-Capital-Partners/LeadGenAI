@@ -10,7 +10,7 @@ import { ScraperResults } from "@/components/scraper-results"
 import axios from "axios"
 import { AlertCircle, DatabaseIcon } from "lucide-react"
 
-const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/lead-scrape`;
+const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/scraper`;
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/industries`;
 const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/lead_scrape`;
 
@@ -31,12 +31,13 @@ interface LeadData {
   BBB_rating?: string;
   bbb_rating?: string;
   Business_phone?: string;
+  lead_id?: number;
   phone?: string;
   [key: string]: any; // For any other properties we might not know about
 }
 
 interface FormattedLead {
-  id: number;
+  lead_id: number;
   company: string;
   website: string;
   industry: string;
@@ -136,7 +137,7 @@ export function Scraper() {
       
       // Format the new data in the same way as handleCollectData
       const formattedData = data.map((item: LeadData): FormattedLead => ({
-        id: -1, // Temporary ID that will be replaced by addUniqueIdsToLeads
+        lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
         company: item.Company || item.company || "",
         website: item.Website || item.website || "",
         industry: item.Industry || item.industry || "",
@@ -199,7 +200,7 @@ export function Scraper() {
 
       const data = response.data
       const formattedData = data.map((item: LeadData): FormattedLead => ({
-        id: -1, // Temporary ID that will be replaced by addUniqueIdsToLeads
+        lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
         company: item.Company || item.company || "",
         website: item.Website || item.website || "",
         industry: item.Industry || item.industry || "",

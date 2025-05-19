@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Download, Search, ArrowRight } from "lucide-react"
+import { Download, Search, ArrowRight, Save } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
 import { useLeads } from "@/components/LeadsProvider"
 import { addUniqueIdsToLeads } from "@/lib/leadUtils"
+import axios from "axios"
 
 interface ScraperResultsProps {
   data: any[]
@@ -23,6 +24,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   const [exportFormat, setExportFormat] = useState("csv")
   const { setLeads: setGlobalLeads } = useLeads()
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
+  const [updatedLeads, setUpdatedLeads] = useState<any[]>([])
 
   useEffect(() => {
   let parsedData;
@@ -44,7 +46,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   }
   // Normalize the data
   const normalizedWithoutIds = parsedData.map((item, idx) => ({
-    id: -1, // Temporary ID that will be replaced by addUniqueIdsToLeads
+    lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
     company: item.Company || item.company || "",
     website: item.Website || item.website || "",
     industry: item.Industry || item.industry || "",
@@ -98,25 +100,84 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       prev.map((row, idx) =>
         idx === rowIdx ? { ...row, [field]: value } : row
       )
-    )
-    
+    );
+  
+    const leadId = leads[rowIdx].lead_id;
+  
+    setUpdatedLeads(prev => {
+      const existing = prev.find(item => item.lead_id === leadId);
+      
+      if (existing) {
+        return prev.map(item =>
+          item.lead_id === leadId
+            ? { ...item, [field]: value }
+            : item
+        );
+      } else {
+        return [...prev, { lead_id: leadId, [field]: value }];
+      }
+    });
+  
     // Resize the textarea after content change
     setTimeout(() => {
-      const index = field === "company" ? rowIdx * 3 : 
-                  field === "industry" ? rowIdx * 3 + 1 : 
-                  field === "street" ? rowIdx * 3 + 2 : -1;
-      
+      const index = field === "company" ? rowIdx * 3 :
+                    field === "industry" ? rowIdx * 3 + 1 :
+                    field === "street" ? rowIdx * 3 + 2 : -1;
+  
       if (index >= 0 && textareaRefs.current[index]) {
         const textarea = textareaRefs.current[index];
         textarea.style.height = 'auto';
         textarea.style.height = textarea.scrollHeight + 'px';
       }
     }, 0);
-  }
+  };
 
   const handleNext = () => {
     router.push("?tab=enhancement")
   }
+
+  const handleSave = async () => {
+    try {
+      // Prepare data for batch update API
+      // const batchUpdateData = leads.map(lead => ({
+      //   lead_id: lead.id,
+      //   company: lead.company,
+      //   website: lead.website,
+      //   industry: lead.industry,
+      //   street: lead.street,
+      //   city: lead.city,
+      //   state: lead.state,
+      //   bbb_rating: lead.bbb_rating,
+      //   business_phone: lead.business_phone,
+      // }));
+      console.log('Batch update data:',updatedLeads);
+      // Make API call to batch update endpoint
+      const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/batch`;
+      const response = await axios.put(
+        FETCH_DB_API,updatedLeads)
+      // if (!response?.ok) {
+        // throw new Error(`HTTP error! status: ${response.status}`);
+      // }
+
+      const result = response.data;
+      
+      // Show success message with details
+      console.log('Save successful:', result);
+      
+      // You can add a toast notification here instead of console.log
+      // toast.success(`Successfully updated ${result.updated} leads, skipped ${result.skipped} leads`);
+      
+      if (result.failed && result.failed.length > 0) {
+        console.warn('Some leads failed to update:', result.failed);
+        // toast.warning(`${result.failed.length} leads failed to update`);
+      }
+
+    } catch (error) {
+      console.error('Error saving leads:', error);
+      // toast.error('Failed to save leads. Please try again.');
+    }
+  }
+
 
   const filteredResults = leads.filter(
     (result) =>
@@ -302,6 +363,13 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       <CardFooter className="flex justify-between">
         <div className="text-sm text-muted-foreground" />
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSave}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            Save
+          </Button>
           <Button
             className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
             onClick={handleNext}
