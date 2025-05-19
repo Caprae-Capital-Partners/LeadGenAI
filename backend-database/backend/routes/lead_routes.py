@@ -114,13 +114,7 @@ def upload_csv():
 def view_leads():
     """View all leads - All roles can access"""
     # Get pagination parameters
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-
-    # Get initial leads with pagination
-    paginated_leads = Lead.query.filter_by(deleted=False).order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
-    leads = paginated_leads.items
-
+    leads = LeadController.get_all_leads()
     # Get unique, normalized values for filters
     companies = sorted(set(lead.company for lead in leads if lead.company))
     cities = sorted(set(city.strip().title() for city in (lead.city for lead in leads) if city and city.strip()))
@@ -146,13 +140,7 @@ def view_leads():
                          business_types=business_types,
                          employee_sizes=employee_sizes,
                          revenue_ranges=revenue_ranges,
-                         sources=sources,
-                         pagination={
-                             'total': paginated_leads.total,
-                             'pages': paginated_leads.pages,
-                             'current_page': page,
-                             'per_page': per_page
-                         })
+                         sources=sources)
 
 @lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
 #@login_required
