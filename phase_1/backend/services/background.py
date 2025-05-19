@@ -13,6 +13,7 @@ sys.path.append(os.path.abspath("C:/Work/Internship/Web Scraper Caprae/LeadGenAI
 
 # Importing  scraper functions
 from backend.services.yellowpages_scraper import scrape_yellowpages
+from backend.services.superpages import scrape_superpages
 from backend.services.bbb_scraper import scrape_bbb
 from backend.services.google_maps_scraper import scrape_lead_by_industry
 from backend.services.hotfrog_scraper import scrape_hotfrog
@@ -83,7 +84,7 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
             run_scraper(scrape_lead_by_industry, "google_maps", industry, location, page=gmaps_page),
             run_scraper(scrape_yellowpages, "yellowpages", industry, location, max_pages=5),
             run_scraper(scrape_hotfrog, "hotfrog", industry, location, max_pages=5),
-            # run_scraper(scrape_superpages, "superpages", industry, location)
+            run_scraper(scrape_superpages, "superpages", industry, location, page=sp_page, max_pages=5)
         ]
         
         # Run all scrapers concurrently

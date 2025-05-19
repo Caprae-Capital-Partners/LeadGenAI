@@ -3,6 +3,7 @@ import os
 import sys
 from typing import Dict, List
 from playwright.async_api import Locator, Page
+from typing import AsyncGenerator
 
 # sys.path.append(os.path.abspath("d:/Caprae Capital/Work/LeadGenAI/phase_1/backend"))
 # from config.browser_config import PlaywrightManager
@@ -141,7 +142,7 @@ async def extract_businesses(page) -> List[Dict[str, str]]:
     
     return results
 
-async def scrape_superpages(search_term: str, location: str, page: Page, max_pages: int = 5) -> List[Dict[str, str]]:
+async def scrape_superpages(search_term: str, location: str, page: Page, max_pages: int = 5) -> AsyncGenerator[Dict[str, str], None]:
     """Scrape Superpages using the provided browser page."""
     # Format the search URL
     search_term_clean = search_term.replace(' ', '+')
@@ -165,7 +166,8 @@ async def scrape_superpages(search_term: str, location: str, page: Page, max_pag
             
             # Extract businesses from the current page
             results = await extract_businesses(page)
-            all_results.extend(results)
+            yield results
+            # all_results.extend(results)
             # print(f"Found {len(results)} businesses on page {current_page}")
             
             # Check if we've reached the maximum pages
@@ -195,8 +197,10 @@ async def scrape_superpages(search_term: str, location: str, page: Page, max_pag
                 unique.append(item)
         
         # print(f"Total unique businesses found: {len(unique)}")
-        return unique
+        yield None
+        return
     
     except Exception as e:
         print(f"Error during scraping: {e}")
-        return []
+        yield None
+        return
