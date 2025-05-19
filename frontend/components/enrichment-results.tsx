@@ -9,7 +9,17 @@ import { Input } from "../components/ui/input"
 import { Checkbox } from "../components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import type { FC } from "react"
-import { Search, Download, ArrowLeft, Filter, X } from "lucide-react"
+import { Search, Download, ArrowLeft, Filter, X, ExternalLink } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 interface EnrichedCompany {
   id: string
@@ -57,16 +67,26 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
   const [sourceFilter, setSourceFilter] = useState("")
   const [filteredCompanies, setFilteredCompanies] = useState<EnrichedCompany[]>([])
   const [showFilters, setShowFilters] = useState(false)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(25)
+  
+  // Reset to first page when search term or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, employeesFilter, revenueFilter, businessTypeFilter, productFilter, 
+      yearFoundedFilter, bbbRatingFilter, streetFilter, cityFilter, stateFilter, sourceFilter]);
+  
   const downloadCSV = (data: any[], filename: string) => {
   const headers = Object.keys(data[0])
   const normalizeCSVValue = (field: string, value: any) => {
-    if (field === "source") {
-      return value === null || value === undefined || value === "" || value === "N/A"
-        ? "Not available in any source"
-        : value
-    }
-    return value === null || value === undefined || value === "" ? "N/A" : value
+    const normalized = normalizeDisplayValue(value)
+    return field === "source" && normalized === "N/A"
+      ? "Not available in any source"
+      : normalized
   }
+  
   
   
   const csvRows = [
@@ -230,25 +250,63 @@ const parseRevenue = (revenueStr: string): number | null => {
 
 
     setFilteredCompanies(filtered)
-    }, [
-      searchTerm,
-      employeesFilter,
-      revenueFilter,
-      businessTypeFilter,
-      productFilter,
-      yearFoundedFilter,
-      bbbRatingFilter,
-      streetFilter,
-      cityFilter,
-      stateFilter,
-      sourceFilter,
-      enrichedCompanies
-    ])
+    
+    // Initialize all companies as selected if selectAll is true
+    if (selectAll) {
+      setSelectedCompanies(filtered.map(c => c.id))
+    }
+  }, [enrichedCompanies, searchTerm, employeesFilter, revenueFilter, businessTypeFilter, productFilter, yearFoundedFilter, bbbRatingFilter, streetFilter, cityFilter, stateFilter, sourceFilter, selectAll])
 
-  useEffect(() => {
-    setFilteredCompanies(enrichedCompanies)
-    setSelectedCompanies(enrichedCompanies.map((c) => c.id))
-  }, [enrichedCompanies])
+  // Calculate pagination values
+  const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredCompanies.slice(indexOfFirstItem, indexOfLastItem)
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    
+    if (totalPages <= 7) {
+      // Show all pages if there are 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Always show first and last page, with ellipsis for hidden pages
+      pageNumbers.push(1);
+      
+      // Determine range to show around current page
+      let startPage = Math.max(2, currentPage - 2);
+      let endPage = Math.min(totalPages - 1, currentPage + 2);
+      
+      // Adjust if we're near the beginning or end
+      if (currentPage <= 4) {
+        endPage = 5;
+      } else if (currentPage >= totalPages - 3) {
+        startPage = totalPages - 4;
+      }
+      
+      // Add ellipsis if needed
+      if (startPage > 2) {
+        pageNumbers.push('ellipsis');
+      }
+      
+      // Add middle pages
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+      
+      // Add ellipsis if needed
+      if (endPage < totalPages - 1) {
+        pageNumbers.push('ellipsis');
+      }
+      
+      pageNumbers.push(totalPages);
+    }
+    
+    return pageNumbers;
+  };
 
   const handleSelectAll = () => {
     if (selectAll) {
@@ -272,7 +330,38 @@ const parseRevenue = (revenueStr: string): number | null => {
     }
   }
   const normalizeDisplayValue = (value: any) => {
-    return value === null || value === undefined || value === "" ? "N/A" : value
+    if (
+      value === null ||
+      value === undefined ||
+      value.toString().trim() === "" ||
+      value.toString().trim().toUpperCase() === "NA" ||
+      value.toString().trim().toUpperCase() === "N/A" ||
+      value.toString().trim().toUpperCase() === "not" ||
+      value.toString().trim().toUpperCase() === "found" ||
+      value.toString().trim().toLowerCase() === "not found"
+    ) {
+      return "N/A"
+    }
+    
+    return value
+  }
+  
+
+  // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
+  const cleanUrlForDisplay = (url: string): string => {
+    if (!url || url === "N/A" || url === "NA") return url;
+    
+    // First remove http://, https://, and www.
+    let cleanUrl = url.toString().replace(/^(https?:\/\/)?(www\.)?/i, "");
+    
+    // Then truncate everything after the domain (matches common TLDs)
+    const domainMatch = cleanUrl.match(/^([^\/\?#]+\.(com|org|net|io|ai|co|gov|edu|app|dev|me|info|biz|us|uk|ca|au|de|fr|jp|ru|br|in|cn|nl|se)).*$/i);
+    if (domainMatch) {
+      return domainMatch[1];
+    }
+    
+    // If no common TLD found, just truncate at the first slash, question mark or hash
+    return cleanUrl.split(/[\/\?#]/)[0];
   }
 
   const clearFilter = (type: "search" | "employees" | "revenue" | "business") => {
@@ -405,81 +494,195 @@ const parseRevenue = (revenueStr: string): number | null => {
               </div>
             )}
             
+            {/* Pagination controls */}
+            {filteredCompanies.length > 0 && (
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCompanies.length)} of {filteredCompanies.length} results
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1); // Reset to first page when changing items per page
+                  }}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Items per page" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25 per page</SelectItem>
+                      <SelectItem value="50">50 per page</SelectItem>
+                      <SelectItem value="100">100 per page</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          aria-disabled={currentPage === 1}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                      
+                      {getPageNumbers().map((page, index) => (
+                        <PaginationItem key={index}>
+                          {page === 'ellipsis' ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              isActive={page === currentPage}
+                              onClick={() => setCurrentPage(Number(page))}
+                            >
+                              {page}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          aria-disabled={currentPage === totalPages}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </div>
+            )}
+            
             <div className="rounded-md border overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
-                    </TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Website</TableHead>
-                    <TableHead>Industry</TableHead>
-                    <TableHead>Product/Service Category</TableHead>
-                    <TableHead>Business Type (B2B, B2B2C)</TableHead>
-                    <TableHead>Employees count</TableHead>
-                    <TableHead>Revenue</TableHead>
-                    <TableHead>Year Founded</TableHead>
-                    <TableHead>BBB Rating</TableHead>
-                    <TableHead>Street</TableHead>
-                    <TableHead>City</TableHead>
-                    <TableHead>State</TableHead>
-                    <TableHead>Company Phone</TableHead>
-                    <TableHead>Company LinkedIn</TableHead>
-                    <TableHead>Owner's First Name</TableHead>
-                    <TableHead>Owner's Last Name</TableHead>
-                    <TableHead>Owner's Title</TableHead>
-                    <TableHead>Owner's LinkedIn</TableHead>
-                    <TableHead>Owner's Phone Number</TableHead>
-                    <TableHead>Owner's Email</TableHead>
-                    <TableHead>Source</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCompanies.length > 0 ? (
-                    filteredCompanies.map((company) => (
-                      <TableRow key={company.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedCompanies.includes(company.id)}
-                            onCheckedChange={() => handleSelectCompany(company.id)}
-                          />
-                        </TableCell>
-                        <TableCell>{normalizeDisplayValue(company.company)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.website)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.industry)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.productCategory)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.businessType)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.employees)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.revenue)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.yearFounded)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.bbbRating)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.street)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.city)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.state)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.companyPhone)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.companyLinkedin)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.ownerFirstName)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.ownerLastName)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.ownerTitle)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.ownerLinkedin)}</TableCell>
-                        <TableCell>{normalizeDisplayValue(company.ownerPhoneNumber)}</TableCell>
-                        <TableCell>{company.ownerEmail === "email_not_unlocked@domain.com" ? "N/A" : normalizeDisplayValue(company.ownerEmail)}</TableCell>
-                        <TableCell>
-                          {normalizeDisplayValue(company.source) === "N/A"
-                            ? "Not available in any source"
-                            : normalizeDisplayValue(company.source)}
-                        </TableCell>
-
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={22} className="text-center">No results found.</TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
+                  </TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Website</TableHead>
+                  <TableHead>Industry</TableHead>
+                  <TableHead>Product/Service Category</TableHead>
+                  <TableHead>Business Type (B2B, B2B2C)</TableHead>
+                  <TableHead>Employees count</TableHead>
+                  <TableHead>Revenue</TableHead>
+                  <TableHead>Year Founded</TableHead>
+                  <TableHead>BBB Rating</TableHead>
+                  <TableHead>Street</TableHead>
+                  <TableHead>City</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead>Company Phone</TableHead>
+                  <TableHead>Company LinkedIn</TableHead>
+                  <TableHead>Owner's First Name</TableHead>
+                  <TableHead>Owner's Last Name</TableHead>
+                  <TableHead>Owner's Title</TableHead>
+                  <TableHead>Owner's LinkedIn</TableHead>
+                  <TableHead>Owner's Phone Number</TableHead>
+                  <TableHead>Owner's Email</TableHead>
+                  <TableHead>Source</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentItems.length > 0 ? (
+                  currentItems.map((company, index) => (
+                    <TableRow key={company.id || `${company.company}-${index}`}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedCompanies.includes(company.id)}
+                          onCheckedChange={() => handleSelectCompany(company.id)}
+                        />
+                      </TableCell>
+                      <TableCell>{normalizeDisplayValue(company.company)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {company.website ? cleanUrlForDisplay(normalizeDisplayValue(company.website)) : "N/A"}
+                          {company.website && normalizeDisplayValue(company.website) !== "N/A" && normalizeDisplayValue(company.website) !== "NA" && (
+                            <a
+                              href={company.website.toString().startsWith('http') ? company.website : `https://${company.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700"
+                              title="Open website in new tab"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{normalizeDisplayValue(company.industry)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.productCategory)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.businessType)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.employees)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.revenue)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.yearFounded)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.bbbRating)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.street)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.city)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.state)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.companyPhone)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {company.companyLinkedin ? cleanUrlForDisplay(normalizeDisplayValue(company.companyLinkedin)) : "N/A"}
+                          {company.companyLinkedin && normalizeDisplayValue(company.companyLinkedin) !== "N/A" && normalizeDisplayValue(company.companyLinkedin) !== "NA" && (
+                            <a
+                              href={company.companyLinkedin.toString().startsWith('http') ? company.companyLinkedin : `https://${company.companyLinkedin}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700"
+                              title="Open LinkedIn in new tab"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{normalizeDisplayValue(company.ownerFirstName)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.ownerLastName)}</TableCell>
+                      <TableCell>{normalizeDisplayValue(company.ownerTitle)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {company.ownerLinkedin ? cleanUrlForDisplay(normalizeDisplayValue(company.ownerLinkedin)) : "N/A"}
+                          {company.ownerLinkedin && normalizeDisplayValue(company.ownerLinkedin) !== "N/A" && normalizeDisplayValue(company.ownerLinkedin) !== "NA" && (
+                            <a
+                              href={company.ownerLinkedin.toString().startsWith('http') ? company.ownerLinkedin : `https://${company.ownerLinkedin}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700"
+                              title="Open LinkedIn in new tab"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{normalizeDisplayValue(company.ownerPhoneNumber)}</TableCell>
+                      <TableCell>
+                        {company.ownerEmail === "email_not_unlocked@domain.com"
+                          ? "N/A"
+                          : normalizeDisplayValue(company.ownerEmail)}
+                      </TableCell>
+                      <TableCell>
+                        {normalizeDisplayValue(company.source) === "N/A"
+                          ? "Not available in any source"
+                          : normalizeDisplayValue(company.source)}
+                      </TableCell>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  ))
+                ) : (
+                  <TableRow key="no-results">
+                    <TableCell colSpan={22} className="text-center">
+                      No results found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
             </div>
           </div>
           <div className="flex justify-end mt-4">
