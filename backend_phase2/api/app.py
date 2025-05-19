@@ -20,7 +20,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5050, debug=True)
 
 
-# ------- TESTING LOCAL ------ #
+# # ------- TESTING LOCAL ------ #
 
 # from flask import Flask, jsonify
 # from routes.enrich import enrich_bp

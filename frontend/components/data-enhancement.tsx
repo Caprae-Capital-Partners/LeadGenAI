@@ -21,6 +21,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import type { EnrichedCompany } from "@/components/enrichment-results"
 
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
@@ -33,6 +34,7 @@ export function DataEnhancement() {
   const [progress, setProgress] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   
+
   // Add sorting state
   const [sortConfig, setSortConfig] = useState<{
     key: string;
@@ -146,6 +148,7 @@ export function DataEnhancement() {
   const [bbbRatingFilter, setBbbRatingFilter] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   
+
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -407,6 +410,13 @@ export function DataEnhancement() {
             .map((item: any) => [item.domain, item])
         )
 
+        const cleanVal = (val: any) => {
+          const s = (val || "").toString().trim().toLowerCase();
+          return ["", "na", "n/a", "none", "not", "found", "not found", "n.a.", "email_not_unlocked@domain.com"].includes(s)
+            ? null
+            : val.toString().trim();
+        };
+
         const newlyEnriched = enrichedWithWebsites.map((company) => {
           const domain = normalizeWebsite(company.website)
           const growjo = growjoMap[company.company.toLowerCase()] || {}
@@ -424,33 +434,35 @@ export function DataEnhancement() {
           ].filter(Boolean).length
 
           const useApollo = apolloScore > growjoScore
+
+
           
           const preferValue = (growjoVal: any, apolloVal: any, fallback: any = "") => {
-            const clean = (v: any) => {
-              const s = (v || "").toString().trim().toLowerCase()
-              return s === "not found" || s === "n/a" || s === "na" || s === "" ? null : v
-            }
+            const g = cleanVal(growjoVal);
+            const a = cleanVal(apolloVal);
+            return g ?? a ?? fallback;
+          };
           
-            return clean(growjoVal) || clean(apolloVal) || fallback
-          }
-
+          // Full name splitting
+          const splitGrowjoName = (() => {
+            const raw = growjo.decider_name || "";
+            const clean = raw.toString().trim().toLowerCase();
+            if (["", "na", "n/a", "none", "not", "found", "not found"].includes(clean)) return [];
+            return raw.split(" ");
+          })();
+          const growjoFirstName = splitGrowjoName[0] || "";
+          const growjoLastName = splitGrowjoName.slice(1).join(" ") || "";
+          
+          // Decider info with proper fallback
           const decider = {
-            firstName: preferValue(
-              growjo.decider_name?.split(" ")[0],
-              person.first_name
-            ),
-            lastName: preferValue(
-              growjo.decider_name?.split(" ").slice(1).join(" "),
-              person.last_name
-            ),
-            email: preferValue(
-              growjo.decider_email === "email_not_unlocked@domain.com" ? "N/A" : growjo.decider_email,
-              person.email === "email_not_unlocked@domain.com" ? "N/A" : person.email
-            ),
+            firstName: preferValue(growjoFirstName, person.first_name),
+            lastName: preferValue(growjoLastName, person.last_name),
+            email: preferValue(growjo.decider_email, person.email),
             phone: preferValue(growjo.decider_phone, person.phone_number),
             linkedin: preferValue(growjo.decider_linkedin, person.linkedin_url),
             title: preferValue(growjo.decider_title, person.title),
-          }
+          };
+          
           
               
           return {
@@ -472,23 +484,23 @@ export function DataEnhancement() {
             companyPhone: company.business_phone,
             companyLinkedin: preferValue("", apollo.linkedin_url),
           
-            // Decider data
+            // Decision maker (owner)
             ownerFirstName: decider.firstName,
             ownerLastName: decider.lastName,
             ownerTitle: decider.title,
             ownerEmail: decider.email,
             ownerPhoneNumber: decider.phone,
             ownerLinkedin: decider.linkedin,
-
+          
             source: getSource(growjo, apollo, person),
           }
+          
         })
 
         // 3. Upload enriched leads to DB
         
         const normalizeValue = (val: any): string => {
-          const v = (val || "").toString().trim().toLowerCase()
-          return ["", "na", "n/a", "none", "not", "found", "not found"].includes(v) ? "N/A" : val.toString().trim()
+          return cleanVal(val) ?? "N/A"
         }
         
         const validLeads = newlyEnriched
@@ -518,7 +530,6 @@ export function DataEnhancement() {
               owner_linkedin: normalizeValue(lead.ownerLinkedin),
               owner_phone_number: normalizeValue(lead.ownerPhoneNumber),
               owner_email: normalizeValue(lead.ownerEmail),
-              phone: normalizeValue(lead.companyPhone),
               source: normalizeValue(lead.source),
             }
         
@@ -528,8 +539,34 @@ export function DataEnhancement() {
             (lead) =>
               lead.company !== "N/A"
           )
-      
           
+          const toCamelCase = (lead: any): EnrichedCompany => ({
+            id: lead.id || `${lead.company}-${Math.random()}`,
+            company: lead.company,
+            website: lead.website,
+            industry: lead.industry,
+            productCategory: lead.product_category,
+            businessType: lead.business_type,
+            employees: lead.employees,
+            revenue: lead.revenue,
+            yearFounded: lead.year_founded?.toString() || "N/A",
+            bbbRating: lead.bbb_rating,
+            street: lead.street,
+            city: lead.city,
+            state: lead.state,
+            companyPhone: lead.company_phone,
+            companyLinkedin: lead.company_linkedin,
+            ownerFirstName: lead.owner_first_name,
+            ownerLastName: lead.owner_last_name,
+            ownerTitle: lead.owner_title,
+            ownerLinkedin: lead.owner_linkedin,
+            ownerPhoneNumber: lead.owner_phone_number,
+            ownerEmail: lead.owner_email,
+            source: lead.source,
+          })
+          
+          setEnrichedResults(validLeads.map(toCamelCase))
+          setShowResults(true)
         
             
 
@@ -574,14 +611,6 @@ export function DataEnhancement() {
         enriched = alreadyInDb
       }
 
-      setEnrichedResults(
-        enriched.map((e) => ({
-          ...e,
-          ownerPhoneNumber: e.owner_phone_number,
-          ownerLinkedin: e.owner_linkedin,
-          // optionally preserve the snake_case keys too or remove them
-        }))
-      )
       setShowResults(true)
     } catch (error) {
       console.error("Enrichment failed:", error)
@@ -592,12 +621,10 @@ export function DataEnhancement() {
     }
   }
 
-
-
-
   if (showResults) {
     return <EnrichmentResults enrichedCompanies={enrichedResults} />
   }
+  
 
   return (
     <div className="space-y-6">
