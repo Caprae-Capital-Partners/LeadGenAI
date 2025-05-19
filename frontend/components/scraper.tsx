@@ -66,67 +66,7 @@ export function Scraper() {
   const [scrapedResults, setScrapedResults] = useState<any[]>([])
   const controllerRef = useRef<AbortController | null>(null)
 
-  // Cleanup function for progress simulation
-  useEffect(() => {
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-      }
-    };
-  }, []);
-
-  // Function to simulate progress updates
-  const startProgressSimulation = () => {
-    // Clear any existing interval
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-    }
-    
-    // Reset progress
-    setProgress(0);
-    
-    // Start a new interval that gradually increases the progress
-    progressIntervalRef.current = setInterval(() => {
-      setProgress((prevProgress) => {
-        // Only use integer increments, gradually slowing down
-        // as we approach 90%
-        let increment = 1; // Default increment
-        
-        // Adjust the interval based on current progress
-        if (prevProgress < 30) {
-          increment = 2; // Faster at the beginning
-        } else if (prevProgress < 60) {
-          increment = 1; // Medium speed in the middle
-        } else if (prevProgress < 85) {
-          // Slow down near the end, but ensure we only increment by whole numbers
-          // We'll use 1 but slow down the frequency by skipping some updates
-          const shouldIncrement = Math.random() > 0.5; // 50% chance to increment
-          increment = shouldIncrement ? 1 : 0;
-        } else if (prevProgress < 90) {
-          // Very slow near the end
-          const shouldIncrement = Math.random() > 0.7; // 30% chance to increment
-          increment = shouldIncrement ? 1 : 0;
-        } else {
-          increment = 0; // Stop at 90%
-        }
-        
-        // Ensure we don't exceed 90%
-        const newProgress = Math.min(prevProgress + increment, 90);
-        
-        // Return whole number progress
-        return Math.floor(newProgress);
-      });
-    }, 300);
-  };
-
-  // Function to stop progress simulation
-  const stopProgressSimulation = (finalValue = 100) => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-    setProgress(finalValue);
-  };
+  
 
   useEffect(() => {
     const fetchIndustries = async () => {
@@ -163,7 +103,6 @@ export function Scraper() {
 
   const handleStartScraping = async () => {
     setIsScrapingActive(true)
-    startProgressSimulation()
     setScrapingSource('scraper')
     // Don't hide results if we're appending to existing results
     if (scrapedResults.length === 0) {
@@ -234,14 +173,11 @@ export function Scraper() {
     } catch (error: any) {
       if (axios.isCancel(error)) {
         console.warn("Scraping canceled")
-        stopProgressSimulation(0)
       } else {
         console.error("Scraping failed:", error)
-        stopProgressSimulation(0)
       }
     } finally {
       if (!axios.isCancel(controllerRef.current?.signal)) {
-        stopProgressSimulation(100)
       }
       setIsScrapingActive(false)
       controllerRef.current = null
@@ -250,7 +186,6 @@ export function Scraper() {
 
   const handleCollectData = async () => {
     setIsScrapingActive(true)
-    startProgressSimulation()
     setShowResults(false)
     setScrapingSource('database')
 
@@ -283,14 +218,11 @@ export function Scraper() {
     } catch (error: any) {
       if (axios.isCancel(error)) {
         console.warn("Scraping canceled")
-        stopProgressSimulation(0)
       } else {
         console.error("Scraping failed:", error)
-        stopProgressSimulation(0)
       }
     } finally {
       if (!axios.isCancel(controllerRef.current?.signal)) {
-        stopProgressSimulation(100)
       }
       setIsScrapingActive(false)
       controllerRef.current = null

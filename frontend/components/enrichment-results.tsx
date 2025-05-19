@@ -21,7 +21,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 
-interface EnrichedCompany {
+export interface EnrichedCompany {
   id: string
   company: string
   website: string

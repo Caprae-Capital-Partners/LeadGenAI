@@ -67,7 +67,7 @@ class GrowjoScraper:
         print("[DEBUG] Logging into Growjo (logged-in driver)...")
 
         max_retries = 3
-        retry_delay = 1.5  # seconds
+        retry_delay = 3  # seconds
 
         for attempt in range(1, max_retries + 1):
             try:
@@ -187,7 +187,7 @@ class GrowjoScraper:
                     continue
 
                 max_retries = 3
-                retry_delay = 1.5  # seconds
+                retry_delay = 3  # seconds
                 attempt = 0
                 similarity = 0.0
                 link = None
