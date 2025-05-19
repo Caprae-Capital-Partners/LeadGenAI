@@ -311,24 +311,6 @@ const handleStartEnrichment = async () => {
         ].filter(Boolean).length
 
         const useApollo = apolloScore > growjoScore
-
-        const decider = useApollo
-          ? {
-              firstName: person.first_name || "",
-              lastName: person.last_name || "",
-              email: person.email === "email_not_unlocked@domain.com" ? "N/A" : (person.email || ""),
-              phone: person.phone_number || "",
-              linkedin: person.linkedin_url || "",
-              title: person.title || "",
-            }
-          : {
-              firstName: growjo.decider_name?.split(" ")[0] || "",
-              lastName: growjo.decider_name?.split(" ").slice(1).join(" ") || "",
-              email: growjo.decider_email === "email_not_unlocked@domain.com" ? "N/A" : (growjo.decider_email || ""),
-              phone: growjo.decider_phone || "",
-              linkedin: growjo.decider_linkedin || "",
-              title: growjo.decider_title || "",
-            }
         
         const preferValue = (growjoVal: any, apolloVal: any, fallback: any = "") => {
           const clean = (v: any) => {
@@ -338,7 +320,26 @@ const handleStartEnrichment = async () => {
         
           return clean(growjoVal) || clean(apolloVal) || fallback
         }
-            
+
+
+        const decider = {
+          firstName: preferValue(
+            growjo.decider_name?.split(" ")[0],
+            person.first_name
+          ),
+          lastName: preferValue(
+            growjo.decider_name?.split(" ").slice(1).join(" "),
+            person.last_name
+          ),
+          email: preferValue(
+            growjo.decider_email === "email_not_unlocked@domain.com" ? "N/A" : growjo.decider_email,
+            person.email === "email_not_unlocked@domain.com" ? "N/A" : person.email
+          ),
+          phone: preferValue(growjo.decider_phone, person.phone_number),
+          linkedin: preferValue(growjo.decider_linkedin, person.linkedin_url),
+          title: preferValue(growjo.decider_title, person.title),
+        }
+
         return {
           company: preferValue(growjo.company_name, company.company),
           website: preferValue(growjo.company_website, apollo.website_url, company.website),
@@ -359,12 +360,13 @@ const handleStartEnrichment = async () => {
           companyLinkedin: preferValue("", apollo.linkedin_url),
         
           // Decider data
-          ownerFirstName: preferValue(decider.firstName, ""),
-          ownerLastName: preferValue(decider.lastName, ""),
-          ownerTitle: preferValue(decider.title, ""),
-          ownerEmail: preferValue(decider.email, ""),
-          ownerPhoneNumber: preferValue(decider.phone, ""),
-          ownerLinkedin: preferValue(decider.linkedin, ""),
+          ownerFirstName: decider.firstName,
+          ownerLastName: decider.lastName,
+          ownerTitle: decider.title,
+          ownerEmail: decider.email,
+          ownerPhoneNumber: decider.phone,
+          ownerLinkedin: decider.linkedin,
+
           source: getSource(growjo, apollo, person),
         }
       })
