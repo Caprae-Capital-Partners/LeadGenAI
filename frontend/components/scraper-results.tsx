@@ -61,7 +61,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   }
   // Normalize the data
   const normalizedWithoutIds = parsedData.map((item, idx) => ({
-    id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
+    lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
     company: item.Company || item.company || "",
     website: item.Website || item.website || "",
     industry: item.Industry || item.industry || "",

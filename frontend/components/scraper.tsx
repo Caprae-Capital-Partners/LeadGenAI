@@ -31,7 +31,7 @@ interface LeadData {
   BBB_rating?: string;
   bbb_rating?: string;
   Business_phone?: string;
-  lead_id?: number;
+  lead_id: number;
   phone?: string;
   [key: string]: any; // For any other properties we might not know about
 }
