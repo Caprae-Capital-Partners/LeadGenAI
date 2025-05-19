@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Download, Search, ArrowRight, ExternalLink } from "lucide-react"
+import { Download, Search, ArrowRight, ExternalLink, Save } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
-import { useLeads } from "@/components/LeadsProvider"
+import { Lead, useLeads } from "@/components/LeadsProvider"
 import { addUniqueIdsToLeads } from "@/lib/leadUtils"
 import {
   Pagination,
@@ -20,6 +20,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import axios from "axios"
 
 interface ScraperResultsProps {
   data: any[]
@@ -32,6 +33,9 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   const [exportFormat, setExportFormat] = useState("csv")
   const { setLeads: setGlobalLeads } = useLeads()
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
+
+  // Update state
+  const [updatedLeads, setUpdatedLeads] = useState<{ lead_id: number }[]>([]);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -57,7 +61,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   }
   // Normalize the data
   const normalizedWithoutIds = parsedData.map((item, idx) => ({
-    lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
+    id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
     company: item.Company || item.company || "",
     website: item.Website || item.website || "",
     industry: item.Industry || item.industry || "",
@@ -122,11 +126,11 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   
     const leadId = leads[rowIdx].lead_id;
   
-    setUpdatedLeads(prev => {
-      const existing = prev.find(item => item.lead_id === leadId);
+    setUpdatedLeads((prev: { lead_id: number }[]) => {
+      const existing = prev.find((item: { lead_id: number }) => item.lead_id === leadId);
       
       if (existing) {
-        return prev.map(item =>
+        return prev.map((item: { lead_id: number }) =>
           item.lead_id === leadId
             ? { ...item, [field]: value }
             : item
