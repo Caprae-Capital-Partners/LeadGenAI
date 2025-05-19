@@ -1,6 +1,6 @@
 "use client"
 import React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { EnrichmentResults } from "../components/enrichment-results"
 import { Button } from "../components/ui/button"
@@ -29,6 +29,78 @@ const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 export function DataEnhancement() {
   const [showResults, setShowResults] = useState(false)
   const { leads } = useLeads()
+  const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Add sorting state
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: 'ascending' | 'descending';
+  } | null>(null);
+
+  // Cleanup function for progress simulation
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Function to simulate progress updates
+  const startProgressSimulation = () => {
+    // Clear any existing interval
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+    
+    // Reset progress
+    setProgress(0);
+    
+    // Start a new interval that gradually increases the progress
+    progressIntervalRef.current = setInterval(() => {
+      setProgress((prevProgress) => {
+        // Only use integer increments, gradually slowing down
+        // as we approach 90%
+        let increment = 1; // Default increment
+        
+        // Adjust the interval based on current progress
+        if (prevProgress < 30) {
+          increment = 2; // Faster at the beginning
+        } else if (prevProgress < 60) {
+          increment = 1; // Medium speed in the middle
+        } else if (prevProgress < 85) {
+          // Slow down near the end, but ensure we only increment by whole numbers
+          // We'll use 1 but slow down the frequency by skipping some updates
+          const shouldIncrement = Math.random() > 0.5; // 50% chance to increment
+          increment = shouldIncrement ? 1 : 0;
+        } else if (prevProgress < 90) {
+          // Very slow near the end
+          const shouldIncrement = Math.random() > 0.7; // 30% chance to increment
+          increment = shouldIncrement ? 1 : 0;
+        } else {
+          increment = 0; // Stop at 90%
+        }
+        
+        // Ensure we don't exceed 90%
+        const newProgress = Math.min(prevProgress + increment, 90);
+        
+        // Return whole number progress
+        return Math.floor(newProgress);
+      });
+    }, 300);
+  };
+
+  // Function to stop progress simulation
+  const stopProgressSimulation = (finalValue = 100) => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    setProgress(finalValue);
+  };
+
   const normalizeLeadValue = (val: any) => {
     const v = (val || "").toString().trim().toLowerCase()
     return v === "" || v === "na" || v === "n/a" || v === "none" || v === "not" || v === "found" || v === "not found"
@@ -113,11 +185,53 @@ export function DataEnhancement() {
   })
   
 
-  // Calculate pagination values
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage)
+  // Function to handle sorting
+  const requestSort = (key: string) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    
+    // If already sorting by this key, toggle direction
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    
+    setSortConfig({ key, direction });
+  };
+
+  // Function to sort data with N/A values at the bottom
+  const getSortedData = (data: any[]) => {
+    // If no sort config, return original data
+    if (!sortConfig) return data;
+    
+    return [...data].sort((a, b) => {
+      // Get values for the sort key, treating null/undefined as empty string
+      const aValue = (a[sortConfig.key] ?? "").toString().toLowerCase();
+      const bValue = (b[sortConfig.key] ?? "").toString().toLowerCase();
+      
+      // Special handling for N/A values - always put them at the bottom
+      const aIsNA = aValue === "n/a" || aValue === "na" || aValue === "";
+      const bIsNA = bValue === "n/a" || bValue === "na" || bValue === "";
+      
+      // If one is N/A and the other isn't, the N/A value should be last
+      if (aIsNA && !bIsNA) return 1;
+      if (!aIsNA && bIsNA) return -1;
+      
+      // If both are N/A or both are not N/A, do normal comparison
+      if (sortConfig.direction === 'ascending') {
+        return aValue.localeCompare(bValue);
+      } else {
+        return bValue.localeCompare(aValue);
+      }
+    });
+  };
+
+  // Apply sorting to the filtered data
+  const sortedFilteredLeads = getSortedData(filteredLeads);
+  
+  // Use the sorted data for pagination
+  const totalPages = Math.ceil(sortedFilteredLeads.length / itemsPerPage)
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredLeads.slice(indexOfFirstItem, indexOfLastItem)
+  const currentItems = sortedFilteredLeads.slice(indexOfFirstItem, indexOfLastItem)
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -213,269 +327,270 @@ export function DataEnhancement() {
     if (a) return "Apollo"
     return "N/A"
   }
-const [loading, setLoading] = useState(false)
 
+  const handleStartEnrichment = async () => {
+    setLoading(true)
+    startProgressSimulation()
 
-const handleStartEnrichment = async () => {
-  setLoading(true)
+    try {
+      const selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
+      const headers = { headers: { "Content-Type": "application/json" } }
 
-  try {
-    const selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
-    const headers = { headers: { "Content-Type": "application/json" } }
+      // 1. Fetch all existing leads from DB
+      const dbRes = await axios.get(`${DATABASE_URL}/leads`, headers)
+      const dbLeads = Array.isArray(dbRes.data)
+    ? dbRes.data
+    : Array.isArray(dbRes.data.leads)
+      ? dbRes.data.leads
+      : []
+      const existingNames = new Set(dbLeads.map((lead: any) => lead.company?.toLowerCase()))
 
-    // 1. Fetch all existing leads from DB
-    const dbRes = await axios.get(`${DATABASE_URL}/leads`, headers)
-    const dbLeads = Array.isArray(dbRes.data)
-  ? dbRes.data
-  : Array.isArray(dbRes.data.leads)
-    ? dbRes.data.leads
-    : []
-    const existingNames = new Set(dbLeads.map((lead: any) => lead.company?.toLowerCase()))
-
-    const alreadyInDb = dbLeads.filter((lead: any) =>
-      selected.some((s) => s.company.toLowerCase() === lead.company?.toLowerCase())
-    )
-
-    const needEnrichment = selected.filter(
-      (c) => !existingNames.has(c.company.toLowerCase())
-    )
-
-    let enriched: any[] = []
-
-    if (needEnrichment.length > 0) {
-      // 2. Scrape from Growjo
-      const growjoRes = await axios.post(
-        `${BACKEND_URL}/scrape-growjo-batch`,
-        needEnrichment.map((c) => ({ company: c.company })),
-        headers
+      const alreadyInDb = dbLeads.filter((lead: any) =>
+        selected.some((s) => s.company.toLowerCase() === lead.company?.toLowerCase())
       )
 
-      const growjoMap = Object.fromEntries(
-        (growjoRes.data || []).map((item: any) => [
-          item.company_name?.toLowerCase() || item.input_name?.toLowerCase(),
-          item
-        ])
+      const needEnrichment = selected.filter(
+        (c) => !existingNames.has(c.company.toLowerCase())
       )
 
-      const enrichedWithWebsites = needEnrichment.map((company) => {
-        const growjo = growjoMap[company.company.toLowerCase()] || {}
-        return {
-          ...company,
-          website:
-            growjo.company_website && growjo.company_website.toLowerCase() !== "not found"
-              ? growjo.company_website
-              : company.website,
-        }
-      }).filter((c) => {
-        const domain = normalizeWebsite(c.website)
-        return domain && domain !== "n/a"
-      })
+      let enriched: any[] = []
 
-      const updatedDomains = [...new Set(enrichedWithWebsites.map((c) => normalizeWebsite(c.website)))]
-
-      let apolloRes = { data: [] }
-      let personRes = { data: [] }
-
-      if (updatedDomains.length > 0) {
-        [apolloRes, personRes] = await Promise.all([
-          axios.post(`${BACKEND_URL}/apollo-scrape-batch`, { domains: updatedDomains }, headers),
-          axios.post(`${BACKEND_URL}/find-best-person-batch`, { domains: updatedDomains }, headers),
-        ])
-      }
-
-      const apolloMap = Object.fromEntries(
-        (apolloRes.data || [])
-          .filter((item: any) => item && item.domain)
-          .map((item: any) => [item.domain, item])
-      )
-      const personMap = Object.fromEntries(
-        (personRes.data || [])
-          .filter((item: any) => item && item.domain)  // 🛡️ Filter out null/undefined or missing domain
-          .map((item: any) => [item.domain, item])
-      )
-
-      const newlyEnriched = enrichedWithWebsites.map((company) => {
-        const domain = normalizeWebsite(company.website)
-        const growjo = growjoMap[company.company.toLowerCase()] || {}
-        const apollo = apolloMap[domain] || {}
-        const person = personMap[domain] || {}
-
-        const growjoScore = [
-          growjo.decider_email, growjo.decider_name, growjo.decider_phone,
-          growjo.decider_title, growjo.decider_linkedin
-        ].filter(Boolean).length
-
-        const apolloScore = [
-          person.email, person.first_name, person.last_name,
-          person.title, person.linkedin_url
-        ].filter(Boolean).length
-
-        const useApollo = apolloScore > growjoScore
-        
-        const preferValue = (growjoVal: any, apolloVal: any, fallback: any = "") => {
-          const clean = (v: any) => {
-            const s = (v || "").toString().trim().toLowerCase()
-            return s === "not found" || s === "n/a" || s === "na" || s === "" ? null : v
-          }
-        
-          return clean(growjoVal) || clean(apolloVal) || fallback
-        }
-
-
-        const decider = {
-          firstName: preferValue(
-            growjo.decider_name?.split(" ")[0],
-            person.first_name
-          ),
-          lastName: preferValue(
-            growjo.decider_name?.split(" ").slice(1).join(" "),
-            person.last_name
-          ),
-          email: preferValue(
-            growjo.decider_email === "email_not_unlocked@domain.com" ? "N/A" : growjo.decider_email,
-            person.email === "email_not_unlocked@domain.com" ? "N/A" : person.email
-          ),
-          phone: preferValue(growjo.decider_phone, person.phone_number),
-          linkedin: preferValue(growjo.decider_linkedin, person.linkedin_url),
-          title: preferValue(growjo.decider_title, person.title),
-        }
-
-        return {
-          company: preferValue(growjo.company_name, company.company),
-          website: preferValue(growjo.company_website, apollo.website_url, company.website),
-          industry: preferValue(growjo.industry, apollo.industry, company.industry),
-          productCategory: preferValue(
-            growjo.interests,
-            Array.isArray(apollo.keywords) ? apollo.keywords.join(", ") : apollo.keywords
-          ),
-          businessType: preferValue("", apollo.business_type),
-          employees: preferValue(growjo.employee_count, apollo.employee_count),
-          revenue: preferValue(growjo.revenue, apollo.annual_revenue_printed),
-          yearFounded: preferValue("", apollo.founded_year),
-          city: preferValue(growjo.location?.split(", ")[0], company.city),
-          state: preferValue(growjo.location?.split(", ")[1], company.state),
-          bbbRating: company.bbb_rating,
-          street: company.street || "",
-          companyPhone: company.business_phone,
-          companyLinkedin: preferValue("", apollo.linkedin_url),
-        
-          // Decider data
-          ownerFirstName: decider.firstName,
-          ownerLastName: decider.lastName,
-          ownerTitle: decider.title,
-          ownerEmail: decider.email,
-          ownerPhoneNumber: decider.phone,
-          ownerLinkedin: decider.linkedin,
-
-          source: getSource(growjo, apollo, person),
-        }
-      })
-
-      // 3. Upload enriched leads to DB
-      
-      const normalizeValue = (val: any): string => {
-        const v = (val || "").toString().trim().toLowerCase()
-        return ["", "na", "n/a", "none", "not", "found", "not found"].includes(v) ? "N/A" : val.toString().trim()
-      }
-      
-      const validLeads = newlyEnriched
-        .map((lead) => {
-          const normalized = {
-            company: normalizeValue(lead.company),
-            website: normalizeValue(lead.website),
-            industry: normalizeValue(lead.industry),
-            product_category: normalizeValue(lead.productCategory),
-            business_type: normalizeValue(lead.businessType),
-            employees: typeof lead.employees === "number"
-              ? lead.employees
-              : parseInt(lead.employees) || 0,
-            revenue: normalizeValue(lead.revenue).replace(/[^\d]/g, ""), // keep numeric string only
-            year_founded: typeof lead.yearFounded === "number"
-              ? lead.yearFounded
-              : parseInt(lead.yearFounded) || 0, // keep as number
-            bbb_rating: normalizeValue(lead.bbbRating),
-            street: normalizeValue(lead.street),
-            city: normalizeValue(lead.city),
-            state: normalizeValue(lead.state),
-            company_phone: normalizeValue(lead.companyPhone),
-            company_linkedin: normalizeValue(lead.companyLinkedin),
-            owner_first_name: normalizeValue(lead.ownerFirstName),
-            owner_last_name: normalizeValue(lead.ownerLastName),
-            owner_title: normalizeValue(lead.ownerTitle),
-            owner_linkedin: normalizeValue(lead.ownerLinkedin),
-            owner_phone_number: normalizeValue(lead.ownerPhoneNumber),
-            owner_email: normalizeValue(lead.ownerEmail),
-            phone: normalizeValue(lead.companyPhone),
-            source: normalizeValue(lead.source),
-          }
-      
-          return normalized
-        })
-        .filter(
-          (lead) =>
-            lead.company !== "N/A"
+      if (needEnrichment.length > 0) {
+        // 2. Scrape from Growjo
+        const growjoRes = await axios.post(
+          `${BACKEND_URL}/scrape-growjo-batch`,
+          needEnrichment.map((c) => ({ company: c.company })),
+          headers
         )
-    
+
+        const growjoMap = Object.fromEntries(
+          (growjoRes.data || []).map((item: any) => [
+            item.company_name?.toLowerCase() || item.input_name?.toLowerCase(),
+            item
+          ])
+        )
+
+        const enrichedWithWebsites = needEnrichment.map((company) => {
+          const growjo = growjoMap[company.company.toLowerCase()] || {}
+          return {
+            ...company,
+            website:
+              growjo.company_website && growjo.company_website.toLowerCase() !== "not found"
+                ? growjo.company_website
+                : company.website,
+          }
+        }).filter((c) => {
+          const domain = normalizeWebsite(c.website)
+          return domain && domain !== "n/a"
+        })
+
+        const updatedDomains = [...new Set(enrichedWithWebsites.map((c) => normalizeWebsite(c.website)))]
+
+        let apolloRes = { data: [] }
+        let personRes = { data: [] }
+
+        if (updatedDomains.length > 0) {
+          [apolloRes, personRes] = await Promise.all([
+            axios.post(`${BACKEND_URL}/apollo-scrape-batch`, { domains: updatedDomains }, headers),
+            axios.post(`${BACKEND_URL}/find-best-person-batch`, { domains: updatedDomains }, headers),
+          ])
+        }
+
+        const apolloMap = Object.fromEntries(
+          (apolloRes.data || [])
+            .filter((item: any) => item && item.domain)
+            .map((item: any) => [item.domain, item])
+        )
+        const personMap = Object.fromEntries(
+          (personRes.data || [])
+            .filter((item: any) => item && item.domain)  // 🛡️ Filter out null/undefined or missing domain
+            .map((item: any) => [item.domain, item])
+        )
+
+        const newlyEnriched = enrichedWithWebsites.map((company) => {
+          const domain = normalizeWebsite(company.website)
+          const growjo = growjoMap[company.company.toLowerCase()] || {}
+          const apollo = apolloMap[domain] || {}
+          const person = personMap[domain] || {}
+
+          const growjoScore = [
+            growjo.decider_email, growjo.decider_name, growjo.decider_phone,
+            growjo.decider_title, growjo.decider_linkedin
+          ].filter(Boolean).length
+
+          const apolloScore = [
+            person.email, person.first_name, person.last_name,
+            person.title, person.linkedin_url
+          ].filter(Boolean).length
+
+          const useApollo = apolloScore > growjoScore
+          
+          const preferValue = (growjoVal: any, apolloVal: any, fallback: any = "") => {
+            const clean = (v: any) => {
+              const s = (v || "").toString().trim().toLowerCase()
+              return s === "not found" || s === "n/a" || s === "na" || s === "" ? null : v
+            }
+          
+            return clean(growjoVal) || clean(apolloVal) || fallback
+          }
+
+          const decider = {
+            firstName: preferValue(
+              growjo.decider_name?.split(" ")[0],
+              person.first_name
+            ),
+            lastName: preferValue(
+              growjo.decider_name?.split(" ").slice(1).join(" "),
+              person.last_name
+            ),
+            email: preferValue(
+              growjo.decider_email === "email_not_unlocked@domain.com" ? "N/A" : growjo.decider_email,
+              person.email === "email_not_unlocked@domain.com" ? "N/A" : person.email
+            ),
+            phone: preferValue(growjo.decider_phone, person.phone_number),
+            linkedin: preferValue(growjo.decider_linkedin, person.linkedin_url),
+            title: preferValue(growjo.decider_title, person.title),
+          }
+          
+              
+          return {
+            company: preferValue(growjo.company_name, company.company),
+            website: preferValue(growjo.company_website, apollo.website_url, company.website),
+            industry: preferValue(growjo.industry, apollo.industry, company.industry),
+            productCategory: preferValue(
+              growjo.interests,
+              Array.isArray(apollo.keywords) ? apollo.keywords.join(", ") : apollo.keywords
+            ),
+            businessType: preferValue("", apollo.business_type),
+            employees: preferValue(growjo.employee_count, apollo.employee_count),
+            revenue: preferValue(growjo.revenue, apollo.annual_revenue_printed),
+            yearFounded: preferValue("", apollo.founded_year),
+            city: preferValue(growjo.location?.split(", ")[0], company.city),
+            state: preferValue(growjo.location?.split(", ")[1], company.state),
+            bbbRating: company.bbb_rating,
+            street: company.street || "",
+            companyPhone: company.business_phone,
+            companyLinkedin: preferValue("", apollo.linkedin_url),
+          
+            // Decider data
+            ownerFirstName: decider.firstName,
+            ownerLastName: decider.lastName,
+            ownerTitle: decider.title,
+            ownerEmail: decider.email,
+            ownerPhoneNumber: decider.phone,
+            ownerLinkedin: decider.linkedin,
+
+            source: getSource(growjo, apollo, person),
+          }
+        })
+
+        // 3. Upload enriched leads to DB
         
+        const normalizeValue = (val: any): string => {
+          const v = (val || "").toString().trim().toLowerCase()
+          return ["", "na", "n/a", "none", "not", "found", "not found"].includes(v) ? "N/A" : val.toString().trim()
+        }
+        
+        const validLeads = newlyEnriched
+          .map((lead) => {
+            const normalized = {
+              company: normalizeValue(lead.company),
+              website: normalizeValue(lead.website),
+              industry: normalizeValue(lead.industry),
+              product_category: normalizeValue(lead.productCategory),
+              business_type: normalizeValue(lead.businessType),
+              employees: typeof lead.employees === "number"
+                ? lead.employees
+                : parseInt(lead.employees) || 0,
+              revenue: normalizeValue(lead.revenue).replace(/[^\d]/g, ""), // keep numeric string only
+              year_founded: typeof lead.yearFounded === "number"
+                ? lead.yearFounded
+                : parseInt(lead.yearFounded) || 0, // keep as number
+              bbb_rating: normalizeValue(lead.bbbRating),
+              street: normalizeValue(lead.street),
+              city: normalizeValue(lead.city),
+              state: normalizeValue(lead.state),
+              company_phone: normalizeValue(lead.companyPhone),
+              company_linkedin: normalizeValue(lead.companyLinkedin),
+              owner_first_name: normalizeValue(lead.ownerFirstName),
+              owner_last_name: normalizeValue(lead.ownerLastName),
+              owner_title: normalizeValue(lead.ownerTitle),
+              owner_linkedin: normalizeValue(lead.ownerLinkedin),
+              owner_phone_number: normalizeValue(lead.ownerPhoneNumber),
+              owner_email: normalizeValue(lead.ownerEmail),
+              phone: normalizeValue(lead.companyPhone),
+              source: normalizeValue(lead.source),
+            }
+        
+            return normalized
+          })
+          .filter(
+            (lead) =>
+              lead.company !== "N/A"
+          )
       
+          
+        
             
 
-      console.log("📦 Uploading sanitized leads:", validLeads);
-      console.log("🚀 Payload shape:", JSON.stringify(validLeads, null, 2));
+        console.log("📦 Uploading sanitized leads:", validLeads);
+        console.log("🚀 Payload shape:", JSON.stringify(validLeads, null, 2));
 
-      // Final check before upload
-      if (!Array.isArray(validLeads)) {
-      console.error("⛔ upload_leads payload must be an array");
-      return;
-      }
+        // Final check before upload
+        if (!Array.isArray(validLeads)) {
+        console.error("⛔ upload_leads payload must be an array");
+        return;
+        }
 
-      // for (const lead of validLeads) {
-      // if (!lead.company || !lead.owner_email || !lead.phone || !lead.source) {
-      //   console.error("⛔ Invalid lead detected:", lead);
-      //   return;
-      // }
-      // }
+        // for (const lead of validLeads) {
+        // if (!lead.company || !lead.owner_email || !lead.phone || !lead.source) {
+        //   console.error("⛔ Invalid lead detected:", lead);
+        //   return;
+        // }
+        // }
 
-      try {
-        console.log("🚀 Uploading to:", `${DATABASE_URL}/upload_leads`);
-        console.log("📦 Final payload:", JSON.stringify(validLeads, null, 2));
-      
-        const response = await axios.post(
-          `${DATABASE_URL}/upload_leads`,
-          JSON.stringify(validLeads),
-          {
-            headers: {
-              "Content-Type": "application/json"
+        try {
+          console.log("🚀 Uploading to:", `${DATABASE_URL}/upload_leads`);
+          console.log("📦 Final payload:", JSON.stringify(validLeads, null, 2));
+        
+          const response = await axios.post(
+            `${DATABASE_URL}/upload_leads`,
+            JSON.stringify(validLeads),
+            {
+              headers: {
+                "Content-Type": "application/json"
+              }
             }
-          }
-        );
-      
-        console.log("✅ Upload success:", response.data);
-      } catch (error: any) {
-        console.error("❌ Upload failed:", error.response?.data || error.message);
+          );
+        
+          console.log("✅ Upload success:", response.data);
+        } catch (error: any) {
+          console.error("❌ Upload failed:", error.response?.data || error.message);
+        }
+
+        enriched = [...alreadyInDb, ...newlyEnriched];
+
+      } else {
+        enriched = alreadyInDb
       }
 
-      enriched = [...alreadyInDb, ...newlyEnriched];
-
-    } else {
-      enriched = alreadyInDb
+      setEnrichedResults(
+        enriched.map((e) => ({
+          ...e,
+          ownerPhoneNumber: e.owner_phone_number,
+          ownerLinkedin: e.owner_linkedin,
+          // optionally preserve the snake_case keys too or remove them
+        }))
+      )
+      setShowResults(true)
+    } catch (error) {
+      console.error("Enrichment failed:", error)
+      stopProgressSimulation(0)
+    } finally {
+      stopProgressSimulation(100)
+      setLoading(false)
     }
-
-    setEnrichedResults(
-      enriched.map((e) => ({
-        ...e,
-        ownerPhoneNumber: e.owner_phone_number,
-        ownerLinkedin: e.owner_linkedin,
-        // optionally preserve the snake_case keys too or remove them
-      }))
-    )
-    setShowResults(true)
-  } catch (error) {
-    console.error("Enrichment failed:", error)
-  } finally {
-    setLoading(false)
   }
-}
 
 
 
@@ -556,10 +671,10 @@ const handleStartEnrichment = async () => {
               )}
 
             {/* Pagination controls */}
-            {filteredLeads.length > 0 && (
+            {sortedFilteredLeads.length > 0 && (
               <div className="mb-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredLeads.length)} of {filteredLeads.length} results
+                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results
                 </div>
                 
                 <div className="flex items-center gap-4">
@@ -626,14 +741,110 @@ const handleStartEnrichment = async () => {
                         aria-label="Select all"
                       />
                     </TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Industry</TableHead>
-                    <TableHead>Street</TableHead>
-                    <TableHead>City</TableHead>
-                    <TableHead>State</TableHead>
-                    <TableHead>BBB Rating</TableHead>
-                    <TableHead>Company Phone</TableHead>
-                    <TableHead>Website</TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('company')}
+                    >
+                      <div className="flex items-center">
+                        Company
+                        {sortConfig?.key === 'company' && (
+                          <span className="ml-2">
+                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('industry')}
+                    >
+                      <div className="flex items-center">
+                        Industry
+                        {sortConfig?.key === 'industry' && (
+                          <span className="ml-2">
+                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('street')}
+                    >
+                      <div className="flex items-center">
+                        Street
+                        {sortConfig?.key === 'street' && (
+                          <span className="ml-2">
+                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('city')}
+                    >
+                      <div className="flex items-center">
+                        City
+                        {sortConfig?.key === 'city' && (
+                          <span className="ml-2">
+                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('state')}
+                    >
+                      <div className="flex items-center">
+                        State
+                        {sortConfig?.key === 'state' && (
+                          <span className="ml-2">
+                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('bbb_rating')}
+                    >
+                      <div className="flex items-center">
+                        BBB Rating
+                        {sortConfig?.key === 'bbb_rating' && (
+                          <span className="ml-2">
+                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('business_phone')}
+                    >
+                      <div className="flex items-center">
+                        Company Phone
+                        {sortConfig?.key === 'business_phone' && (
+                          <span className="ml-2">
+                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => requestSort('website')}
+                    >
+                      <div className="flex items-center">
+                        Website
+                        {sortConfig?.key === 'website' && (
+                          <span className="ml-2">
+                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -687,11 +898,18 @@ const handleStartEnrichment = async () => {
 
             <div className="flex items-center justify-between mt-4">
               <div className="text-sm text-muted-foreground">
-                {selectedCompanies.length} of {filteredLeads.length} selected
+                {selectedCompanies.length} of {sortedFilteredLeads.length} selected
               </div>
-              <Button onClick={handleStartEnrichment} disabled={selectedCompanies.length === 0 || loading}>
-                {loading ? "Enriching..." : "Start Enrichment"}
-              </Button>
+              <div className="flex items-center gap-4">
+                {loading && (
+                  <div className="text-sm font-medium">
+                    Progress: {progress}%
+                  </div>
+                )}
+                <Button onClick={handleStartEnrichment} disabled={selectedCompanies.length === 0 || loading}>
+                  {loading ? "Enriching..." : "Start Enrichment"}
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
