@@ -309,7 +309,8 @@ class GrowjoScraper:
 
                     import re
 
-                    match = re.search(r"\$[0-9\.]+[BMK]?", revenue_text)
+                    match = re.search(r"\$[0-9.,]+\s*[KMB]", revenue_text, re.IGNORECASE)
+
                     if match:
                         details["revenue"] = match.group(0)
             except:
