@@ -514,7 +514,7 @@ export function DataEnhancement() {
               employees: typeof lead.employees === "number"
                 ? lead.employees
                 : parseInt(lead.employees) || 0,
-              revenue: normalizeValue(lead.revenue).replace(/[^\d]/g, ""), // keep numeric string only
+              revenue: normalizeValue(lead.revenue), // keep numeric string only
               year_founded: typeof lead.yearFounded === "number"
                 ? lead.yearFounded
                 : parseInt(lead.yearFounded) || 0, // keep as number
