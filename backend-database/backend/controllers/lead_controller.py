@@ -345,23 +345,18 @@ class LeadController:
             print(f"Processing lead: {lead_data.get('company')}")
 
             if lead_data.get('company'):
-                # Make search case-insensitive
                 company_name = lead_data['company']
+                # find existing lead by company (case-insensitive)
                 existing_lead = Lead.query.filter(
                     db.func.lower(Lead.company) == db.func.lower(company_name),
                     Lead.deleted == False
                 ).first()
+            else:
+                existing_lead = None
 
-                if existing_lead:
-                    # Log for debugging
-                    print(f"Found duplicate company: {existing_lead.company}")
-                    return (False, f"Company '{lead_data['company']}' already exists")
-
-            # Only check for duplicates if email or phone is not empty
+            # add check for email/phone if exists
             query = Lead.query
             conditions = []
-
-            # Clean and validate the data
             if lead_data.get('owner_email'):
                 lead_data['owner_email'] = str(lead_data['owner_email']).strip().lower()
                 conditions.append(Lead.owner_email == lead_data['owner_email'])
@@ -369,21 +364,29 @@ class LeadController:
                 lead_data['phone'] = str(lead_data['phone']).strip()
                 conditions.append(Lead.phone == lead_data['phone'])
 
-            existing_lead = None
             if conditions:
-                existing_lead = query.filter(db.or_(*conditions)).first()
+                lead_by_contact = query.filter(db.or_(*conditions)).first()
+                if lead_by_contact:
+                    existing_lead = lead_by_contact
 
             if existing_lead:
-                # Update existing lead with new data
+                # Update only fields that are empty/null, EXCEPT 'source' which is always updated
                 updated = False
                 for key, value in lead_data.items():
-                    if hasattr(existing_lead, key) and value is not None and value != "":
-                        # Only update if the value is different from what's already there
+                    if hasattr(existing_lead, key):
                         current_value = getattr(existing_lead, key)
-                        if current_value != value:
-                            setattr(existing_lead, key, value)
-                            updated = True
-                            print(f"Updated field '{key}': '{current_value}' -> '{value}'")
+                        if key == 'source':
+                            # Always update 'source' to the latest value
+                            if value not in [None, '', 'N/A'] and current_value != value:
+                                setattr(existing_lead, key, value)
+                                updated = True
+                                print(f"Updated field 'source': '{current_value}' -> '{value}'")
+                        else:
+                            # Update if old field is empty/null/"N/A" and new value is not empty
+                            if (current_value in [None, '', 'N/A']) and (value not in [None, '', 'N/A']):
+                                setattr(existing_lead, key, value)
+                                updated = True
+                                print(f"Updated field '{key}': '{current_value}' -> '{value}'")
                 try:
                     if updated:
                         db.session.commit()
@@ -398,7 +401,6 @@ class LeadController:
                     return (False, f"Error updating lead: {str(e)}")
             else:
                 # Create new lead
-                # Remove any None values to avoid SQLAlchemy errors
                 clean_data = {k: v for k, v in lead_data.items() if v is not None and v != ""}
                 try:
                     lead = Lead(**clean_data)

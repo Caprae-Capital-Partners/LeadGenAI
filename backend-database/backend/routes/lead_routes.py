@@ -17,13 +17,13 @@ from werkzeug.exceptions import NotFound
 lead_bp = Blueprint('lead', __name__)
 
 @lead_bp.route('/')
-#@login_required
+@login_required
 def index():
     """Redirect to view leads page"""
     return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/form')
-#@login_required
+@login_required
 def form():
     """Display form to add new lead"""
     return render_template('form.html')
@@ -43,7 +43,7 @@ def submit():
     return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/upload_page')
-# #@login_required
+@login_required
 def upload_page():
     """Display CSV upload page"""
     return render_template('upload.html')
@@ -110,10 +110,16 @@ def upload_csv():
     return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/view_leads')
-#@login_required
+@login_required
 def view_leads():
     """View all leads - All roles can access"""
-    leads = LeadController.get_all_leads()
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+
+    # Get initial leads with pagination
+    paginated_leads = Lead.query.filter_by(deleted=False).order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
+    leads = paginated_leads.items
 
     # Get unique, normalized values for filters
     companies = sorted(set(lead.company for lead in leads if lead.company))
@@ -140,7 +146,13 @@ def view_leads():
                          business_types=business_types,
                          employee_sizes=employee_sizes,
                          revenue_ranges=revenue_ranges,
-                         sources=sources)
+                         sources=sources,
+                         pagination={
+                             'total': paginated_leads.total,
+                             'pages': paginated_leads.pages,
+                             'current_page': page,
+                             'per_page': per_page
+                         })
 
 @lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
 #@login_required
