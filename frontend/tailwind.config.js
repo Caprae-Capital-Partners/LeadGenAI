@@ -64,6 +64,18 @@ module.exports = {
           800: "#00462a",
           900: "#002315",
         },
+        dark: {
+          primary: "#121826",
+          secondary: "#1a2133",
+          tertiary: "#1e2639",
+          hover: "#2a3349",
+          border: "#2e3a59",
+          text: {
+            primary: "#ffffff",
+            secondary: "#a0aec0",
+            muted: "#64748b",
+          },
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

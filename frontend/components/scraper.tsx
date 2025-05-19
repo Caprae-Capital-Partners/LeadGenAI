@@ -210,7 +210,7 @@ export function Scraper() {
         bbb_rating: item.BBB_rating || item.bbb_rating || "",
         business_phone: item.phone || item.phone || "",
       }));
-      console.log("Scraped Results:", formattedData)
+      // console.log("Scraped Results:", formattedData)
       setScrapedResults(formattedData)
       setShowResults(true)
       setNeedMoreLeads(formattedData.length < 250)
@@ -270,12 +270,12 @@ export function Scraper() {
               />
               {showDropdown && (
                 <ul
-                  className="absolute bg-white border border-gray-300 rounded max-h-52 overflow-y-auto w-[38%] z-[1000] shadow-lg mt-1"
+                  className="absolute border border-border rounded max-h-52 overflow-y-auto w-[38%] z-[1000] shadow-lg mt-1 bg-background text-foreground transition-colors duration-150"
                 >
                   {filteredIndustries.map((ind, index) => (
                     <li
                       key={index}
-                      className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                      className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors duration-100"
                       onClick={() => {
                         setIndustry(ind);
                         setShowDropdown(false);
