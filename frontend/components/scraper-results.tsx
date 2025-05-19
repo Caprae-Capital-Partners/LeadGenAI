@@ -6,11 +6,20 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Download, Search, ArrowRight } from "lucide-react"
+import { Download, Search, ArrowRight, ExternalLink } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
 import { useLeads } from "@/components/LeadsProvider"
 import { addUniqueIdsToLeads } from "@/lib/leadUtils"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 interface ScraperResultsProps {
   data: any[]
@@ -23,6 +32,10 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   const [exportFormat, setExportFormat] = useState("csv")
   const { setLeads: setGlobalLeads } = useLeads()
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(25)
 
   useEffect(() => {
   let parsedData;
