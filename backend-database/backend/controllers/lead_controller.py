@@ -381,6 +381,16 @@ class LeadController:
                                 setattr(existing_lead, key, value)
                                 updated = True
                                 print(f"Updated field 'source': '{current_value}' -> '{value}'")
+                        elif key == 'revenue':
+                            if value not in [None, '', 'N/A'] and current_value != value:
+                                setattr(existing_lead, key, value)
+                                updated = True
+                                print(f"Updated field 'revenue': '{current_value}' -> '{value}'")
+                        elif key == 'employees':
+                            if value not in [None, '', 'N/A'] and current_value != value:
+                                setattr(existing_lead, key, value)
+                                updated = True
+                                print(f"Updated field 'employees': '{current_value}' -> '{value}'")
                         else:
                             # Update if old field is empty/null/"N/A" and new value is not empty
                             if (current_value in [None, '', 'N/A']) and (value not in [None, '', 'N/A']):

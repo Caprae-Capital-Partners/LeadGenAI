@@ -12,6 +12,7 @@ import datetime
 import pandas as pd
 import io
 from werkzeug.exceptions import NotFound
+from sqlalchemy import or_, and_
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -112,35 +113,115 @@ def upload_csv():
 @lead_bp.route('/view_leads')
 @login_required
 def view_leads():
-    """View all leads - All roles can access"""
-    # Get pagination parameters
-    leads = LeadController.get_all_leads()
-    # Get unique, normalized values for filters
-    companies = sorted(set(lead.company for lead in leads if lead.company))
-    cities = sorted(set(city.strip().title() for city in (lead.city for lead in leads) if city and city.strip()))
-    states = sorted(set(state.strip().upper() for state in (lead.state for lead in leads) if state and state.strip()))
-    roles = sorted(set(lead.owner_title for lead in leads if lead.owner_title))
-    statuses = sorted(set(lead.status for lead in leads if lead.status))
+    # Ambil parameter dari query string
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    search = request.args.get('search', '')
+    company = request.args.get('company', '')
+    status = request.args.get('status', '')
+    # ...tambahkan filter lain sesuai kebutuhan...
+
+    # Query dengan filter dan pagination
+    query = Lead.query.filter(Lead.deleted == False)
+    if search:
+        query = query.filter(
+            db.or_(
+                Lead.company.ilike(f'%{search}%'),
+                Lead.owner_first_name.ilike(f'%{search}%'),
+                Lead.owner_last_name.ilike(f'%{search}%'),
+                Lead.owner_email.ilike(f'%{search}%')
+            )
+        )
+    if company:
+        query = query.filter(Lead.company.ilike(f'%{company}%'))
+    if status:
+        query = query.filter(Lead.status == status)
+    # ...filter lain...
+
+    # --- Advanced filter ---
+    adv_filters = []
+    idx = 0
+    while True:
+        field = request.args.get(f'adv_field_{idx}')
+        operator = request.args.get(f'adv_operator_{idx}')
+        value = request.args.get(f'adv_value_{idx}')
+        logic = request.args.get(f'adv_logic_{idx}')
+        if not field or not operator or not value:
+            break
+        adv_filters.append({'field': field, 'operator': operator, 'value': value, 'logic': logic})
+        idx += 1
+    # Terapkan advanced filter ke query
+    adv_expressions = []
+    for f in adv_filters:
+        col = getattr(Lead, f['field'], None)
+        if not col:
+            continue
+        val = f['value']
+        op = f['operator']
+        if op == 'equals':
+            expr = col == val
+        elif op == 'contains':
+            expr = col.ilike(f'%{val}%')
+        elif op == 'starts':
+            expr = col.ilike(f'{val}%')
+        elif op == 'ends':
+            expr = col.ilike(f'%{val}')
+        elif op == 'greater':
+            expr = col > val
+        elif op == 'less':
+            expr = col < val
+        else:
+            expr = col == val
+        adv_expressions.append((expr, f['logic']))
+    # Gabungkan dengan AND/OR
+    if adv_expressions:
+        expr = adv_expressions[0][0]
+        for i in range(1, len(adv_expressions)):
+            logic = adv_expressions[i][1]
+            if logic == 'AND':
+                expr = and_(expr, adv_expressions[i][0])
+            else:
+                expr = or_(expr, adv_expressions[i][0])
+        query = query.filter(expr)
+    # --- END advanced filter ---
+
+    paginated = query.order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
+    leads = paginated.items
+
+    # Filter options (get from all data, not only current page)
+    all_leads = LeadController.get_all_leads()
+    locations = sorted(set(
+        (lead.city.strip() + ', ' + lead.state.strip()).title() if lead.city and lead.state else (lead.city or lead.state or '').strip().title()
+        for lead in all_leads if (lead.city or lead.state)
+    ))
+    roles = sorted(set(lead.owner_title for lead in all_leads if lead.owner_title))
+    statuses = sorted(set(lead.status for lead in all_leads if lead.status))
 
     # Get additional filter options
-    industries = sorted(set(lead.industry for lead in leads if lead.industry))
-    business_types = sorted(set(lead.business_type for lead in leads if lead.business_type))
-    employee_sizes = sorted(set(lead.employees for lead in leads if lead.employees))
-    revenue_ranges = sorted(set(lead.revenue for lead in leads if lead.revenue))
-    sources = sorted(set(lead.source for lead in leads if lead.source))
+    industries = sorted(set(lead.industry for lead in all_leads if lead.industry))
+    business_types = sorted(set(lead.business_type for lead in all_leads if lead.business_type))
+    employee_sizes = sorted(set(lead.employees for lead in all_leads if lead.employees))
+    revenue_ranges = sorted(set(lead.revenue for lead in all_leads if lead.revenue))
+    sources = sorted(set(lead.source for lead in all_leads if lead.source))
 
     return render_template('leads.html',
-                         leads=leads,
-                         companies=companies,
-                         cities=cities,
-                         states=states,
-                         roles=roles,
-                         statuses=statuses,
-                         industries=industries,
-                         business_types=business_types,
-                         employee_sizes=employee_sizes,
-                         revenue_ranges=revenue_ranges,
-                         sources=sources)
+        leads=leads,
+        locations=locations,
+        roles=roles,
+        statuses=statuses,
+        industries=industries,
+        business_types=business_types,
+        employee_sizes=employee_sizes,
+        revenue_ranges=revenue_ranges,
+        sources=sources,
+        page=page,
+        per_page=per_page,
+        total=paginated.total,
+        pages=paginated.pages,
+        search=search,
+        company=company,
+        status=status,
+    )
 
 @lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
 #@login_required
