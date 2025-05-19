@@ -26,11 +26,11 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-mint-50">
+    <div className="min-h-screen bg-dark-primary text-gray-100">
       <Header />
-      <div className="flex bg-mint-50 min-h-screen">
+      <div className="flex min-h-screen">
         <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} />
-        <main className="flex-1 p-6 bg-mint-50">{activeTab === "scraper" ? <Scraper /> : <DataEnhancement />}</main>
+        <main className="flex-1 p-6">{activeTab === "scraper" ? <Scraper /> : <DataEnhancement />}</main>
       </div>
     </div>
   )
