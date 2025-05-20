@@ -661,7 +661,8 @@ export function DataEnhancement() {
               </div>
             )}
 
-            <div className="rounded-md border overflow-x-auto">
+            <div className="w-full overflow-x-auto rounded-md border">
+              <div className="min-w-full">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -838,6 +839,7 @@ export function DataEnhancement() {
                   </>
                 </TableBody>
               </Table>
+              </div>
             </div>
 
             <div className="flex items-center justify-between mt-4">
