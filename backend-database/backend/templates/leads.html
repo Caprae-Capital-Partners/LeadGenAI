@@ -1987,8 +1987,6 @@
             }
         }
 
-        // Remove all frontend search filtering and pagination JS
-        // Only backend search and backend pagination remain
         function submitSearch() {
             const search = document.getElementById('searchInput').value;
             const params = new URLSearchParams(window.location.search);
@@ -1999,5 +1997,27 @@
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') submitSearch();
         });
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.btn-pagination').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          if (btn.tagName === 'A' && btn.getAttribute('href')) {
+            window.location.href = btn.getAttribute('href');
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            return false;
+          }
+        }, true); 
+        btn.addEventListener('mousedown', function(e) {
+          if (btn.tagName === 'A' && btn.getAttribute('href')) {
+            window.location.href = btn.getAttribute('href');
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            return false;
+          }
+        }, true);
+      });
+    });
     </script>
 {% endblock %}
