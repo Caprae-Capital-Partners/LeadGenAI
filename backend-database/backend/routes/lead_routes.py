@@ -119,6 +119,9 @@ def view_leads():
     search = request.args.get('search', '')
     company = request.args.get('company', '')
     status = request.args.get('status', '')
+    location = request.args.get('location', '')
+    role = request.args.get('role', '')
+    industry = request.args.get('industry', '')
 
     # Query dengan filter dan pagination
     query = Lead.query.filter(Lead.deleted == False)
@@ -135,6 +138,14 @@ def view_leads():
         query = query.filter(Lead.company.ilike(f'%{company}%'))
     if status:
         query = query.filter(Lead.status == status)
+    if location:
+        query = query.filter(
+            (Lead.city.ilike(f'%{location}%')) | (Lead.state.ilike(f'%{location}%'))
+        )
+    if role:
+        query = query.filter(Lead.owner_title.ilike(f'%{role}%'))
+    if industry:
+        query = query.filter(Lead.industry.ilike(f'%{industry}%'))
 
     # --- Advanced filter ---
     adv_filters = []
@@ -184,6 +195,8 @@ def view_leads():
     paginated = query.order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
     leads = paginated.items
 
+    print(f"Page: {page}, Per Page: {per_page}, Leads: {[lead.lead_id for lead in leads]}")
+
     # Filter options (get from all data, not only current page)
     all_leads = LeadController.get_all_leads()
     locations = sorted(set(
@@ -217,6 +230,9 @@ def view_leads():
         search=search,
         company=company,
         status=status,
+        location=location,
+        role=role,
+        industry=industry,
     )
 
 @lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
@@ -483,28 +499,55 @@ def export_leads():
         flash(f'Error exporting leads: {str(e)}', 'danger')
         return redirect(url_for('lead.view_leads'))
 
+def parse_revenue_value(revenue_str):
+    """
+    Parse revenue values in format like $5M, 50M, $1.5M, 5000000, etc.
+    Returns float value in millions, or None if parsing fails.
+    """
+    if not revenue_str or str(revenue_str).strip() == '-':
+        return None
+    s = str(revenue_str).replace('$', '').replace(',', '').strip()
+    try:
+        if s.lower().endswith('m'):
+            return float(s[:-1])
+        elif s.lower().endswith('k'):
+            return float(s[:-1]) / 1000
+        else:
+            val = float(s)
+            # If value is very large, assume it's in units (e.g. 5000000 = 5M)
+            if val > 100000:
+                return val / 1_000_000
+            return val
+    except Exception:
+        return None
+
 @lead_bp.route('/api/upload_leads', methods=['POST'])
 # #@login_required
 def api_upload_leads():
     """API endpoint to upload multiple leads"""
     try:
         data = request.get_json()
-
         if not data or not isinstance(data, list) or len(data) == 0:
             return jsonify({"status": "error", "message": "Invalid data format. Expected a list of leads"}), 400
-
-        # Initial validation - only require company field
         required_fields = ['company', 'website', 'owner_linkedin']
         valid_leads = []
         invalid_indices = []
-
-        # Pre-validate all leads at once
+        error_details = []
         for i, lead in enumerate(data):
-            # Check if data uses old 'email' field format and convert to owner_email
             if 'email' in lead and 'owner_email' not in lead:
                 lead['owner_email'] = lead.pop('email')
-
             if all(field in lead for field in required_fields):
+                # Clean revenue field if present
+                if 'revenue' in lead:
+                    try:
+                        parsed_revenue = parse_revenue_value(lead['revenue'])
+                        if parsed_revenue is not None:
+                            lead['revenue'] = parsed_revenue
+                        else:
+                            lead['revenue'] = None
+                    except Exception as e:
+                        error_details.append(f"Row {i}: Error parsing revenue '{lead['revenue']}': {str(e)}")
+                        lead['revenue'] = None
                 # Clean fields if present
                 if 'owner_email' in lead:
                     lead['owner_email'] = UploadController.clean_email(lead.get('owner_email', ''))
@@ -520,16 +563,10 @@ def api_upload_leads():
                     lead['website'] = UploadController.clean_website(lead.get('website', ''))
                 else:
                     lead['website'] = ''
-
                 lead['company'] = UploadController.clean_company(lead['company'])
-
-                # Company validation only
                 if UploadController.is_valid_company(lead['company']):
-                    # Set default values for required fields
                     if 'search_keyword' not in lead:
-                        lead['search_keyword'] = {}  # Empty JSON object as default
-
-                    # Truncate fields to match database limitations
+                        lead['search_keyword'] = {}
                     if hasattr(Lead, 'truncate_fields'):
                         lead = Lead.truncate_fields(lead)
                     valid_leads.append(lead)
@@ -537,13 +574,10 @@ def api_upload_leads():
                     invalid_indices.append(i)
             else:
                 invalid_indices.append(i)
-
-        # Process all valid leads using add_or_update_lead_by_match
         added_new = 0
         updated = 0
         skipped = 0
         errors = 0
-
         for lead_data in valid_leads:
             try:
                 success, message = LeadController.add_or_update_lead_by_match(lead_data)
@@ -551,7 +585,7 @@ def api_upload_leads():
                     if "updated successfully" in message:
                         updated += 1
                     elif "already up to date" in message:
-                        updated += 1  # Count as updated but wasn't changed
+                        updated += 1
                     else:
                         added_new += 1
                 else:
@@ -559,22 +593,22 @@ def api_upload_leads():
                         skipped += 1
                     else:
                         errors += 1
+                        error_details.append(f"Error saving lead: {message}")
             except Exception as e:
                 errors += 1
-                print(f"Error processing lead: {str(e)}")
-
+                error_details.append(f"Exception saving lead: {str(e)}")
         return jsonify({
-            "status": "success",
+            "status": "success" if errors == 0 else "error",
             "message": f"Upload Complete! Added: {added_new}, Updated: {updated}, Skipped: {skipped}, Errors: {errors}",
             "stats": {
                 "added_new": added_new,
                 "updated": updated,
                 "skipped_duplicates": skipped,
                 "errors": errors,
-                "invalid_indices": invalid_indices[:10] if invalid_indices else []
+                "invalid_indices": invalid_indices[:10] if invalid_indices else [],
+                "error_details": error_details
             }
         }), 200
-
     except Exception as e:
         db.session.rollback()
         return jsonify({
