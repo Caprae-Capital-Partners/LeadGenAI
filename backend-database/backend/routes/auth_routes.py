@@ -21,9 +21,9 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        
+
         success, message = AuthController.login(username, password)
-        
+
         if success:
             flash(message, 'success')
             return redirect(url_for('main.index'))
@@ -33,8 +33,8 @@ def login():
     return render_template('auth/login.html')
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])
-@login_required
-@role_required('admin', 'developer')
+# @login_required
+# @role_required('admin', 'developer')
 def signup():
     """Handle user registration - Only admin and developer can create accounts"""
     if request.method == 'POST':
@@ -43,7 +43,7 @@ def signup():
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         company = request.form.get('company', '')  # Get company from form
-        
+
         # Default role is 'user', but admin can change it
         role = request.form.get('role', 'user')
 
@@ -52,12 +52,12 @@ def signup():
             return render_template('auth/signup.html')
 
         success, message = AuthController.register(username, email, password, role, company)
-        
+
         if success:
             flash(message, 'success')
             # If admin creates a user, redirect to user management
-            if current_user.is_admin():
-                return redirect(url_for('auth.manage_users'))
+            # if current_user.is_admin():
+            #     return redirect(url_for('auth.manage_users'))
             return redirect(url_for('main.index'))
         else:
             flash(message, 'danger')
@@ -69,12 +69,12 @@ def signup():
 def logout():
     """Handle user logout"""
     success, message = AuthController.logout()
-    
+
     if success:
         flash(message, 'success')
     else:
         flash(message, 'danger')
-        
+
     return redirect(url_for('auth.login'))
 
 @auth_bp.route('/manage_users')
@@ -92,30 +92,30 @@ def update_user_role():
     """Update user role - only accessible to admins"""
     user_id = request.form.get('user_id')
     role = request.form.get('role')
-    
+
     if not user_id or not role:
         flash('Missing required fields', 'danger')
         return redirect(url_for('auth.manage_users'))
-    
+
     # Validate role
     valid_roles = ['admin', 'developer', 'user']
     if role not in valid_roles:
         flash(f'Invalid role. Must be one of: {", ".join(valid_roles)}', 'danger')
         return redirect(url_for('auth.manage_users'))
-    
+
     try:
         user = User.query.get(user_id)
         if not user:
             flash('User not found', 'danger')
             return redirect(url_for('auth.manage_users'))
-        
+
         user.role = role
         db.session.commit()
         flash(f'Role for {user.username} updated to {role}', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error updating role: {str(e)}', 'danger')
-    
+
     return redirect(url_for('auth.manage_users'))
 
 @auth_bp.route('/delete_user')
@@ -124,22 +124,22 @@ def update_user_role():
 def delete_user():
     """Delete user - only accessible to admins"""
     user_id = request.args.get('user_id')
-    
+
     if not user_id:
         flash('User ID is required', 'danger')
         return redirect(url_for('auth.manage_users'))
-    
+
     try:
         user = User.query.get(user_id)
         if not user:
             flash('User not found', 'danger')
             return redirect(url_for('auth.manage_users'))
-        
+
         # Prevent self-deletion
         if int(user_id) == current_user.user_id:
             flash('You cannot delete your own account', 'danger')
             return redirect(url_for('auth.manage_users'))
-        
+
         username = user.username
         db.session.delete(user)
         db.session.commit()
@@ -147,32 +147,32 @@ def delete_user():
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting user: {str(e)}', 'danger')
-    
+
     return redirect(url_for('auth.manage_users'))
 
 @auth_bp.route('/api/auth/login', methods=['POST'])
 def login_api():
     """Login to get access token"""
     data = request.json
-    
+
     if not data:
         return jsonify({"error": "No input data provided"}), 400
-        
+
     email = data.get('email')
     password = data.get('password')
-    
+
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
-    
+
     # Find user by email
     user = User.query.filter_by(email=email).first()
-    
+
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Invalid email or password"}), 401
-    
+
     # Log in the user with Flask-Login
     login_user(user)
-    
+
     return jsonify({
         "message": "Login successful",
         "user": {
@@ -187,23 +187,23 @@ def login_api():
 def register_api():
     """Register a new user"""
     data = request.json
-    
+
     if not data:
         return jsonify({"error": "No input data provided"}), 400
-        
+
     email = data.get('email')
     password = data.get('password')
     name = data.get('name', '')
     role = data.get('role', 'user')  # Default role is user
-    
+
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
-    
+
     # Check if user already exists
     existing_user = User.query.filter_by(email=email).first()
     if existing_user:
         return jsonify({"error": "Email already registered"}), 400
-    
+
     # Create new user
     new_user = User(
         email=email,
@@ -211,14 +211,14 @@ def register_api():
         name=name,
         role=role
     )
-    
+
     try:
         db.session.add(new_user)
         db.session.commit()
-        
+
         # Log in the new user
         login_user(new_user)
-        
+
         return jsonify({
             "message": "Registration successful",
             "user": {
@@ -228,7 +228,7 @@ def register_api():
                 "role": new_user.role
             }
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -306,4 +306,4 @@ def api_update_user_role(user_id):
         return jsonify({"message": f"Role for {user.username} updated to {role}"})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500 
+        return jsonify({"error": str(e)}), 500

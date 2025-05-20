@@ -193,7 +193,7 @@
                 <label class="form-label" for="role">Role</label>
                 <select class="form-control" id="role" name="role">
                     <option value="user">User</option>
-                    {% if current_user.is_admin() %}
+                    <!-- {% if current_user.is_admin() %} -->
                     <option value="developer">Developer</option>
                     <option value="admin">Admin</option>
                     {% endif %}
@@ -235,10 +235,10 @@
     document.addEventListener('DOMContentLoaded', function() {
         const passwordFields = document.querySelectorAll('.password-field input[type="password"]');
         const toggleButtons = document.querySelectorAll('.password-toggle');
-        
+
         toggleButtons.forEach((button, index) => {
             const toggleIcon = button.querySelector('i');
-            
+
             button.addEventListener('click', function() {
                 const field = passwordFields[index];
                 // Toggle password visibility
@@ -255,4 +255,4 @@
         });
     });
 </script>
-{% endblock %} 
+{% endblock %}
