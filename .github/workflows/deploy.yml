@@ -39,6 +39,10 @@ jobs:
             # 🔐 Inject env variables
             echo "${{ secrets.BACKEND_ENV_VARS }}" > .env
             echo "${{ secrets.FRONTEND_ENV_VARS }}" > frontend/.env
+
+            # 🧹 Prune unused Docker images/volumes/containers
+            docker system prune -af --volumes
+            
             # 🚀 Pull latest code & deploy
             docker compose down
             docker compose build

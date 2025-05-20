@@ -12,9 +12,15 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.edge.service import Service as EdgeService
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from openai import OpenAI
 
 load_dotenv()
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
+client = OpenAI(
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com/v1",
+    )
 GROWJO_LOGIN_URL = "https://growjo.com/login"
 GROWJO_SEARCH_URL = "https://growjo.com/"
 LOGIN_EMAIL = os.getenv("GROWJO_EMAIL")
@@ -57,33 +63,102 @@ class GrowjoScraper:
         self.wait_logged_in = WebDriverWait(self.driver_logged_in, 10)
 
     def login_logged_in_browser(self):
-        """Login into Growjo on the logged-in driver."""
+        """Login into Growjo on the logged-in driver, with retry if initial attempt fails."""
         print("[DEBUG] Logging into Growjo (logged-in driver)...")
-        self.driver_logged_in.get(GROWJO_LOGIN_URL)
-        time.sleep(1)
-        try:
-            email_field = self.driver_logged_in.find_element(By.ID, "email")
-            password_field = self.driver_logged_in.find_element(By.ID, "password")
-            email_field.clear()
-            email_field.send_keys(LOGIN_EMAIL)
-            password_field.clear()
-            password_field.send_keys(LOGIN_PASSWORD)
-            form = self.driver_logged_in.find_element(By.TAG_NAME, "form")
-            form.submit()
-            time.sleep(1)
-            if "/login" not in self.driver_logged_in.current_url:
-                print("[DEBUG] Login successful.")
-                self.logged_in = True
-            else:
-                raise Exception("Login failed.")
-        except Exception as e:
-            print(f"[ERROR] Login error: {e}")
-            raise
 
+        max_retries = 3
+        retry_delay = 3  # seconds
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                print(f"[DEBUG] Login attempt {attempt}/{max_retries}")
+                self.driver_logged_in.get(GROWJO_LOGIN_URL)
+                time.sleep(1.5)
+
+                email_field = self.driver_logged_in.find_element(By.ID, "email")
+                password_field = self.driver_logged_in.find_element(By.ID, "password")
+                email_field.clear()
+                email_field.send_keys(LOGIN_EMAIL)
+                password_field.clear()
+                password_field.send_keys(LOGIN_PASSWORD)
+
+                form = self.driver_logged_in.find_element(By.TAG_NAME, "form")
+                form.submit()
+
+                time.sleep(2)  # Give some time for redirect
+
+                if "/login" not in self.driver_logged_in.current_url:
+                    print("[DEBUG] Login successful.")
+                    self.logged_in = True
+                    return  # Exit on success
+
+                else:
+                    print("[WARN] Still on login page. Possibly failed credentials or slow load.")
+
+            except Exception as e:
+                print(f"[ERROR] Login attempt {attempt} failed: {e}")
+
+            if attempt < max_retries:
+                print(f"[DEBUG] Retrying login after {retry_delay}s...")
+                time.sleep(retry_delay)
+
+        print("[ERROR] All login attempts failed.")
+        raise Exception("Login failed after multiple attempts.")
+
+
+
+
+    def deepseek_guess_website(self, company_name, street=None, city=None, state=None):
+        import re
+        import json
+
+        # Build location string from available inputs
+        location_parts = [part for part in [street, city, state] if part]
+        location_context = ", ".join(location_parts)
+
+        # Create prompt with conditional location info
+        prompt = (
+            f"You are an AI assistant. Given a company name, guess the most likely website domain (e.g., example.com). "
+            f"Only respond with this JSON format:\n"
+            f'{{"domain": "..."}}\n\n'
+            f"Company name: {company_name}"
+        )
+
+        if location_context:
+            prompt += f"\nLocation context: {location_context}"
+
+        try:
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+            )
+            text = response.choices[0].message.content.strip()
+
+            # Try parsing JSON
+            try:
+                parsed = json.loads(text)
+                raw_domain = parsed.get("domain", "not found")
+            except json.JSONDecodeError:
+                print(f"[WARN] DeepSeek returned invalid JSON: {text}. Attempting regex fallback...")
+                match = re.search(r'([\w\.-]+\.[a-z]{2,})', text, re.IGNORECASE)
+                raw_domain = match.group(1) if match else "not found"
+
+            # Normalize domain (strip protocol and trailing slash)
+            website = re.sub(r"^https?://", "", raw_domain).rstrip("/")
+            return {"website": website}
+
+        except Exception as e:
+            print(f"[ERROR] DeepSeek fallback failed: {e}")
+            return {"website": "not found"}
+
+
+        
     def search_company(self, driver, wait, company_name):
         """
         Search for a company on Growjo and click its link if matched.
         Use similarity score between intended and found company name.
+        Retries up to 3x per query variant before trimming.
         """
         try:
             print(f"\n[DEBUG] Searching for company: '{company_name}'")
@@ -111,44 +186,53 @@ class GrowjoScraper:
                     words.pop()
                     continue
 
-                company_links = driver.find_elements(
-                    By.XPATH, "//table//tbody//a[starts-with(@href, '/company/')]"
-                )
+                max_retries = 3
+                retry_delay = 3  # seconds
+                attempt = 0
+                similarity = 0.0
+                link = None
 
-                if company_links:
-                    link = company_links[0]
-                    href = link.get_attribute("href")
-                    if href and "/company/" in href:
-                        href_company_part = href.split("/company/")[1]
-                        link_full_text = href_company_part.replace("_", " ").lower()
-                    else:
-                        link_full_text = link.text.strip().lower()
+                while attempt < max_retries:
+                    try:
+                        company_links = driver.find_elements(
+                            By.XPATH, "//table//tbody//a[starts-with(@href, '/company/')]"
+                        )
+                        if not company_links:
+                            print(f"[DEBUG] Attempt {attempt + 1}: No company links found.")
+                            break
 
-                    print(f"[DEBUG] First result (reconstructed): '{link_full_text}'")
-
-                    similarity = self._calculate_similarity(intended, link_full_text)
-                    print(f"[DEBUG] Similarity score: {similarity:.2f}")
-
-                    if similarity >= 0.65:
-                        print(f"[DEBUG] Found good match: '{link_full_text}', clicking...")
-                        driver.execute_script("arguments[0].click();", link)
-                        time.sleep(1)
-
-                        if "/company/" in driver.current_url:
-                            print(f"[DEBUG] Landed on company page: {driver.current_url}")
-                            return True
+                        link = company_links[0]
+                        href = link.get_attribute("href")
+                        if href and "/company/" in href:
+                            href_company_part = href.split("/company/")[1]
+                            link_full_text = href_company_part.replace("_", " ").lower()
                         else:
-                            print(f"[ERROR] After click, not redirected properly.")
-                            return False
-                    else:
-                        print(f"[DEBUG] Similarity too low for '{link_full_text}'. Trimming...")
+                            link_full_text = link.text.strip().lower()
 
-                else:
-                    print(f"[DEBUG] No company links found for '{query}'.")
+                        similarity = self._calculate_similarity(intended, link_full_text)
+                        print(f"[DEBUG] Attempt {attempt + 1}: Result='{link_full_text}' | Similarity={similarity:.2f}")
+
+                        if similarity >= 0.7:
+                            print(f"[DEBUG] Accepting result '{link_full_text}' with score {similarity:.2f}")
+                            driver.execute_script("arguments[0].click();", link)
+                            time.sleep(1)
+                            return "/company/" in driver.current_url
+
+                    except Exception as e:
+                        print(f"[ERROR] Attempt {attempt + 1} failed: {str(e)}")
+
+                    attempt += 1
+                    if attempt < max_retries:
+                        time.sleep(retry_delay)
+
+                # After retries exhausted
+                print(f"[WARN] All {max_retries} retries failed for query: '{query}'")
 
                 if len(words) <= 1:
                     print(f"[ERROR] No good match after all trims for '{company_name}'.")
                     return False
+
+                print(f"[DEBUG] Trimming query and retrying with fewer words...")
                 words.pop()
 
             print(f"[ERROR] Company '{company_name}' not found after all attempts.")
@@ -225,7 +309,8 @@ class GrowjoScraper:
 
                     import re
 
-                    match = re.search(r"\$[0-9\.]+[BMK]?", revenue_text)
+                    match = re.search(r"\$[0-9.,]+\s*[KMB]", revenue_text, re.IGNORECASE)
+
                     if match:
                         details["revenue"] = match.group(0)
             except:
@@ -460,49 +545,66 @@ class GrowjoScraper:
             }
 
     def scrape_full_pipeline(self, company_name):
-        """Master method to run full scraping pipeline."""
+        """Master method to run full Growjo scraping pipeline, with DeepSeek fallback if company not found."""
         try:
-            # Step 1: Public scrape
-            if not self.search_company(self.driver_public, self.wait_public, company_name):
-                return {"error": "Company not found."}
+            # Step 1: Try Growjo
+            found = self.search_company(self.driver_public, self.wait_public, company_name)
+            if not found:
+                print("[DEBUG] Growjo failed to find company — falling back to DeepSeek...")
+                inferred = self.deepseek_guess_website(company_name)
+                return {
+                    "company_name": company_name,
+                    "company_website": inferred.get("website", "not found"),
+                    "revenue": "not found",
+                    "location": "not found",
+                    "industry": "not found",
+                    "interests": "not found",
+                    "employee_count": "not found",
+                    "decider_name": "not found",
+                    "decider_title": "not found",
+                    "decider_email": "not found",
+                    "decider_phone": "not found",
+                    "decider_linkedin": "not found"
+                }
 
+            # Step 2: Scrape company details
             company_info = self.extract_company_details(self.driver_public, company_name)
-            decision_maker = self.find_decision_maker(
-                self.driver_public, self.wait_public, company_name
-            )
+            decision_maker = self.find_decision_maker(self.driver_public, self.wait_public, company_name)
 
-            if not decision_maker:
-                return {"error": "No decision maker found."}
+            # Step 3: If decider found, get sensitive info
+            sensitive_info = {
+                "email": "not found",
+                "phone": "not found",
+                "linkedin": "not found"
+            }
+            if decision_maker:
+                profile_url = decision_maker["profile_url"]
+                if not self.logged_in:
+                    self.login_logged_in_browser()
+                sensitive_info = self.scrape_decision_maker_details(profile_url, self.driver_logged_in)
 
-            profile_url = decision_maker["profile_url"]
-
-            # Step 2: Logged-in scrape
-            if not self.logged_in:
-                self.login_logged_in_browser()
-
-            sensitive_info = self.scrape_decision_maker_details(profile_url, self.driver_logged_in)
-
+            # Step 4: Return final combined result
             return {
                 "company_name": company_info.get("company", company_name),
                 "company_website": company_info.get("website", "not found"),
                 "revenue": company_info.get("revenue", "not found"),
-                "location": ", ".join(
-                    filter(None, [company_info.get("city", ""), company_info.get("state", "")])
-                )
-                or "not found",
+                "location": ", ".join(filter(None, [company_info.get("city", ""), company_info.get("state", "")])) or "not found",
                 "industry": company_info.get("industry", "not found"),
                 "interests": company_info.get("specialties", "not found"),
                 "employee_count": company_info.get("employees", "not found"),
-                "decider_name": decision_maker.get("name", "not found"),
-                "decider_title": decision_maker.get("title", "not found"),
+                "decider_name": decision_maker.get("name", "not found") if decision_maker else "not found",
+                "decider_title": decision_maker.get("title", "not found") if decision_maker else "not found",
                 "decider_email": sensitive_info.get("email", "not found"),
                 "decider_phone": sensitive_info.get("phone", "not found"),
-                "decider_linkedin": sensitive_info.get("linkedin", "not found"),
+                "decider_linkedin": sensitive_info.get("linkedin", "not found")
             }
+
         except Exception as e:
             print(f"[ERROR] Full pipeline error: {str(e)}")
             return {"error": str(e)}
 
+
+    
     def close(self):
         """Close both browser instances."""
         try:
