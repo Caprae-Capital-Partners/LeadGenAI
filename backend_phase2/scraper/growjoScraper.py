@@ -13,6 +13,7 @@ from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.edge.service import Service as EdgeService
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from openai import OpenAI
+import threading
 
 load_dotenv()
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
@@ -158,7 +159,8 @@ class GrowjoScraper:
         """
         Search for a company on Growjo and click its link if matched.
         Use similarity score between intended and found company name.
-        Retries up to 3x per query variant before trimming.
+        Enforces a 20s timeout only for initial table load (Stage 1).
+        Allows longer scraping time after table is loaded (Stage 2).
         """
         try:
             print(f"\n[DEBUG] Searching for company: '{company_name}'")
@@ -175,19 +177,18 @@ class GrowjoScraper:
                 time.sleep(1)
 
                 try:
-                    print("[DEBUG] Waiting for at least one company row to load...")
-                    wait.until(EC.presence_of_element_located((By.XPATH, "//table//tbody//tr")))
-                    print("[DEBUG] Company table and rows loaded ✅")
+                    print("[DEBUG] Waiting for company table (max 20s)...")
+                    WebDriverWait(driver, 7).until(
+                        EC.presence_of_element_located((By.XPATH, "//table//tbody//tr"))
+                    )
+                    print("[DEBUG] ✅ Table loaded, continue scraping")
                 except TimeoutException:
-                    print(f"[DEBUG] Company table not loaded for '{query}'.")
-                    if len(words) <= 1:
-                        print(f"[ERROR] Search failed even for single word '{query}'. Stopping.")
-                        return False
-                    words.pop()
-                    continue
+                    print(f"[TIMEOUT] Table not loaded in 20s for '{query}'. Fallback triggered.")
+                    return False  # <-- triggers DeepSeek fallback
 
+                # Stage 2: Scrape the links and match company names
                 max_retries = 3
-                retry_delay = 3  # seconds
+                retry_delay = 3
                 attempt = 0
                 similarity = 0.0
                 link = None
@@ -225,14 +226,13 @@ class GrowjoScraper:
                     if attempt < max_retries:
                         time.sleep(retry_delay)
 
-                # After retries exhausted
                 print(f"[WARN] All {max_retries} retries failed for query: '{query}'")
 
                 if len(words) <= 1:
                     print(f"[ERROR] No good match after all trims for '{company_name}'.")
                     return False
 
-                print(f"[DEBUG] Trimming query and retrying with fewer words...")
+                print(f"[DEBUG] Trimming query and retrying...")
                 words.pop()
 
             print(f"[ERROR] Company '{company_name}' not found after all attempts.")
@@ -241,6 +241,7 @@ class GrowjoScraper:
         except Exception as e:
             print(f"[ERROR] Unexpected error in search_company: {str(e)}")
             return False
+
 
     def _calculate_similarity(self, a: str, b: str) -> float:
         """

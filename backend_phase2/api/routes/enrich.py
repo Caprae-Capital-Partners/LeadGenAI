@@ -6,6 +6,7 @@ from backend_phase2.scraper.apollo_people import find_best_person
 enrich_bp = Blueprint('enrich', __name__)
 
 
+# === GROWJO ===
 @enrich_bp.route("/scrape-growjo-batch", methods=["POST"])
 def scrape_growjo_batch():
     try:
@@ -27,6 +28,23 @@ def scrape_growjo_batch():
         return jsonify({"error": str(e)}), 500
 
 
+@enrich_bp.route("/scrape-growjo-single", methods=["POST"])
+def scrape_growjo_single():
+    try:
+        payload = request.get_json()
+        name = payload.get("company") or payload.get("name")
+        if not name:
+            return jsonify({"error": "Missing company name"}), 400
+
+        scraper = GrowjoScraper(headless=True)
+        result = scraper.scrape_full_pipeline(name)
+        scraper.close()
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# === APOLLO PEOPLE ===
 @enrich_bp.route("/find-best-person-batch", methods=["POST"])
 def find_best_person_batch():
     try:
@@ -42,6 +60,21 @@ def find_best_person_batch():
         return jsonify({"error": str(e)}), 500
 
 
+@enrich_bp.route("/find-best-person-single", methods=["POST"])
+def find_best_person_single():
+    try:
+        payload = request.get_json()
+        domain = payload.get("domain")
+        if not domain:
+            return jsonify({"error": "Missing domain"}), 400
+
+        result = find_best_person(domain.strip())
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# === APOLLO COMPANY ===
 @enrich_bp.route("/apollo-scrape-batch", methods=["POST"])
 def apollo_scrape_batch():
     try:
@@ -55,5 +88,20 @@ def apollo_scrape_batch():
             except Exception as e:
                 results.append({"domain": domain, "error": str(e)})
         return jsonify(results), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@enrich_bp.route("/apollo-scrape-single", methods=["POST"])
+def apollo_scrape_single():
+    try:
+        payload = request.get_json()
+        domain = payload.get("domain")
+        if not domain:
+            return jsonify({"error": "Missing domain"}), 400
+
+        enriched = enrich_single_company(domain.strip())
+        enriched["domain"] = domain
+        return jsonify(enriched), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
