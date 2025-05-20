@@ -119,7 +119,6 @@ def view_leads():
     search = request.args.get('search', '')
     company = request.args.get('company', '')
     status = request.args.get('status', '')
-    # ...tambahkan filter lain sesuai kebutuhan...
 
     # Query dengan filter dan pagination
     query = Lead.query.filter(Lead.deleted == False)
@@ -136,7 +135,6 @@ def view_leads():
         query = query.filter(Lead.company.ilike(f'%{company}%'))
     if status:
         query = query.filter(Lead.status == status)
-    # ...filter lain...
 
     # --- Advanced filter ---
     adv_filters = []
@@ -150,7 +148,6 @@ def view_leads():
             break
         adv_filters.append({'field': field, 'operator': operator, 'value': value, 'logic': logic})
         idx += 1
-    # Terapkan advanced filter ke query
     adv_expressions = []
     for f in adv_filters:
         col = getattr(Lead, f['field'], None)
@@ -173,7 +170,6 @@ def view_leads():
         else:
             expr = col == val
         adv_expressions.append((expr, f['logic']))
-    # Gabungkan dengan AND/OR
     if adv_expressions:
         expr = adv_expressions[0][0]
         for i in range(1, len(adv_expressions)):

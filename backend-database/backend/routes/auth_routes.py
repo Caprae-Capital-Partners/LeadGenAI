@@ -249,4 +249,61 @@ def get_user_info():
 def logout_api():
     """Logout user"""
     logout_user()
-    return jsonify({"message": "Logout successful"}) 
+    return jsonify({"message": "Logout successful"})
+
+@auth_bp.route('/api/auth/users', methods=['GET'])
+@login_required
+@role_required('admin', 'developer')
+def api_list_users():
+    """API: List all users (admin/developer only)"""
+    users = User.query.all()
+    return jsonify({
+        "users": [
+            {
+                "id": u.user_id,
+                "username": u.username,
+                "email": u.email,
+                "role": u.role,
+                "company": getattr(u, 'company', None)
+            } for u in users
+        ]
+    })
+
+@auth_bp.route('/api/auth/user/<int:user_id>', methods=['DELETE'])
+@login_required
+@role_required('admin', 'developer')
+def api_delete_user(user_id):
+    """API: Delete user by id (admin/developer only, cannot delete self)"""
+    if user_id == current_user.user_id:
+        return jsonify({"error": "You cannot delete your own account"}), 400
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({"message": f"User {user.username} has been deleted"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@auth_bp.route('/api/auth/user/<int:user_id>/role', methods=['PUT'])
+@login_required
+@role_required('admin', 'developer')
+def api_update_user_role(user_id):
+    """API: Update user role (admin/developer only)"""
+    data = request.json
+    role = data.get('role') if data else None
+    valid_roles = ['admin', 'developer', 'user']
+    if not role or role not in valid_roles:
+        return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    try:
+        user.role = role
+        db.session.commit()
+        return jsonify({"message": f"Role for {user.username} updated to {role}"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500 
