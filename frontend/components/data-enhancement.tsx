@@ -299,7 +299,7 @@ export function DataEnhancement() {
     if (selectAll) {
       setSelectedCompanies([])
     } else {
-      setSelectedCompanies(normalizedLeads.map((company) => company.id))
+      setSelectedCompanies(normalizedLeads.map((company) => company.lead_id))
     }
     setSelectAll(!selectAll)
   }
@@ -336,7 +336,7 @@ export function DataEnhancement() {
     startProgressSimulation()
 
     try {
-      const selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
+      const selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.lead_id))
       const headers = { headers: { "Content-Type": "application/json" } }
 
       // 1. Fetch all existing leads from DB
