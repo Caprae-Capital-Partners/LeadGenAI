@@ -33,6 +33,6 @@ export function generateLeadId(lead: Lead): string {
 export function addUniqueIdsToLeads(leads: Lead[]): Lead[] {
   return leads.map(lead => ({
     ...lead,
-    lead_id: parseInt(generateLeadId(lead), 16) // Convert hex to number for compatibility
+    id: parseInt(generateLeadId(lead), 16) // Convert hex to number for compatibility
   }));
 }

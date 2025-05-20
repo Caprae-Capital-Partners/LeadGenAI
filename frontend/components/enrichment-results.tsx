@@ -20,6 +20,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import { useEnrichment } from "@/components/EnrichmentProvider"
+
+interface EnrichmentResultsProps {
+  enrichedCompanies: EnrichedCompany[]
+  loading?: boolean
+}
 
 export interface EnrichedCompany {
   id: string
@@ -46,11 +52,9 @@ export interface EnrichedCompany {
   source: string
 }
 
-interface EnrichmentResultsProps {
-  enrichedCompanies: EnrichedCompany[]
-}
 
-export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanies }) => {
+export const EnrichmentResults: FC = () => {
+  const { enrichedCompanies, loading } = useEnrichment()
   const router = useRouter()
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
   const [selectAll, setSelectAll] = useState(true)
@@ -71,6 +75,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
+  
   
   // Reset to first page when search term or filters change
   useEffect(() => {
@@ -379,14 +384,14 @@ const parseRevenue = (revenueStr: string): number | null => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
+        {/* <div>
           <h1 className="text-3xl font-bold">Data Enhancement</h1>
           <p className="text-muted-foreground">Enrich company data with additional information</p>
-        </div>
-        <Button variant="outline" onClick={handleBack} className="gap-2">
+        </div> */}
+        {/* <Button variant="outline" onClick={handleBack} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
           Back
-        </Button>
+        </Button> */}
       </div>
 
       <Card>

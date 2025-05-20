@@ -2,7 +2,7 @@ import type { Lead } from "./LeadsProvider";
 
 const mockResults: Lead[] = [
   {
-    lead_id: 5,
+    id: 5,
     company: "Figma",
     website: "figma.com",
     industry: "Design Tools",
@@ -13,7 +13,7 @@ const mockResults: Lead[] = [
     bbb_rating: "A",
   },
   {
-    lead_id: 4,
+    id: 4,
     company: "Zoom",
     website: "zoom.us",
     industry: "Design Tools",
