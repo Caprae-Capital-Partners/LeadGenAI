@@ -139,18 +139,23 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   }
 
   const filteredResults = leads.filter(
-    (result) =>
-      result.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      result.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      result.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      result.state.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  (result) =>
+    result.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    result.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    result.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    result.state.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // ✅ Deduplicate by `id` before paginating
+  const uniqueFilteredResults = Array.from(
+    new Map(filteredResults.map(item => [item.id, item])).values()
+  );
 
   // Calculate pagination values
-  const totalPages = Math.ceil(filteredResults.length / itemsPerPage)
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredResults.slice(indexOfFirstItem, indexOfLastItem)
+  const totalPages = Math.ceil(uniqueFilteredResults.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = uniqueFilteredResults.slice(indexOfFirstItem, indexOfLastItem);
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
