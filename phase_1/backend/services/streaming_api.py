@@ -69,7 +69,7 @@ async def scraper_stream(industry: str, location: str):
             last_data_count = current_data_count
         
         # If scraping is complete, send final message and end stream
-        if results.get("is_complete", False):
+        if results.get("is_complete", True):
             # Send a final summary
             final_data = {
                 "message": "Scraping completed",
