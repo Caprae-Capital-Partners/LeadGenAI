@@ -1053,3 +1053,30 @@ def batch_update_leads():
         "details": details,
         "message": f"Batch update complete. Updated: {success_count}, Skipped (no change): {skipped_count}, Failed: {len(failed)}"
     })
+
+@lead_bp.route('/api/leads/delete-multiple', methods=['POST'])
+@login_required
+def api_delete_multiple_leads():
+    """API endpoint: Soft delete (mark as deleted) multiple leads at once."""
+    try:
+        # support two formats: array of object, or direct object
+        data = request.get_json()
+        if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict) and 'lead_ids' in data[0]:
+            lead_ids = data[0]['lead_ids']
+        elif isinstance(data, dict) and 'lead_ids' in data:
+            lead_ids = data['lead_ids']
+        else:
+            return jsonify({"status": "error", "message": "Invalid request body. Must be array of object with 'lead_ids' or object with 'lead_ids'."}), 400
+        if not lead_ids or not isinstance(lead_ids, list):
+            return jsonify({"status": "error", "message": "No lead_ids provided."}), 400
+        # use the same controller
+
+        success, message = LeadController.delete_multiple_leads(lead_ids, current_user)
+        if success:
+            return jsonify({"status": "success", "message": message or f"{len(lead_ids)} leads deleted successfully"})
+        else:
+            return jsonify({"status": "error", "message": message or "Failed to delete leads"}), 400
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({"status": "error", "message": str(e)}), 500
