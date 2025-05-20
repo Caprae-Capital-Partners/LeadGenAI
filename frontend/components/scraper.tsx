@@ -99,11 +99,63 @@ export function Scraper() {
     }
   };
 
+  // const handleStartScraping = async () => {
+  //   setIsScrapingActive(true)
+  //   setProgress(0)
+  //   setShowResults(true)
+  //   setScrapedResults([])
+
+  //   const queryParams = new URLSearchParams({ industry, location })
+  //   const url = `${STREAMING_API}?${queryParams.toString()}`
+  //   const eventSource = new EventSource(url)
+
+  //   controllerRef.current = {
+  //     abort: () => eventSource.close()
+  //   }
+
+  //   eventSource.addEventListener("init", (event) => {
+  //     console.log("Init:", event.data)
+  //     setProgress(5)
+  //   })
+
+  //   eventSource.addEventListener("batch", (event) => {
+  //     try {
+  //       const parsed = JSON.parse(event.data)
+  //       const newItems = parsed.new_items ?? []
+
+  //       if (!Array.isArray(newItems)) {
+  //         console.warn("Expected new_items to be an array, got:", newItems)
+  //         return
+  //       }
+
+  //       console.log("Batch received:", parsed)
+  //       setScrapedResults((prev) => [...prev, ...newItems])
+  //       setProgress((prev) => Math.min(prev + 10, 95))
+  //     } catch (err) {
+  //       console.error("Failed to parse batch event:", err)
+  //     }
+  //   })
+
+  //   eventSource.addEventListener("done", (event) => {
+  //     console.log("Done:", event.data)
+  //     setProgress(100)
+  //     setIsScrapingActive(false)
+  //     setShowResults(true)
+  //     eventSource.close()
+  //   })
+
+  //   eventSource.onerror = (err) => {
+  //     console.error("Streaming error:", err)
+  //     setIsScrapingActive(false)
+  //     setProgress(100)
+  //     eventSource.close()
+  //   }
+  // }
   const handleStartScraping = async () => {
     setIsScrapingActive(true)
     setProgress(0)
-    setShowResults(true)
-    setScrapedResults([])
+    setScrapingSource('streaming') // or 'scraper' depending on mode
+    if (scrapedResults.length === 0) setShowResults(false)
 
     const queryParams = new URLSearchParams({ industry, location })
     const url = `${STREAMING_API}?${queryParams.toString()}`
@@ -112,6 +164,23 @@ export function Scraper() {
     controllerRef.current = {
       abort: () => eventSource.close()
     }
+
+    // Helper to format incoming raw leads to FormattedLead
+    const formatLeads = (data: LeadData[]): FormattedLead[] => {
+      return data.map((item: LeadData): FormattedLead => ({
+        lead_id: item.lead_id,
+        company: item.Company || item.company || "",
+        website: item.Website || item.website || "",
+        industry: item.Industry || item.industry || "",
+        street: item.Street || item.street || "",
+        city: item.City || item.city || "",
+        state: item.State || item.state || "",
+        bbb_rating: item.BBB_rating || item.bbb_rating || "",
+        business_phone: item.Business_phone || item.phone || "",
+      }))
+    }
+
+    const existingCompanies = new Set(scrapedResults.map(r => r.company.toLowerCase()))
 
     eventSource.addEventListener("init", (event) => {
       console.log("Init:", event.data)
@@ -128,9 +197,14 @@ export function Scraper() {
           return
         }
 
-        console.log("Batch received:", parsed)
-        setScrapedResults((prev) => [...prev, ...newItems])
-        setProgress((prev) => Math.min(prev + 10, 95))
+        const formattedNewItems = formatLeads(newItems)
+        const filteredItems = formattedNewItems.filter(item => !existingCompanies.has(item.company.toLowerCase()))
+        
+        // Add new company names to the Set
+        filteredItems.forEach(item => existingCompanies.add(item.company.toLowerCase()))
+
+        setScrapedResults(prev => [...prev, ...filteredItems])
+        setProgress(prev => Math.min(prev + 10, 95))
       } catch (err) {
         console.error("Failed to parse batch event:", err)
       }
@@ -141,7 +215,9 @@ export function Scraper() {
       setProgress(100)
       setIsScrapingActive(false)
       setShowResults(true)
+      setNeedMoreLeads(scrapedResults.length < 250)
       eventSource.close()
+      controllerRef.current = null
     })
 
     eventSource.onerror = (err) => {
@@ -149,8 +225,93 @@ export function Scraper() {
       setIsScrapingActive(false)
       setProgress(100)
       eventSource.close()
+      controllerRef.current = null
     }
   }
+
+
+  // const handleStartScraping = async () => {
+  //   setIsScrapingActive(true)
+  //   setProgress(0)
+  //   setScrapingSource('scraper')
+  //   // Don't hide results if we're appending to existing results
+  //   if (scrapedResults.length === 0) {
+  //     setShowResults(false)
+  //   }
+
+  //   const controller = new AbortController()
+  //   controllerRef.current = controller
+
+  //   try {
+  //     const response = await axios.post(
+  //       SCRAPER_API,
+  //       { industry, location },
+  //       { signal: controller.signal }
+  //     )
+
+  //     let data = response.data
+  //     // Parse the data if it's a string
+  //     if (typeof data === 'string') {
+  //       try {
+  //         // Replace NaN with null before parsing
+  //         const sanitizedData = data.replace(/:NaN/g, ':null')
+  //         data = JSON.parse(sanitizedData)
+  //       } catch (e) {
+  //         console.error("Failed to parse response data:", e)
+  //         throw new Error("Invalid response format from server")
+  //       }
+  //     }
+      
+  //     // console.log("Raw API Response:", data)
+  //     // console.log("Response type:", typeof data)
+  //     // console.log("Is Array?", Array.isArray(data))
+      
+  //     // Format the new data in the same way as handleCollectData
+  //     const formattedData = data.map((item: LeadData): FormattedLead => ({
+  //       lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
+  //       company: item.Company || item.company || "",
+  //       website: item.Website || item.website || "",
+  //       industry: item.Industry || item.industry || "",
+  //       street: item.Street || item.street || "",
+  //       city: item.City || item.city || "",
+  //       state: item.State || item.state || "",
+  //       bbb_rating: item.BBB_rating || item.bbb_rating || "",
+  //       business_phone: item.Business_phone || item.phone || "",
+  //     }));
+      
+  //     // Append new results to existing results if we're scraping more
+  //     if (scrapedResults.length > 0 && needMoreLeads) {
+  //       // Combine results and remove duplicates based on company name
+  //       const combinedResults = [...scrapedResults]
+  //       const existingCompanies = new Set(scrapedResults.map(r => r.company.toLowerCase()))
+        
+  //       formattedData.forEach((item: FormattedLead) => {
+  //         if (!existingCompanies.has(item.company.toLowerCase())) {
+  //           combinedResults.push(item)
+  //         }
+  //       })
+        
+  //       setScrapedResults(combinedResults)
+  //       // Only need more leads if we're still under 250
+  //       setNeedMoreLeads(combinedResults.length < 250)
+  //     } else {
+  //       setScrapedResults(formattedData)
+  //       setNeedMoreLeads(formattedData.length < 250)
+  //     }
+      
+  //     setShowResults(true)
+  //   } catch (error: any) {
+  //     if (axios.isCancel(error)) {
+  //       console.warn("Scraping canceled")
+  //     } else {
+  //       console.error("Scraping failed:", error)
+  //     }
+  //   } finally {
+  //     setIsScrapingActive(false)
+  //     setProgress(100)
+  //     controllerRef.current = null
+  //   }
+  // }
 
   const handleCollectData = async () => {
     setIsScrapingActive(true)
