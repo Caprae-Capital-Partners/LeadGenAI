@@ -1,0 +1,22 @@
+{
+  "node": {
+    "48d4ed2325007d8be29991d8c441231621e67d89": {
+      "workers": {
+        "app/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdaniel%5C%5CDesktop%5C%5Cphase1_phase2%5C%5Clanding_page%5C%5Clib%5C%5Cactions.js%22%2C%5B%22getLeads%22%2C%22submitLeadForm%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/page": "action-browser"
+      }
+    },
+    "c1f2abfdbfd9f0f64ef9b6f568ec5b313cb0b06e": {
+      "workers": {
+        "app/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdaniel%5C%5CDesktop%5C%5Cphase1_phase2%5C%5Clanding_page%5C%5Clib%5C%5Cactions.js%22%2C%5B%22getLeads%22%2C%22submitLeadForm%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/page": "action-browser"
+      }
+    }
+  },
+  "edge": {},
+  "encryptionKey": "kJeKMxsUBNzgfQjJjYGe8mnqmXs1xIjSzcy+z50Q4V4="
+}
