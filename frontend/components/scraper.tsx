@@ -32,12 +32,13 @@ interface LeadData {
   BBB_rating?: string;
   bbb_rating?: string;
   Business_phone?: string;
+  lead_id: number;
   phone?: string;
   [key: string]: any; // For any other properties we might not know about
 }
 
 interface FormattedLead {
-  id: number;
+  lead_id: number;
   company: string;
   website: string;
   industry: string;
@@ -154,8 +155,11 @@ export function Scraper() {
   const handleStartScraping = async () => {
     setIsScrapingActive(true)
     setProgress(0)
-    setScrapingSource('streaming') // or 'scraper' depending on mode
-    if (scrapedResults.length === 0) setShowResults(false)
+    setShowResults(false)
+
+    if (scrapedResults.length === 0) {
+      setScrapedResults([])
+    }
 
     const queryParams = new URLSearchParams({ industry, location })
     const url = `${STREAMING_API}?${queryParams.toString()}`
@@ -165,23 +169,6 @@ export function Scraper() {
       abort: () => eventSource.close()
     }
 
-    // Helper to format incoming raw leads to FormattedLead
-    const formatLeads = (data: LeadData[]): FormattedLead[] => {
-      return data.map((item: LeadData): FormattedLead => ({
-        lead_id: item.lead_id,
-        company: item.Company || item.company || "",
-        website: item.Website || item.website || "",
-        industry: item.Industry || item.industry || "",
-        street: item.Street || item.street || "",
-        city: item.City || item.city || "",
-        state: item.State || item.state || "",
-        bbb_rating: item.BBB_rating || item.bbb_rating || "",
-        business_phone: item.Business_phone || item.phone || "",
-      }))
-    }
-
-    const existingCompanies = new Set(scrapedResults.map(r => r.company.toLowerCase()))
-
     eventSource.addEventListener("init", (event) => {
       console.log("Init:", event.data)
       setProgress(5)
@@ -190,21 +177,39 @@ export function Scraper() {
     eventSource.addEventListener("batch", (event) => {
       try {
         const parsed = JSON.parse(event.data)
-        const newItems = parsed.new_items ?? []
+        let newItems = parsed.new_items ?? []
 
         if (!Array.isArray(newItems)) {
           console.warn("Expected new_items to be an array, got:", newItems)
           return
         }
 
-        const formattedNewItems = formatLeads(newItems)
-        const filteredItems = formattedNewItems.filter(item => !existingCompanies.has(item.company.toLowerCase()))
-        
-        // Add new company names to the Set
-        filteredItems.forEach(item => existingCompanies.add(item.company.toLowerCase()))
+        // Replace NaN with null manually if needed
+        newItems = JSON.parse(
+          JSON.stringify(newItems).replace(/:NaN/g, ':null')
+        )
 
-        setScrapedResults(prev => [...prev, ...filteredItems])
-        setProgress(prev => Math.min(prev + 10, 95))
+        // Format the data to match your app's expected structure
+        const formattedData = newItems.map((item: LeadData): FormattedLead => ({
+          lead_id: item.lead_id,
+          company: item.Company || item.company || "",
+          website: item.Website || item.website || "",
+          industry: item.Industry || item.industry || "",
+          street: item.Street || item.street || "",
+          city: item.City || item.city || "",
+          state: item.State || item.state || "",
+          bbb_rating: item.BBB_rating || item.bbb_rating || "",
+          business_phone: item.Business_phone || item.phone || "",
+        }))
+
+        // Remove duplicates by company name
+        setScrapedResults((prev) => {
+          const existingCompanies = new Set(prev.map(r => r.company.toLowerCase()))
+          const uniqueNew = formattedData.filter(item => !existingCompanies.has(item.company.toLowerCase()))
+          return [...prev, ...uniqueNew]
+        })
+
+        setProgress((prev) => Math.min(prev + 10, 95))
       } catch (err) {
         console.error("Failed to parse batch event:", err)
       }
@@ -215,9 +220,7 @@ export function Scraper() {
       setProgress(100)
       setIsScrapingActive(false)
       setShowResults(true)
-      setNeedMoreLeads(scrapedResults.length < 250)
       eventSource.close()
-      controllerRef.current = null
     })
 
     eventSource.onerror = (err) => {
@@ -225,7 +228,6 @@ export function Scraper() {
       setIsScrapingActive(false)
       setProgress(100)
       eventSource.close()
-      controllerRef.current = null
     }
   }
 
