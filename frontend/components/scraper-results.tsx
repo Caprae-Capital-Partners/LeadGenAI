@@ -147,15 +147,20 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   );
 
   // ✅ Deduplicate by `id` before paginating
-  const uniqueFilteredResults = Array.from(
-    new Map(filteredResults.map(item => [item.id, item])).values()
-  );
+  // const uniqueFilteredResults = Array.from(
+  //   new Map(filteredResults.map(item => [item.id, item])).values()
+  // );
 
   // Calculate pagination values
-  const totalPages = Math.ceil(uniqueFilteredResults.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = uniqueFilteredResults.slice(indexOfFirstItem, indexOfLastItem);
+  // const totalPages = Math.ceil(uniqueFilteredResults.length / itemsPerPage);
+  // const indexOfLastItem = currentPage * itemsPerPage;
+  // const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  // const currentItems = uniqueFilteredResults.slice(indexOfFirstItem, indexOfLastItem);
+
+  const totalPages = Math.ceil(filteredResults.length / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredResults.slice(indexOfFirstItem, indexOfLastItem)
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -373,7 +378,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                   // Calculate the actual index in the filtered results
                   const actualIndex = indexOfFirstItem + rowIdx;
                   return (
-                    <TableRow key={result.id}>
+                    <TableRow key={`${result.id}-${rowIdx}`}>
                       <TableCell className="break-words">
                         <textarea
                           className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
