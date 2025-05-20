@@ -147,20 +147,20 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   );
 
   // ✅ Deduplicate by `id` before paginating
-  // const uniqueFilteredResults = Array.from(
-  //   new Map(filteredResults.map(item => [item.id, item])).values()
-  // );
+  const uniqueFilteredResults = Array.from(
+    new Map(filteredResults.map(item => [JSON.stringify(item), item])).values()
+  );
 
   // Calculate pagination values
-  // const totalPages = Math.ceil(uniqueFilteredResults.length / itemsPerPage);
-  // const indexOfLastItem = currentPage * itemsPerPage;
-  // const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  // const currentItems = uniqueFilteredResults.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(uniqueFilteredResults.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = uniqueFilteredResults.slice(indexOfFirstItem, indexOfLastItem);
 
-  const totalPages = Math.ceil(filteredResults.length / itemsPerPage)
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredResults.slice(indexOfFirstItem, indexOfLastItem)
+  // const totalPages = Math.ceil(filteredResults.length / itemsPerPage)
+  // const indexOfLastItem = currentPage * itemsPerPage
+  // const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  // const currentItems = filteredResults.slice(indexOfFirstItem, indexOfLastItem)
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -283,7 +283,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Company Search Results</CardTitle>
-            <CardDescription>{filteredResults.length} companies found</CardDescription>
+            <CardDescription>{uniqueFilteredResults.length} companies found</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -301,10 +301,10 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       </CardHeader>
       <CardContent>
         {/* Pagination controls */}
-        {filteredResults.length > 0 && (
+        {uniqueFilteredResults.length > 0 && (
           <div className="mb-4 flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredResults.length)} of {filteredResults.length} results
+              Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, uniqueFilteredResults.length)} of {uniqueFilteredResults.length} results
             </div>
             
             <div className="flex items-center gap-4">
@@ -378,7 +378,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                   // Calculate the actual index in the filtered results
                   const actualIndex = indexOfFirstItem + rowIdx;
                   return (
-                    <TableRow key={`${result.id}-${rowIdx}`}>
+                    <TableRow key={`${result.id}`}>
                       <TableCell className="break-words">
                         <textarea
                           className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
