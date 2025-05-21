@@ -13,7 +13,7 @@ export function LandingPage() {
     name: "",
     email: "",
   })
-
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [visibleSections, setVisibleSections] = useState({
@@ -41,22 +41,37 @@ export function LandingPage() {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault(); // ← prevent default form behavior
+
+    setIsSubmitting(true);
+
+    const formData = new URLSearchParams();
+    formData.append("entry.56744877", formState.name); // your name input field ID
+    formData.append("entry.286187584", formState.email); // your email input field ID
 
     try {
-      await submitLeadForm(formState)
-      setIsSuccess(true)
-      setFormState({
-        name: "",
-        email: "",
-      })
-    } catch (error) {
-      console.error("Error submitting form:", error)
+      await fetch(
+        "https://docs.google.com/forms/d/e/1FAIpQLSf85Jnq_BV87v-KslHd93JtHeUSdxA5JmNEXXZLin6F1Rni4g/formResponse",
+        {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: formData,
+        }
+      );
+
+      setIsSuccess(true); // ✅ show the thank-you component
+      setFormState({ name: "", email: "" }); // reset form
+    } catch (err) {
+      console.error("Submit error", err);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
+  
+  
 
   return (
     <div className="min-h-screen w-full overflow-auto relative flex flex-col justify-between">
@@ -80,7 +95,8 @@ export function LandingPage() {
         <div
           className="absolute inset-0 opacity-20"
           style={{
-            background: "radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.2), transparent 70%)",
+            background:
+              "radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.2), transparent 70%)",
             animation: "pulse 15s infinite alternate",
           }}
         />
@@ -138,7 +154,9 @@ export function LandingPage() {
           {/* Divider */}
           <div
             className={`w-full flex justify-center mt-12 mb-6 transition-all duration-1000 ease-in-out ${
-              visibleSections.logo ? "opacity-100 transform-none" : "opacity-0 -translate-y-10"
+              visibleSections.logo
+                ? "opacity-100 transform-none"
+                : "opacity-0 -translate-y-10"
             }`}
           >
             <div className="w-full max-w-7xl px-5 flex items-center">
@@ -156,7 +174,9 @@ export function LandingPage() {
         {/* Main Content Section: Video and Form side by side */}
         <section
           className={`w-full px-5 py-10 flex-grow transition-all duration-1000 ease-in-out ${
-            visibleSections.content ? "opacity-100 transform-none" : "opacity-0 translate-y-10"
+            visibleSections.content
+              ? "opacity-100 transform-none"
+              : "opacity-0 translate-y-10"
           }`}
         >
           <div className="w-full max-w-7xl mx-auto relative">
@@ -184,24 +204,44 @@ export function LandingPage() {
                 </div>
 
                 <div
-                  className="w-full h-[400px] md:h-[500px] bg-[#070D1A]/90 overflow-hidden shadow-[0_17px_39px_rgba(0,0,0,0.7)] relative border border-[#1E2A40]/40 rounded-xl"
-                  style={{ aspectRatio: "auto" }}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center z-10">
-                    <Button
-                      size="icon"
-                      className="h-[70px] w-[70px] rounded-full bg-yellow-400 hover:bg-yellow-500 shadow-lg flex items-center justify-center"
-                    >
-                      <Play className="h-9 w-9 text-black" />
-                    </Button>
-                  </div>
-                  <Image
-                    src="/placeholder.svg?height=990&width=1760"
-                    alt="SaaSquatch Leads Demo Video"
-                    width={1408}
-                    height={792}
-                    className="object-cover w-full h-full opacity-50"
+                className="w-full h-[400px] md:h-[500px] bg-[#070D1A]/90 overflow-hidden shadow-[0_17px_39px_rgba(0,0,0,0.7)] relative border border-[#1E2A40]/40 rounded-xl"
+                style={{ aspectRatio: "auto" }}
+              >
+                {!isPlaying && (
+                  <>
+                    <div className="absolute inset-0 flex items-center justify-center z-10">
+                      <Button
+                        size="icon"
+                        className="h-[70px] w-[70px] rounded-full bg-yellow-400 hover:bg-yellow-500 shadow-lg flex items-center justify-center"
+                        onClick={() => setIsPlaying(true)}
+                      >
+                        <Play className="h-9 w-9 text-black" />
+                      </Button>
+                    </div>
+                    <Image
+                      src="/images/logo_vertical.png"
+                      alt="SaaSquatch Leads Thumbnail"
+                      width={1408}
+                      height={792}
+                      className="object-cover w-full h-full opacity-50"
+                    />
+                  </>
+                )}
+
+                {isPlaying && (
+                  <iframe
+                    className="absolute inset-0 w-full h-full rounded-xl"
+                    src="https://www.youtube.com/embed/LOtpnvbh7L4?autoplay=1"
+                    title="SaaSquatch Leads Demo Video"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
                   />
+                )}
+
+
+
+
                 </div>
               </div>
 
@@ -226,9 +266,12 @@ export function LandingPage() {
                       <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#6366F1]/10">
                         <CheckCircle className="h-6 w-6 text-[#6366F1]" />
                       </div>
-                      <h3 className="mt-2.5 text-xl font-medium text-white font-heading">Thank you!</h3>
+                      <h3 className="mt-2.5 text-xl font-medium text-white font-heading">
+                        Thank you!
+                      </h3>
                       <p className="mt-1.5 text-base text-gray-300">
-                        We've received your information and will contact you shortly.
+                        We've received your information and will contact you
+                        shortly.
                       </p>
                       <Button
                         className="mt-4 bg-primary hover:bg-primary-light shadow-lg shadow-primary/20 h-10 px-5 text-base text-white"
@@ -245,10 +288,15 @@ export function LandingPage() {
                       <h2 className="text-xl md:text-2xl font-bold tracking-tight text-yellow-400 text-center mb-1.5 font-heading">
                         Book a Demo
                       </h2>
-                      <p className="text-sm text-yellow-400 text-center mb-2.5">Get Exclusive Early Access</p>
+                      <p className="text-sm text-yellow-400 text-center mb-2.5">
+                        Get Exclusive Early Access
+                      </p>
 
                       <div className="space-y-1.5">
-                        <Label htmlFor="name" className="text-sm font-medium text-yellow-400 font-heading">
+                        <Label
+                          htmlFor="name"
+                          className="text-sm font-medium text-yellow-400 font-heading"
+                        >
                           Name *
                         </Label>
                         <Input
@@ -263,7 +311,10 @@ export function LandingPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label htmlFor="email" className="text-sm font-medium text-yellow-400 font-heading">
+                        <Label
+                          htmlFor="email"
+                          className="text-sm font-medium text-yellow-400 font-heading"
+                        >
                           Email *
                         </Label>
                         <Input
@@ -285,7 +336,9 @@ export function LandingPage() {
                       >
                         {isSubmitting ? "Booking..." : "Book"}
                       </Button>
-                      <p className="text-sm text-gray-400 text-center">We will never share your information.</p>
+                      <p className="text-sm text-gray-400 text-center">
+                        We will never share your information.
+                      </p>
                     </form>
                   )}
                 </div>
@@ -295,5 +348,5 @@ export function LandingPage() {
         </section>
       </div>
     </div>
-  )
+  );
 }
