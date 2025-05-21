@@ -110,18 +110,8 @@ export function LandingPage() {
           }}
         />
 
-        {/* Large blurred logo head popping from left side - BIGGER */}
-        <div className="absolute left-[-500px] top-1/2 transform -translate-y-1/2 z-0">
-          <div className="w-[1000px] h-[1000px] relative">
-            <Image
-              src="/images/saadquatch_logo.png"
-              alt=""
-              width={1000}
-              height={1000}
-              className="object-contain filter blur-[40px] opacity-15"
-            />
-          </div>
-        </div>
+       
+          
       </div>
 
       <div className="relative z-10 flex flex-col h-full">
@@ -143,11 +133,12 @@ export function LandingPage() {
               />
             </div>
 
-            {/* Title below logo - with increased spacing and better alignment */}
+            
             <div className="text-center mt-10">
-              {/* <h2 className="text-4xl md:text-5xl font-bold text-white font-heading">
-                SaaSquatch <span className="text-primary">Leads</span>
-              </h2> */}
+
+              <p className="text-lg md:text-xl lg:text-2xl text-gray-300 mt-3 max-w-5xl mx-auto italic">
+                Powering 30+ Entrepreneurs, Searchers, and Operators generate 1000s of leads weekly
+              </p>
             </div>
           </div>
 
@@ -182,8 +173,10 @@ export function LandingPage() {
           <div className="w-full max-w-7xl mx-auto relative">
             <div className="flex flex-col lg:flex-row gap-8 lg:gap-24 items-center lg:items-stretch">
               {/* Coming Soon Text */}
-              <div className="absolute -top-16 left-0 right-0 text-center">
-                <div className="inline-block text-yellow-400 font-bold uppercase text-xl md:text-2xl tracking-wide">
+              <div className="absolute -top-20 left-0 right-0 text-center">
+                <div className="inline-block font-bold uppercase text-xl md:text-3xl tracking-wide"
+                style={{ color: 'rgba(240 , 210, 120, 1)' }}
+                  >
                   COMING SOON
                 </div>
               </div>
@@ -209,7 +202,7 @@ export function LandingPage() {
                 >
                   {!isPlaying && (
                     <>
-                      <div className="absolute inset-0 flex items-center justify-center z-10">
+                      <div className="absolute inset-0 flex items-center justify-center z-1">
                         <Button
                           size="icon"
                           className="h-[70px] w-[70px] rounded-full bg-yellow-400 hover:bg-yellow-500 shadow-lg flex items-center justify-center"
@@ -279,15 +272,18 @@ export function LandingPage() {
                   ) : (
                     <form
                       onSubmit={handleSubmit}
-                      className="space-y-10 bg-[#121A2A]/80 rounded-xl border border-[#1E2A40]/40 shadow-xl p-5 backdrop-blur-sm"
+                      className="space-y-12 bg-[#121A2A]/80 rounded-xl border border-[#1E2A40]/40 shadow-xl p-5 backdrop-blur-sm"
                     >
-                      <h2 className="text-xl md:text-2xl font-bold tracking-tight text-yellow-400 text-center mb-1.5 font-heading">
+                    <div className="leading-none">
+                      <h2 className="text-xl md:text-2xl font-bold tracking-tight text-yellow-400 text-center mb-1 font-heading">
                         Book a Demo
                       </h2>
-                      <p className="text-sm text-yellow-400 text-center mb-2.5">
+                      <p className="text-sm text-center mt-4 mb-2"
+                        style={{ color: 'rgba(250, 240, 200, 0.85)' }}
+                      >
                         Get Exclusive Early Access
                       </p>
-
+                    </div>
                       <div className="space-y-1.5">
                         <Label
                           htmlFor="name"
@@ -301,7 +297,7 @@ export function LandingPage() {
                           required
                           value={formState.name}
                           onChange={handleChange}
-                          className="h-10 rounded-md bg-[#1A2438]/70 border-[#2A3A59]/50 focus:border-[#6366F1] focus:ring-[#6366F1] transition-all text-yellow-400 placeholder:text-yellow-400/50"
+                          className="h-10 rounded-md bg-[#1A2438]/70 border-[#2A3A59]/50 focus:border-[#6366F1] focus:ring-[#6366F1] transition-all text-yellow-400 placeholder:text-yellow-400/50 pl-4"
                           placeholder="John Doe"
                         />
                       </div>
@@ -320,19 +316,26 @@ export function LandingPage() {
                           required
                           value={formState.email}
                           onChange={handleChange}
-                          className="h-10 rounded-md bg-[#1A2438]/70 border-[#2A3A59]/50 focus:border-[#6366F1] focus:ring-[#6366F1] transition-all text-yellow-400 placeholder:text-yellow-400/50"
+                          className="h-10 rounded-md bg-[#1A2438]/70 border-[#2A3A59]/50 focus:border-[#6366F1] focus:ring-[#6366F1] transition-all text-yellow-400 placeholder:text-yellow-400/50 pl-4"
                           placeholder="john.doe@example.com"
                         />
                       </div>
 
                       <Button
                         type="submit"
-                        className="w-full h-11 text-base font-medium bg-primary hover:bg-primary-light transition-all shadow-[0_4px_8px_rgba(46,139,87,0.3)] hover:shadow-[0_4px_12px_rgba(46,139,87,0.4)] mt-4 font-heading text-white"
+                        className="w-full h-11 text-base font-medium transition-all mt-4 font-heading text-white"
+                        style={{
+                          background:  "linear-gradient(to right, #1bc290, #2ab58b)",
+                          boxShadow: "0 4px 8px rgba(27, 194, 144, 0.3)",
+                          textShadow: "0 0 3px rgba(0, 0, 0, 0.3)"
+                        }}
                         disabled={isSubmitting}
                       >
                         {isSubmitting ? "Booking..." : "Book"}
                       </Button>
-                      <p className="text-sm text-gray-400 text-center">
+                      <p className="text-sm text-center"
+                        style={{ color: 'rgba(250, 240, 200, 0.85)' }}
+                      >
                         We will never share your information.
                       </p>
                     </form>
