@@ -13,27 +13,32 @@
         --accent-color: #4cc9f0;
         --success-color: #4ad66d;
         --danger-color: #f72585;
-        --light-color: #f8f9fa;
-        --dark-color: #212529;
+        --light-color: #232b3a;
+        --dark-color: #181f2a;
+        --card-bg: #232b3a;
+        --text-color: #f1f5f9;
+        --border-color: #334155;
       }
       
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         margin: 0;
         padding: 20px;
-        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+        background: var(--dark-color);
         min-height: 100vh;
         font-size: 14px;
+        color: var(--text-color);
       }
       
       .container {
         max-width: 900px;
         margin: 30px auto;
         padding: 30px;
-        background-color: white;
+        background-color: var(--card-bg);
         box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
         border-radius: 12px;
         transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
       }
       
       .container:hover {
@@ -76,26 +81,28 @@
         display: block;
         margin-bottom: 8px;
         font-weight: 600;
-        color: #555;
+        color: var(--text-color);
         font-size: 14px;
       }
       
       input, select, textarea {
         width: 100%;
         padding: 12px;
-        border: 2px solid #e9ecef;
+        border: 2px solid var(--border-color);
         border-radius: 8px;
         box-sizing: border-box;
         font-size: 15px;
         transition: all 0.3s ease;
-        background-color: #f8f9fa;
+        background-color: var(--light-color);
+        color: var(--text-color);
       }
       
       input:focus, select:focus, textarea:focus {
         border-color: var(--accent-color);
         box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.2);
         outline: none;
-        background-color: white;
+        background-color: var(--card-bg);
+        color: var(--text-color);
       }
       
       textarea {
@@ -128,7 +135,7 @@
       
       .btn-primary {
         background-color: var(--primary-color);
-        color: white;
+        color: #fff;
       }
       
       .btn-primary:hover {
@@ -136,31 +143,34 @@
       }
       
       .btn-secondary {
-        background-color: #6c757d;
-        color: white;
+        background-color: var(--border-color);
+        color: var(--text-color);
       }
       
       .btn-secondary:hover {
-        background-color: #5a6268;
+        background-color: var(--primary-color);
+        color: #fff;
       }
       
       .alert {
         padding: 15px;
         margin-bottom: 25px;
         border-radius: 8px;
-        border-left: 4px solid;
+        border-left: 4px solid var(--primary-color);
         animation: fadeInDown 0.5s;
+        background: var(--card-bg);
+        color: var(--text-color);
       }
       
       .alert-success {
-        background-color: #e8f5e9;
-        color: #2e7d32;
+        background-color: #1e293b;
+        color: #4ad66d;
         border-color: #43a047;
       }
       
       .alert-danger {
-        background-color: #ffebee;
-        color: #c62828;
+        background-color: #2d1a1a;
+        color: #f72585;
         border-color: #e53935;
       }
       
@@ -181,7 +191,7 @@
         font-weight: bold;
         margin: 25px 0 15px 0;
         color: var(--primary-color);
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid var(--border-color);
         padding-bottom: 10px;
         font-size: 1.1rem;
         display: flex;

@@ -17,7 +17,7 @@
   padding: 8px 16px;
   border: 1.5px solid #e2e8f0;
   border-radius: 10px;
-  background: #fff;
+  background: var(--card-bg);
   color: #222;
   font-weight: 500;
   font-size: 16px;
@@ -95,7 +95,7 @@
     gap: 1rem;
     margin: 1rem 0;
     padding: 0.5rem;
-    background: #f8fafc;
+    background: var(--card-bg);
     border-radius: 8px;
 }
 
@@ -112,10 +112,10 @@
     min-width: 2rem;
     height: 2rem;
     padding: 0 0.5rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    background: white;
-    color: #475569;
+    background: var(--card-bg);
+    color: #c7cdd6;
     font-size: 0.875rem;
     font-weight: 500;
     text-decoration: none;
@@ -143,9 +143,9 @@
 
 .rows-per-page select {
     padding: 0.25rem 0.5rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
-    background: white;
+    background: var(--card-bg);
     font-size: 0.875rem;
 }
 
@@ -402,12 +402,12 @@
                         <option value="greater">Greater than</option>
                         <option value="less">Less than</option>
                     </select>
-                    <input type="text" class="filter-input value-input" placeholder="Enter value...">
+                    <input type="text" class="filter-input value-input" style="background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color);" placeholder="Enter value...">
                     <select class="filter-select logic-select">
                         <option value="AND">AND</option>
                         <option value="OR">OR</option>
                     </select>
-                    <button class="btn btn-sm btn-add-filter" onclick="addFilterRow(this)" title="Add another condition">
+                    <button class="btn btn-sm btn-add-filter" style="color: var(--text-color);" onclick="addFilterRow(this)" title="Add another condition">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -529,7 +529,7 @@
                             <td class="actions">
                                 <!-- Status update for all users -->
                                 <form method="POST" action="{{ url_for('lead.update_status', lead_id=lead.lead_id) }}" style="display: inline-block; margin-right: 10px;">
-                                    <select name="status" onchange="this.form.submit()" class="status-select" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd;">
+                                    <select name="status" onchange="this.form.submit()" class="status-select" style="padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color);">
                                         <option value="new" {% if lead.status == 'new' %}selected{% endif %}>New</option>
                                         <option value="contacted" {% if lead.status == 'contacted' %}selected{% endif %}>Contacted</option>
                                         <option value="qualified" {% if lead.status == 'qualified' %}selected{% endif %}>Qualified</option>
