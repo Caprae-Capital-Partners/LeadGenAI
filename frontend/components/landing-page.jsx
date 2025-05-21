@@ -204,44 +204,40 @@ export function LandingPage() {
                 </div>
 
                 <div
-                className="w-full h-[400px] md:h-[500px] bg-[#070D1A]/90 overflow-hidden shadow-[0_17px_39px_rgba(0,0,0,0.7)] relative border border-[#1E2A40]/40 rounded-xl"
-                style={{ aspectRatio: "auto" }}
-              >
-                {!isPlaying && (
-                  <>
-                    <div className="absolute inset-0 flex items-center justify-center z-10">
-                      <Button
-                        size="icon"
-                        className="h-[70px] w-[70px] rounded-full bg-yellow-400 hover:bg-yellow-500 shadow-lg flex items-center justify-center"
-                        onClick={() => setIsPlaying(true)}
-                      >
-                        <Play className="h-9 w-9 text-black" />
-                      </Button>
-                    </div>
-                    <Image
-                      src="/images/logo_vertical.png"
-                      alt="SaaSquatch Leads Thumbnail"
-                      width={1408}
-                      height={792}
-                      className="object-cover w-full h-full opacity-50"
+                  className="w-full h-[400px] md:h-[500px] bg-[#070D1A]/90 overflow-hidden shadow-[0_17px_39px_rgba(0,0,0,0.7)] relative border border-[#1E2A40]/40 rounded-xl"
+                  style={{ aspectRatio: "auto" }}
+                >
+                  {!isPlaying && (
+                    <>
+                      <div className="absolute inset-0 flex items-center justify-center z-10">
+                        <Button
+                          size="icon"
+                          className="h-[70px] w-[70px] rounded-full bg-yellow-400 hover:bg-yellow-500 shadow-lg flex items-center justify-center"
+                          onClick={() => setIsPlaying(true)}
+                        >
+                          <Play className="h-9 w-9 text-black" />
+                        </Button>
+                      </div>
+                      <Image
+                        src="/images/thumbnail_promo.png"
+                        alt="SaaSquatch Leads Thumbnail"
+                        width={1408}
+                        height={792}
+                        className="object-cover w-full h-full opacity-50"
+                      />
+                    </>
+                  )}
+                  {isPlaying && (
+                    <iframe
+                      className="absolute inset-0 w-full h-full rounded-xl"
+                      src="https://www.youtube.com/embed/BanHjKMRRPE?autoplay=1"
+                      title="SaaSquatch Leads Demo Video"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
                     />
-                  </>
-                )}
-
-                {isPlaying && (
-                  <iframe
-                    className="absolute inset-0 w-full h-full rounded-xl"
-                    src="https://www.youtube.com/embed/LOtpnvbh7L4?autoplay=1"
-                    title="SaaSquatch Leads Demo Video"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                )}
-
-
-
-
+                  )}
+                  
                 </div>
               </div>
 
