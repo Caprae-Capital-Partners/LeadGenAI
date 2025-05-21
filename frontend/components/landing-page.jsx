@@ -109,55 +109,54 @@ export function LandingPage() {
             backgroundSize: "33px 33px", // 10% larger
           }}
         />
-
-       
-          
       </div>
 
       <div className="relative z-10 flex flex-col h-full">
         {/* Top Section: Logo and Title */}
         <section className="pt-16 pb-8 flex flex-col items-center justify-center">
-          {/* Logo */}
+          {/* Logo + Tagline Section */}
           <div
             className={`w-full flex flex-col items-center justify-center transition-opacity duration-1000 ease-in-out ${
               visibleSections.logo ? "opacity-100" : "opacity-0"
             }`}
           >
-            <div className="h-[30vh] w-[30vw] max-w-[500px] max-h-[500px] relative flex items-center justify-center">
-              <Image
-                src="/images/logo_vertical.png"
-                alt="SaaSquatch Logo"
-                width={500}
-                height={500}
-                className="object-contain"
-              />
+            {/* Logo Container */}
+            <div className="w-full max-w-[500px] px-4">
+              <div className="relative w-full" style={{ aspectRatio: "1 / 1" }}>
+                <Image
+                  src="/images/logo_vertical.png"
+                  alt="SaaSquatch Logo"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 768px) 70vw, 30vw"
+                />
+              </div>
             </div>
 
-            
-            <div className="text-center mt-10">
-
-              <p className="text-lg md:text-xl lg:text-2xl text-gray-300 mt-3 max-w-5xl mx-auto italic">
-                Powering 30+ Entrepreneurs, Searchers, and Operators generate 1000s of leads weekly
+            {/* Tagline Text */}
+            <div className="mt-3 text-center px-2">
+              <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 italic max-w-screen-md mx-auto">
+                Powering 30+ Entrepreneurs, Searchers, and Operators generate
+                1000s of leads weekly
               </p>
             </div>
           </div>
 
           {/* Divider */}
-          <div
-            className={`w-full flex justify-center mt-12 mb-6 transition-all duration-1000 ease-in-out ${
-              visibleSections.logo
-                ? "opacity-100 transform-none"
-                : "opacity-0 -translate-y-10"
-            }`}
-          >
+          <div className="w-full flex justify-center mt-12 mb-6">
             <div className="w-full max-w-7xl px-5 flex items-center">
-              <div className="h-px flex-grow bg-gradient-to-r from-transparent via-white to-transparent opacity-20"></div>
-              <div className="mx-5 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shadow-lg">
-                <div className="w-4 h-4 rounded-full bg-[#050A14] flex items-center justify-center">
-                  <div className="w-2 h-2 rounded-full bg-white/30"></div>
+              {/* Left line */}
+              <div className="h-[2px] flex-grow bg-white/30 shadow-sm rounded-full opacity-45"></div>
+
+              {/* Dot separator */}
+              <div className="mx-5 w-6 h-6 flex items-center justify-center">
+                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shadow-md">
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-inner"></div>
                 </div>
               </div>
-              <div className="h-px flex-grow bg-gradient-to-r from-transparent via-white to-transparent opacity-20"></div>
+
+              {/* Right line */}
+              <div className="h-[2px] flex-grow bg-white/30 shadow-sm rounded-full opacity-45"></div>
             </div>
           </div>
         </section>
@@ -174,9 +173,10 @@ export function LandingPage() {
             <div className="flex flex-col lg:flex-row gap-8 lg:gap-24 items-center lg:items-stretch">
               {/* Coming Soon Text */}
               <div className="absolute -top-20 left-0 right-0 text-center">
-                <div className="inline-block font-bold uppercase text-xl md:text-3xl tracking-wide"
-                style={{ color: 'rgba(240 , 210, 120, 1)' }}
-                  >
+                <div
+                  className="inline-block font-bold uppercase text-2xl md:text-4xl tracking-wide"
+                  style={{ color: "rgba(240 , 210, 120, 1)" }}
+                >
                   COMING SOON
                 </div>
               </div>
@@ -202,7 +202,7 @@ export function LandingPage() {
                 >
                   {!isPlaying && (
                     <>
-                      <div className="absolute inset-0 flex items-center justify-center z-1">
+                      <div className="absolute inset-0 flex items-center justify-center z-10">
                         <Button
                           size="icon"
                           className="h-[70px] w-[70px] rounded-full bg-yellow-400 hover:bg-yellow-500 shadow-lg flex items-center justify-center"
@@ -216,7 +216,7 @@ export function LandingPage() {
                         alt="SaaSquatch Leads Thumbnail"
                         width={1408}
                         height={792}
-                        className="object-cover w-full h-full opacity-50"
+                        className="object-cover w-full h-full opacity-50 z-0"
                       />
                     </>
                   )}
@@ -230,24 +230,19 @@ export function LandingPage() {
                       allowFullScreen
                     />
                   )}
-                  
                 </div>
               </div>
 
               {/* Form Section - Now 50% width */}
               <div className="w-full lg:w-1/2 relative flex items-center">
-                {/* Blurred logo background */}
-                <div className="absolute inset-0 flex items-center justify-center overflow-hidden opacity-10 z-0">
-                  <div className="w-[330px] h-[330px] relative transform -rotate-12">
-                    <Image
-                      src="/images/saadquatch_logo.png"
-                      alt=""
-                      width={330}
-                      height={330}
-                      className="object-contain filter blur-xl"
-                    />
-                  </div>
-                </div>
+                {/* Blurred logo background
+                <div className="absolute top-0 right-0 w-[300px] h-[300px] z-0">
+                  <img
+                    src="/images/bg_logo.png" // Replace with your image
+                    alt="Decor"
+                    className="w-full h-full object-contain blur-1.9xl opacity-90 scale-125"
+                  />
+                </div> */}
 
                 <div className="w-full relative z-10">
                   {isSuccess ? (
@@ -274,16 +269,17 @@ export function LandingPage() {
                       onSubmit={handleSubmit}
                       className="space-y-12 bg-[#121A2A]/80 rounded-xl border border-[#1E2A40]/40 shadow-xl p-5 backdrop-blur-sm"
                     >
-                    <div className="leading-none">
-                      <h2 className="text-xl md:text-2xl font-bold tracking-tight text-yellow-400 text-center mb-1 font-heading">
-                        Book a Demo
-                      </h2>
-                      <p className="text-sm text-center mt-4 mb-2"
-                        style={{ color: 'rgba(250, 240, 200, 0.85)' }}
-                      >
-                        Get Exclusive Early Access
-                      </p>
-                    </div>
+                      <div className="leading-none">
+                        <h2 className="text-xl md:text-2xl font-bold tracking-tight text-yellow-400 text-center mb-1 font-heading">
+                          Book a Demo
+                        </h2>
+                        <p
+                          className="text-sm text-center mt-4 mb-2 italic"
+                          style={{ color: "rgba(250, 240, 200, 0.85)" }}
+                        >
+                          Get Exclusive Early Access
+                        </p>
+                      </div>
                       <div className="space-y-1.5">
                         <Label
                           htmlFor="name"
@@ -325,16 +321,18 @@ export function LandingPage() {
                         type="submit"
                         className="w-full h-11 text-base font-medium transition-all mt-4 font-heading text-white"
                         style={{
-                          background:  "linear-gradient(to right, #1bc290, #2ab58b)",
+                          background:
+                            "linear-gradient(to right, #1bc290, #2ab58b)",
                           boxShadow: "0 4px 8px rgba(27, 194, 144, 0.3)",
-                          textShadow: "0 0 3px rgba(0, 0, 0, 0.3)"
+                          textShadow: "0 0 3px rgba(0, 0, 0, 0.3)",
                         }}
                         disabled={isSubmitting}
                       >
                         {isSubmitting ? "Booking..." : "Book"}
                       </Button>
-                      <p className="text-sm text-center"
-                        style={{ color: 'rgba(250, 240, 200, 0.85)' }}
+                      <p
+                        className="text-sm text-center"
+                        style={{ color: "rgba(250, 240, 200, 0.85)" }}
                       >
                         We will never share your information.
                       </p>
@@ -345,6 +343,15 @@ export function LandingPage() {
             </div>
           </div>
         </section>
+      </div>
+      {/* Top-right blurry background image */}
+      <div className="fixed top-0 right-0 z-0 w-[600px] h-[1200px] overflow-hidden pointer-events-none">
+        <img
+          className="w-full h-full object-contain opacity-10 scale-100"
+          style={{ filter: "blur(5px)" }} // equivalent to ~1.9xl
+          src="/images/bg_logo.png"
+          alt="Blurry Background"
+        />
       </div>
     </div>
   );
