@@ -364,7 +364,7 @@ h1::after {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: var(--success-color);
+  background: linear-gradient(90deg, #14b8a6 0%, #3b82f6 100%) !important;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -721,7 +721,7 @@ tr:hover {
 }
 
 .btn-back {
-  background: var(--primary-color);
+  background: linear-gradient(90deg, #14b8a6 0%, #3b82f6 100%) !important;
   color: white;
   border: none;
 }
@@ -731,7 +731,7 @@ tr:hover {
 }
 
 .btn-edit {
-  background: var(--primary-color);
+  background: linear-gradient(90deg, #14b8a6 0%, #3b82f6 100%) !important;
   color: white;
   border: none;
 }
