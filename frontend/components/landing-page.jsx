@@ -133,21 +133,21 @@ export function LandingPage() {
               visibleSections.logo ? "opacity-100" : "opacity-0"
             }`}
           >
-            <div className="h-[30vh] w-[30vw] max-w-[400px] max-h-[400px] relative flex items-center justify-center">
+            <div className="h-[30vh] w-[30vw] max-w-[500px] max-h-[500px] relative flex items-center justify-center">
               <Image
-                src="/images/saadquatch_logo.png"
+                src="/images/logo_vertical.png"
                 alt="SaaSquatch Logo"
-                width={400}
-                height={400}
+                width={500}
+                height={500}
                 className="object-contain"
               />
             </div>
 
             {/* Title below logo - with increased spacing and better alignment */}
             <div className="text-center mt-10">
-              <h2 className="text-4xl md:text-5xl font-bold text-white font-heading">
+              {/* <h2 className="text-4xl md:text-5xl font-bold text-white font-heading">
                 SaaSquatch <span className="text-primary">Leads</span>
-              </h2>
+              </h2> */}
             </div>
           </div>
 
