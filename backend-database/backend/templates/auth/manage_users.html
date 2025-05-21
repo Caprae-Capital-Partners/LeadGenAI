@@ -8,41 +8,51 @@
         padding: 30px;
         max-width: 1100px;
         margin: 0 auto;
+        background: var(--card-bg);
+        color: var(--text-color);
+        border-radius: 12px;
     }
     
     .user-card {
-        background: white;
+        background: var(--card-bg);
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         padding: 20px;
         margin-bottom: 30px;
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
     }
     
     .section-heading {
         font-size: 18px;
         font-weight: 600;
-        color: #4361ee;
+        color: var(--primary-color);
         margin-bottom: 20px;
         padding-bottom: 10px;
-        border-bottom: 2px solid #e9ecef;
+        border-bottom: 2px solid var(--border-color);
     }
     
     .user-table {
         width: 100%;
         border-collapse: collapse;
+        background: var(--card-bg);
+        color: var(--text-color);
     }
     
     .user-table th {
         text-align: left;
         padding: 12px 20px;
-        border-bottom: 2px solid #e9ecef;
-        color: #4361ee;
+        border-bottom: 2px solid var(--border-color);
+        color: var(--primary-color);
         font-weight: 600;
+        background: var(--card-bg);
     }
     
     .user-table td {
         padding: 12px 20px;
-        border-bottom: 1px solid #e9ecef;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--card-bg);
+        color: var(--text-color);
     }
     
     .user-table tr:last-child td {
@@ -50,7 +60,7 @@
     }
     
     .user-table tr:hover {
-        background-color: #f8f9fa;
+        background-color: #232b3a;
     }
     
     .role-badge {
@@ -62,18 +72,18 @@
     }
     
     .role-badge.admin {
-        background-color: #4cc9f0;
+        background-color: var(--primary-color);
         color: #fff;
     }
     
     .role-badge.developer {
-        background-color: #4361ee;
+        background-color: var(--secondary-color);
         color: #fff;
     }
     
     .role-badge.user {
-        background-color: #e9ecef;
-        color: #212529;
+        background-color: var(--border-color);
+        color: var(--text-color);
     }
     
     .actions-cell {
@@ -92,24 +102,21 @@
         align-items: center;
         gap: 4px;
         transition: all 0.2s;
+        background: var(--primary-color);
+        color: #fff;
     }
     
-    .btn-edit-role {
-        background-color: #4361ee;
-        color: white;
-    }
-    
-    .btn-edit-role:hover {
-        background-color: #3f37c9;
+    .btn-user:hover {
+        background: var(--secondary-color);
     }
     
     .btn-delete-user {
-        background-color: #f72585;
+        background-color: var(--danger-color);
         color: white;
     }
     
     .btn-delete-user:hover {
-        background-color: #dc1f6f;
+        background-color: #b91c1c;
     }
     
     .modal {

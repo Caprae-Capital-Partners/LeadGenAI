@@ -8,20 +8,25 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
         :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --accent-color: #4cc9f0;
+            --primary-color: #2563eb;
+            --secondary-color: #22d3ee;
+            --accent-color: #22c55e;
+            --danger-color: #ef4444;
+            --background-color: #181f2a;
+            --card-bg: #232b3a;
+            --text-color: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
             --success-color: #4ad66d;
-            --danger-color: #f72585;
             --light-color: #f8f9fa;
             --dark-color: #212529;
             --sidebar-width: 280px;
-            --border-color: #e2e8f0;
         }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f7fa;
+            background: var(--background-color);
+            color: var(--text-color);
             min-height: 100vh;
             position: relative;
         }
@@ -76,7 +81,7 @@
             right: 0;
             left: 0;
             height: 70px;
-            background: white;
+            background: var(--card-bg);
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             display: flex;
             align-items: center;
@@ -88,6 +93,13 @@
         .navbar-brand {
             display: flex;
             align-items: center;
+            gap: 10px;
+        }
+
+        .logo-image {
+            width: 35px;
+            height: 35px;
+            margin-right: 5px;
         }
 
         .logo {
@@ -145,7 +157,7 @@
             position: absolute;
             top: 40px;
             left: 0;
-            background: white;
+            background: var(--card-bg);
             min-width: 200px;
             border-radius: 8px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
@@ -177,7 +189,7 @@
         }
         
         .dropdown-item:hover {
-            background-color: #f1f5f9;
+            background-color: var(--light-color);
             color: var(--primary-color);
         }
 
@@ -239,7 +251,8 @@
             left: -280px;
             height: calc(100vh - 70px);
             width: var(--sidebar-width);
-            background: white;
+            font: var(--text-color); 
+            background: var(--card-bg);
             box-shadow: 2px 0 20px rgba(0,0,0,0.1);
             transition: transform 0.3s ease-in-out;
             z-index: 1040;
@@ -265,7 +278,7 @@
             padding: 0 25px;
             font-size: 12px;
             text-transform: uppercase;
-            color: #64748b;
+            color: #c6cbd3;
             font-weight: 600;
             margin-bottom: 12px;
             letter-spacing: 0.7px;
@@ -275,7 +288,7 @@
             padding: 12px 25px;
             display: flex;
             align-items: center;
-            color: #334155;
+            color: #aeb5bf;
             text-decoration: none;
             transition: all 0.2s ease;
             border-left: 3px solid transparent;
@@ -340,6 +353,26 @@
             opacity: 1;
             visibility: visible;
         }
+
+        .navbar * {
+            color: #94a3b8  !important;
+        }
+        .navbar .logo {
+            color: #2563eb !important;
+        }
+        .navbar .logo-image {
+            filter: none;
+        }
+        .navbar .btn-primary, .navbar .btn-outline {
+            color: #fff !important;
+        }
+        .navbar .btn-outline {
+            border-color: linear-gradient(135deg, #4361ee 0%, #3f37c9 100%);
+        }
+        .navbar .btn-outline:hover {
+            background: #2563eb !important;
+            color: #94a3b8  !important;
+        }
     </style>
 
     {% block additional_styles %}{% endblock %}
@@ -348,7 +381,10 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="navbar-brand">
-            <a href="{{ url_for('main.index') }}" class="logo">LeadGen</a>
+            <img src="{{ url_for('static', filename='image/image.png') }}" alt="SaaSquatch Logo" class="logo-image">
+            <a href="{{ url_for('main.index') }}" class="logo">
+                <span class="logo-saasquatch">SaaSquatch</span> <span class="logo-leads">Leads</span>
+            </a>
         </div>
         <div class="navbar-menu">
             <a href="{{ url_for('main.index') }}" class="nav-link">Home</a>
