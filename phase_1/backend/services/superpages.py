@@ -166,7 +166,8 @@ async def scrape_superpages(search_term: str, location: str, page: Page, max_pag
             
             # Extract businesses from the current page
             results = await extract_businesses(page)
-            yield results
+            for result in results:
+                yield result
             # all_results.extend(results)
             # print(f"Found {len(results)} businesses on page {current_page}")
             

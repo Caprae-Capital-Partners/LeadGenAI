@@ -206,19 +206,26 @@ async def scrape_page(search_term: str, location: str, page_num: int) -> List[Di
 #     return
 
 async def scrape_yellowpages(search_term: str, location: str, max_pages: int = 3) -> AsyncGenerator[Dict[str, str], None]:
-    """Asynchronously scrapes Yellow Pages for business listings, yielding one business at a time."""
+    """Asynchronously scrapes Yellow Pages for business listings, yielding complete pages.
     
+    This function streams results page by page, yielding each batch of businesses
+    as they are found rather than waiting for all pages to be scraped.
+    Each yield is a complete business dictionary that can be processed independently.
+    """
     for page_num in range(1, max_pages + 1):
+        # Scrape each page with a fresh browser instance
         page_businesses = await scrape_page(search_term, location, page_num)
-
+        
         if page_businesses:
-            for biz in page_businesses:
-                yield biz  # ✅ Yield individual business entries
-
+            # Yield each complete business dictionary individually
+            for business in page_businesses:
+                # Make sure the business has all required fields before yielding
+                if business and business.get('Company', 'NA') != 'NA':
+                    yield business
+            
+        # Add a delay between page requests
         if page_num < max_pages:
             await asyncio.sleep(1)
-    
-    # Optionally: don't yield None — just let it finish silently
 
 async def save_to_csv(businesses, filename='yellowpages_data.csv'):
     """Saves the scraped business data to a CSV file."""

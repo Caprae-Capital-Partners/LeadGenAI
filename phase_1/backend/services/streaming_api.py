@@ -52,7 +52,7 @@ async def scraper_stream(industry: str, location: str):
         # If we have new data since last check, send it
         if current_data_count > last_data_count:
             # Send only the new data items
-            new_items = processed_data[last_data_count:current_data_count]
+            new_items = processed_data
             
             batch_data = {
                 "batch": last_data_count // 10 + 1,  # Batch number (just for tracking)
@@ -77,9 +77,21 @@ async def scraper_stream(industry: str, location: str):
                 "total_processed": len(processed_data),
                 "elapsed_time": results.get("elapsed_time", 0)
             }
+            
             yield f"event: done\n"
             yield f"data: {json.dumps(final_data)}\n\n"
             break
+        
+        # if all(status.get("done") for status in results.get("scraper_status", {}).values()):
+        #     final_data = {
+        #         "message": "Scraping completed",
+        #         "total_scraped": results.get("total_scraped", 0),
+        #         "total_processed": len(processed_data),
+        #         "elapsed_time": results.get("elapsed_time", 0)
+        #     }
+        #     yield "event: done\n"
+        #     yield f"data: {json.dumps(final_data)}\n\n"
+        #     break
         
         # Wait a bit before checking for new results
         await asyncio.sleep(2)

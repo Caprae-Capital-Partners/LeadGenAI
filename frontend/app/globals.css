@@ -57,3 +57,36 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Dark theme custom colors */
+.bg-dark-primary {
+  background-color: #121826;
+}
+
+.bg-dark-secondary {
+  background-color: #1a2133;
+}
+
+.bg-dark-tertiary {
+  background-color: #1e2639;
+}
+
+.bg-dark-hover {
+  background-color: #2a3349;
+}
+
+.border-dark {
+  border-color: #2e3a59;
+}
+
+.text-dark-primary {
+  color: #ffffff;
+}
+
+.text-dark-secondary {
+  color: #a0aec0;
+}
+
+.text-dark-muted {
+  color: #64748b;
+}

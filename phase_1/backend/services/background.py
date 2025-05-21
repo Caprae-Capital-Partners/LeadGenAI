@@ -83,7 +83,7 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
             run_scraper(scrape_bbb, "bbb", industry, location, page=bbb_page),
             run_scraper(scrape_lead_by_industry, "google_maps", industry, location, page=gmaps_page),
             run_scraper(scrape_yellowpages, "yellowpages", industry, location, max_pages=5),
-            run_scraper(scrape_hotfrog, "hotfrog", industry, location, max_pages=5),
+            run_scraper(scrape_hotfrog, "hotfrog", industry, location, page=hf_page, max_pages=5),
             run_scraper(scrape_superpages, "superpages", industry, location, page=sp_page, max_pages=5)
         ]
         
@@ -158,8 +158,9 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
             scraper = scraper_func(industry, location, **kwargs)
             if inspect.isasyncgen(scraper):
                 async for item in scraper:
-                    with lock:
-                        state["results"][scraper_name].append(item)
+                    if item is not None:
+                        with lock:
+                            state["results"][scraper_name].append(item)
             else:
                 result_list = await scraper
                 with lock:
@@ -209,7 +210,13 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
                 "processed_data": deepcopy(processed_state["processed_data"]),  # Combine all sources
                 "elapsed_time": time.time() - state["start_time"],
                 "total_scraped": sum(len(r) for r in state["results"].values()),
-                "is_complete": state["is_complete"]
+                "is_complete": state["is_complete"],
+                # "scraper_status": {
+                #     k: {
+                #         "done": not state["in_progress"][k],
+                #         "count": len(state["results"][k])
+                #     } for k in state["results"]
+                # },
             }
             
     def flatten(list_of_lists):
@@ -232,17 +239,19 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
 
                 if total_scraped > processed_state["last_total"]:
                     try:
+                        print(f"Source counts: bbb={len(state['results']['bbb'])}, gmaps={len(state['results']['google_maps'])}, hotfrog={len(state['results']['hotfrog'])}, yellowpages={len(state['results']['yellowpages'])}, superpages={len(state['results']['superpages'])}")
                         merged = merge_data_sources(
                             FIELDNAMES,
                             state["results"]["bbb"],
                             state["results"]["google_maps"],
                             state["results"]["yellowpages"],
-                            state["results"]["hotfrog"]
+                            state["results"]["hotfrog"],
+                            state["results"]["superpages"]
                         )
                         df = pd.DataFrame(merged)
                         parsed = parse_data(df, FIELDNAMES, location)
                         deduped = deduplicate_businesses(parsed.to_dict(orient='records'))
-                        processed_state["processed_data"] = deduped
+                        processed_state["processed_data"] = deduped.copy()
                         processed_state["last_total"] = total_scraped
                         print(f"[Processor] Updated deduplicated list: {len(deduped)} entries")
 

@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState } from "react";
 import { addUniqueIdsToLeads } from "@/lib/leadUtils";
 
 export type Lead = {
-  id: number;
+  lead_id: number;
   company: string;
   website: string;
   industry: string;

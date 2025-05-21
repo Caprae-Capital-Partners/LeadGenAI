@@ -10,10 +10,10 @@ import { ScraperResults } from "@/components/scraper-results"
 import axios from "axios"
 import { AlertCircle, DatabaseIcon } from "lucide-react"
 
-const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/lead-scrape`;
+const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/api/lead-scrape`;
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/industries`;
 const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/lead_scrape`;
-const STREAMING_API = 'http://127.0.0.1:8000/scrape-stream'
+const STREAMING_API = 'http://127.0.0.1:8000/scrape-stream';
 
 // Define interfaces for type safety
 interface LeadData {
@@ -32,7 +32,8 @@ interface LeadData {
   BBB_rating?: string;
   bbb_rating?: string;
   Business_phone?: string;
-  lead_id: number;
+  business_phone?: string;
+  lead_id?: number;
   phone?: string;
   [key: string]: any; // For any other properties we might not know about
 }
@@ -64,8 +65,11 @@ export function Scraper() {
   // Search criteria state
   const [industry, setIndustry] = useState("")
   const [location, setLocation] = useState("")
-  const [scrapedResults, setScrapedResults] = useState<any[]>([])
+  const [scrapedResults, setScrapedResults] = useState<FormattedLead[]>([])
   const controllerRef = useRef<{ abort: () => void } | null>(null)
+  
+  // Track companies we've already seen to prevent duplicates
+  const seenCompaniesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchIndustries = async () => {
@@ -82,8 +86,8 @@ export function Scraper() {
       }
     };
 
-  fetchIndustries();
-}, []);
+    fetchIndustries();
+  }, []);
 
   const handleIndustryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -100,266 +104,273 @@ export function Scraper() {
     }
   };
 
-  // const handleStartScraping = async () => {
-  //   setIsScrapingActive(true)
-  //   setProgress(0)
-  //   setShowResults(true)
-  //   setScrapedResults([])
+  // Format data consistently across all sources
+  const formatLeadData = (item: LeadData, index: number): FormattedLead => ({
+    lead_id: item.lead_id || index,
+    company: item.Company || item.company || "",
+    website: item.Website || item.website || "",
+    industry: item.Industry || item.industry || "",
+    street: item.Street || item.street || "",
+    city: item.City || item.city || "",
+    state: item.State || item.state || "",
+    bbb_rating: item.BBB_rating || item.bbb_rating || "",
+    business_phone: item.Business_phone || item.business_phone || item.phone || "",
+  });
 
-  //   const queryParams = new URLSearchParams({ industry, location })
-  //   const url = `${STREAMING_API}?${queryParams.toString()}`
-  //   const eventSource = new EventSource(url)
+  // Add new leads while avoiding duplicates
+  const addNewLeads = (existingLeads: FormattedLead[], newLeads: FormattedLead[]): FormattedLead[] => {
+    const combinedResults = [...existingLeads];
+    
+    // Use our ref to track seen companies instead of recreating the set each time
+    newLeads.forEach((item: FormattedLead) => {
+      const companyLower = item.company.toLowerCase().trim();
+      if (companyLower && !seenCompaniesRef.current.has(companyLower)) {
+        seenCompaniesRef.current.add(companyLower);
+        combinedResults.push(item);
+      }
+    });
+    
+    return combinedResults;
+  };
 
-  //   controllerRef.current = {
-  //     abort: () => eventSource.close()
-  //   }
-
-  //   eventSource.addEventListener("init", (event) => {
-  //     console.log("Init:", event.data)
-  //     setProgress(5)
-  //   })
-
-  //   eventSource.addEventListener("batch", (event) => {
-  //     try {
-  //       const parsed = JSON.parse(event.data)
-  //       const newItems = parsed.new_items ?? []
-
-  //       if (!Array.isArray(newItems)) {
-  //         console.warn("Expected new_items to be an array, got:", newItems)
-  //         return
-  //       }
-
-  //       console.log("Batch received:", parsed)
-  //       setScrapedResults((prev) => [...prev, ...newItems])
-  //       setProgress((prev) => Math.min(prev + 10, 95))
-  //     } catch (err) {
-  //       console.error("Failed to parse batch event:", err)
-  //     }
-  //   })
-
-  //   eventSource.addEventListener("done", (event) => {
-  //     console.log("Done:", event.data)
-  //     setProgress(100)
-  //     setIsScrapingActive(false)
-  //     setShowResults(true)
-  //     eventSource.close()
-  //   })
-
-  //   eventSource.onerror = (err) => {
-  //     console.error("Streaming error:", err)
-  //     setIsScrapingActive(false)
-  //     setProgress(100)
-  //     eventSource.close()
-  //   }
-  // }
   const handleStartScraping = async () => {
-    setIsScrapingActive(true)
-    setProgress(0)
-    setShowResults(false)
-
+    setIsScrapingActive(true);
+    setProgress(5);
+    setScrapingSource('scraper');
+    
+    // Don't hide results if we're appending to existing results
     if (scrapedResults.length === 0) {
-      setScrapedResults([])
+      setShowResults(true);
+      // Reset our seen companies set if we're starting fresh
+      seenCompaniesRef.current = new Set();
+    } else {
+      // Initialize our seen companies set with existing companies if we're appending
+      scrapedResults.forEach(item => {
+        seenCompaniesRef.current.add(item.company.toLowerCase().trim());
+      });
     }
 
-    const queryParams = new URLSearchParams({ industry, location })
-    const url = `${STREAMING_API}?${queryParams.toString()}`
-    const eventSource = new EventSource(url)
+    interface Batch {
+      batch: number;
+      new_items: LeadItem[]; 
+      total_scraped: number;
+      elapsed_time: number;
+      processed_count: number;
+    }
+
+    interface LeadItem {
+      [key: string]: any; // For any properties with unknown structure
+    }
+
+    // Set up debugging variables to track data
+    let totalProcessedItems = 0;
+    let allBatches: Batch[] = [];
+    let receivedBatchIds = new Set<number>(); // Track received batch IDs to prevent duplicates
+
+    // Create query parameters
+    const queryParams = new URLSearchParams({ 
+      industry, 
+      location 
+    });
+    
+    // Create EventSource connection with explicit parameters
+    const url = `${STREAMING_API}?${queryParams.toString()}`;
+    console.log("Connecting to stream URL:", url);
+    
+    const eventSource = new EventSource(url);
 
     controllerRef.current = {
-      abort: () => eventSource.close()
-    }
+      abort: () => {
+        console.log("Manually closing EventSource connection");
+        eventSource.close();
+      }
+    };
+
+    // Track connection state
+    eventSource.onopen = () => {
+      console.log("EventSource connection opened successfully");
+    };
 
     eventSource.addEventListener("init", (event) => {
-      console.log("Init:", event.data)
-      setProgress(5)
-    })
+      try {
+        const data = JSON.parse(event.data);
+        console.log("Init event received:", data);
+        setProgress(10);
+      } catch (err) {
+        console.error("Failed to parse init event:", event.data, err);
+      }
+    });
 
     eventSource.addEventListener("batch", (event) => {
       try {
-        const parsed = JSON.parse(event.data)
-        let newItems = parsed.new_items ?? []
-
+        const parsed = JSON.parse(event.data);
+        
+        // Check if we've already processed this batch
+        if (parsed.batch && receivedBatchIds.has(parsed.batch)) {
+          console.log(`Skipping duplicate batch ${parsed.batch}`);
+          return;
+        }
+        
+        // Add batch ID to tracking set
+        if (parsed.batch) {
+          receivedBatchIds.add(parsed.batch);
+        }
+        
+        allBatches.push(parsed); // Store all batches for debugging
+        
+        const newItems = parsed.new_items || [];
+        totalProcessedItems += newItems.length;
+        
+        console.log(`Batch ${parsed.batch} received: ${newItems.length} new items, total batched: ${totalProcessedItems}`);
+        console.log("Sample item:", newItems.length > 0 ? newItems[0] : "No items");
+        
         if (!Array.isArray(newItems)) {
-          console.warn("Expected new_items to be an array, got:", newItems)
-          return
+          console.warn("Expected new_items to be an array, got:", typeof newItems);
+          return;
         }
 
-        // Replace NaN with null manually if needed
-        newItems = JSON.parse(
-          JSON.stringify(newItems).replace(/:NaN/g, ':null')
-        )
-
-        // Format the data to match your app's expected structure
-        const formattedData = newItems.map((item: LeadData): FormattedLead => ({
-          lead_id: item.lead_id,
-          company: item.Company || item.company || "",
-          website: item.Website || item.website || "",
-          industry: item.Industry || item.industry || "",
-          street: item.Street || item.street || "",
-          city: item.City || item.city || "",
-          state: item.State || item.state || "",
-          bbb_rating: item.BBB_rating || item.bbb_rating || "",
-          business_phone: item.Business_phone || item.phone || "",
-        }))
-
-        // Remove duplicates by company name
+        if (newItems.length === 0) {
+          console.log("Received empty batch, skipping processing");
+          return;
+        }
+        
+        // Format the new items with proper IDs
+        const formattedItems = newItems.map((item: LeadItem, index: number) => 
+          formatLeadData(item, Date.now() + index)
+        );
+        
+        // Add new items to results, avoiding duplicates
         setScrapedResults((prev) => {
-          const existingCompanies = new Set(prev.map(r => r.company.toLowerCase()))
-          const uniqueNew = formattedData.filter(item => !existingCompanies.has(item.company.toLowerCase()))
-          return [...prev, ...uniqueNew]
-        })
-
-        setProgress((prev) => Math.min(prev + 10, 95))
+          const updatedResults = addNewLeads(prev, formattedItems);
+          console.log(`Current lead count: ${updatedResults.length}`);
+          return updatedResults;
+        });
+        
+        // Update progress based on actual data received
+        // Calculate progress as a percentage of expected total (250 leads)
+        setProgress((prev) => {
+          // Calculate a dynamic progress that increases with each batch
+          // but slows down as we approach 95% to avoid jumping too quickly
+          const baseProgress = Math.min(10 + (totalProcessedItems / 10), 95);
+          return Math.max(prev, baseProgress); // Never decrease progress
+        });
       } catch (err) {
-        console.error("Failed to parse batch event:", err)
+        console.error("Failed to parse batch event:", err);
+        console.error("Raw event data:", event.data);
       }
-    })
+    });
+
+    // Add handler for the 'complete' event that backend sends
+    eventSource.addEventListener("complete", (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("Complete event received:", data);
+      } catch (err) {
+        console.error("Failed to parse complete event:", err);
+      }
+    });
+
+    eventSource.addEventListener("ping", (event) => {
+        console.log("Heartbeat:", JSON.parse(event.data));
+    });
 
     eventSource.addEventListener("done", (event) => {
-      console.log("Done:", event.data)
-      setProgress(100)
-      setIsScrapingActive(false)
-      setShowResults(true)
-      eventSource.close()
-    })
+      try {
+        const data = JSON.parse(event.data);
+        console.log("Done event received:", data);
+        console.log("Total items received across all batches:", totalProcessedItems);
+        console.log("All batches summary:", allBatches.map((b: Batch) => b.new_items?.length || 0));
+        
+        setProgress(100);
+        setIsScrapingActive(false);
+        
+        // Final check of results and set needMoreLeads flag
+        setScrapedResults((currentResults) => {
+          console.log(`Final lead count: ${currentResults.length}`);
+          setNeedMoreLeads(currentResults.length < 250);
+          return currentResults;
+        });
+      } catch (err) {
+        console.error("Failed to parse done event:", err);
+      } finally {
+        console.log("Closing EventSource connection");
+        eventSource.close();
+      }
+    });
 
+    // Error handler 
     eventSource.onerror = (err) => {
-      console.error("Streaming error:", err)
-      setIsScrapingActive(false)
-      setProgress(100)
-      eventSource.close()
-    }
-  }
-
-
-  // const handleStartScraping = async () => {
-  //   setIsScrapingActive(true)
-  //   setProgress(0)
-  //   setScrapingSource('scraper')
-  //   // Don't hide results if we're appending to existing results
-  //   if (scrapedResults.length === 0) {
-  //     setShowResults(false)
-  //   }
-
-  //   const controller = new AbortController()
-  //   controllerRef.current = controller
-
-  //   try {
-  //     const response = await axios.post(
-  //       SCRAPER_API,
-  //       { industry, location },
-  //       { signal: controller.signal }
-  //     )
-
-  //     let data = response.data
-  //     // Parse the data if it's a string
-  //     if (typeof data === 'string') {
-  //       try {
-  //         // Replace NaN with null before parsing
-  //         const sanitizedData = data.replace(/:NaN/g, ':null')
-  //         data = JSON.parse(sanitizedData)
-  //       } catch (e) {
-  //         console.error("Failed to parse response data:", e)
-  //         throw new Error("Invalid response format from server")
-  //       }
-  //     }
-      
-  //     // console.log("Raw API Response:", data)
-  //     // console.log("Response type:", typeof data)
-  //     // console.log("Is Array?", Array.isArray(data))
-      
-  //     // Format the new data in the same way as handleCollectData
-  //     const formattedData = data.map((item: LeadData): FormattedLead => ({
-  //       lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
-  //       company: item.Company || item.company || "",
-  //       website: item.Website || item.website || "",
-  //       industry: item.Industry || item.industry || "",
-  //       street: item.Street || item.street || "",
-  //       city: item.City || item.city || "",
-  //       state: item.State || item.state || "",
-  //       bbb_rating: item.BBB_rating || item.bbb_rating || "",
-  //       business_phone: item.Business_phone || item.phone || "",
-  //     }));
-      
-  //     // Append new results to existing results if we're scraping more
-  //     if (scrapedResults.length > 0 && needMoreLeads) {
-  //       // Combine results and remove duplicates based on company name
-  //       const combinedResults = [...scrapedResults]
-  //       const existingCompanies = new Set(scrapedResults.map(r => r.company.toLowerCase()))
-        
-  //       formattedData.forEach((item: FormattedLead) => {
-  //         if (!existingCompanies.has(item.company.toLowerCase())) {
-  //           combinedResults.push(item)
-  //         }
-  //       })
-        
-  //       setScrapedResults(combinedResults)
-  //       // Only need more leads if we're still under 250
-  //       setNeedMoreLeads(combinedResults.length < 250)
-  //     } else {
-  //       setScrapedResults(formattedData)
-  //       setNeedMoreLeads(formattedData.length < 250)
-  //     }
-      
-  //     setShowResults(true)
-  //   } catch (error: any) {
-  //     if (axios.isCancel(error)) {
-  //       console.warn("Scraping canceled")
-  //     } else {
-  //       console.error("Scraping failed:", error)
-  //     }
-  //   } finally {
-  //     setIsScrapingActive(false)
-  //     setProgress(100)
-  //     controllerRef.current = null
-  //   }
-  // }
+      console.error("EventSource error:", err);
+      setIsScrapingActive(false);
+      setProgress(100);
+      console.log("Closing EventSource connection due to error");
+      eventSource.close();
+    };
+  };
 
   const handleCollectData = async () => {
-    setIsScrapingActive(true)
-    setProgress(0)
-    setShowResults(false)
-    setScrapingSource('database')
+    setIsScrapingActive(true);
+    setProgress(0);
+    setShowResults(false);
+    setScrapingSource('database');
+    
+    // Reset our seen companies set
+    seenCompaniesRef.current = new Set();
 
-    const controller = new AbortController()
-    controllerRef.current = controller
+    const controller = new AbortController();
+    controllerRef.current = {
+      abort: () => controller.abort()
+    };
 
     try {
       const response = await axios.post(
         FETCH_DB_API,
         { industry, location },
         { signal: controller.signal }
-      )
+      );
 
-      const data = response.data
-      const formattedData = data.map((item: LeadData): FormattedLead => ({
-        id: -1, // Temporary ID that will be replaced by addUniqueIdsToLeads
-        company: item.Company || item.company || "",
-        website: item.Website || item.website || "",
-        industry: item.Industry || item.industry || "",
-        street: item.Street || item.street || "",
-        city: item.City || item.city || "",
-        state: item.State || item.state || "",
-        bbb_rating: item.BBB_rating || item.bbb_rating || "",
-        business_phone: item.phone || item.phone || "",
-      }));
-      console.log("Scraped Results:", formattedData)
-      setScrapedResults(formattedData)
-      setShowResults(true)
-      setNeedMoreLeads(formattedData.length < 250)
+      const data = response.data;
+      const formattedData = data.map((item: LeadData, index: number) => formatLeadData(item, index));
+      
+      // Initialize our seen companies with these results
+      formattedData.forEach((item: { company: string }) => {
+        if (item.company.trim()) {
+          seenCompaniesRef.current.add(item.company.toLowerCase().trim());
+        }
+      });
+      
+      setScrapedResults(formattedData);
+      setShowResults(true);
+      setNeedMoreLeads(formattedData.length < 250);
     } catch (error: any) {
       if (axios.isCancel(error)) {
-        console.warn("Scraping canceled")
+        console.warn("Database fetch canceled");
       } else {
-        console.error("Scraping failed:", error)
+        console.error("Database fetch failed:", error);
       }
     } finally {
-      setIsScrapingActive(false)
-      setProgress(100)
-      controllerRef.current = null
+      setIsScrapingActive(false);
+      setProgress(100);
+      controllerRef.current = null;
     }
-  }
+  };
 
+  const handleClearSearch = () => {
+    setIndustry('');
+    setLocation('');
+    setShowResults(false);
+    setScrapedResults([]);
+    setNeedMoreLeads(false);
+    seenCompaniesRef.current = new Set();
+  };
+
+  const handleCancelScraping = () => {
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+    }
+    setIsScrapingActive(false);
+    setProgress(0);
+  };
 
   return (
     <div className="space-y-6">
@@ -387,7 +398,7 @@ export function Scraper() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <Label htmlFor="industry">Industry</Label>
               <Input
                 id="industry"
@@ -396,19 +407,19 @@ export function Scraper() {
                 onChange={handleIndustryChange}
                 onFocus={() => {
                   if (industry.trim() !== "") {
-                    setShowDropdown(true); // Show dropdown only if input is non-empty
+                    setShowDropdown(true);
                   }
                 }}
-                onBlur={() => setTimeout(() => setShowDropdown(false), 200)} // Hide dropdown on blur
+                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
               />
               {showDropdown && (
                 <ul
-                  className="absolute bg-white border border-gray-300 rounded max-h-52 overflow-y-auto w-[38%] z-[1000] shadow-lg mt-1"
+                  className="absolute border border-border rounded max-h-52 overflow-y-auto w-full z-[1000] shadow-lg mt-1 bg-background text-foreground transition-colors duration-150"
                 >
                   {filteredIndustries.map((ind, index) => (
                     <li
                       key={index}
-                      className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                      className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors duration-100"
                       onClick={() => {
                         setIndustry(ind);
                         setShowDropdown(false);
@@ -432,36 +443,30 @@ export function Scraper() {
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button variant="outline" onClick={() => {
-            setIndustry('');
-            setLocation('');
-            setShowResults(false);
-          }}>Clear</Button>
-          <Button
-            className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
-            onClick={handleCollectData}
-            disabled={isScrapingActive || !industry || !location}
+          <Button 
+            variant="outline" 
+            onClick={handleClearSearch}
           >
-            <DatabaseIcon className="mr-2 h-4 w-4" />
-            Find Companies
+            Clear
           </Button>
-           <Button
+          <div className="flex gap-2">
+            <Button
+              className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
+              onClick={handleCollectData}
+              disabled={isScrapingActive || !industry || !location}
+            >
+              <DatabaseIcon className="mr-2 h-4 w-4" />
+              Find Companies
+            </Button>
+            <Button
               variant="destructive"
               disabled={!isScrapingActive}
-              onClick={() => {
-                if (controllerRef.current) {
-                  controllerRef.current.abort()
-                }
-                setIsScrapingActive(false)
-                setProgress(0)
-                setShowResults(false)
-                setScrapedResults([])
-            }}
-          >
-            Cancel
-          </Button>
+              onClick={handleCancelScraping}
+            >
+              Cancel
+            </Button>
+          </div>
         </CardFooter>
-         
       </Card>
 
       {isScrapingActive && (

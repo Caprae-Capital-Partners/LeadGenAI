@@ -79,7 +79,7 @@ const mockData = [
 
 export function DataPreview() {
   const { leads } = useLeads()
-  const [selectedRows, setSelectedRows] = useState<number[]>(leads.map((row) => row.id))
+  const [selectedRows, setSelectedRows] = useState<number[]>(leads.map((row) => row.lead_id))
   const [searchTerm, setSearchTerm] = useState("")
   
   // Pagination state
@@ -119,7 +119,7 @@ export function DataPreview() {
     if (selectedRows.length === leads.length) {
       setSelectedRows([])
     } else {
-      setSelectedRows(leads.map((row) => row.id))
+      setSelectedRows(leads.map((row) => row.lead_id))
     }
   }
 
@@ -291,9 +291,9 @@ export function DataPreview() {
           </TableHeader>
           <TableBody>
             {currentItems.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow key={row.lead_id}>
                 <TableCell>
-                  <Checkbox checked={selectedRows.includes(row.id)} onCheckedChange={() => toggleSelectRow(row.id)} />
+                  <Checkbox checked={selectedRows.includes(row.lead_id)} onCheckedChange={() => toggleSelectRow(row.lead_id)} />
                 </TableCell>
                 <TableCell>
                   <div className="font-medium">{normalizeDisplayValue(row.company)}</div>
@@ -336,7 +336,7 @@ export function DataPreview() {
         </div>
         <Button
           variant="outline"
-          onClick={() => setSelectedRows(leads.map((row) => row.id))}
+          onClick={() => setSelectedRows(leads.map((row) => row.lead_id))}
           disabled={selectedRows.length === leads.length}
         >
           Select All

@@ -29,37 +29,25 @@ def merge_data_sources(fieldnames: List[str],
                        data4: List[Dict[str, str]] = [],
                        data5: List[Dict[str, str]] = []) -> List[Dict[str, str]]:
     merged = []
-    seen_keys = set()  # Used to track unique records by Company and Address
+    seen_keys = set()
 
     def get_key(record: Dict[str, str]) -> str:
-        """Generate a unique key for deduplication based on Company and Address."""
         company = record.get("Company", "").strip().lower()
         address = record.get("Address", "").replace("[G]", "").strip().lower()
         return company + address
 
     def add_record(record: Dict[str, str]):
-        """Add a record to the merged list, ensuring no duplicates."""
+        if not isinstance(record, dict):
+            print(f"[WARN] Skipping invalid record: {record}")
+            return
         key = get_key(record)
         if key not in seen_keys:
             seen_keys.add(key)
-            # Normalize the record to include all required fields
             normalized_record = {field: record.get(field, "NA") for field in fieldnames}
             merged.append(normalized_record)
 
-    # Process each data source
-    for record in data1:
-        add_record(record)
-
-    for record in data2:
-        add_record(record)
-
-    for record in data3:
-        add_record(record)
-        
-    for record in data4:
-        add_record(record)
-        
-    for record in data5:
-        add_record(record)
+    for data in (data1, data2, data3, data4, data5):
+        for record in data:
+            add_record(record)
 
     return merged

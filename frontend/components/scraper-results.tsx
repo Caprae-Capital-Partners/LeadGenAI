@@ -6,15 +6,23 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Download, Search, ArrowRight } from "lucide-react"
+import { Download, Search, ArrowRight, ExternalLink, Save, Trash2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
-import { useLeads } from "@/components/LeadsProvider"
+import { Lead, useLeads } from "@/components/LeadsProvider"
 import { addUniqueIdsToLeads } from "@/lib/leadUtils"
-
-interface ScraperResultsProps {
-  data: any[]
-}
+import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import axios from "axios"
 
 export function ScraperResults({ data }: { data: string | any[] }) {
   const router = useRouter()
@@ -24,43 +32,69 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   const { setLeads: setGlobalLeads } = useLeads()
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
 
+  // Updation state
+  const [updatedLeads, setUpdatedLeads] = useState<{ lead_id: number }[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+  const UPDATE_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/batch`
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(25)
+
+  const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
+  const [selectAll, setSelectAll] = useState(false)
+  const [isIndeterminate, setIsIndeterminate] = useState(false)
+
+  // Add effect to handle indeterminate state
   useEffect(() => {
-  let parsedData;
-  try {
-    // Replace NaN with null in the JSON string if data is a string
-    const sanitizedData = typeof data === "string" ? data.replace(/NaN/g, "null") : data;
-    // Parse the sanitized data
-    parsedData = typeof sanitizedData === "string" ? JSON.parse(sanitizedData) : sanitizedData;
-    // Validate that parsedData is an array
-    if (!Array.isArray(parsedData)) {
-      console.error("Invalid data format: expected an array", parsedData);
+    setIsIndeterminate(
+      selectedCompanies.length > 0 &&
+      selectedCompanies.length < leads.length
+    );
+  }, [selectedCompanies, leads.length]);
+
+  useEffect(() => {
+    let parsedData;
+    try {
+      // Replace NaN with null in the JSON string if data is a string
+      const sanitizedData = typeof data === "string" ? data.replace(/NaN/g, "null") : data;
+      // Parse the sanitized data
+      parsedData = typeof sanitizedData === "string" ? JSON.parse(sanitizedData) : sanitizedData;
+      // Validate that parsedData is an array
+      if (!Array.isArray(parsedData)) {
+        console.error("Invalid data format: expected an array", parsedData);
+        setLeads([]);
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to parse data:", error);
       setLeads([]);
       return;
     }
-  } catch (error) {
-    console.error("Failed to parse data:", error);
-    setLeads([]);
-    return;
-  }
-  // Normalize the data
-  const normalizedWithoutIds = parsedData.map((item, idx) => ({
-    id: -1, // Temporary ID that will be replaced by addUniqueIdsToLeads
-    company: item.Company || item.company || "",
-    website: item.Website || item.website || "",
-    industry: item.Industry || item.industry || "",
-    street: item.Street || item.street || "",
-    city: item.City || item.city || "",
-    state: item.State || item.state || "",
-    bbb_rating: item.BBB_rating || item.bbb_rating || "",
-    business_phone: item.Business_phone || item.business_phone || "",
-  }));
-  
-  // Apply unique IDs using the hash function
-  const normalized = addUniqueIdsToLeads(normalizedWithoutIds);
-  
-  setLeads(normalized)
-  setGlobalLeads(normalized);
-}, [data]);
+    const defaultNA = (val: any) =>
+      val === undefined || val === null || val === "" || val === "NA" ? "N/A" : val;
+
+    // Normalize the data
+    const normalizedWithoutIds = parsedData.map((item, idx) => ({
+      lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
+      company: defaultNA(item.Company || item.company),
+      website: defaultNA(item.Website || item.website),
+      industry: defaultNA(item.Industry || item.industry),
+      street: defaultNA(item.Street || item.street),
+      city: defaultNA(item.City || item.city),
+      state: defaultNA(item.State || item.state),
+      bbb_rating: defaultNA(item.BBB_rating || item.bbb_rating),
+      business_phone: defaultNA(item.Business_phone || item.business_phone)
+    }));
+    
+    // Apply unique IDs using the hash function
+    const normalized = addUniqueIdsToLeads(normalizedWithoutIds);
+    
+    setLeads(normalized)
+    setGlobalLeads(normalized);
+    // Reset to first page when data changes
+    setCurrentPage(1);
+  }, [data]);
 
   // Auto-resize textareas
   useEffect(() => {
@@ -93,29 +127,95 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     }
   }, [leads]);
 
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const handleCellChange = (rowIdx: number, field: string, value: string) => {
     setLeads(prev =>
       prev.map((row, idx) =>
         idx === rowIdx ? { ...row, [field]: value } : row
       )
-    )
-    
+    );
+  
+    const leadId = leads[rowIdx].lead_id;
+  
+    setUpdatedLeads((prev: { lead_id: number }[]) => {
+      const existing = prev.find((item: { lead_id: number }) => item.lead_id === leadId);
+      
+      if (existing) {
+        return prev.map((item: { lead_id: number }) =>
+          item.lead_id === leadId
+            ? { ...item, [field]: value }
+            : item
+        );
+      } else {
+        return [...prev, { lead_id: leadId, [field]: value }];
+      }
+    });
+  
     // Resize the textarea after content change
     setTimeout(() => {
-      const index = field === "company" ? rowIdx * 3 : 
-                  field === "industry" ? rowIdx * 3 + 1 : 
-                  field === "street" ? rowIdx * 3 + 2 : -1;
-      
+      const index = field === "company" ? rowIdx * 3 :
+                    field === "industry" ? rowIdx * 3 + 1 :
+                    field === "street" ? rowIdx * 3 + 2 : -1;
+  
       if (index >= 0 && textareaRefs.current[index]) {
         const textarea = textareaRefs.current[index];
         textarea.style.height = 'auto';
         textarea.style.height = textarea.scrollHeight + 'px';
       }
     }, 0);
-  }
+  };
 
   const handleNext = () => {
     router.push("?tab=enhancement")
+  }
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Make API call to batch update endpoint
+      const response = await axios.put(UPDATE_DB_API,updatedLeads)
+      const result = response.data;
+
+      toast.success(`Updated ${result.updated || updatedLeads.length} lead(s) successfully.`);
+
+      if (result.failed && result.failed.length > 0) {
+        toast.warning(`${result.failed.length} lead(s) failed to update.`);
+      }
+      setUpdatedLeads([]);
+      setGlobalLeads(leads)
+           
+    } catch (error: any) {
+      console.error('Error saving leads:', error);
+      toast.error('Failed to save leads. Please try again.');
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedCompanies([])
+    } else {
+      setSelectedCompanies(currentItems.map((company) => company.lead_id))
+    }
+    setSelectAll(!selectAll)
+  }
+
+  const handleSelectCompany = (id: number) => {
+    if (selectedCompanies.includes(id)) {
+      setSelectedCompanies(selectedCompanies.filter((companyId) => companyId !== id))
+      setSelectAll(false)
+    } else {
+      const updated = [...selectedCompanies, id]
+      setSelectedCompanies(updated)
+      if (updated.length === leads.length) {
+        setSelectAll(true)
+      }
+    }
   }
 
   const filteredResults = leads.filter(
@@ -125,6 +225,57 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       result.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
       result.state.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(filteredResults.length / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredResults.slice(indexOfFirstItem, indexOfLastItem)
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    
+    if (totalPages <= 7) {
+      // Show all pages if there are 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Always show first and last page, with ellipsis for hidden pages
+      pageNumbers.push(1);
+      
+      // Determine range to show around current page
+      let startPage = Math.max(2, currentPage - 2);
+      let endPage = Math.min(totalPages - 1, currentPage + 2);
+      
+      // Adjust if we're near the beginning or end
+      if (currentPage <= 4) {
+        endPage = 5;
+      } else if (currentPage >= totalPages - 3) {
+        startPage = totalPages - 4;
+      }
+      
+      // Add ellipsis if needed
+      if (startPage > 2) {
+        pageNumbers.push('ellipsis');
+      }
+      
+      // Add middle pages
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+      
+      // Add ellipsis if needed
+      if (endPage < totalPages - 1) {
+        pageNumbers.push('ellipsis');
+      }
+      
+      pageNumbers.push(totalPages);
+    }
+    
+    return pageNumbers;
+  };
 
   const exportCSV = () => {
     const csvRows = [
@@ -171,10 +322,73 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     else if (exportFormat === "excel") exportExcel()
     else if (exportFormat === "json") exportJSON()
   }
+
+  // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
+  const cleanUrlForDisplay = (url: string): string => {
+    if (!url || typeof url !== 'string' || url === "N/A" || url === "NA") return url;
+    
+    // First remove http://, https://, and www.
+    let cleanUrl = url.replace(/^(https?:\/\/)?(www\.)?/i, "");
+    
+    // Then truncate everything after the domain (matches common TLDs)
+    const domainMatch = cleanUrl.match(/^([^\/\?#]+\.(com|org|net|io|ai|co|gov|edu|app|dev|me|info|biz|us|uk|ca|au|de|fr|jp|ru|br|in|cn|nl|se)).*$/i);
+    if (domainMatch) {
+      return domainMatch[1];
+    }
+    
+    // If no common TLD found, just truncate at the first slash, question mark or hash
+    return cleanUrl.split(/[\/\?#]/)[0];
+  }
+
   const normalizeDisplayValue = (value: any) => {
-    return value === null || value === undefined || value === "" ? "N/A" : value
+    if (value === null || value === undefined) return "";
+    if (value === "NA") return "N/A";
+    return value;
   }
   
+  const [isDeleting, setIsDeleting] = useState(false)
+  const DELETE_LEADS_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/delete-multiple`
+  
+  const handleDelete = async () => {
+    if (selectedCompanies.length === 0) {
+      toast.error("Please select at least one lead to delete");
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await axios.post(
+        DELETE_LEADS_API,
+        [
+          {
+            "lead_ids": selectedCompanies
+          }
+        ],
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.status === "success") {
+        toast.success(response.data.message);
+        setLeads(prev => prev.filter(lead => !selectedCompanies.includes(lead.lead_id)));
+        setGlobalLeads(prev => prev.filter(lead => !selectedCompanies.includes(lead.lead_id)));
+        setSelectedCompanies([]);
+        setSelectAll(false);
+      } else {
+        throw new Error(response.data.message || "Failed to delete leads");
+      }
+    } catch (error: any) {
+      console.error('Error deleting leads:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete leads. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <Card>
@@ -182,7 +396,10 @@ export function ScraperResults({ data }: { data: string | any[] }) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Company Search Results</CardTitle>
-            <CardDescription>{leads.length} companies found</CardDescription>
+            <CardDescription>
+              {filteredResults.length} companies found
+              {selectedCompanies.length > 0 && ` • ${selectedCompanies.length} selected`}
+            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -199,10 +416,77 @@ export function ScraperResults({ data }: { data: string | any[] }) {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Pagination controls */}
+        {filteredResults.length > 0 && (
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredResults.length)} of {filteredResults.length} results
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                setItemsPerPage(Number(value));
+                setCurrentPage(1); // Reset to first page when changing items per page
+              }}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Items per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                  <SelectItem value="100">100 per page</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      aria-disabled={currentPage === 1}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  
+                  {getPageNumbers().map((page, index) => (
+                    <PaginationItem key={index}>
+                      {page === 'ellipsis' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          isActive={page === currentPage}
+                          onClick={() => setCurrentPage(Number(page))}
+                        >
+                          {page}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      aria-disabled={currentPage === totalPages}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          </div>
+        )}
+        
         <div className="rounded-md border">
           <Table className="w-full" fixedLayout={false}>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectAll}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
                 <TableHead className="w-[18%] break-words">Company</TableHead>
                 <TableHead className="w-[15%] break-words">Industry</TableHead>
                 <TableHead className="w-[25%] break-words">Address</TableHead>
@@ -212,85 +496,146 @@ export function ScraperResults({ data }: { data: string | any[] }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredResults.length > 0 ? (
-                filteredResults.map((result, rowIdx) => (
-                  <TableRow key={result.id}>
-                    <TableCell className="break-words">
-                      <textarea
-                        className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                        value={normalizeDisplayValue(result.company)}
-                        onChange={e => handleCellChange(rowIdx, "company", e.target.value)}
-                        rows={1}
-                        ref={(el) => {
-                          textareaRefs.current[rowIdx * 3] = el;
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell className="break-words">
-                      <textarea
-                        className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                        value={normalizeDisplayValue(result.industry)}
-                        onChange={e => handleCellChange(rowIdx, "industry", e.target.value)}
-                        rows={1}
-                        ref={(el) => {
-                          textareaRefs.current[rowIdx * 3 + 1] = el;
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell className="break-words">
-                      <textarea
-                        className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                        value={normalizeDisplayValue(result.street)}
-                        onChange={e => handleCellChange(rowIdx, "street", e.target.value)}
-                        placeholder="Street"
-                        rows={1}
-                        ref={(el) => {
-                          textareaRefs.current[rowIdx * 3 + 2] = el;
-                        }}
-                      />
-                      <div className="flex gap-1 mt-1">
-                        <input
-                          className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
-                          value={normalizeDisplayValue(result.city)}
-                          onChange={e => handleCellChange(rowIdx, "city", e.target.value)}
-                          placeholder="City"
+              {currentItems.length > 0 ? (
+                currentItems.map((result, rowIdx) => {
+                  // Calculate the actual index in the filtered results
+                  const actualIndex = indexOfFirstItem + rowIdx;
+                  return (
+                    <TableRow key={result.lead_id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedCompanies.includes(result.lead_id)}
+                          onCheckedChange={() => handleSelectCompany(result.lead_id)}
+                          aria-label={`Select ${result.company}`}
                         />
-                        <input
-                          className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
-                          value={normalizeDisplayValue(result.state)}
-                          onChange={e => handleCellChange(rowIdx, "state", e.target.value)}
-                          placeholder="State"
+                      </TableCell>
+                      <TableCell className="break-words">
+                        <textarea
+                          className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
+                          value={normalizeDisplayValue(result.company ?? "")}
+                          onChange={e => handleCellChange(actualIndex, "company", e.target.value)}
+                          rows={1}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "company", "N/A")
+                            }
+                          }}
+                          ref={(el) => {
+                            textareaRefs.current[actualIndex * 3] = el;
+                          }}
                         />
-                      </div>
-                    </TableCell>
-                    <TableCell className="break-words">
-                      <input
-                        className="border-b w-full bg-transparent break-words"
-                        value={normalizeDisplayValue(result.bbb_rating)}
-                        onChange={e => handleCellChange(rowIdx, "bbb_rating", e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell className="break-words">
-                      {normalizeDisplayValue(result.business_phone)
-                        .split(",")
-                        .map((phone: string, i: number) => (
-                          <div key={i} className="break-words">
-                            {normalizeDisplayValue(phone.trim())}
-                          </div>
-                        ))}
-                    </TableCell>
-                    <TableCell>
-                      <input
-                        className="border-b w-full bg-transparent"
-                        value={normalizeDisplayValue(result.website)}
-                        onChange={e => handleCellChange(rowIdx, "website", e.target.value)}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell className="break-words">
+                        <textarea
+                          className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
+                          value={normalizeDisplayValue(result.industry ?? "")}
+                          onChange={e => handleCellChange(actualIndex, "industry", e.target.value)}
+                          rows={1}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "industry", "N/A")
+                            }
+                          }}
+                          ref={(el) => {
+                            textareaRefs.current[actualIndex * 3 + 1] = el;
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="break-words">
+                        <textarea
+                          className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
+                          value={normalizeDisplayValue(result.street)}
+                          onChange={e => handleCellChange(actualIndex, "street", e.target.value)}
+                          placeholder="Street"
+                          rows={1}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "street", "N/A")
+                            }
+                          }}
+                          ref={(el) => {
+                            textareaRefs.current[actualIndex * 3 + 2] = el;
+                          }}
+                        />
+                        <div className="flex gap-1 mt-1">
+                          <input
+                            className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
+                            value={normalizeDisplayValue(result.city)}
+                            onChange={e => handleCellChange(actualIndex, "city", e.target.value)}
+                            onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "city", "N/A")
+                            }
+                          }}
+                            placeholder="City"
+                          />
+                          <input
+                            className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
+                            value={normalizeDisplayValue(result.state)}
+                            onChange={e => handleCellChange(actualIndex, "state", e.target.value)}
+                            onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "state", "N/A")
+                            }
+                          }}
+                            placeholder="State"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="break-words">
+                        <input
+                          className="border-b w-full bg-transparent break-words"
+                          value={normalizeDisplayValue(result.bbb_rating)}
+                          onChange={e => handleCellChange(actualIndex, "bbb_rating", e.target.value)}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "bbb_rating", "N/A")
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="break-words">
+                        {normalizeDisplayValue(result.business_phone)
+                          .split(",")
+                          .map((phone: string, i: number) => (
+                            <div key={`${result.lead_id}-phone-${i}`} className="break-words">
+                              {normalizeDisplayValue(phone.trim())}
+                            </div>
+                          ))}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <input
+                            className="border-b w-full bg-transparent"
+                            value={result.website ? cleanUrlForDisplay(normalizeDisplayValue(result.website)) : ""}
+                            onChange={e => handleCellChange(actualIndex, "website", e.target.value)}
+                            onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "website", "N/A")
+                            }
+                          }}
+                            placeholder="Website (domain only)"
+                          />
+                          {result.website && normalizeDisplayValue(result.website) !== "N/A" && normalizeDisplayValue(result.website) !== "NA" && (
+                            <a
+                              href={result.website.toString().startsWith('http') ? result.website : `https://${result.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700"
+                              title="Open website in new tab"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No results found.
                   </TableCell>
                 </TableRow>
@@ -302,6 +647,23 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       <CardFooter className="flex justify-between">
         <div className="text-sm text-muted-foreground" />
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleDelete}
+            disabled={isDeleting || selectedCompanies.length === 0}
+            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {isDeleting ? "Deleting..." : `Delete Selected (${selectedCompanies.length})`}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
           <Button
             className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
             onClick={handleNext}
