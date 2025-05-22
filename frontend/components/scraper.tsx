@@ -161,11 +161,11 @@ export function Scraper() {
         })
         
         setScrapedResults(combinedResults)
-        // Only need more leads if we're still under 250
-        setNeedMoreLeads(combinedResults.length < 250)
+        // Only need more leads if we're still under 100
+        setNeedMoreLeads(combinedResults.length < 100)
       } else {
         setScrapedResults(formattedData)
-        setNeedMoreLeads(formattedData.length < 250)
+        setNeedMoreLeads(formattedData.length < 100)
       }
       
       setShowResults(true)
@@ -213,7 +213,7 @@ export function Scraper() {
       // console.log("Scraped Results:", formattedData)
       setScrapedResults(formattedData)
       setShowResults(true)
-      setNeedMoreLeads(formattedData.length < 250)
+      setNeedMoreLeads(formattedData.length < 100)
     } catch (error: any) {
       if (axios.isCancel(error)) {
         console.warn("Scraping canceled")
@@ -360,7 +360,7 @@ export function Scraper() {
               <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
               <div>
                 <p className="font-medium">Only {scrapedResults.length} leads found</p>
-                <p className="text-sm">We recommend at least 250 leads for best results. Click "Scrape More Leads" above to find additional leads.</p>
+                <p className="text-sm">We recommend at least 100 leads for best results. Click "Scrape More Leads" above to find additional leads.</p>
               </div>
             </div>
           )}

@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Download, Search, ArrowRight, ExternalLink, Save } from "lucide-react"
+import { Download, Search, ArrowRight, ExternalLink, Save, Trash2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
 import { Lead, useLeads } from "@/components/LeadsProvider"
 import { addUniqueIdsToLeads } from "@/lib/leadUtils"
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Pagination,
   PaginationContent,
@@ -32,56 +33,68 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
 
   // Updation state
-  const [updatedLeads, setUpdatedLeads] = useState<{ lead_id: number }[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const UPDATE_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/batch`;
+  const [updatedLeads, setUpdatedLeads] = useState<{ lead_id: number }[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+  const UPDATE_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/batch`
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
 
+  const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
+  const [selectAll, setSelectAll] = useState(false)
+  const [isIndeterminate, setIsIndeterminate] = useState(false)
+
+  // Add effect to handle indeterminate state
   useEffect(() => {
-  let parsedData;
-  try {
-    // Replace NaN with null in the JSON string if data is a string
-    const sanitizedData = typeof data === "string" ? data.replace(/NaN/g, "null") : data;
-    // Parse the sanitized data
-    parsedData = typeof sanitizedData === "string" ? JSON.parse(sanitizedData) : sanitizedData;
-    // Validate that parsedData is an array
-    if (!Array.isArray(parsedData)) {
-      console.error("Invalid data format: expected an array", parsedData);
+    setIsIndeterminate(
+      selectedCompanies.length > 0 &&
+      selectedCompanies.length < leads.length
+    );
+  }, [selectedCompanies, leads.length]);
+
+  useEffect(() => {
+    let parsedData;
+    try {
+      // Replace NaN with null in the JSON string if data is a string
+      const sanitizedData = typeof data === "string" ? data.replace(/NaN/g, "null") : data;
+      // Parse the sanitized data
+      parsedData = typeof sanitizedData === "string" ? JSON.parse(sanitizedData) : sanitizedData;
+      // Validate that parsedData is an array
+      if (!Array.isArray(parsedData)) {
+        console.error("Invalid data format: expected an array", parsedData);
+        setLeads([]);
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to parse data:", error);
       setLeads([]);
       return;
     }
-  } catch (error) {
-    console.error("Failed to parse data:", error);
-    setLeads([]);
-    return;
-  }
-   const defaultNA = (val: any) =>
-    val === undefined || val === null || val === "" || val === "NA" ? "N/A" : val;
+    const defaultNA = (val: any) =>
+      val === undefined || val === null || val === "" || val === "NA" ? "N/A" : val;
 
-  // Normalize the data
-  const normalizedWithoutIds = parsedData.map((item, idx) => ({
-    lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
-    company: defaultNA(item.Company || item.company),
-    website: defaultNA(item.Website || item.website),
-    industry: defaultNA(item.Industry || item.industry),
-    street: defaultNA(item.Street || item.street),
-    city: defaultNA(item.City || item.city),
-    state: defaultNA(item.State || item.state),
-    bbb_rating: defaultNA(item.BBB_rating || item.bbb_rating),
-    business_phone: defaultNA(item.Business_phone || item.business_phone)
-  }));
-  
-  // Apply unique IDs using the hash function
-  const normalized = addUniqueIdsToLeads(normalizedWithoutIds);
-  
-  setLeads(normalized)
-  setGlobalLeads(normalized);
-  // Reset to first page when data changes
-  setCurrentPage(1);
-}, [data]);
+    // Normalize the data
+    const normalizedWithoutIds = parsedData.map((item, idx) => ({
+      lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
+      company: defaultNA(item.Company || item.company),
+      website: defaultNA(item.Website || item.website),
+      industry: defaultNA(item.Industry || item.industry),
+      street: defaultNA(item.Street || item.street),
+      city: defaultNA(item.City || item.city),
+      state: defaultNA(item.State || item.state),
+      bbb_rating: defaultNA(item.BBB_rating || item.bbb_rating),
+      business_phone: defaultNA(item.Business_phone || item.business_phone)
+    }));
+    
+    // Apply unique IDs using the hash function
+    const normalized = addUniqueIdsToLeads(normalizedWithoutIds);
+    
+    setLeads(normalized)
+    setGlobalLeads(normalized);
+    // Reset to first page when data changes
+    setCurrentPage(1);
+  }, [data]);
 
   // Auto-resize textareas
   useEffect(() => {
@@ -183,6 +196,27 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     }
   }
 
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedCompanies([])
+    } else {
+      setSelectedCompanies(currentItems.map((company) => company.lead_id))
+    }
+    setSelectAll(!selectAll)
+  }
+
+  const handleSelectCompany = (id: number) => {
+    if (selectedCompanies.includes(id)) {
+      setSelectedCompanies(selectedCompanies.filter((companyId) => companyId !== id))
+      setSelectAll(false)
+    } else {
+      const updated = [...selectedCompanies, id]
+      setSelectedCompanies(updated)
+      if (updated.length === leads.length) {
+        setSelectAll(true)
+      }
+    }
+  }
 
   const filteredResults = leads.filter(
     (result) =>
@@ -312,6 +346,22 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     return value;
   }
   
+  const [isDeleting, setIsDeleting] = useState(false)
+  const DELETE_LEADS_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/delete-multiple`
+  
+  const handleDelete = async () => {
+    if (selectedCompanies.length === 0) {
+      toast.error("Please select at least one lead to delete");
+      return;
+    }
+    setIsDeleting(true);
+    setLeads(prev => prev.filter(lead => !selectedCompanies.includes(lead.lead_id)));
+    setGlobalLeads(prev => prev.filter(lead => !selectedCompanies.includes(lead.lead_id)));
+    setSelectedCompanies([]);
+    setSelectAll(false);
+    toast.success("Lead removed sucessfully.");
+    setIsDeleting(false);
+  };
 
   return (
     <Card>
@@ -319,7 +369,10 @@ export function ScraperResults({ data }: { data: string | any[] }) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Company Search Results</CardTitle>
-            <CardDescription>{filteredResults.length} companies found</CardDescription>
+            <CardDescription>
+              {filteredResults.length} companies found
+              {selectedCompanies.length > 0 && ` • ${selectedCompanies.length} selected`}
+            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -400,6 +453,13 @@ export function ScraperResults({ data }: { data: string | any[] }) {
           <Table className="w-full" fixedLayout={false}>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectAll}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
                 <TableHead className="w-[18%] break-words">Company</TableHead>
                 <TableHead className="w-[15%] break-words">Industry</TableHead>
                 <TableHead className="w-[25%] break-words">Address</TableHead>
@@ -414,7 +474,14 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                   // Calculate the actual index in the filtered results
                   const actualIndex = indexOfFirstItem + rowIdx;
                   return (
-                    <TableRow key={result.id}>
+                    <TableRow key={result.lead_id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedCompanies.includes(result.lead_id)}
+                          onCheckedChange={() => handleSelectCompany(result.lead_id)}
+                          aria-label={`Select ${result.company}`}
+                        />
+                      </TableCell>
                       <TableCell className="break-words">
                         <textarea
                           className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
@@ -504,7 +571,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                         {normalizeDisplayValue(result.business_phone)
                           .split(",")
                           .map((phone: string, i: number) => (
-                            <div key={i} className="break-words">
+                            <div key={`${result.lead_id}-phone-${i}`} className="break-words">
                               {normalizeDisplayValue(phone.trim())}
                             </div>
                           ))}
@@ -541,7 +608,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No results found.
                   </TableCell>
                 </TableRow>
@@ -553,6 +620,15 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       <CardFooter className="flex justify-between">
         <div className="text-sm text-muted-foreground" />
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleDelete}
+            disabled={isDeleting || selectedCompanies.length === 0}
+            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {isDeleting ? "Deleting..." : `Delete Selected (${selectedCompanies.length})`}
+          </Button>
           <Button
             variant="outline"
             onClick={handleSave}
