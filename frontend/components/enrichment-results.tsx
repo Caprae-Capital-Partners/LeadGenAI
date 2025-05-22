@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/pagination"
 import { useEnrichment } from "@/components/EnrichmentProvider"
 
+
 interface EnrichmentResultsProps {
   enrichedCompanies: EnrichedCompany[]
   loading?: boolean
@@ -35,7 +36,7 @@ export interface EnrichedCompany {
   productCategory: string
   businessType: string
   employees: number | null
-  revenue: number | null
+  revenue: string | number
   yearFounded: string
   bbbRating: string
   street: string
@@ -54,6 +55,9 @@ export interface EnrichedCompany {
 
 
 export const EnrichmentResults: FC = () => {
+  const [editableCompanies, setEditableCompanies] = useState<EnrichedCompany[]>([])
+  const [editingCell, setEditingCell] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const { enrichedCompanies, loading } = useEnrichment()
   const router = useRouter()
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
@@ -71,6 +75,16 @@ export const EnrichmentResults: FC = () => {
   const [sourceFilter, setSourceFilter] = useState("")
   const [filteredCompanies, setFilteredCompanies] = useState<EnrichedCompany[]>([])
   const [showFilters, setShowFilters] = useState(false)
+  const handleFieldChange = (id: string, field: keyof EnrichedCompany, value: any) => {
+    setEditableCompanies(prev =>
+      prev.map(company =>
+        company.id === id ? { ...company, [field]: value } : company
+      )
+    )
+  }
+  const handleDiscardChanges = () => {
+    setEditableCompanies([...enrichedCompanies])
+  }
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -253,6 +267,7 @@ const parseRevenue = (revenueStr: string): number | null => {
       )
     }
 
+    setEditableCompanies(filtered)
 
     setFilteredCompanies(filtered)
     
@@ -266,7 +281,7 @@ const parseRevenue = (revenueStr: string): number | null => {
   const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage)
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredCompanies.slice(indexOfFirstItem, indexOfLastItem)
+  const currentItems = editableCompanies.slice(indexOfFirstItem, indexOfLastItem)
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -380,6 +395,45 @@ const parseRevenue = (revenueStr: string): number | null => {
     router.push("?tab=data-enhancement")
     window.location.reload()
   }
+  const handleSaveEditedCompanies = async () => {
+    try {
+      const payload = editableCompanies.map(c => ({
+        company: c.company,
+        website: c.website,
+        industry: c.industry,
+        product_category: c.productCategory,
+        business_type: c.businessType,
+        employees: typeof c.employees === "number" ? c.employees : parseInt(c.employees as any) || 0,
+        revenue: typeof c.revenue === "string" ? c.revenue.replace(/[^0-9]/g, "") : c.revenue,
+        year_founded: parseInt(c.yearFounded) || 0,
+        bbb_rating: c.bbbRating,
+        street: c.street,
+        city: c.city,
+        state: c.state,
+        company_phone: c.companyPhone,
+        company_linkedin: c.companyLinkedin,
+        owner_first_name: c.ownerFirstName,
+        owner_last_name: c.ownerLastName,
+        owner_title: c.ownerTitle,
+        owner_linkedin: c.ownerLinkedin,
+        owner_phone_number: c.ownerPhoneNumber,
+        owner_email: c.ownerEmail,
+        source: c.source,
+      }))
+
+      await fetch(`${process.env.NEXT_PUBLIC_DATABASE_URL}/upload_leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      alert("✅ Data saved successfully!")
+    } catch (err) {
+      console.error("❌ Failed to upload edited data", err)
+      alert("Error saving data. See console for details.")
+    }
+  }
+  
 
   return (
     <div className="space-y-6">
@@ -599,84 +653,79 @@ const parseRevenue = (revenueStr: string): number | null => {
                           onCheckedChange={() => handleSelectCompany(company.id)}
                         />
                       </TableCell>
+
+                      {/* Non-editable: Company */}
                       <TableCell>{normalizeDisplayValue(company.company)}</TableCell>
+
+                      {/* Non-editable: Website + link */}
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {company.website ? cleanUrlForDisplay(normalizeDisplayValue(company.website)) : "N/A"}
-                          {company.website && normalizeDisplayValue(company.website) !== "N/A" && normalizeDisplayValue(company.website) !== "NA" && (
-                            <a
-                              href={company.website.toString().startsWith('http') ? company.website : `https://${company.website}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:text-blue-700"
-                              title="Open website in new tab"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          )}
+                          {company.website &&
+                            normalizeDisplayValue(company.website) !== "N/A" && (
+                              <a
+                                href={
+                                  company.website.toString().startsWith("http")
+                                    ? company.website
+                                    : `https://${company.website}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:text-blue-700"
+                                title="Open website in new tab"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            )}
                         </div>
                       </TableCell>
-                      <TableCell>{normalizeDisplayValue(company.industry)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.productCategory)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.businessType)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.employees)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.revenue)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.yearFounded)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.bbbRating)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.street)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.city)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.state)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.companyPhone)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {company.companyLinkedin ? cleanUrlForDisplay(normalizeDisplayValue(company.companyLinkedin)) : "N/A"}
-                          {company.companyLinkedin && normalizeDisplayValue(company.companyLinkedin) !== "N/A" && normalizeDisplayValue(company.companyLinkedin) !== "NA" && (
-                            <a
-                              href={company.companyLinkedin.toString().startsWith('http') ? company.companyLinkedin : `https://${company.companyLinkedin}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:text-blue-700"
-                              title="Open LinkedIn in new tab"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
+
+                      {/* Editable fields */}
+                      {[
+                        "industry",
+                        "productCategory",
+                        "businessType",
+                        "employees",
+                        "revenue",
+                        "yearFounded",
+                        "bbbRating",
+                        "street",
+                        "city",
+                        "state",
+                        "companyPhone",
+                        "companyLinkedin",
+                        "ownerFirstName",
+                        "ownerLastName",
+                        "ownerTitle",
+                        "ownerLinkedin",
+                        "ownerPhoneNumber",
+                        "ownerEmail",
+                      ].map((field) => (
+                        <TableCell key={field}>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              className="w-full bg-transparent border-0 focus:border-b focus:outline-none focus:ring-0 text-sm"
+                              value={String(company[field as keyof EnrichedCompany] ?? "")}
+                              onChange={(e) =>
+                                handleFieldChange(company.id, field as keyof EnrichedCompany, e.target.value)
+                              }
+                            />
+                          ) : (
+                            normalizeDisplayValue(company[field as keyof EnrichedCompany])
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{normalizeDisplayValue(company.ownerFirstName)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.ownerLastName)}</TableCell>
-                      <TableCell>{normalizeDisplayValue(company.ownerTitle)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {company.ownerLinkedin ? cleanUrlForDisplay(normalizeDisplayValue(company.ownerLinkedin)) : "N/A"}
-                          {company.ownerLinkedin && normalizeDisplayValue(company.ownerLinkedin) !== "N/A" && normalizeDisplayValue(company.ownerLinkedin) !== "NA" && (
-                            <a
-                              href={company.ownerLinkedin.toString().startsWith('http') ? company.ownerLinkedin : `https://${company.ownerLinkedin}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:text-blue-700"
-                              title="Open LinkedIn in new tab"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{normalizeDisplayValue(company.ownerPhoneNumber)}</TableCell>
-                      <TableCell>
-                        {company.ownerEmail === "email_not_unlocked@domain.com"
-                          ? "N/A"
-                          : normalizeDisplayValue(company.ownerEmail)}
-                      </TableCell>
+                        </TableCell>
+                      ))}
+
+                      {/* Source */}
                       <TableCell>
                         {normalizeDisplayValue(company.source) === "N/A"
                           ? "Not available in any source"
                           : normalizeDisplayValue(company.source)}
                       </TableCell>
                     </TableRow>
+
                   ))
                 ) : (
                   <TableRow key="no-results">
@@ -701,6 +750,37 @@ const parseRevenue = (revenueStr: string): number | null => {
               <Download className="h-4 w-4" />
               Export CSV
             </Button>
+            <div className="flex gap-3 ml-4">
+              {isEditing ? (
+                <>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setEditableCompanies([...enrichedCompanies])
+                      setIsEditing(false)
+                    }}
+                  >
+                    Discard Changes
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      handleSaveEditedCompanies()
+                      setIsEditing(false)
+                    }}
+                  >
+                    Save Changes
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  className="ml-4"
+                  onClick={() => setIsEditing(true)}
+                  variant="outline"
+                >
+                  Edit
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
