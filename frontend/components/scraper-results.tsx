@@ -354,40 +354,13 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       toast.error("Please select at least one lead to delete");
       return;
     }
-
     setIsDeleting(true);
-    try {
-      const response = await axios.post(
-        DELETE_LEADS_API,
-        [
-          {
-            "lead_ids": selectedCompanies
-          }
-        ],
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        }
-      );
-
-      if (response.data.status === "success") {
-        toast.success(response.data.message);
-        setLeads(prev => prev.filter(lead => !selectedCompanies.includes(lead.lead_id)));
-        setGlobalLeads(prev => prev.filter(lead => !selectedCompanies.includes(lead.lead_id)));
-        setSelectedCompanies([]);
-        setSelectAll(false);
-      } else {
-        throw new Error(response.data.message || "Failed to delete leads");
-      }
-    } catch (error: any) {
-      console.error('Error deleting leads:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete leads. Please try again.');
-    } finally {
-      setIsDeleting(false);
-    }
+    setLeads(prev => prev.filter(lead => !selectedCompanies.includes(lead.lead_id)));
+    setGlobalLeads(prev => prev.filter(lead => !selectedCompanies.includes(lead.lead_id)));
+    setSelectedCompanies([]);
+    setSelectAll(false);
+    toast.success("Lead removed sucessfully.");
+    setIsDeleting(false);
   };
 
   return (
