@@ -96,7 +96,7 @@ async def scraper_stream(industry: str, location: str):
         # Wait a bit before checking for new results
         await asyncio.sleep(2)
 
-@app.get("/scrape-stream")
+@app.get("/api/scrape-stream")
 async def stream(industry: str, location: str):
     """Endpoint to stream scraper results for a given industry and location"""
     return StreamingResponse(
@@ -104,12 +104,12 @@ async def stream(industry: str, location: str):
         media_type="text/event-stream"
     )
     
-@app.get("/health")
+@app.get("/api/health")
 async def health():
     return {"status": "ok"}
 
 # Endpoint to check server status
-@app.get("/status")
+@app.get("/api/status")
 async def status():
     return {"status": "online"}
 
