@@ -36,6 +36,21 @@ export function DataEnhancement() {
   const [progress, setProgress] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Get the original search criteria from URL parameters
+  const getSearchCriteria = () => {
+    if (typeof window === 'undefined') return { industry: '', location: '' };
+    
+    const params = new URLSearchParams(window.location.search);
+    const industry = params.get('industry') || '';
+    const location = params.get('location') || '';
+    
+    return {
+      industry: industry,
+      location: location
+    };
+  };
+
+  const searchCriteria = getSearchCriteria();
 
   // Add sorting state
   const [sortConfig, setSortConfig] = useState<{
@@ -301,7 +316,7 @@ export function DataEnhancement() {
     if (selectAll) {
       setSelectedCompanies([])
     } else {
-      setSelectedCompanies(normalizedLeads.map((company) => company.lead_id))
+      setSelectedCompanies(normalizedLeads.map((company) => company.id))
     }
     setSelectAll(!selectAll)
   }
@@ -426,7 +441,7 @@ export function DataEnhancement() {
     setLoading(true)
     setEnrichedCompanies([]) // Reset previous state
     try {
-      const selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.lead_id))
+      const selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
       const headers = { headers: { "Content-Type": "application/json" } }
 
       // 1. Fetch all existing leads from DB
@@ -605,7 +620,7 @@ export function DataEnhancement() {
             {sortedFilteredLeads.length > 0 && (
               <div className="mb-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results
+                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results for {searchCriteria.industry} in {searchCriteria.location}
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -783,11 +798,11 @@ export function DataEnhancement() {
                   <>
                     {currentItems.length > 0 &&
                       currentItems.map((company) => (
-                        <TableRow key={company.lead_id ?? `${company.company}-${Math.random()}`}>
+                        <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
                           <TableCell>
                             <Checkbox
-                              checked={selectedCompanies.includes(company.lead_id)}
-                              onCheckedChange={() => handleSelectCompany(company.lead_id)}
+                              checked={selectedCompanies.includes(company.id)}
+                              onCheckedChange={() => handleSelectCompany(company.id)}
                               aria-label={`Select ${company.company}`}
                             />
                           </TableCell>

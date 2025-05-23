@@ -10,7 +10,6 @@ import { Download, Search, ArrowRight, ExternalLink, Save, Trash2 } from "lucide
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import * as XLSX from "xlsx"
 import { Lead, useLeads } from "@/components/LeadsProvider"
-import { addUniqueIdsToLeads } from "@/lib/leadUtils"
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -24,7 +23,7 @@ import {
 } from "@/components/ui/pagination"
 import axios from "axios"
 
-export function ScraperResults({ data }: { data: string | any[] }) {
+export function ScraperResults({ data, industry, location }: { data: string | any[], industry: string, location: string }) {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [leads, setLeads] = useState<any[]>([])
@@ -33,7 +32,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
 
   // Updation state
-  const [updatedLeads, setUpdatedLeads] = useState<{ lead_id: number }[]>([])
+  const [updatedLeads, setUpdatedLeads] = useState<{ id: number }[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const UPDATE_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/batch`
   
@@ -76,7 +75,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
 
     // Normalize the data
     const normalizedWithoutIds = parsedData.map((item, idx) => ({
-      lead_id: item.lead_id, // Temporary ID that will be replaced by addUniqueIdsToLeads
+      id: idx + 1,  // Use 1-based index as ID
       company: defaultNA(item.Company || item.company),
       website: defaultNA(item.Website || item.website),
       industry: defaultNA(item.Industry || item.industry),
@@ -87,11 +86,8 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       business_phone: defaultNA(item.Business_phone || item.business_phone)
     }));
     
-    // Apply unique IDs using the hash function
-    const normalized = addUniqueIdsToLeads(normalizedWithoutIds);
-    
-    setLeads(normalized)
-    setGlobalLeads(normalized);
+    setLeads(normalizedWithoutIds)
+    setGlobalLeads(normalizedWithoutIds);
     // Reset to first page when data changes
     setCurrentPage(1);
   }, [data]);
@@ -139,19 +135,19 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       )
     );
   
-    const leadId = leads[rowIdx].lead_id;
+    const leadId = leads[rowIdx].id;
   
-    setUpdatedLeads((prev: { lead_id: number }[]) => {
-      const existing = prev.find((item: { lead_id: number }) => item.lead_id === leadId);
+    setUpdatedLeads((prev: { id: number }[]) => {
+      const existing = prev.find((item: { id: number }) => item.id === leadId);
       
       if (existing) {
-        return prev.map((item: { lead_id: number }) =>
-          item.lead_id === leadId
+        return prev.map((item: { id: number }) =>
+          item.id === leadId
             ? { ...item, [field]: value }
             : item
         );
       } else {
-        return [...prev, { lead_id: leadId, [field]: value }];
+        return [...prev, { id: leadId, [field]: value }];
       }
     });
   
@@ -170,7 +166,11 @@ export function ScraperResults({ data }: { data: string | any[] }) {
   };
 
   const handleNext = () => {
-    router.push("?tab=enhancement")
+    const params = new URLSearchParams();
+    params.set('tab', 'enhancement');
+    params.set('industry', industry);
+    params.set('location', location);
+    router.push(`?${params.toString()}`);
   }
 
   const handleSave = async () => {
@@ -200,17 +200,17 @@ export function ScraperResults({ data }: { data: string | any[] }) {
     if (selectAll) {
       setSelectedCompanies([])
     } else {
-      setSelectedCompanies(currentItems.map((company) => company.lead_id))
+      setSelectedCompanies(currentItems.map((company) => company.id))
     }
     setSelectAll(!selectAll)
   }
 
-  const handleSelectCompany = (id: number) => {
-    if (selectedCompanies.includes(id)) {
-      setSelectedCompanies(selectedCompanies.filter((companyId) => companyId !== id))
+  const handleSelectCompany = (index: number) => {
+    if (selectedCompanies.includes(index)) {
+      setSelectedCompanies(selectedCompanies.filter((idx) => idx !== index))
       setSelectAll(false)
     } else {
-      const updated = [...selectedCompanies, id]
+      const updated = [...selectedCompanies, index]
       setSelectedCompanies(updated)
       if (updated.length === leads.length) {
         setSelectAll(true)
@@ -355,11 +355,11 @@ export function ScraperResults({ data }: { data: string | any[] }) {
       return;
     }
     setIsDeleting(true);
-    setLeads(prev => prev.filter(lead => !selectedCompanies.includes(lead.lead_id)));
-    setGlobalLeads(prev => prev.filter(lead => !selectedCompanies.includes(lead.lead_id)));
+    setLeads(prev => prev.filter((_, idx) => !selectedCompanies.includes(idx)));
+    setGlobalLeads(prev => prev.filter((_, idx) => !selectedCompanies.includes(idx)));
     setSelectedCompanies([]);
     setSelectAll(false);
-    toast.success("Lead removed sucessfully.");
+    toast.success("Lead removed successfully.");
     setIsDeleting(false);
   };
 
@@ -369,10 +369,6 @@ export function ScraperResults({ data }: { data: string | any[] }) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Company Search Results</CardTitle>
-            <CardDescription>
-              {filteredResults.length} companies found
-              {selectedCompanies.length > 0 && ` • ${selectedCompanies.length} selected`}
-            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -474,11 +470,11 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                   // Calculate the actual index in the filtered results
                   const actualIndex = indexOfFirstItem + rowIdx;
                   return (
-                    <TableRow key={result.lead_id}>
+                    <TableRow key={result.id}>
                       <TableCell>
                         <Checkbox
-                          checked={selectedCompanies.includes(result.lead_id)}
-                          onCheckedChange={() => handleSelectCompany(result.lead_id)}
+                          checked={selectedCompanies.includes(actualIndex)}
+                          onCheckedChange={() => handleSelectCompany(actualIndex)}
                           aria-label={`Select ${result.company}`}
                         />
                       </TableCell>
@@ -571,7 +567,7 @@ export function ScraperResults({ data }: { data: string | any[] }) {
                         {normalizeDisplayValue(result.business_phone)
                           .split(",")
                           .map((phone: string, i: number) => (
-                            <div key={`${result.lead_id}-phone-${i}`} className="break-words">
+                            <div key={`${result.id}-phone-${i}`} className="break-words">
                               {normalizeDisplayValue(phone.trim())}
                             </div>
                           ))}

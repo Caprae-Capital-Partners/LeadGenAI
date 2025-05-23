@@ -1,9 +1,8 @@
 "use client";
 import React, { createContext, useContext, useState } from "react";
-import { addUniqueIdsToLeads } from "@/lib/leadUtils";
 
 export type Lead = {
-  lead_id: number;
+  id: number;
   company: string;
   website: string;
   industry: string;
@@ -28,7 +27,7 @@ export const LeadsProvider = ({
   children: React.ReactNode;
   initialLeads?: Lead[];
 }) => {
-  const [leads, setLeads] = useState<Lead[]>(addUniqueIdsToLeads(initialLeads || []));
+  const [leads, setLeads] = useState<Lead[]>(initialLeads || []);
   return (
     <LeadsContext.Provider value={{ leads, setLeads }}>
       {children}
