@@ -1,11 +1,14 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
 from controllers.auth_controller import AuthController
+from controllers.subscription_controller import SubscriptionController
 from flask_login import login_required, current_user, login_user, logout_user
 from utils.decorators import role_required
 from models.user_model import User, db
 from werkzeug.security import generate_password_hash, check_password_hash
 import datetime
 import os
+
+
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -58,7 +61,14 @@ def signup():
             # If admin creates a user, redirect to user management
             # if current_user.is_admin():
             #     return redirect(url_for('auth.manage_users'))
-            return redirect(url_for('main.index'))
+
+            # Log in the newly created user
+            user = User.query.filter_by(email=email).first()
+            if user:
+                login_user(user)
+
+            # Redirect to choose plan page after successful signup
+            return redirect(url_for('auth.choose_plan'))
         else:
             flash(message, 'danger')
 
@@ -307,3 +317,113 @@ def api_update_user_role(user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+@auth_bp.route('/choose_plan')
+@login_required
+def choose_plan():
+    """Display the plan selection page after signup"""
+    return render_template('auth/choose_plan.html')
+
+@auth_bp.route('/create-checkout-session', methods=['POST'])
+@login_required
+def create_checkout_session():
+    """Create a Stripe checkout session"""
+    # Call the controller method
+    response, status_code = SubscriptionController.create_checkout_session(current_user)
+    return jsonify(response), status_code
+
+# @auth_bp.route('/webhook', methods=['POST'])
+# def stripe_webhook():
+#     """Handle Stripe webhook events"""
+#     payload = request.get_data()
+#     sig_header = request.headers.get('stripe-signature')
+#     print("this is fomr the webhook", payload)
+
+#     # Call the controller method
+#     response, status_code = SubscriptionController.handle_stripe_webhook(payload, sig_header)
+#     print("afterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr handle stripe webhook ", response, status_code, )
+#     return jsonify(response), status_code
+
+@auth_bp.route('/payment/success')
+@login_required
+def payment_success():
+    """Render the payment success page"""
+    flash('Your subscription has been activated successfully!', 'success')
+    return redirect("https://app.saasquatchleads.com/")
+
+@auth_bp.route('/payment/cancel')
+@login_required
+def payment_cancel():
+    """Render the payment cancel page"""
+    flash('Payment cancelled. You can choose a plan when you are ready.', 'warning')
+    return redirect(url_for('auth.choose_plan'))
+
+@auth_bp.route('/manage_subscriptions')
+@login_required
+@role_required('admin')
+def manage_subscriptions():
+    """Manage user subscriptions - Admin only"""
+    users = User.query.all()
+    return render_template('auth/manage_subscriptions.html', users=users)
+
+# @auth_bp.route('/update_subscription', methods=['POST'])
+# @login_required
+# @role_required('admin')
+# def update_subscription():
+#     """Update user subscription tier - Admin only"""
+#     user_id = request.form.get('user_id')
+#     subscription_tier = request.form.get('subscription_tier')
+
+#     try:
+#         user = User.query.get(user_id)
+#         if user:
+#             user.subscription_tier = subscription_tier
+#             db.session.commit()
+#             flash(f'Subscription updated for {user.username} to {subscription_tier}', 'success')
+#         else:
+#             flash('User not found', 'danger')
+#     except Exception as e:
+#         db.session.rollback()
+#         flash(f'Error updating subscription: {str(e)}', 'danger')
+
+#     return redirect(url_for('auth.manage_subscriptions'))
+
+def handle_successful_payment(session):
+    try:
+        user_id = session.get('client_reference_id')
+        if not user_id:
+            print("No user_id found in session")
+            return
+
+        user = User.query.get(int(user_id))
+        if not user:
+            print(f"User {user_id} not found")
+            return
+
+        # Get line items and extract price ID
+        line_items = stripe.checkout.Session.list_line_items(session.id)
+        if not line_items or not line_items.data:
+            print("No line items found")
+            return
+
+        price_id = line_items.data[0].price.id
+
+        # Map price_id to subscription tier
+        price_to_tier = {
+            current_app.config['STRIPE_PRICES']['gold']: 'gold',
+            current_app.config['STRIPE_PRICES']['silver']: 'silver',
+            current_app.config['STRIPE_PRICES']['bronze']: 'bronze'
+        }
+
+        new_tier = price_to_tier.get(price_id)
+        if not new_tier:
+            print(f"Invalid price_id: {price_id}")
+            return
+
+        user.subscription_tier = new_tier
+        db.session.commit()
+        print(f"Successfully updated user {user_id} to tier {new_tier}")
+
+    except Exception as e:
+        print(f"Error handling payment: {str(e)}")
+        db.session.rollback()

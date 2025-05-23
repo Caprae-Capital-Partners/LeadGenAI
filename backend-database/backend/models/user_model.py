@@ -12,6 +12,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256))
     role = db.Column(db.String(20), default='user', nullable=False)
+    tier = db.Column(db.String(50), default='free', nullable=False)
     company = db.Column(db.String(100))  # New field for company
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
@@ -45,4 +46,4 @@ class User(UserMixin, db.Model):
         return self.role in ['admin', 'developer']
 
     def __repr__(self):
-        return f'<User {self.username}>' 
+        return f'<User {self.username}>'
