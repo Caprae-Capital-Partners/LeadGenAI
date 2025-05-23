@@ -235,7 +235,7 @@ def view_leads():
         industry=industry,
     )
 
-@lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
+@lead_bp.route('/edit/<string:lead_id>', methods=['GET', 'POST'])
 #@login_required
 @role_required('admin', 'developer')
 def edit_lead(lead_id):
@@ -252,7 +252,7 @@ def edit_lead(lead_id):
     lead = LeadController.get_lead_by_id(lead_id)
     return render_template('edit_lead.html', lead=lead)
 
-@lead_bp.route('/update_status/<int:lead_id>', methods=['POST'])
+@lead_bp.route('/update_status/<string:lead_id>', methods=['POST'])
 #@login_required
 def update_status(lead_id):
     """Update lead status - All roles can update status"""
@@ -271,7 +271,7 @@ def update_status(lead_id):
 
     return redirect(url_for('lead.view_leads'))
 
-@lead_bp.route('/leads/<int:lead_id>/delete', methods=['POST'])
+@lead_bp.route('/leads/<string:lead_id>/delete', methods=['POST'])
 #@login_required
 @role_required('admin', 'developer')
 def delete_lead(lead_id):
@@ -415,7 +415,7 @@ def create_lead():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 400
 
-@lead_bp.route('/api/leads/<int:lead_id>', methods=['PUT'])
+@lead_bp.route('/api/leads/<string:lead_id>', methods=['PUT'])
 #@login_required
 @role_required('admin', 'developer')
 def update_lead_api(lead_id):
@@ -432,7 +432,7 @@ def update_lead_api(lead_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-@lead_bp.route('/api/leads/<int:lead_id>/status', methods=['PUT'])
+@lead_bp.route('/api/leads/<string:lead_id>/status', methods=['PUT'])
 #@login_required
 def update_status_api(lead_id):
     """Update a lead's status via API - All roles can update status"""
@@ -616,7 +616,7 @@ def api_upload_leads():
             "message": f"Error during upload: {str(e)}"
         }), 500
 
-@lead_bp.route('/api/leads/<int:lead_id>', methods=['DELETE'])
+@lead_bp.route('/api/leads/<string:lead_id>', methods=['DELETE'])
 #@login_required
 @role_required('admin', 'developer')
 def delete_lead_api(lead_id):
@@ -631,7 +631,7 @@ def delete_lead_api(lead_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@lead_bp.route('/api/leads/<int:lead_id>', methods=['GET'])
+@lead_bp.route('/api/leads/<string:lead_id>', methods=['GET'])
 #@login_required
 def get_lead_by_id(lead_id):
     """Get detail of a single lead by ID"""
@@ -815,7 +815,7 @@ def get_top_sources():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@lead_bp.route('/leads/<lead_id>/restore', methods=['POST'])
+@lead_bp.route('/leads/<string:lead_id>/restore', methods=['POST'])
 #@login_required
 def restore_lead(lead_id):
     """Restore a soft-deleted lead"""
@@ -837,7 +837,7 @@ def view_deleted_leads():
     leads = Lead.query.filter_by(deleted=True).order_by(Lead.deleted_at.desc()).all()
     return render_template('deleted_leads.html', leads=leads)
 
-@lead_bp.route('/leads/<int:lead_id>/permanent-delete', methods=['POST'])
+@lead_bp.route('/leads/<string:lead_id>/permanent-delete', methods=['POST'])
 # #@login_required
 @role_required('admin', 'developer')
 def permanent_delete_lead(lead_id):
@@ -942,7 +942,7 @@ def get_leads_enrichment_status():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@lead_bp.route('/api/leads/<int:lead_id>/enrich', methods=['POST'])
+@lead_bp.route('/api/leads/<string:lead_id>/enrich', methods=['POST'])
 # #@login_required
 def enrich_lead(lead_id):
     """Enrich a single lead's data"""
