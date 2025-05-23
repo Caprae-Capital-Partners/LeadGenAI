@@ -103,6 +103,10 @@ async def stream(industry: str, location: str):
         scraper_stream(industry, location),
         media_type="text/event-stream"
     )
+    
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 # Endpoint to check server status
 @app.get("/status")

@@ -216,7 +216,7 @@ class AsyncCompanyScraper:
         # Step 2: Assign each company to a context in round-robin fashion
         async def process_with_semaphore(company, context):
             async with semaphore:
-                name = company.get("Company", "NA\\")
+                name = company.get("Company", "NA")
                 result = await self.process_company(name, location, context=context)
                 return {**company, **result}
 

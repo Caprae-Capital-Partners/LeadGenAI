@@ -4,6 +4,7 @@ import csv
 from typing import Dict, List
 from urllib.parse import quote_plus
 from playwright.async_api import async_playwright
+from typing import AsyncGenerator
 
 async def setup_browser(headless=True):
     """Set up and return a configured Playwright browser instance."""
@@ -183,24 +184,48 @@ async def scrape_page(search_term: str, location: str, page_num: int) -> List[Di
     
     return businesses
 
-async def scrape_yellowpages(search_term: str, location: str, max_pages: int = 3) -> List[Dict[str, str]]:
-    """Asynchronously scrapes Yellow Pages for business listings, using a fresh browser for each page."""
-    all_businesses = []
+# async def scrape_yellowpages(search_term: str, location: str, max_pages: int = 3) -> AsyncGenerator[Dict[str, str], None]:
+#     """Asynchronously scrapes Yellow Pages for business listings, using a fresh browser for each page."""
+#     all_businesses = []
     
+#     for page_num in range(1, max_pages + 1):
+#         # Scrape each page with a fresh browser instance
+#         page_businesses = await scrape_page(search_term, location, page_num)
+        
+#         if page_businesses:
+#             yield page_businesses
+#             # all_businesses.extend(page_businesses)
+            
+#         # Add a delay between page requests
+#         if page_num < max_pages:
+#             # delay = 3 + (2 * (page_num - 1))  # Increasing delay for each subsequent page
+#             # print(f"Waiting {delay} seconds before next page...")
+#             await asyncio.sleep(1)
+    
+#     yield None
+#     return
+
+async def scrape_yellowpages(search_term: str, location: str, max_pages: int = 3) -> AsyncGenerator[Dict[str, str], None]:
+    """Asynchronously scrapes Yellow Pages for business listings, yielding complete pages.
+    
+    This function streams results page by page, yielding each batch of businesses
+    as they are found rather than waiting for all pages to be scraped.
+    Each yield is a complete business dictionary that can be processed independently.
+    """
     for page_num in range(1, max_pages + 1):
         # Scrape each page with a fresh browser instance
         page_businesses = await scrape_page(search_term, location, page_num)
         
         if page_businesses:
-            all_businesses.extend(page_businesses)
+            # Yield each complete business dictionary individually
+            for business in page_businesses:
+                # Make sure the business has all required fields before yielding
+                if business and business.get('Company', 'NA') != 'NA':
+                    yield business
             
         # Add a delay between page requests
         if page_num < max_pages:
-            # delay = 3 + (2 * (page_num - 1))  # Increasing delay for each subsequent page
-            # print(f"Waiting {delay} seconds before next page...")
             await asyncio.sleep(1)
-    
-    return all_businesses
 
 async def save_to_csv(businesses, filename='yellowpages_data.csv'):
     """Saves the scraped business data to a CSV file."""
