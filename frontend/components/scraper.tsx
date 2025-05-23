@@ -247,7 +247,7 @@ export function Scraper() {
         });
         
         // Update progress based on actual data received
-        // Calculate progress as a percentage of expected total (250 leads)
+        // Calculate progress as a percentage of expected total (100 leads)
         setProgress((prev) => {
           // Calculate a dynamic progress that increases with each batch
           // but slows down as we approach 95% to avoid jumping too quickly
@@ -287,7 +287,7 @@ export function Scraper() {
         // Final check of results and set needMoreLeads flag
         setScrapedResults((currentResults) => {
           console.log(`Final lead count: ${currentResults.length}`);
-          setNeedMoreLeads(currentResults.length < 250);
+          setNeedMoreLeads(currentResults.length < 100);
           return currentResults;
         });
       } catch (err) {
