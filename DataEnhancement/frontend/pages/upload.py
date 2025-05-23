@@ -216,7 +216,7 @@ if st.session_state.normalized_df is not None and st.session_state.confirmed_sel
             if not str(row["Product/Service Category"]).strip():
                 rows_to_update.at[idx, "Product/Service Category"] = linkedin.get("Specialties", "")
 
-             === Growjo Contact Info Integration ===
+            # === Growjo Contact Info Integration ===
             growjo_res = requests.post(f"{BACKEND_URL}/api/growjo", json={"company": domain, "headless": True}, headers=auth_headers())
             if growjo_res.status_code == 200:
                 people = growjo_res.json()
