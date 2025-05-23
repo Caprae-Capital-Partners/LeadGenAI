@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 sys.path.append(os.path.abspath("C:/Work/Internship/Web Scraper Caprae/LeadGenAI/phase_1/backend"))
 
 # Import the start_background_scraping function
-from background import start_background_scraping
+from .background import start_background_scraping
 
 app = FastAPI()
 

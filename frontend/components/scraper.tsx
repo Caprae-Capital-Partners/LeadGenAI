@@ -283,11 +283,8 @@ export function Scraper() {
         
         setProgress(100);
         setIsScrapingActive(false);
-        
-        // Final check of results and set needMoreLeads flag
         setScrapedResults((currentResults) => {
           console.log(`Final lead count: ${currentResults.length}`);
-          setNeedMoreLeads(currentResults.length < 100);
           return currentResults;
         });
       } catch (err) {
@@ -371,6 +368,12 @@ export function Scraper() {
     setIsScrapingActive(false);
     setProgress(0);
   };
+
+  // Add this useEffect after your other useEffects
+  useEffect(() => {
+    const deduped = new Set(scrapedResults.map(l => l.company.toLowerCase().trim()));
+    setNeedMoreLeads(deduped.size < 100);
+  }, [scrapedResults]);
 
   return (
     <div className="space-y-6">
@@ -500,7 +503,11 @@ export function Scraper() {
               </div>
             </div>
           )}
-          <ScraperResults data={scrapedResults} />
+          <ScraperResults 
+            data={scrapedResults} 
+            industry={industry}
+            location={location}
+          />
         </>
       )}
     </div>
