@@ -67,3 +67,15 @@ class User(UserMixin, db.Model):
                 password=kwargs.get('password')
             )
         super().__init__(**kwargs)
+
+
+    def to_dict(self):
+        return {
+            "id": self.user_id,
+            "username": self.username,
+            "email": self.email,
+            "role": self.role,
+            "tier": self.tier,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "is_active": self.is_active
+        }

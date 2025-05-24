@@ -19,7 +19,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 def login():
     """Handle user login"""
     if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+        return redirect("https://app.saasquatchleads.com/")
 
     if request.method == 'POST':
         username = request.form.get('username')
@@ -29,7 +29,7 @@ def login():
 
         if success:
             flash(message, 'success')
-            return redirect(url_for('main.index'))
+            return redirect("https://app.saasquatchleads.com/")
         else:
             flash(message, 'danger')
 
@@ -67,8 +67,8 @@ def signup():
             if user:
                 login_user(user)
 
-            # Redirect to choose plan page after successful signup
-            return redirect(url_for('auth.choose_plan'))
+            # Redirect to external app after successful signup
+            return redirect("https://app.saasquatchleads.com/")
         else:
             flash(message, 'danger')
 
@@ -185,12 +185,7 @@ def login_api():
 
     return jsonify({
         "message": "Login successful",
-        "user": {
-            "id": user.user_id,
-            "email": user.email,
-            "name": user.username,
-            "role": user.role
-        }
+        "user": user.to_dict()
     })
 
 @auth_bp.route('/api/auth/register', methods=['POST'])
@@ -203,7 +198,7 @@ def register_api():
 
     email = data.get('email')
     password = data.get('password')
-    name = data.get('name', '')
+    username = data.get('username', '')
     role = data.get('role', 'user')  # Default role is user
 
     if not email or not password:
@@ -218,7 +213,7 @@ def register_api():
     new_user = User(
         email=email,
         password_hash=generate_password_hash(password),
-        name=name,
+        username=username,
         role=role
     )
 
@@ -231,12 +226,7 @@ def register_api():
 
         return jsonify({
             "message": "Registration successful",
-            "user": {
-                "id": new_user.user_id,
-                "email": new_user.email,
-                "name": new_user.username,
-                "role": new_user.role
-            }
+            "user": new_user.to_dict()
         }), 201
 
     except Exception as e:
