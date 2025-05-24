@@ -83,9 +83,17 @@ export function Header() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-dark-border" />
-              <DropdownMenuItem className="hover:bg-dark-hover focus:bg-dark-hover cursor-pointer">
-                <User className="mr-2 h-4 w-4 text-teal-400" />
-                <span>Profile</span>
+              <DropdownMenuItem
+                asChild
+                className="hover:bg-dark-hover focus:bg-dark-hover cursor-pointer"
+              >
+                <Link
+                  href="/userSetting"
+                  className="flex items-center w-full"
+                >
+                  <User className="mr-2 h-4 w-4 text-teal-400" />
+                  <span>Profile</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-dark-border" />
               <DropdownMenuItem className="hover:bg-dark-hover focus:bg-dark-hover cursor-pointer">
