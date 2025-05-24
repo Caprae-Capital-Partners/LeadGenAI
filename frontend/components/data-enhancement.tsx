@@ -677,8 +677,8 @@ export function DataEnhancement() {
             )}
 
             <div className="w-full overflow-x-auto rounded-md border">
-              <div className="min-w-full">
-              <Table>
+              <div className="w-full overflow-x-auto rounded-md border">
+                <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">
