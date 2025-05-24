@@ -613,54 +613,59 @@ const parseRevenue = (revenueStr: string): number | null => {
               </div>
             )}
             
-            <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
-                  </TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Website</TableHead>
-                  <TableHead>Industry</TableHead>
-                  <TableHead>Product/Service Category</TableHead>
-                  <TableHead>Business Type (B2B, B2B2C)</TableHead>
-                  <TableHead>Employees count</TableHead>
-                  <TableHead>Revenue</TableHead>
-                  <TableHead>Year Founded</TableHead>
-                  <TableHead>BBB Rating</TableHead>
-                  <TableHead>Street</TableHead>
-                  <TableHead>City</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead>Company Phone</TableHead>
-                  <TableHead>Company LinkedIn</TableHead>
-                  <TableHead>Owner's First Name</TableHead>
-                  <TableHead>Owner's Last Name</TableHead>
-                  <TableHead>Owner's Title</TableHead>
-                  <TableHead>Owner's LinkedIn</TableHead>
-                  <TableHead>Owner's Phone Number</TableHead>
-                  <TableHead>Owner's Email</TableHead>
-                  <TableHead>Source</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <div className="w-full overflow-x-auto rounded-md border">
+              <div className="w-full overflow-x-auto rounded-md border">
+                <Table className="w-full table-fixed">
+                <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12 px-2">
+                        <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
+                      </TableHead>
+                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Company</TableHead>
+                      <TableHead className="text-xs break-words max-w-[180px] px-2 py-1">Website</TableHead>
+                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Industry</TableHead>
+                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Product/Service Category</TableHead>
+                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Business Type (B2B, B2B2C)</TableHead>
+                      <TableHead className="text-xs break-words max-w-[140px] px-2 py-1">Employees Count</TableHead>
+                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">Revenue</TableHead>
+                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">Year Founded</TableHead>
+                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">BBB Rating</TableHead>
+                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Street</TableHead>
+                      <TableHead className="text-xs break-words max-w-[140px] px-2 py-1">City</TableHead>
+                      <TableHead className="text-xs break-words max-w-[100px] px-2 py-1">State</TableHead>
+                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Company Phone</TableHead>
+                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Company LinkedIn</TableHead>
+                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Owner's First Name</TableHead>
+                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Owner's Last Name</TableHead>
+                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's Title</TableHead>
+                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's LinkedIn</TableHead>
+                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's Phone Number</TableHead>
+                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's Email</TableHead>
+                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">Source</TableHead>
+                    </TableRow>
+
+                </TableHeader>
+                <TableBody>
                 {currentItems.length > 0 ? (
                   currentItems.map((company, index) => (
                     <TableRow key={company.id || `${company.company}-${index}`}>
-                      <TableCell>
+                      {/* Select Checkbox */}
+                      <TableCell className="whitespace-nowrap px-2 align-top">
                         <Checkbox
                           checked={selectedCompanies.includes(company.id)}
                           onCheckedChange={() => handleSelectCompany(company.id)}
                         />
                       </TableCell>
 
-                      {/* Non-editable: Company */}
-                      <TableCell>{normalizeDisplayValue(company.company)}</TableCell>
+                      {/* Company Name */}
+                      <TableCell className="max-w-[160px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2">
+                        {normalizeDisplayValue(company.company)}
+                      </TableCell>
 
-                      {/* Non-editable: Website + link */}
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {company.website ? cleanUrlForDisplay(normalizeDisplayValue(company.website)) : "N/A"}
+                      {/* Website + Link */}
+                      <TableCell className="max-w-[200px] break-all text-sm align-top px-3 py-2">
+                        <div className="flex flex-col gap-1">
+                          <span className="break-all">{cleanUrlForDisplay(company.website)}</span>
                           {company.website &&
                             normalizeDisplayValue(company.website) !== "N/A" && (
                               <a
@@ -671,17 +676,17 @@ const parseRevenue = (revenueStr: string): number | null => {
                                 }
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-500 hover:text-blue-700"
+                                className="text-blue-500 hover:text-blue-700 break-all"
                                 title="Open website in new tab"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <ExternalLink className="h-4 w-4" />
+                                <ExternalLink className="h-4 w-4 inline" />
                               </a>
                             )}
                         </div>
                       </TableCell>
 
-                      {/* Editable fields */}
+                      {/* Editable Fields */}
                       {[
                         "industry",
                         "productCategory",
@@ -701,31 +706,56 @@ const parseRevenue = (revenueStr: string): number | null => {
                         "ownerLinkedin",
                         "ownerPhoneNumber",
                         "ownerEmail",
-                      ].map((field) => (
-                        <TableCell key={field}>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              className="w-full bg-transparent border-0 focus:border-b focus:outline-none focus:ring-0 text-sm"
-                              value={String(company[field as keyof EnrichedCompany] ?? "")}
-                              onChange={(e) =>
-                                handleFieldChange(company.id, field as keyof EnrichedCompany, e.target.value)
-                              }
-                            />
-                          ) : (
-                            normalizeDisplayValue(company[field as keyof EnrichedCompany])
-                          )}
-                        </TableCell>
-                      ))}
+                      ].map((field) => {
+                        const value = company[field as keyof EnrichedCompany] ?? "";
+                        const displayValue = normalizeDisplayValue(value);
+
+                        const isLinkedInField = field === "companyLinkedin" || field === "ownerLinkedin";
+                        const isValidLink = typeof value === "string" && value.startsWith("http");
+
+                        return (
+                          <TableCell
+                            key={field}
+                            className="max-w-[220px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2"
+                          >
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                className="w-full bg-transparent border-0 focus:border-b focus:outline-none focus:ring-0 text-sm"
+                                value={String(value)}
+                                onChange={(e) =>
+                                  handleFieldChange(company.id, field as keyof EnrichedCompany, e.target.value)
+                                }
+                              />
+                            ) : isLinkedInField && isValidLink ? (
+                              <div className="flex flex-col gap-1">
+                                <span className="break-all text-sm">
+                                  {value.replace("https://", "").replace("www.", "").split("/").slice(0, 3).join("/")}...
+                                </span>
+                                <a
+                                  href={value}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-500 hover:text-blue-700"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <ExternalLink className="h-4 w-4 inline" />
+                                </a>
+                              </div>
+                            ) : (
+                              displayValue
+                            )}
+                          </TableCell>
+                        );
+                      })}
 
                       {/* Source */}
-                      <TableCell>
+                      <TableCell className="max-w-[160px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2">
                         {normalizeDisplayValue(company.source) === "N/A"
                           ? "Not available in any source"
                           : normalizeDisplayValue(company.source)}
                       </TableCell>
                     </TableRow>
-
                   ))
                 ) : (
                   <TableRow key="no-results">
@@ -734,9 +764,9 @@ const parseRevenue = (revenueStr: string): number | null => {
                     </TableCell>
                   </TableRow>
                 )}
-              </TableBody>
-            </Table>
-
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </div>
           <div className="flex justify-end mt-4">
