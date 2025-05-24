@@ -71,12 +71,28 @@ export function Scraper() {
   const seenCompaniesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    const cacheKey = "industries"
+    const cachedIndustries = localStorage.getItem(cacheKey);
+    const CACHE_DURATION = 604800000
+    if (cachedIndustries) {
+      try {
+        const {data, timestamp} = JSON.parse(cachedIndustries)
+        if (Array.isArray(data) && Date.now() - timestamp < CACHE_DURATION) {
+          setIndustries(data)
+          return;
+        }
+      } catch {}
+    }
     const fetchIndustries = async () => {
       try {
         const response = await fetch(FETCH_INDUSTRIES_API);
         const data = await response.json();
-        if (data && data.industries) {
+        if (data && Array.isArray(data.industries)) {
           setIndustries(data.industries);
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({ data: data.industries, timestamp: Date.now()})
+          );
         } else {
           console.error("Invalid API response format:", data);
         }
