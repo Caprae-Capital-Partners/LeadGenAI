@@ -10,7 +10,7 @@ class UserLeadDraft(db.Model):
     id = db.Column('uuid', String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     draft_id = db.Column('draft_id', String(36), unique=True, default=lambda: str(uuid.uuid4()))
     user_id = db.Column('user_id', db.Integer, ForeignKey('users.user_id'), nullable=False)
-    lead_id = db.Column('lead_id', db.Integer, ForeignKey('leads.lead_id'), nullable=False)
+    lead_id = db.Column('lead_id', String(100), ForeignKey('leads.lead_id'), nullable=False)
     version = db.Column('version', Integer, default=1)
     draft_data = db.Column('draft_data', db.JSON, nullable=False)
     change_summary = db.Column('change_summary', Text, nullable=True)

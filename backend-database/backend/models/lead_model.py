@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB
+import hashlib
 
 db = SQLAlchemy()
 
@@ -8,7 +9,7 @@ class Lead(db.Model):
     __tablename__ = 'leads'
     
     # Primary key
-    lead_id = db.Column(db.Integer, primary_key=True)
+    lead_id = db.Column(db.String(100), primary_key=True)
     
     # Base data
     search_keyword = db.Column(JSONB, nullable=False)  # Base64-encoded JSON string
@@ -90,4 +91,30 @@ class Lead(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'deleted': self.deleted,
             'deleted_at': self.deleted_at.isoformat() if self.deleted_at else None
-        } 
+        }
+
+    @classmethod
+    def generate_lead_id(cls, company, street, city, state, company_phone, website):
+        """
+        Generate a unique lead_id based on company information.
+        Uses SHA-256 hash of combined company details to create a unique identifier.
+        """
+        # Combine all fields into a single string, using empty string for None values
+        combined = f"{company or ''}{street or ''}{city or ''}{state or ''}{company_phone or ''}{website or ''}"
+        # Create SHA-256 hash
+        hash_object = hashlib.sha256(combined.encode())
+        # Return first 32 characters of the hex digest
+        return hash_object.hexdigest()[:32]
+
+    def __init__(self, **kwargs):
+        # Generate lead_id if not provided
+        if 'lead_id' not in kwargs:
+            kwargs['lead_id'] = self.generate_lead_id(
+                company=kwargs.get('company'),
+                street=kwargs.get('street'),
+                city=kwargs.get('city'),
+                state=kwargs.get('state'),
+                company_phone=kwargs.get('company_phone'),
+                website=kwargs.get('website')
+            )
+        super().__init__(**kwargs) 

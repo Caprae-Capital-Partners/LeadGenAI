@@ -53,7 +53,7 @@ def create_lead_access():
             user_id=user_id,
             lead_id=lead_id,
             access_type=access_type,
-            granted_by=current_user.user_id,
+            granted_by=str(current_user.user_id),
             expires_at=expires_at
         )
         
@@ -72,7 +72,7 @@ def get_user_access():
     """Get all lead access for the current user"""
     try:
         # Get all active access for the current user
-        access_list = UserLeadAccess.query.filter_by(user_id=current_user.user_id, is_active=True).all()
+        access_list = UserLeadAccess.query.filter_by(user_id=str(current_user.user_id), is_active=True).all()
         
         # Format results
         results = []

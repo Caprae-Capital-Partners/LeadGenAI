@@ -339,35 +339,40 @@ class LeadController:
 
     @staticmethod
     def add_or_update_lead_by_match(lead_data):
-        """Add a new lead or update existing lead by matching email or phone"""
+        """Add a new lead or update existing lead by matching lead_id, email, or phone"""
         try:
-            # Log for debugging
             print(f"Processing lead: {lead_data.get('company')}")
 
-            if lead_data.get('company'):
-                company_name = lead_data['company']
-                # find existing lead by company (case-insensitive)
-                existing_lead = Lead.query.filter(
-                    db.func.lower(Lead.company) == db.func.lower(company_name),
-                    Lead.deleted == False
-                ).first()
-            else:
-                existing_lead = None
+            # Check based on lead_id if exists
+            existing_lead = None
+            if lead_data.get('lead_id'):
+                existing_lead = Lead.query.filter_by(lead_id=lead_data['lead_id']).first()
 
-            # add check for email/phone if exists
-            query = Lead.query
-            conditions = []
-            if lead_data.get('owner_email'):
-                lead_data['owner_email'] = str(lead_data['owner_email']).strip().lower()
-                conditions.append(Lead.owner_email == lead_data['owner_email'])
-            if lead_data.get('phone'):
-                lead_data['phone'] = str(lead_data['phone']).strip()
-                conditions.append(Lead.phone == lead_data['phone'])
+            # If not found, check by company/email/phone (old logic)
+            if not existing_lead:
+                if lead_data.get('company'):
+                    company_name = lead_data['company']
+                    existing_lead = Lead.query.filter(
+                        db.func.lower(Lead.company) == db.func.lower(company_name),
+                        Lead.deleted == False
+                    ).first()
+                else:
+                    existing_lead = None
 
-            if conditions:
-                lead_by_contact = query.filter(db.or_(*conditions)).first()
-                if lead_by_contact:
-                    existing_lead = lead_by_contact
+                # add check for email/phone if exists
+                query = Lead.query
+                conditions = []
+                if lead_data.get('owner_email'):
+                    lead_data['owner_email'] = str(lead_data['owner_email']).strip().lower()
+                    conditions.append(Lead.owner_email == lead_data['owner_email'])
+                if lead_data.get('phone'):
+                    lead_data['phone'] = str(lead_data['phone']).strip()
+                    conditions.append(Lead.phone == lead_data['phone'])
+
+                if conditions:
+                    lead_by_contact = query.filter(db.or_(*conditions)).first()
+                    if lead_by_contact:
+                        existing_lead = lead_by_contact
 
             if existing_lead:
                 # Update only fields that are empty/null, EXCEPT 'source' which is always updated
@@ -392,7 +397,6 @@ class LeadController:
                                 updated = True
                                 print(f"Updated field 'employees': '{current_value}' -> '{value}'")
                         else:
-                            # Update if old field is empty/null/"N/A" and new value is not empty
                             if (current_value in [None, '', 'N/A']) and (value not in [None, '', 'N/A']):
                                 setattr(existing_lead, key, value)
                                 updated = True
@@ -472,12 +476,14 @@ class LeadController:
                         # Lead.location.ilike(f"%{location}%")
                     )
 
-
         results = [lead.to_dict() for lead in query.all()]
         exec_time = int((time.time() - start_time) * 1000)
         # Log the search
-        # user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None) or 0
-        user_id = 1  # TEMP: static user_id for logging
+        user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        if not user_id:
+            # If no user is logged in, don't log the search
+            return results
+            
         search_query = f"industry: {industry}, location: {location}"
         SearchLogController.log_search(
             user_id=user_id,

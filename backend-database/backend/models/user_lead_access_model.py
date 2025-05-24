@@ -10,7 +10,7 @@ class UserLeadAccess(db.Model):
     id = db.Column('uuid', String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id_leads_id = db.Column('user_id_leads_id', String(36), unique=True)
     user_id = db.Column('user_id', db.Integer, ForeignKey('users.user_id'), nullable=False)
-    lead_id = db.Column('lead_id', db.Integer, ForeignKey('leads.lead_id'), nullable=False)
+    lead_id = db.Column('lead_id', String(100), ForeignKey('leads.lead_id'), nullable=False)
     access_type = db.Column('access_type', Enum('view', 'edit', 'admin', name='access_type_enum'), nullable=False)
     granted_by = db.Column('granted_by', db.Integer, ForeignKey('users.user_id'), nullable=True)
     granted_at = db.Column('granted_at', DateTime, default=datetime.utcnow)

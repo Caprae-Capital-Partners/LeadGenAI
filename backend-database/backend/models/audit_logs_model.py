@@ -9,7 +9,7 @@ class AuditLog(db.Model):
 
     id = db.Column('bigint', db.BigInteger, primary_key=True, autoincrement=True)
     log_id = db.Column('log_id', String(36), unique=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column('user_id', db.Integer, ForeignKey('users.user_id'), nullable=False)
+    user_id = db.Column('user_id', db.String(32), ForeignKey('users.user_id'), nullable=False)
     action_type = db.Column('action_type', SQLEnum('create', 'update', 'delete', 'view', 'export', 'import', name='action_type_enum'), nullable=False)
     table_affected = db.Column('table_affected', Text, nullable=False)
     record_id = db.Column('record_id', Text, nullable=False)

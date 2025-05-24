@@ -2,6 +2,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.lead_model import db
 from datetime import datetime
+import hashlib
 
 class User(UserMixin, db.Model):
     """User model for authentication"""
@@ -12,6 +13,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256))
     role = db.Column(db.String(20), default='user', nullable=False)
+    tier = db.Column(db.String(50), default='free', nullable=False)
     company = db.Column(db.String(100))  # New field for company
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
@@ -45,4 +47,35 @@ class User(UserMixin, db.Model):
         return self.role in ['admin', 'developer']
 
     def __repr__(self):
-        return f'<User {self.username}>' 
+        return f'<User {self.username}>'
+
+    @classmethod
+    def generate_user_id(cls, email, password):
+        """
+        Generate a unique user_id based on email and password.
+        Uses SHA-256 hash of combined email and password.
+        """
+        combined = f"{email or ''}{password or ''}"
+        hash_object = hashlib.sha256(combined.encode())
+        return hash_object.hexdigest()[:32]
+
+    def __init__(self, **kwargs):
+        # Generate user_id if not provided
+        if 'user_id' not in kwargs:
+            kwargs['user_id'] = self.generate_user_id(
+                email=kwargs.get('email'),
+                password=kwargs.get('password')
+            )
+        super().__init__(**kwargs)
+
+
+    def to_dict(self):
+        return {
+            "id": self.user_id,
+            "username": self.username,
+            "email": self.email,
+            "role": self.role,
+            "tier": self.tier,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "is_active": self.is_active
+        }
