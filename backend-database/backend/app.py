@@ -8,6 +8,7 @@ from flask_login import LoginManager, current_user
 from models.user_model import User
 from sqlalchemy import event, text
 from flask_cors import CORS  # Import CORS
+from routes.subscription_routes import subscription_bp
 
 def create_app(config_class=config):
     """Create and configure the Flask application"""
@@ -70,6 +71,7 @@ def create_app(config_class=config):
     app.register_blueprint(main_bp)  # Register main routes first
     app.register_blueprint(auth_bp)  # Register auth routes
     app.register_blueprint(lead_bp)  # Then register other routes
+    app.register_blueprint(subscription_bp)  # Register subscription routes
 
     # Create database tables
     with app.app_context():

@@ -1133,19 +1133,29 @@ def enrich_multiple_leads():
             results.append(lead.to_dict())
             continue
 
-        # Panggil API enrichment eksternal (dummy contoh)
+        # call external enrichment API (dummy example)
         # response = requests.post('http://enrichment-api/endpoint', json={"lead_id": lead_id})
         # enriched_data = response.json()
-        # Simulasi enrichment:
+        # Simulate enrichment:
         enriched_data = {f: f"enriched_{f}@example.com" if 'email' in f else "enriched_value" for f in missing}
 
-        # Update lead di database
+        # Update lead in database
         for f, v in enriched_data.items():
             setattr(lead, f, v)
         db.session.commit()
 
-        # Ambil data terbaru
+        # get the latest data
         refreshed = Lead.query.filter_by(lead_id=lead_id).first()
         results.append(refreshed.to_dict())
 
     return jsonify({"results": results})
+
+@lead_bp.route('/api/leads/summary', methods=['GET'])
+@login_required
+def leads_summary():
+    total = Lead.query.filter_by(deleted=False).count()
+    status_counts = db.session.query(Lead.status, db.func.count(Lead.lead_id)).filter_by(deleted=False).group_by(Lead.status).all()
+    return jsonify({
+        "total": total,
+        "status_counts": {status: count for status, count in status_counts}
+    })

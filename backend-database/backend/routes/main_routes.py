@@ -53,4 +53,9 @@ def audit_log():
         for row in result:
             logs.append(dict(row._mapping))
 
-    return render_template('audit_log.html', logs=logs, username=username, column=column, limit=limit) 
+    return render_template('audit_log.html', logs=logs, username=username, column=column, limit=limit)
+
+@main_bp.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html') 
