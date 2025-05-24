@@ -476,12 +476,14 @@ class LeadController:
                         # Lead.location.ilike(f"%{location}%")
                     )
 
-
         results = [lead.to_dict() for lead in query.all()]
         exec_time = int((time.time() - start_time) * 1000)
         # Log the search
-        # user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None) or 0
-        user_id = 1  # TEMP: static user_id for logging
+        user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        if not user_id:
+            # If no user is logged in, don't log the search
+            return results
+            
         search_query = f"industry: {industry}, location: {location}"
         SearchLogController.log_search(
             user_id=user_id,
