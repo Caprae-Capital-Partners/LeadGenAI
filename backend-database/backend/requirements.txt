@@ -12,15 +12,11 @@ flask-login
 werkzeug
 openpyxl
 pymysql
-python-dotenv
 jwt
 flask-cors
 sqlalchemy
 pyjwt
-pandas
-python-dotenv
-gunicorn
 pytest
 pytest-cov
 requests
-gunicorn
+stripe
