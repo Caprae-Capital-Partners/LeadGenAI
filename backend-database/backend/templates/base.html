@@ -389,7 +389,7 @@
         <div class="navbar-menu">
             <a href="{{ url_for('main.dashboard') }}" class="nav-link">Dashboard</a>
             <a href="{{ url_for('main.index') }}" class="nav-link">Home</a>
-            <a href="https://app.saasquatchleads.com/scraper" class="nav-link">Scraper Tool</a>
+            <a href="https://app.saasquatchleads.com" class="nav-link">Scraper Tool</a>
             
             {% if current_user.is_authenticated and current_user.role in ['admin', 'developer'] %}
             <div class="dropdown">
