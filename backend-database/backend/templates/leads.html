@@ -449,7 +449,9 @@
                                     <input type="checkbox" id="headerSelectAll" class="custom-checkbox" onclick="toggleAllCheckboxes(this.checked)">
                                 </label>
                             </th>
+                            {% if current_user.role in ['developer'] %}
                             <th class="sticky-col id-col">ID</th>
+                            {% endif %}
                             <!-- Updated column headers -->
                             <th>Company</th>
                             <th>Owner First Name</th>
@@ -484,14 +486,14 @@
                     <tbody>
                         {% for lead in leads %}
                         <tr class="animate__animated animate__fadeIn" data-index="{{ loop.index }}">
-                            {% if current_user.role in ['developer'] %}
                             <td class="checkbox-col">
                                 <div class="checkbox-wrapper">
                                     <input type="checkbox" class="lead-checkbox custom-checkbox" value="{{ lead.lead_id }}" onchange="updateExportButton()">
                                 </div>
                             </td>
-                            {% endif %}
+                            {% if current_user.role in ['developer'] %}
                             <td class="sticky-col id-col">{{ lead.lead_id }}</td>
+                            {% endif %}
                             <!-- Basic Information -->
                             <td>{{ lead.company or '-' }}</td>
                             <td>{{ lead.owner_first_name or '-' }}</td>
