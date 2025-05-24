@@ -166,11 +166,7 @@ export function ScraperResults({ data, industry, location }: { data: string | an
   };
 
   const handleNext = () => {
-    const params = new URLSearchParams();
-    params.set('tab', 'enhancement');
-    params.set('industry', industry);
-    params.set('location', location);
-    router.push(`?${params.toString()}`);
+    router.push(`/enhancement?industry=${encodeURIComponent(industry)}&location=${encodeURIComponent(location)}`)
   }
 
   const handleSave = async () => {
