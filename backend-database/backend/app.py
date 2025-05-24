@@ -44,7 +44,7 @@ def create_app(config_class=config):
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        return User.query.get(str(user_id))
 
     def set_app_user_on_connect(dbapi_connection, connection_record):
         try:
