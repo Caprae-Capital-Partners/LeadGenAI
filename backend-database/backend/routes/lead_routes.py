@@ -13,6 +13,7 @@ import pandas as pd
 import io
 from werkzeug.exceptions import NotFound
 from sqlalchemy import or_, and_
+import requests
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -1110,3 +1111,41 @@ def api_delete_multiple_leads():
         import traceback
         print(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@lead_bp.route('/api/leads/enrich-multiple', methods=['POST'])
+def enrich_multiple_leads():
+    data = request.get_json()
+    lead_ids = data.get('lead_ids', [])
+    if not lead_ids:
+        return jsonify({"error": "No lead_ids provided"}), 400
+
+    required_fields = ['owner_email', 'owner_phone_number', 'website', 'owner_linkedin']
+    results = []
+
+    for lead_id in lead_ids:
+        lead = Lead.query.filter_by(lead_id=lead_id).first()
+        if not lead:
+            results.append({"lead_id": lead_id, "error": "Not found"})
+            continue
+
+        missing = [f for f in required_fields if not getattr(lead, f) or getattr(lead, f) in ['-', 'N/A', '']]
+        if not missing:
+            results.append(lead.to_dict())
+            continue
+
+        # Panggil API enrichment eksternal (dummy contoh)
+        # response = requests.post('http://enrichment-api/endpoint', json={"lead_id": lead_id})
+        # enriched_data = response.json()
+        # Simulasi enrichment:
+        enriched_data = {f: f"enriched_{f}@example.com" if 'email' in f else "enriched_value" for f in missing}
+
+        # Update lead di database
+        for f, v in enriched_data.items():
+            setattr(lead, f, v)
+        db.session.commit()
+
+        # Ambil data terbaru
+        refreshed = Lead.query.filter_by(lead_id=lead_id).first()
+        results.append(refreshed.to_dict())
+
+    return jsonify({"results": results})

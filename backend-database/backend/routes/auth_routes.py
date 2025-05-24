@@ -146,7 +146,7 @@ def delete_user():
             return redirect(url_for('auth.manage_users'))
 
         # Prevent self-deletion
-        if int(user_id) == current_user.user_id:
+        if str(user_id) == str(current_user.user_id):
             flash('You cannot delete your own account', 'danger')
             return redirect(url_for('auth.manage_users'))
 
@@ -279,12 +279,12 @@ def api_list_users():
         ]
     })
 
-@auth_bp.route('/api/auth/user/<int:user_id>', methods=['DELETE'])
+@auth_bp.route('/api/auth/user/<string:user_id>', methods=['DELETE'])
 @login_required
 @role_required('admin', 'developer')
 def api_delete_user(user_id):
     """API: Delete user by id (admin/developer only, cannot delete self)"""
-    if user_id == current_user.user_id:
+    if str(user_id) == str(current_user.user_id):
         return jsonify({"error": "You cannot delete your own account"}), 400
     user = User.query.get(user_id)
     if not user:
@@ -297,7 +297,7 @@ def api_delete_user(user_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-@auth_bp.route('/api/auth/user/<int:user_id>/role', methods=['PUT'])
+@auth_bp.route('/api/auth/user/<string:user_id>/role', methods=['PUT'])
 @login_required
 @role_required('admin', 'developer')
 def api_update_user_role(user_id):
@@ -395,7 +395,7 @@ def handle_successful_payment(session):
             print("No user_id found in session")
             return
 
-        user = User.query.get(int(user_id))
+        user = User.query.get(user_id)
         if not user:
             print(f"User {user_id} not found")
             return
