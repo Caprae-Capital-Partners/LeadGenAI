@@ -459,7 +459,9 @@
                             <th>Owner Email</th>
                             <th>Phone Number</th>
                             <th>Owner Title</th>
-                            <th>Location</th>
+                            <th>Street</th>
+                            <th>City</th>
+                            <th>State</th>
                             <!-- Company Info -->
                             <th>Website</th>
                             <th>Company LinkedIn</th>
@@ -501,7 +503,9 @@
                             <td>{{ lead.owner_email or '-' }}</td>
                             <td>{{ lead.phone or '-' }}</td>
                             <td>{{ lead.owner_title or '-' }}</td>
-                            <td>{{ (lead.city ~ ', ' ~ lead.state) if (lead.city and lead.state) else (lead.city or lead.state or '-') }}</td>
+                            <td>{{ lead.street or '-' }}</td>
+                            <td>{{ lead.city or '-' }}</td>
+                            <td>{{ lead.state or '-' }}</td>
                             <!-- Company Details -->
                             <td>{{ lead.website or '-' }}</td>
                             <td>{{ lead.company_linkedin or '-' }}</td>
