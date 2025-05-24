@@ -8,8 +8,6 @@ import pandas as pd
 from copy import deepcopy
 import inspect
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-sys.path.append(os.path.abspath("C:/Work/Internship/Web Scraper Caprae/LeadGenAI/phase_1/backend"))
 
 # Importing  scraper functions
 from backend.services.yellowpages_scraper import scrape_yellowpages
@@ -23,12 +21,8 @@ from backend.services.merge_sources import merge_data_sources
 
 from config.browser_config import PlaywrightManager
 
-import psutil
+
 import time
-
-
-
-# from backend.services.superpages_scraper import scrape_superpages  # Assuming this exists
 
 def start_background_scraping(industry: str, location: str) -> Callable[[], Dict[str, Any]]:
     state = {
@@ -60,19 +54,10 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
     
     # Define the async function to run all scrapers
     async def run_all_scrapers():
-        # Create tasks for all scrapers
-        
-        start_time = time.perf_counter()
-        process = psutil.Process(os.getpid())
-        start_mem = process.memory_info().rss / 1024 / 1024  # In MB
-        
+       
         # Running parallel
         manager = PlaywrightManager(headless=True)
         await manager.start_browser(stealth_on=True)
-        
-        start_time = time.perf_counter()
-        process = psutil.Process(os.getpid())
-        start_mem = process.memory_info().rss / 1024 / 1024  # In MB
         
         gmaps_page = await manager.context.new_page()
         bbb_page = await manager.context.new_page()
@@ -94,57 +79,6 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
         with lock:
             state["is_complete"] = True
             await manager.stop_browser()
-            
-            end_time = time.perf_counter()
-            end_mem = process.memory_info().rss / 1024 / 1024  # In MB
-            
-            print(f"Time taken: {end_time - start_time:.2f} seconds")
-            print(f"RAM usage: {end_mem - start_mem:.2f} MB")
-    
-            print(f"Scraping complete! Total time: {time.time() - state['start_time']:.2f} seconds")
-    
-    # Function to run a single scraper
-    # async def run_scraper(scraper_func, scraper_name, industry, location, **kwargs):
-    #     try:
-    #         print(f"Starting {scraper_name} scraper...")
-    #         result = await scraper_func(industry, location, **kwargs)
-            
-    #         # Update results
-    #         with lock:
-    #             state["results"][scraper_name] = result
-    #             state["in_progress"][scraper_name] = False
-    #             print(f"{scraper_name} completed with {len(result)} results")
-            
-    #     except Exception as e:
-    #         print(f"Error in {scraper_name} scraper: {e}")
-    #         with lock:
-    #             state["in_progress"][scraper_name] = False
-                
-    # async def run_scraper(scraper_func, scraper_name, industry, location, **kwargs):
-    #     try:
-    #         print(f"Starting {scraper_name} scraper...")
-
-    #         result_list = []
-
-    #         # Check if scraper_func is an async generator
-    #         scraper = scraper_func(industry, location, **kwargs)
-    #         if inspect.isasyncgen(scraper):
-    #             async for item in scraper:
-    #                 result_list.append(item)
-    #         else:
-    #             # Await normally if it's a coroutine
-    #             result_list = await scraper
-
-    #         # Update shared state
-    #         with lock:
-    #             state["results"][scraper_name] = result_list
-    #             state["in_progress"][scraper_name] = False
-    #             print(f"{scraper_name} completed with {len(result_list)} results")
-
-    #     except Exception as e:
-    #         print(f"Error in {scraper_name} scraper: {e}")
-    #         with lock:
-    #             state["in_progress"][scraper_name] = False
     
     async def run_scraper(scraper_func, scraper_name, industry, location, **kwargs):
         try:
@@ -173,22 +107,7 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
             print(f"Error in {scraper_name} scraper: {e}")
             with lock:
                 state["in_progress"][scraper_name] = False
-        
-    # Function to get current results 
-    # def get_results():
-    #     with lock:
-    #         total_results = sum(len(results) for results in state["results"].values())
-    #         return {
-    #             "is_complete": state["is_complete"],
-    #             "scraper_status": {
-    #                 k: {"done": not state["in_progress"][k], "count": len(v)} 
-    #                 for k, v in state["results"].items()
-    #             },
-    #             "total_results": total_results,
-    #             "results": state["results"],  # Return individual results from each scraper
-    #             "elapsed_time": time.time() - state["start_time"]
-    #         }
-    
+          
     # Run the async function in a background thread
     def run_in_background():
         loop = asyncio.new_event_loop()

@@ -10,10 +10,9 @@ import { ScraperResults } from "@/components/scraper-results"
 import axios from "axios"
 import { AlertCircle, DatabaseIcon } from "lucide-react"
 
-const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/lead-scrape`;
+const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/scrape-stream`;
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/industries`;
 const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/lead_scrape`;
-const STREAMING_API = 'http://127.0.0.1:8000/scrape-stream';
 
 // Define interfaces for type safety
 interface LeadData {
@@ -33,13 +32,13 @@ interface LeadData {
   bbb_rating?: string;
   Business_phone?: string;
   business_phone?: string;
-  lead_id?: number;
+  id?: number;
   phone?: string;
   [key: string]: any; // For any other properties we might not know about
 }
 
 interface FormattedLead {
-  lead_id: number;
+  id: number;
   company: string;
   website: string;
   industry: string;
@@ -106,7 +105,7 @@ export function Scraper() {
 
   // Format data consistently across all sources
   const formatLeadData = (item: LeadData, index: number): FormattedLead => ({
-    lead_id: item.lead_id || index,
+    id: item.id || index,
     company: item.Company || item.company || "",
     website: item.Website || item.website || "",
     industry: item.Industry || item.industry || "",
@@ -174,7 +173,7 @@ export function Scraper() {
     });
     
     // Create EventSource connection with explicit parameters
-    const url = `${STREAMING_API}?${queryParams.toString()}`;
+    const url = `${SCRAPER_API}?${queryParams.toString()}`;
     console.log("Connecting to stream URL:", url);
     
     const eventSource = new EventSource(url);

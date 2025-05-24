@@ -798,11 +798,11 @@ export function DataEnhancement() {
                   <>
                     {currentItems.length > 0 &&
                       currentItems.map((company) => (
-                        <TableRow key={company.lead_id ?? `${company.company}-${Math.random()}`}>
+                        <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
                           <TableCell>
                             <Checkbox
-                              checked={selectedCompanies.includes(company.lead_id)}
-                              onCheckedChange={() => handleSelectCompany(company.lead_id)}
+                              checked={selectedCompanies.includes(company.id)}
+                              onCheckedChange={() => handleSelectCompany(company.id)}
                               aria-label={`Select ${company.company}`}
                             />
                           </TableCell>

@@ -15,18 +15,18 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 sys.path.append(os.path.abspath("C:/Work/Internship/Web Scraper Caprae/LeadGenAI/phase_1/backend"))
 
 # Import the start_background_scraping function
-from .background import start_background_scraping
+from backend.services.background import start_background_scraping
 
 app = FastAPI()
 
 # Add CORS middleware to allow requests from your frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Specify your frontend URL in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],  # Specify your frontend URL in production
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 async def scraper_stream(industry: str, location: str):
     """Generate SSE stream from the background scraper results"""
@@ -96,18 +96,17 @@ async def scraper_stream(industry: str, location: str):
         # Wait a bit before checking for new results
         await asyncio.sleep(2)
 
-@app.get("/scrape-stream")
+@app.get("/api/scrape-stream")
 async def stream(industry: str, location: str):
     """Endpoint to stream scraper results for a given industry and location"""
     return StreamingResponse(
         scraper_stream(industry, location),
         media_type="text/event-stream"
     )
-
-# Endpoint to check server status
-@app.get("/status")
-async def status():
-    return {"status": "online"}
+    
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=5000)
