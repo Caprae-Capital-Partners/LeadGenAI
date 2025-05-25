@@ -4,7 +4,7 @@ from controllers.upload_controller import UploadController
 from controllers.export_controller import ExportController
 from models.lead_model import db, Lead
 from flask_login import login_required, current_user
-from utils.decorators import role_required
+from utils.decorators import role_required, credit_required, filter_lead_data_by_plan
 import csv
 from io import StringIO, BytesIO
 import logging
@@ -880,6 +880,9 @@ def permanent_delete_lead(lead_id):
 
 
 @lead_bp.route('/api/lead_scrape', methods=['POST'])
+@login_required # Ensure user is logged in
+@credit_required(cost=1)
+@filter_lead_data_by_plan()
 def api_search_leads():
     data = request.get_json()
     # logging.debug(f"[IN] /api/search_leads data: {data}")
@@ -887,7 +890,7 @@ def api_search_leads():
     location = data.get("location", "")
     results = LeadController.search_leads_by_industry_location(industry, location)
     # logging.debug(f"[OUT] /api/search_leads results: {results}")
-    return jsonify(results)
+    return results
 
 @lead_bp.route('/api/industries', methods=['GET'])
 # #@login_required

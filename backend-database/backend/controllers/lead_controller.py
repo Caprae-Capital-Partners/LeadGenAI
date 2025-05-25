@@ -494,26 +494,28 @@ class LeadController:
             return (False, msg)
 
     @staticmethod
-    def search_leads_by_industry_location(industry, location):
+    def search_leads_by_industry_location(industry=None, location=None):
         """Search leads by industry and location (for API), with search_logs caching"""
-        start_time = time.time()
-        # Normalize and hash the search
-        search_hash = SearchLogController.normalize_and_hash(industry, location)
-        # Check if log exists
-        log = SearchLogController.get_log_by_hash(search_hash)
-        if log and log.search_parameters:
-            # Increment result_count and update timestamp
-            log.result_count += 1
-            log.searched_at = datetime.utcnow()
-            db.session.commit()
-            return log.search_parameters  # Already JSON serializable
-        # If not found, search leads
+        # Temporarily commenting out caching logic to ensure function returns Lead instances for decorator
+        # start_time = time.time()
+        # # Normalize and hash the search
+        # search_hash = SearchLogController.normalize_and_hash(industry, location)
+        # # Check if log exists
+        # log = SearchLogController.get_log_by_hash(search_hash)
+        # if log and log.search_parameters:
+        #     # Increment result_count and update timestamp
+        #     log.result_count += 1
+        #     log.searched_at = datetime.utcnow()
+        #     db.session.commit()
+        #     return log.search_parameters  # Already JSON serializable
+
+        # If no log found or caching is off, search leads
         query = Lead.query.filter_by(deleted=False)
         if industry:
-            query = query.filter(Lead.industry.ilike(f"%{industry}%"))
+            query = query.filter(db.func.lower(Lead.industry) == industry.lower())
 
-        # Modify location filtering to search city, state, or street and exclude nulls/empty
         if location:
+            # Restore location filtering to search city, state, or street and exclude nulls/empty
             # Search in city, state, or street
             location_filter = db.or_(
                 Lead.city.ilike(f"%{location}%"),
@@ -528,26 +530,24 @@ class LeadController:
             )
             query = query.filter(location_filter, not_null_or_empty)
 
-        results = [lead.to_dict() for lead in query.all()]
-        exec_time = int((time.time() - start_time) * 1000)
-        # Log the search
-        user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        leads = query.all()
 
-        print("00000000000000000000000",user_id)
-        if not user_id:
-            # If no user is logged in, don't log the search
-            return results
+        # Temporarily commenting out search logging
+        # exec_time = int((time.time() - start_time) * 1000)
+        # # Log the search
+        # user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        # if user_id:
+        #     search_query = f"industry: {industry}, location: {location}"
+        #     SearchLogController.log_search(
+        #         user_id=user_id,
+        #         search_query=search_query,
+        #         search_hash=search_hash,
+        #         search_parameters=[lead.to_dict() for lead in leads], # Log dictionary representation
+        #         result_count=len(leads),
+        #         execution_time_ms=exec_time
+        #     )
 
-        search_query = f"industry: {industry}, location: {location}"
-        SearchLogController.log_search(
-            user_id=user_id,
-            search_query=search_query,
-            search_hash=search_hash,
-            search_parameters=results,
-            result_count=len(results),
-            execution_time_ms=exec_time
-        )
-        return results
+        return leads # Return list of Lead model instances for the decorator
 
     @staticmethod
     def get_unique_industries():
