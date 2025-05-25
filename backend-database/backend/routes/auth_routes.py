@@ -74,18 +74,16 @@ def signup():
 
     return render_template('auth/signup.html')
 
-@auth_bp.route('/logout')
+@auth_bp.route('/api/ping-auth', methods=["GET"])
+@login_required
+def ping_auth():
+    return '', 204
+
+@auth_bp.route('/logout', methods=['GET'])
 @login_required
 def logout():
-    """Handle user logout"""
-    success, message = AuthController.logout()
-
-    if success:
-        flash(message, 'success')
-    else:
-        flash(message, 'danger')
-
-    return redirect(url_for('auth.login'))
+    logout_user()
+    return redirect("http://localhost:3000/auth")
 
 @auth_bp.route('/manage_users')
 @login_required
