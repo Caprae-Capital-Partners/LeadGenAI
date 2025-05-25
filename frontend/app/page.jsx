@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+// import { useEffect, useState } from "react";
 
 import { Header } from "@/components/header";
 import {
@@ -45,7 +47,11 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
+import { redirect } from 'next/navigation';
 
+// export default function Home() {
+//   redirect('/auth');
+// }
 export default function Home() {
   const [employeesFilter, setEmployeesFilter] = useState("");
   const [revenueFilter, setRevenueFilter] = useState("");
@@ -58,7 +64,7 @@ export default function Home() {
   const [stateFilter, setStateFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [selectAll, setSelectAll] = useState(false);
-
+  const router = useRouter();
   const handleSave = () => {
     // Commit the edits to the main scrapingHistory state
     setScrapingHistory(editedRows);
@@ -100,60 +106,10 @@ export default function Home() {
     return newObj;
   };
 
-  const [scrapingHistory, setScrapingHistory] = useState([
-    {
-      id: 1,
-      company: "Acme Corp",
-      website: "https://acme.com",
-      industry: "SaaS",
-      productCategory: "CRM Software",
-      businessType: "B2B",
-      employees: 250,
-      revenue: "$1.2M",
-      yearFounded: 2012,
-      bbbRating: "A+",
-      street: "123 Market St",
-      city: "San Francisco",
-      state: "CA",
-      companyPhone: "123-456-7890",
-      companyLinkedin: "https://linkedin.com/company/acme",
-      ownerFirstName: "Alice",
-      ownerLastName: "Johnson",
-      ownerTitle: "CTO",
-      ownerLinkedin: "https://linkedin.com/in/alicejohnson",
-      ownerPhoneNumber: "+1-234-567-8901",
-      ownerEmail: "alice@acme.com",
-      source: "Growjo + Apollo",
-      created: "2025-05-22 10:30",
-      updated: "2025-05-22 14:00",
-    },
-    {
-      id: 2,
-      company: "Globex Inc.",
-      website: "https://globex.com",
-      industry: "Healthcare",
-      productCategory: "Patient Management",
-      businessType: "B2B2C",
-      employees: 500,
-      revenue: "$3.8M",
-      yearFounded: 2008,
-      bbbRating: "B",
-      street: "456 Elm Ave",
-      city: "Austin",
-      state: "TX",
-      companyPhone: "512-123-4567",
-      companyLinkedin: "https://linkedin.com/company/globex",
-      ownerFirstName: "Bob",
-      ownerLastName: "Smith",
-      ownerTitle: "Head of Operations",
-      ownerLinkedin: "https://linkedin.com/in/bobsmith",
-      ownerPhoneNumber: "+1-512-456-7890",
-      ownerEmail: "bob@globex.com",
-      source: "Scraper",
-      created: "2025-05-21 09:10",
-      updated: "2025-05-21 11:30",
-    },
-  ]);
+  // 
+  
+  const [scrapingHistory, setScrapingHistory] = useState([]);
+
   const handleExportCSV = () => {
     const headers = [
       "Company",
@@ -237,11 +193,87 @@ export default function Home() {
   
     setSelectAll(visibleIds.every((id) => updatedSelection.includes(id)));
   };
+
   // const filteredCompanies = scrapingHistory.slice(
   //   indexOfFirstItem,
   //   indexOfLastItem
   // );
+  useEffect(() => {
+    const verifyAndFetchLeads = async () => {
+      try {
+        const authRes = await fetch(
+          "https://data.capraeleadseekers.site/api/ping-auth",
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
 
+        if (!authRes.ok) {
+          router.push("/auth");
+          return;
+        }
+
+        console.log("✅ Logged in");
+
+        const leadsRes = await fetch(
+          "https://data.capraeleadseekers.site/api/lead-access",
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
+        if (!leadsRes.ok) {
+          console.warn("⚠️ Could not fetch leads, status:", leadsRes.status);
+          return;
+        }
+
+        const data = await leadsRes.json();
+        const accessList = data.access_list || [];
+
+        const parsed = accessList.map((entry) => ({
+          id: entry.lead?.lead_id || entry.lead_id || entry.id,
+          company: entry.lead?.company || "N/A",
+          // Add any fields you're storing, fallback to "" if missing
+          website: "",
+          industry: "",
+          productCategory: "",
+          businessType: "",
+          employees: "",
+          revenue: "",
+          yearFounded: "",
+          bbbRating: "",
+          street: "",
+          city: "",
+          state: "",
+          companyPhone: "",
+          companyLinkedin: "",
+          ownerFirstName: "",
+          ownerLastName: "",
+          ownerTitle: "",
+          ownerLinkedin: "",
+          ownerPhoneNumber: "",
+          ownerEmail: "",
+          source: "",
+          created: "",
+          updated: "",
+        }));
+
+        setScrapingHistory(parsed);
+        setEditedRows(parsed);
+      } catch (error) {
+        console.error("🚨 Error verifying auth or fetching leads:", error);
+        router.push("/auth");
+      }
+    };
+
+    verifyAndFetchLeads();
+  }, []);
+  
+  
+  
+  
 
 
 

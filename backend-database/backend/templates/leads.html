@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Lead Data{% endblock %}
+{% block title %}SaaSquatch Leads{% endblock %}
 {% block additional_styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/leads.css') }}">
 <style>
@@ -248,7 +248,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <!-- <div class="filter-item">
+                        <div class="filter-item">
                             <label class="filter-label">Lead Status</label>
                             <select id="statusFilter" class="filter-select" onchange="applyFilters()">
                                 <option value="">All Statuses</option>
@@ -258,7 +258,7 @@
                                     {% endif %}
                                 {% endfor %}
                             </select>
-                        </div> -->
+                        </div>
                         <!-- <div class="filter-item">
                             <label class="filter-label">Revenue</label>
                             <input type="text" id="revenueFilter" class="filter-input" 
@@ -449,7 +449,9 @@
                                     <input type="checkbox" id="headerSelectAll" class="custom-checkbox" onclick="toggleAllCheckboxes(this.checked)">
                                 </label>
                             </th>
+                            {% if current_user.role in ['developer'] %}
                             <th class="sticky-col id-col">ID</th>
+                            {% endif %}
                             <!-- Updated column headers -->
                             <th>Company</th>
                             <th>Owner First Name</th>
@@ -489,7 +491,9 @@
                                     <input type="checkbox" class="lead-checkbox custom-checkbox" value="{{ lead.lead_id }}" onchange="updateExportButton()">
                                 </div>
                             </td>
+                            {% if current_user.role in ['developer'] %}
                             <td class="sticky-col id-col">{{ lead.lead_id }}</td>
+                            {% endif %}
                             <!-- Basic Information -->
                             <td>{{ lead.company or '-' }}</td>
                             <td>{{ lead.owner_first_name or '-' }}</td>
@@ -528,7 +532,7 @@
                             <!-- Actions -->
                             <td class="actions">
                                 <!-- Status update for all users -->
-                                <!-- <form method="POST" action="{{ url_for('lead.update_status', lead_id=lead.lead_id) }}" style="display: inline-block; margin-right: 10px;">
+                                <form method="POST" action="{{ url_for('lead.update_status', lead_id=lead.lead_id) }}" style="display: inline-block; margin-right: 10px;">
                                     <select name="status" onchange="this.form.submit()" class="status-select" style="padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color);">
                                         <option value="new" {% if lead.status == 'new' %}selected{% endif %}>New</option>
                                         <option value="contacted" {% if lead.status == 'contacted' %}selected{% endif %}>Contacted</option>
@@ -536,7 +540,7 @@
                                         <option value="proposal" {% if lead.status == 'proposal' %}selected{% endif %}>Proposal</option>
                                         <option value="closed" {% if lead.status == 'closed' %}selected{% endif %}>Closed</option>
                                     </select>
-                                </form> -->
+                                </form>
                                 
                                 {% if current_user.role in ['admin', 'developer'] %}
                                 <a href="{{ url_for('lead.edit_lead', lead_id=lead.lead_id) }}" class="btn btn-edit">

@@ -87,16 +87,19 @@ export function Header() {
                 asChild
                 className="hover:bg-dark-hover focus:bg-dark-hover cursor-pointer"
               >
-                <Link
-                  href="/userSetting"
-                  className="flex items-center w-full"
-                >
+                <Link href="/userSetting" className="flex items-center w-full">
                   <User className="mr-2 h-4 w-4 text-teal-400" />
                   <span>Profile</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-dark-border" />
-              <DropdownMenuItem className="hover:bg-dark-hover focus:bg-dark-hover cursor-pointer">
+              <DropdownMenuItem
+                onClick={() => {
+                  window.location.href =
+                    "https://data.capraeleadseekers.site/logout";
+                }}
+                className="hover:bg-dark-hover focus:bg-dark-hover cursor-pointer"
+              >
                 Log out
               </DropdownMenuItem>
             </DropdownMenuContent>

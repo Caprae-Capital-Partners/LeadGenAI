@@ -109,7 +109,7 @@
             text-decoration: none;
             transition: color 0.3s;
         }
-        
+
         .logo:hover {
             color: var(--secondary-color);
         }
@@ -130,29 +130,29 @@
         .nav-link:hover {
             color: var(--primary-color);
         }
-        
+
         /* Dropdown styles */
         .dropdown {
             position: relative;
             display: inline-block;
         }
-        
+
         .dropdown-toggle {
             cursor: pointer;
             display: inline-flex;
             align-items: center;
         }
-        
+
         .dropdown-toggle i {
             transition: transform 0.2s ease;
             font-size: 0.8rem;
             margin-left: 3px;
         }
-        
+
         .dropdown-toggle:hover i {
             transform: translateY(2px);
         }
-        
+
         .dropdown-menu {
             position: absolute;
             top: 40px;
@@ -167,7 +167,7 @@
             animation: fadeIn 0.2s ease;
             transform-origin: top center;
         }
-        
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -178,7 +178,7 @@
                 transform: translateY(0);
             }
         }
-        
+
         .dropdown-item {
             display: block;
             padding: 10px 16px;
@@ -187,7 +187,7 @@
             font-weight: 500;
             transition: all 0.2s ease;
         }
-        
+
         .dropdown-item:hover {
             background-color: var(--light-color);
             color: var(--primary-color);
@@ -251,7 +251,7 @@
             left: -280px;
             height: calc(100vh - 70px);
             width: var(--sidebar-width);
-            font: var(--text-color); 
+            font: var(--text-color);
             background: var(--card-bg);
             box-shadow: 2px 0 20px rgba(0,0,0,0.1);
             transition: transform 0.3s ease-in-out;
@@ -388,8 +388,9 @@
         </div>
         <div class="navbar-menu">
             <a href="{{ url_for('main.index') }}" class="nav-link">Home</a>
-            
+
             {% if current_user.is_authenticated and current_user.role in ['admin', 'developer'] %}
+            <a href="https://app.saasquatchleads.com" class="nav-link">Scraper Tool</a>
             <div class="dropdown">
                 <a href="#" class="nav-link dropdown-toggle" id="docDropdown">
                     Documentation <i></i>
@@ -402,7 +403,7 @@
             {% else %}
             <a href="{{ url_for('main.user_docs') }}" class="nav-link">Documentation</a>
             {% endif %}
-            
+
             {% if current_user.is_authenticated %}
                 <div class="user-menu">
                     <span class="username">{{ current_user.username }}</span>
@@ -462,7 +463,7 @@
                 <span>Bulk Import</span>
             </a>
         </div>
-        
+
         <!-- Documentation Section -->
         <div class="nav-section">
             <div class="nav-section-title">DOCUMENTATION</div>
@@ -515,7 +516,7 @@
             const sidebar = document.getElementById('sidebar');
             const menuToggle = document.getElementById('menuToggle');
             const sidebarOverlay = document.getElementById('sidebarOverlay');
-            
+
             function toggleSidebar() {
                 sidebar.classList.toggle('show');
                 menuToggle.classList.toggle('active');
@@ -532,18 +533,18 @@
             if (sidebarOverlay) {
                 sidebarOverlay.addEventListener('click', toggleSidebar);
             }
-            
+
             // Documentation dropdown functionality
             const docDropdown = document.getElementById('docDropdown');
             const dropdownMenu = document.querySelector('.dropdown-menu');
-            
+
             if (docDropdown && dropdownMenu) {
                 // Toggle dropdown on click
                 docDropdown.addEventListener('click', function(e) {
                     e.preventDefault();
                     dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
                 });
-                
+
                 // Add hover effect to dropdown items
                 const dropdownItems = document.querySelectorAll('.dropdown-item');
                 dropdownItems.forEach(item => {
@@ -554,7 +555,7 @@
                         this.style.backgroundColor = 'transparent';
                     });
                 });
-                
+
                 // Close dropdown when clicking outside
                 document.addEventListener('click', function(e) {
                     if (!e.target.closest('.dropdown')) {
@@ -566,4 +567,4 @@
     </script>
     {% block scripts %}{% endblock %}
 </body>
-</html> 
+</html>

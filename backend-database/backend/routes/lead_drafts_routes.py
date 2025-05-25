@@ -33,7 +33,7 @@ def create_lead_draft():
     try:
         # Create new draft
         draft = UserLeadDraft(
-            user_id=current_user.user_id,
+            user_id=str(current_user.user_id),
             lead_id=lead_id,
             draft_data=draft_data,
             change_summary=change_summary
@@ -62,7 +62,7 @@ def get_user_drafts():
     """Get all drafts for the current user"""
     try:
         # Get all non-deleted drafts for the current user
-        drafts = UserLeadDraft.query.filter_by(user_id=current_user.user_id, deleted=False).all()
+        drafts = UserLeadDraft.query.filter_by(user_id=str(current_user.user_id), deleted=False).all()
         
         # Format results
         results = []
@@ -92,7 +92,7 @@ def get_draft(draft_id):
         return jsonify({"error": "Draft not found"}), 404
     
     # Check if user has access to this draft
-    if draft.user_id != current_user.user_id and not current_user.role in ['admin', 'developer']:
+    if draft.user_id != str(current_user.user_id) and not current_user.role in ['admin', 'developer']:
         return jsonify({"error": "You don't have permission to access this draft"}), 403
     
     try:
@@ -132,7 +132,7 @@ def update_draft(draft_id):
         return jsonify({"error": "Draft not found"}), 404
     
     # Check if user has permission to edit this draft
-    if draft.user_id != current_user.user_id and not current_user.role in ['admin', 'developer']:
+    if draft.user_id != str(current_user.user_id) and not current_user.role in ['admin', 'developer']:
         return jsonify({"error": "You don't have permission to update this draft"}), 403
     
     try:
@@ -179,7 +179,7 @@ def delete_draft(draft_id):
         return jsonify({"error": "Draft not found"}), 404
     
     # Check if user has permission to delete this draft
-    if draft.user_id != current_user.user_id and not current_user.role in ['admin', 'developer']:
+    if draft.user_id != str(current_user.user_id) and not current_user.role in ['admin', 'developer']:
         return jsonify({"error": "You don't have permission to delete this draft"}), 403
     
     try:

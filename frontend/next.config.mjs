@@ -9,6 +9,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-}
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*", // frontend /api/*
+        destination: "https://data.capraeleadseekers.site/api/:path*", // backend
+      },
+    ];
+  },
+};
 
-export default nextConfig
+export default nextConfig;

@@ -13,6 +13,7 @@ import pandas as pd
 import io
 from werkzeug.exceptions import NotFound
 from sqlalchemy import or_, and_
+import requests
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -235,7 +236,7 @@ def view_leads():
         industry=industry,
     )
 
-@lead_bp.route('/edit/<int:lead_id>', methods=['GET', 'POST'])
+@lead_bp.route('/edit/<string:lead_id>', methods=['GET', 'POST'])
 #@login_required
 @role_required('admin', 'developer')
 def edit_lead(lead_id):
@@ -252,7 +253,7 @@ def edit_lead(lead_id):
     lead = LeadController.get_lead_by_id(lead_id)
     return render_template('edit_lead.html', lead=lead)
 
-@lead_bp.route('/update_status/<int:lead_id>', methods=['POST'])
+@lead_bp.route('/update_status/<string:lead_id>', methods=['POST'])
 #@login_required
 def update_status(lead_id):
     """Update lead status - All roles can update status"""
@@ -271,7 +272,7 @@ def update_status(lead_id):
 
     return redirect(url_for('lead.view_leads'))
 
-@lead_bp.route('/leads/<int:lead_id>/delete', methods=['POST'])
+@lead_bp.route('/leads/<string:lead_id>/delete', methods=['POST'])
 #@login_required
 @role_required('admin', 'developer')
 def delete_lead(lead_id):
@@ -415,7 +416,7 @@ def create_lead():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 400
 
-@lead_bp.route('/api/leads/<int:lead_id>', methods=['PUT'])
+@lead_bp.route('/api/leads/<string:lead_id>', methods=['PUT'])
 #@login_required
 @role_required('admin', 'developer')
 def update_lead_api(lead_id):
@@ -432,7 +433,7 @@ def update_lead_api(lead_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-@lead_bp.route('/api/leads/<int:lead_id>/status', methods=['PUT'])
+@lead_bp.route('/api/leads/<string:lead_id>/status', methods=['PUT'])
 #@login_required
 def update_status_api(lead_id):
     """Update a lead's status via API - All roles can update status"""
@@ -616,7 +617,7 @@ def api_upload_leads():
             "message": f"Error during upload: {str(e)}"
         }), 500
 
-@lead_bp.route('/api/leads/<int:lead_id>', methods=['DELETE'])
+@lead_bp.route('/api/leads/<string:lead_id>', methods=['DELETE'])
 #@login_required
 @role_required('admin', 'developer')
 def delete_lead_api(lead_id):
@@ -631,7 +632,7 @@ def delete_lead_api(lead_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@lead_bp.route('/api/leads/<int:lead_id>', methods=['GET'])
+@lead_bp.route('/api/leads/<string:lead_id>', methods=['GET'])
 #@login_required
 def get_lead_by_id(lead_id):
     """Get detail of a single lead by ID"""
@@ -815,7 +816,7 @@ def get_top_sources():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@lead_bp.route('/leads/<lead_id>/restore', methods=['POST'])
+@lead_bp.route('/leads/<string:lead_id>/restore', methods=['POST'])
 #@login_required
 def restore_lead(lead_id):
     """Restore a soft-deleted lead"""
@@ -837,7 +838,7 @@ def view_deleted_leads():
     leads = Lead.query.filter_by(deleted=True).order_by(Lead.deleted_at.desc()).all()
     return render_template('deleted_leads.html', leads=leads)
 
-@lead_bp.route('/leads/<int:lead_id>/permanent-delete', methods=['POST'])
+@lead_bp.route('/leads/<string:lead_id>/permanent-delete', methods=['POST'])
 # #@login_required
 @role_required('admin', 'developer')
 def permanent_delete_lead(lead_id):
@@ -942,7 +943,7 @@ def get_leads_enrichment_status():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@lead_bp.route('/api/leads/<int:lead_id>/enrich', methods=['POST'])
+@lead_bp.route('/api/leads/<string:lead_id>/enrich', methods=['POST'])
 # #@login_required
 def enrich_lead(lead_id):
     """Enrich a single lead's data"""
@@ -1110,3 +1111,51 @@ def api_delete_multiple_leads():
         import traceback
         print(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@lead_bp.route('/api/leads/enrich-multiple', methods=['POST'])
+def enrich_multiple_leads():
+    data = request.get_json()
+    lead_ids = data.get('lead_ids', [])
+    if not lead_ids:
+        return jsonify({"error": "No lead_ids provided"}), 400
+
+    required_fields = ['owner_email', 'owner_phone_number', 'website', 'owner_linkedin']
+    results = []
+
+    for lead_id in lead_ids:
+        lead = Lead.query.filter_by(lead_id=lead_id).first()
+        if not lead:
+            results.append({"lead_id": lead_id, "error": "Not found"})
+            continue
+
+        missing = [f for f in required_fields if not getattr(lead, f) or getattr(lead, f) in ['-', 'N/A', '']]
+        if not missing:
+            results.append(lead.to_dict())
+            continue
+
+        # call external enrichment API (dummy example)
+        # response = requests.post('http://enrichment-api/endpoint', json={"lead_id": lead_id})
+        # enriched_data = response.json()
+        # Simulate enrichment:
+        enriched_data = {f: f"enriched_{f}@example.com" if 'email' in f else "enriched_value" for f in missing}
+
+        # Update lead in database
+        for f, v in enriched_data.items():
+            setattr(lead, f, v)
+        db.session.commit()
+
+        # get the latest data
+        refreshed = Lead.query.filter_by(lead_id=lead_id).first()
+        results.append(refreshed.to_dict())
+
+    return jsonify({"results": results})
+
+@lead_bp.route('/api/leads/summary', methods=['GET'])
+@login_required
+def leads_summary():
+    total = Lead.query.filter_by(deleted=False).count()
+    status_counts = db.session.query(Lead.status, db.func.count(Lead.lead_id)).filter_by(deleted=False).group_by(Lead.status).all()
+    return jsonify({
+        "total": total,
+        "status_counts": {status: count for status, count in status_counts}
+    })

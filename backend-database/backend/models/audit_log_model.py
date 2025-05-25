@@ -17,7 +17,7 @@ def ensure_audit_log_infrastructure(db):
         CREATE TABLE IF NOT EXISTS lead_audit_log (
             id SERIAL PRIMARY KEY,
             table_name TEXT NOT NULL,
-            row_id INTEGER NOT NULL,
+            row_id TEXT NOT NULL,
             column_name TEXT NOT NULL,
             old_value TEXT,
             new_value TEXT,
@@ -123,7 +123,7 @@ class LeadAuditLog(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     table_name = db.Column(db.String(50), nullable=False)
-    row_id = db.Column(db.Integer, nullable=False)
+    row_id = db.Column(db.String(100), nullable=False)
     column_name = db.Column(db.String(50), nullable=False)
     old_value = db.Column(db.Text, nullable=True)
     new_value = db.Column(db.Text, nullable=True)
