@@ -14,6 +14,9 @@ import io
 from werkzeug.exceptions import NotFound
 from sqlalchemy import or_, and_
 import requests
+from models.user_model import User
+from models.audit_log_model import LeadAuditLog
+from models.user_lead_drafts_model import UserLeadDraft
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -274,7 +277,7 @@ def update_status(lead_id):
 
 @lead_bp.route('/leads/<string:lead_id>/delete', methods=['POST'])
 #@login_required
-@role_required('admin', 'developer')
+@role_required('admin', 'developer', 'user')
 def delete_lead(lead_id):
     """Soft delete lead - Admin and Developer only"""
     try:
@@ -428,7 +431,11 @@ def update_lead_api(lead_id):
         for key, value in data.items():
             setattr(lead, key, value)
         db.session.commit()
-        return jsonify({"message": "Lead updated successfully", "lead": lead.to_dict()})
+        if request.is_json:
+            return jsonify({'success': True, 'message': 'Lead updated successfully'})
+        else:
+            flash('Lead updated successfully', 'success')
+            return redirect(url_for('lead.view_leads'))
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
@@ -888,141 +895,6 @@ def get_industries():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@lead_bp.route('/api/leads/enrichment-status', methods=['GET'])
-#@login_required
-def get_leads_enrichment_status():
-    """Get enrichment status for leads"""
-    try:
-        # Get pagination parameters
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 10, type=int)
-
-        # Build base query
-        query = Lead.query.filter(Lead.deleted == False)
-
-        # Get leads with their enrichment status
-        leads = query.paginate(page=page, per_page=per_page)
-
-        # Check enrichment status for each lead
-        enriched_leads = []
-        for lead in leads.items:
-            lead_dict = lead.to_dict()
-
-            # Check required fields
-            required_fields = {
-                'owner_email': bool(lead.owner_email),
-                'owner_phone_number': bool(lead.owner_phone_number),
-                'website': bool(lead.website),
-                'owner_linkedin': bool(lead.owner_linkedin)
-            }
-
-            # Calculate enrichment status
-            missing_fields = [field for field, has_value in required_fields.items() if not has_value]
-            is_fully_enriched = len(missing_fields) == 0
-
-            # Add enrichment info to lead data
-            lead_dict.update({
-                'enrichment_status': {
-                    'is_fully_enriched': is_fully_enriched,
-                    'missing_fields': missing_fields,
-                    'last_enriched_at': lead.updated_at.isoformat() if lead.updated_at else None,
-                    'needs_enrichment': not is_fully_enriched
-                }
-            })
-
-            enriched_leads.append(lead_dict)
-
-        return jsonify({
-            "total": leads.total,
-            "pages": leads.pages,
-            "current_page": page,
-            "per_page": per_page,
-            "leads": enriched_leads
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@lead_bp.route('/api/leads/<string:lead_id>/enrich', methods=['POST'])
-# #@login_required
-def enrich_lead(lead_id):
-    """Enrich a single lead's data"""
-    try:
-        lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
-
-        # Check if lead needs enrichment
-        required_fields = {
-            'owner_email': bool(lead.owner_email),
-            'owner_phone_number': bool(lead.owner_phone_number),
-            'website': bool(lead.website),
-            'owner_linkedin': bool(lead.owner_linkedin)
-        }
-
-        missing_fields = [field for field, has_value in required_fields.items() if not has_value]
-
-        if not missing_fields:
-            return jsonify({
-                "message": "Lead already fully enriched",
-                "lead": lead.to_dict()
-            })
-
-        # TODO: Implement enrichment logic here
-        # This would be where you call your scraping service
-
-        # Update lead with new data
-        lead.updated_at = datetime.datetime.now()
-        db.session.commit()
-
-        return jsonify({
-            "message": "Lead enriched successfully",
-            "lead": lead.to_dict(),
-            "enriched_fields": missing_fields
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-@lead_bp.route('/api/leads/check-missing', methods=['POST'])
-# #@login_required
-def check_missing_fields():
-    """
-    Check which required fields are missing for a batch of leads.
-    Request body: { "lead_ids": [1, 2, 3, ...] }
-    Response: {
-      "results": [
-        {"lead_id": 1, "missing_fields": ["owner_email", ...], "status": "ok"},
-        {"lead_id": 2, "missing_fields": [], "status": "ok"},
-        {"lead_id": 3, "missing_fields": null, "status": "not_found"}
-      ]
-    }
-    """
-    lead_ids = request.json.get('lead_ids', [])
-    required_fields = ['owner_email', 'owner_phone_number', 'website', 'owner_linkedin']
-    results = []
-    for lead_id in lead_ids:
-        lead = Lead.query.get(lead_id)
-        if not lead:
-            results.append({
-                "lead_id": lead_id,
-                "missing_fields": None,
-                "status": "not_found"
-            })
-            continue
-        missing = [field for field in required_fields if not getattr(lead, field)]
-        results.append({
-            "lead_id": lead_id,
-            "missing_fields": missing,
-            "status": "ok"
-        })
-    return jsonify({"results": results})
-
-
-@lead_bp.route('/enrichment-test')
-# @login_required
-def enrichment_test_page():
-    return render_template('enrichment_test.html')
-
 @lead_bp.route('/api/leads/batch', methods=['PUT'])
 def batch_update_leads():
     """Batch update multiple leads via API"""
@@ -1113,40 +985,26 @@ def api_delete_multiple_leads():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @lead_bp.route('/api/leads/enrich-multiple', methods=['POST'])
+#@login_required
 def enrich_multiple_leads():
     data = request.get_json()
-    lead_ids = data.get('lead_ids', [])
-    if not lead_ids:
-        return jsonify({"error": "No lead_ids provided"}), 400
+    leads = data.get('leads', [])
+    if not leads or not isinstance(leads, list):
+        return jsonify({"error": "No leads provided"}), 400
 
-    required_fields = ['owner_email', 'owner_phone_number', 'website', 'owner_linkedin']
     results = []
-
-    for lead_id in lead_ids:
-        lead = Lead.query.filter_by(lead_id=lead_id).first()
-        if not lead:
-            results.append({"lead_id": lead_id, "error": "Not found"})
+    for lead_data in leads:
+        lead_id = lead_data.get('lead_id')
+        if not lead_id:
+            results.append({"error": "Missing lead_id", "lead_data": lead_data})
             continue
-
-        missing = [f for f in required_fields if not getattr(lead, f) or getattr(lead, f) in ['-', 'N/A', '']]
-        if not missing:
-            results.append(lead.to_dict())
-            continue
-
-        # call external enrichment API (dummy example)
-        # response = requests.post('http://enrichment-api/endpoint', json={"lead_id": lead_id})
-        # enriched_data = response.json()
-        # Simulate enrichment:
-        enriched_data = {f: f"enriched_{f}@example.com" if 'email' in f else "enriched_value" for f in missing}
-
-        # Update lead in database
-        for f, v in enriched_data.items():
-            setattr(lead, f, v)
-        db.session.commit()
-
-        # get the latest data
-        refreshed = Lead.query.filter_by(lead_id=lead_id).first()
-        results.append(refreshed.to_dict())
+        # Update only null/empty fields using add_or_update_lead_by_match
+        success, message = LeadController.add_or_update_lead_by_match(lead_data)
+        results.append({
+            "lead_id": lead_id,
+            "success": success,
+            "message": message
+        })
 
     return jsonify({"results": results})
 
@@ -1159,3 +1017,133 @@ def leads_summary():
         "total": total,
         "status_counts": {status: count for status, count in status_counts}
     })
+
+@lead_bp.route('/leads/edited', methods=['GET'])
+#@login_required
+def view_edited_leads():
+    """View all edited leads (pending drafts)"""
+    from models.user_model import User
+    from models.user_lead_drafts_model import UserLeadDraft
+    from models.lead_model import Lead
+    # Only show drafts that are not deleted and in draft/review phase
+    drafts = UserLeadDraft.query.filter_by(is_deleted=False).filter(UserLeadDraft.phase.in_(['draft', 'review'])).order_by(UserLeadDraft.updated_at.desc()).all()
+    rows = []
+    for draft in drafts:
+        original = Lead.query.filter_by(lead_id=draft.lead_id).first()
+        edit_user = User.query.get(draft.user_id) if draft.user_id else None
+        rows.append({'original': original, 'edit': draft, 'edit_user': edit_user})
+    return render_template('edited_leads.html', leads=rows)
+
+@lead_bp.route('/leads/<string:lead_id>/edit', methods=['POST'])
+#@login_required
+@role_required('admin', 'developer', 'user')
+def edit_lead_api(lead_id):
+    """Edit lead - Admin, Developer, User"""
+    from datetime import datetime
+    lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first_or_404()
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form
+    try:
+        # Update fields from data
+        for key, value in data.items():
+            if hasattr(lead, key) and key not in ['lead_id', 'created_at', 'deleted', 'deleted_at']:
+                col_type = type(getattr(lead, key))
+                if value == '' and col_type in [int, float, type(None)]:
+                    setattr(lead, key, None)
+                else:
+                    setattr(lead, key, value)
+        # Set edited flags
+        lead.is_edited = True
+        lead.edited_at = datetime.utcnow()
+        lead.edited_by = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        db.session.commit()
+        db.session.refresh(lead)
+        print(f"[RESTORE AFTER COMMIT] is_edited={lead.is_edited}, company={lead.company}")
+        # Force update ke DB jika masih belum berubah
+        Lead.query.filter_by(lead_id=lead_id).update({'is_edited': False, 'edited_at': None, 'edited_by': None})
+        db.session.commit()
+        lead = Lead.query.filter_by(lead_id=lead_id).first()
+        print(f"[FORCE UPDATE] is_edited={lead.is_edited}, company={lead.company}")
+        if request.is_json:
+            return jsonify({'success': True, 'message': 'Lead updated successfully'})
+        else:
+            flash('Lead updated successfully', 'success')
+            return redirect(url_for('lead.view_leads'))
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@lead_bp.route('/leads/<string:lead_id>/apply', methods=['POST'])
+#@login_required
+@role_required('admin', 'developer')
+def apply_edited_lead(lead_id):
+    """Apply changes: finalize the edit, set is_edited=False, clear edited_at/by"""
+    lead = Lead.query.filter_by(lead_id=lead_id, is_edited=True).first()
+    if not lead:
+        return jsonify({'success': False, 'message': 'Edited lead not found.'}), 404
+    try:
+        # after restoring all fields from audit log, make sure the edited status is reset
+        lead.is_edited = False
+        lead.edited_at = None
+        lead.edited_by = None
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Changes applied and lead finalized.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@lead_bp.route('/leads/<string:lead_id>/restore', methods=['POST'])
+#@login_required
+@role_required('admin', 'developer')
+def restore_edited_lead(lead_id):
+    """Restore: discard edit, set is_edited=False, clear edited_at/by, and restore field to value before edit if available in audit log."""
+    lead = Lead.query.filter_by(lead_id=lead_id, is_edited=True).first()
+    if not lead:
+        return jsonify({'success': False, 'message': 'Edited lead not found.'}), 404
+    try:
+        # get the last change for each column that was changed on this lead
+        audit_logs = LeadAuditLog.query.filter_by(row_id=str(lead_id), table_name='leads').order_by(LeadAuditLog.changed_at.desc()).all()
+        restored_fields = []
+        updated = False
+        seen_cols = set()
+        for log in audit_logs:
+            col = log.column_name
+            if col in ['updated_at', 'edited_at', 'edited_by', 'is_edited', 'deleted', 'deleted_at']:
+                continue
+            if col not in seen_cols and log.old_value is not None:
+                try:
+                    val = log.old_value
+                    if hasattr(lead, col):
+                        field_type = type(getattr(lead, col))
+                        if field_type == int:
+                            val = int(val)
+                        elif field_type == float:
+                            val = float(val)
+                        elif field_type == bool:
+                            val = val.lower() in ['true', '1', 'yes']
+                        elif field_type == type(None):
+                            val = None
+                        setattr(lead, col, val)
+                        print(f"[RESTORE] {col}: {val}")
+                        restored_fields.append(col)
+                        updated = True
+                except Exception as e:
+                    print(f"[RESTORE ERROR] {col}: {e}")
+                seen_cols.add(col)
+        # after restoring all fields from audit log, make sure the edited status is reset
+        lead.is_edited = False
+        lead.edited_at = None
+        lead.edited_by = None
+        db.session.commit()
+        print(f"[RESTORE COMMIT] is_edited={lead.is_edited}, company={lead.company}")
+        msg = 'Edit discarded and lead restored to original.'
+        if restored_fields:
+            msg += f' Fields restored: {', '.join(restored_fields)}.'
+        return jsonify({'success': True, 'message': msg})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500

@@ -355,7 +355,7 @@
             {% endif %}
         {% endwith %}
         
-        <form method="POST" action="{{ url_for('lead.edit_lead', lead_id=lead.lead_id) }}" id="editLeadForm">
+        <form method="POST" action="{{ url_for('lead.edit_lead_api', lead_id=lead.lead_id) }}" id="editLeadForm">
             <div class="section-title">Base Information</div>
             <div class="form-row">
                 <div class="form-group">

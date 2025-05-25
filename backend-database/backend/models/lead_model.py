@@ -53,6 +53,9 @@ class Lead(db.Model):
     deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(1000), default='new', nullable=False)
+    is_edited = db.Column(db.Boolean, default=False)
+    edited_at = db.Column(db.DateTime, nullable=True)
+    edited_by = db.Column(db.String(100), nullable=True)
     
     def __repr__(self):
         return f'<Lead {self.lead_id}: {self.company}>'
@@ -90,7 +93,10 @@ class Lead(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'deleted': self.deleted,
-            'deleted_at': self.deleted_at.isoformat() if self.deleted_at else None
+            'deleted_at': self.deleted_at.isoformat() if self.deleted_at else None,
+            'is_edited': self.is_edited,
+            'edited_at': self.edited_at.isoformat() if self.edited_at else None,
+            'edited_by': self.edited_by
         }
 
     @classmethod
