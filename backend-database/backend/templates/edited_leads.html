@@ -121,22 +121,13 @@
                         <tbody>
                             {% for item in leads %}
                             <tr>
-                                <td>{% if item.original.lead_id|length > 12 %}{{ item.original.lead_id[:6] }}...{{ item.original.lead_id[-4:] }}{% else %}{{ item.original.lead_id }}{% endif %}</td>
+                                <td>{% if item.lead.lead_id|length > 12 %}{{ item.lead.lead_id[:6] }}...{{ item.lead.lead_id[-4:] }}{% else %}{{ item.lead.lead_id }}{% endif %}</td>
+                                <td>{{ item.lead.company }}</td>
+                                <td>{{ item.lead.owner_first_name }} {{ item.lead.owner_last_name }}</td>
+                                <td>{{ item.lead.owner_email }}</td>
                                 <td>
-                                    <span title="Original">{{ item.original.company }}</span><br>
-                                    <span class="text-info" title="Edited"><b>{{ item.edit.draft_data.company }}</b></span>
-                                </td>
-                                <td>
-                                    <span title="Original">{{ item.original.owner_first_name }} {{ item.original.owner_last_name }}</span><br>
-                                    <span class="text-info" title="Edited"><b>{{ item.edit.draft_data.owner_first_name }} {{ item.edit.draft_data.owner_last_name }}</b></span>
-                                </td>
-                                <td>
-                                    <span title="Original">{{ item.original.owner_email }}</span><br>
-                                    <span class="text-info" title="Edited"><b>{{ item.edit.draft_data.owner_email }}</b></span>
-                                </td>
-                                <td>
-                                    {% if item.edit.updated_at %}
-                                        {{ item.edit.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {% if item.lead.edited_at %}
+                                        {{ item.lead.edited_at.strftime('%Y-%m-%d %H:%M') }}
                                     {% else %}
                                         <span class="text-muted">-</span>
                                     {% endif %}
@@ -152,8 +143,8 @@
                                     <span class="badge bg-warning text-dark">Pending Edit</span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-success" onclick="applyChanges('{{ item.edit.draft_id }}')">Apply Changes</button>
-                                    <button class="btn btn-sm btn-secondary" onclick="restoreLead('{{ item.edit.draft_id }}')">Restore</button>
+                                    <button class="btn btn-sm btn-success" onclick="applyChanges('{{ item.lead.lead_id }}')">Apply Changes</button>
+                                    <button class="btn btn-sm btn-secondary" onclick="restoreLead('{{ item.lead.lead_id }}')">Restore</button>
                                 </td>
                             </tr>
                             {% endfor %}

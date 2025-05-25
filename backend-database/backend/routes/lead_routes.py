@@ -1013,6 +1013,7 @@ def enrich_multiple_leads():
     results = []
     for lead_data in leads:
         lead_id = lead_data.get('lead_id')
+        user_id = lead_data.get('user_id')
         if not lead_id:
             results.append({"error": "Missing lead_id", "lead_data": lead_data})
             continue
@@ -1020,6 +1021,7 @@ def enrich_multiple_leads():
         success, message = LeadController.add_or_update_lead_by_match(lead_data)
         results.append({
             "lead_id": lead_id,
+            "user_id": user_id,
             "success": success,
             "message": message
         })
@@ -1056,58 +1058,69 @@ def view_edited_leads():
 #@login_required
 @role_required('admin', 'developer', 'user')
 def edit_lead_api(lead_id):
-    """Edit lead - Admin, Developer, User"""
+    """Edit lead - Admin, Developer, User. Save to UserLeadDraft, not to Lead."""
     from datetime import datetime
+    from models.user_lead_drafts_model import UserLeadDraft
     lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first_or_404()
     if request.is_json:
         data = request.get_json()
     else:
         data = request.form
     try:
-        # Update fields from data
-        for key, value in data.items():
-            if hasattr(lead, key) and key not in ['lead_id', 'created_at', 'deleted', 'deleted_at']:
-                col_type = type(getattr(lead, key))
-                if value == '' and col_type in [int, float, type(None)]:
-                    setattr(lead, key, None)
-                else:
-                    setattr(lead, key, value)
-        # Set edited flags
-        lead.is_edited = True
-        lead.edited_at = datetime.utcnow()
-        lead.edited_by = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
-        db.session.commit()
-        db.session.refresh(lead)
-        print(f"[RESTORE AFTER COMMIT] is_edited={lead.is_edited}, company={lead.company}")
-        # Force update ke DB jika masih belum berubah
-        Lead.query.filter_by(lead_id=lead_id).update({'is_edited': False, 'edited_at': None, 'edited_by': None})
-        db.session.commit()
-        lead = Lead.query.filter_by(lead_id=lead_id).first()
-        print(f"[FORCE UPDATE] is_edited={lead.is_edited}, company={lead.company}")
-        if request.is_json:
-            return jsonify({'success': True, 'message': 'Lead updated successfully'})
+        user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        data = dict(data)
+        if 'revenue' in data and data['revenue']:
+            revenue_str = str(data['revenue']).replace(',', '.')
+            try:
+                data['revenue'] = float(revenue_str)
+            except ValueError:
+                data['revenue'] = None
+        draft = UserLeadDraft.query.filter_by(lead_id=lead_id, user_id=user_id, is_deleted=False).first()
+        if not draft:
+            draft = UserLeadDraft(
+                lead_id=lead_id,
+                user_id=user_id,
+                draft_data=data,
+                phase='draft',
+                updated_at=datetime.utcnow()
+            )
+            db.session.add(draft)
         else:
-            flash('Lead updated successfully', 'success')
+            draft.draft_data = data
+            draft.updated_at = datetime.utcnow()
+            draft.phase = 'draft'
+        db.session.commit()
+        if request.is_json:
+            return jsonify({'success': True, 'message': 'Draft saved successfully'})
+        else:
+            flash('Draft saved successfully', 'success')
             return redirect(url_for('lead.view_leads'))
     except Exception as e:
         db.session.rollback()
         import traceback
         print(traceback.format_exc())
-        return jsonify({'success': False, 'message': str(e)}), 500
+        if request.is_json:
+            return jsonify({'success': False, 'message': str(e)}), 500
+        else:
+            flash(f'Error saving draft: {str(e)}', 'danger')
+            return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/leads/<string:lead_id>/apply', methods=['POST'])
 #@login_required
 @role_required('admin', 'developer')
 def apply_edited_lead(lead_id):
-    """Apply changes: finalize the edit, set is_edited=False, clear edited_at/by"""
-    lead = Lead.query.filter_by(lead_id=lead_id, is_edited=True).first()
-    if not lead:
-        return jsonify({'success': False, 'message': 'Edited lead not found.'}), 404
+    """Apply changes: finalize the edit, salin data dari draft ke Lead, hapus draft."""
+    from models.user_lead_drafts_model import UserLeadDraft
+    from models.lead_model import Lead
+    draft = UserLeadDraft.query.filter_by(lead_id=lead_id, is_deleted=False).first()
+    lead = Lead.query.filter_by(lead_id=lead_id).first()
+    if not draft or not lead:
+        return jsonify({'success': False, 'message': 'Draft or lead not found.'}), 404
     try:
-        # after restoring all fields from audit log, make sure the edited status is reset
-        lead.is_edited = False
-        lead.edited_at = None
-        lead.edited_by = None
+        for key, value in draft.draft_data.items():
+            if hasattr(lead, key) and key not in ['lead_id', 'created_at', 'deleted', 'deleted_at']:
+                setattr(lead, key, value)
+        db.session.delete(draft)
         db.session.commit()
         return jsonify({'success': True, 'message': 'Changes applied and lead finalized.'})
     except Exception as e:
@@ -1118,50 +1131,15 @@ def apply_edited_lead(lead_id):
 #@login_required
 @role_required('admin', 'developer')
 def restore_edited_lead(lead_id):
-    """Restore: discard edit, set is_edited=False, clear edited_at/by, and restore field to value before edit if available in audit log."""
-    lead = Lead.query.filter_by(lead_id=lead_id, is_edited=True).first()
-    if not lead:
-        return jsonify({'success': False, 'message': 'Edited lead not found.'}), 404
+    """Restore: discard edit, delete draft, data utama tetap."""
+    from models.user_lead_drafts_model import UserLeadDraft
+    draft = UserLeadDraft.query.filter_by(lead_id=lead_id, is_deleted=False).first()
+    if not draft:
+        return jsonify({'success': False, 'message': 'Draft not found.'}), 404
     try:
-        # get the last change for each column that was changed on this lead
-        audit_logs = LeadAuditLog.query.filter_by(row_id=str(lead_id), table_name='leads').order_by(LeadAuditLog.changed_at.desc()).all()
-        restored_fields = []
-        updated = False
-        seen_cols = set()
-        for log in audit_logs:
-            col = log.column_name
-            if col in ['updated_at', 'edited_at', 'edited_by', 'is_edited', 'deleted', 'deleted_at']:
-                continue
-            if col not in seen_cols and log.old_value is not None:
-                try:
-                    val = log.old_value
-                    if hasattr(lead, col):
-                        field_type = type(getattr(lead, col))
-                        if field_type == int:
-                            val = int(val)
-                        elif field_type == float:
-                            val = float(val)
-                        elif field_type == bool:
-                            val = val.lower() in ['true', '1', 'yes']
-                        elif field_type == type(None):
-                            val = None
-                        setattr(lead, col, val)
-                        print(f"[RESTORE] {col}: {val}")
-                        restored_fields.append(col)
-                        updated = True
-                except Exception as e:
-                    print(f"[RESTORE ERROR] {col}: {e}")
-                seen_cols.add(col)
-        # after restoring all fields from audit log, make sure the edited status is reset
-        lead.is_edited = False
-        lead.edited_at = None
-        lead.edited_by = None
+        db.session.delete(draft)
         db.session.commit()
-        print(f"[RESTORE COMMIT] is_edited={lead.is_edited}, company={lead.company}")
-        msg = 'Edit discarded and lead restored to original.'
-        if restored_fields:
-            msg += f' Fields restored: {', '.join(restored_fields)}.'
-        return jsonify({'success': True, 'message': msg})
+        return jsonify({'success': True, 'message': 'Draft discarded and lead restored to original.'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
