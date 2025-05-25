@@ -1147,3 +1147,17 @@ def restore_edited_lead(lead_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@lead_bp.route('/api/leads/multiple', methods=['GET'])
+#@login_required
+def get_leads_by_multiple_ids():
+    """Get details of multiple leads by comma-separated IDs in query param 'lead_ids'"""
+    lead_ids_param = request.args.get('lead_ids', '')
+    if not lead_ids_param:
+        return jsonify({"error": "No lead_ids provided"}), 400
+    lead_ids = [lid.strip() for lid in lead_ids_param.split(',') if lid.strip()]
+    if not lead_ids:
+        return jsonify({"error": "No valid lead_ids provided"}), 400
+    leads = Lead.query.filter(Lead.lead_id.in_(lead_ids), Lead.deleted == False).all()
+    results = [lead.to_dict() for lead in leads]
+    return jsonify({"results": results})
