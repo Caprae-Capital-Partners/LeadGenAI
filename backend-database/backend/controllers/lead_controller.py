@@ -511,23 +511,22 @@ class LeadController:
         query = Lead.query.filter_by(deleted=False)
         if industry:
             query = query.filter(Lead.industry.ilike(f"%{industry}%"))
+
+        # Modify location filtering to search city, state, or street and exclude nulls/empty
         if location:
-            if hasattr(Lead, 'location'):
-                # Search in city, state, and location columns
-                query = query.filter(
-                    (Lead.city.ilike(f"%{location}%")) |
-                    (Lead.state.ilike(f"%{location}%")) |
-                    (Lead.location.ilike(f"%{location}%"))
-                )
-            else:
-                # Fallback: only city and state
-                if ',' in location:
-                    city, state = [x.strip() for x in location.split(',', 1)]
-                    query = query.filter(
-                        Lead.city.ilike(f"%{city}%"),
-                        Lead.state.ilike(f"%{state}%"),
-                        # Lead.location.ilike(f"%{location}%")
-                    )
+            # Search in city, state, or street
+            location_filter = db.or_(
+                Lead.city.ilike(f"%{location}%"),
+                Lead.state.ilike(f"%{location}%"),
+                Lead.street.ilike(f"%{location}%") # Add street to the search
+            )
+            # Ensure at least one of city, state, or street is not null/empty
+            not_null_or_empty = db.or_(
+                Lead.city.isnot(None) & (Lead.city != ''),
+                Lead.state.isnot(None) & (Lead.state != ''),
+                Lead.street.isnot(None) & (Lead.street != '')
+            )
+            query = query.filter(location_filter, not_null_or_empty)
 
         results = [lead.to_dict() for lead in query.all()]
         exec_time = int((time.time() - start_time) * 1000)
