@@ -54,11 +54,11 @@ export interface EnrichedCompany {
 }
 
 
-export const EnrichmentResults: FC = () => {
+export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanies, loading }) => {
   const [editableCompanies, setEditableCompanies] = useState<EnrichedCompany[]>([])
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const { enrichedCompanies, loading } = useEnrichment()
+  // const { enrichedCompanies, loading } = useEnrichment()
   const router = useRouter()
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
   const [selectAll, setSelectAll] = useState(true)
@@ -98,33 +98,33 @@ export const EnrichmentResults: FC = () => {
       yearFoundedFilter, bbbRatingFilter, streetFilter, cityFilter, stateFilter, sourceFilter]);
   
   const downloadCSV = (data: any[], filename: string) => {
-  const headers = Object.keys(data[0])
-  const normalizeCSVValue = (field: string, value: any) => {
-    const normalized = normalizeDisplayValue(value)
-    return field === "source" && normalized === "N/A"
-      ? "Not available in any source"
-      : normalized
-  }
-  
-  
-  
-  const csvRows = [
-    headers.join(","),
-    ...data.map(row =>
-      headers.map(field =>
-        `"${normalizeCSVValue(field, row[field]).toString().replace(/"/g, '""')}"`
-      ).join(",")
-    ),
-  ]  
-  const csvContent = csvRows.join("\n")
-  const blob = new Blob([csvContent], { type: "text/csv" })
-  const url = URL.createObjectURL(blob)
+    const headers = Object.keys(data[0])
+    const normalizeCSVValue = (field: string, value: any) => {
+      const normalized = normalizeDisplayValue(value)
+      return field === "source" && normalized === "N/A"
+        ? "Not available in any source"
+        : normalized
+    }
+    
+    
+    
+    const csvRows = [
+      headers.join(","),
+      ...data.map(row =>
+        headers.map(field =>
+          `"${normalizeCSVValue(field, row[field]).toString().replace(/"/g, '""')}"`
+        ).join(",")
+      ),
+    ]  
+    const csvContent = csvRows.join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
 
-  const a = document.createElement("a")
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
 }
 
 

@@ -24,7 +24,7 @@ import {
 import type { EnrichedCompany } from "@/components/enrichment-results"
 import { useEnrichment } from "@/components/EnrichmentProvider"
 import Loader from "@/components/ui/loader"
-
+import { useRouter } from "next/navigation";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
@@ -35,7 +35,7 @@ export function DataEnhancement() {
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
-
+  const router = useRouter();
   // Get the original search criteria from URL parameters
   const getSearchCriteria = () => {
     if (typeof window === 'undefined') return { industry: '', location: '' };
@@ -59,13 +59,39 @@ export function DataEnhancement() {
   } | null>(null);
 
   // Cleanup function for progress simulation
+ 
+
   useEffect(() => {
+    
+
+    const verifyLogin = async () => {
+      try {
+        const res = await fetch("https://data.capraeleadseekers.site/api/ping-auth", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          router.push("/auth");
+        } else {
+          console.log("✅ Authenticated user");
+        }
+      } catch (error) {
+        console.error("❌ Error verifying login:", error);
+        router.push("/auth");
+      }
+    };
+
+    verifyLogin();
+
+    // Cleanup: clear progress simulation
     return () => {
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
       }
     };
   }, []);
+
 
   // // Function to simulate progress updates
   // const startProgressSimulation = () => {
@@ -146,6 +172,7 @@ export function DataEnhancement() {
 
   const normalizedLeads = leads.map((lead) => ({
     ...lead,
+    lead_id: lead.lead_id,
     company: normalizeLeadValue(lead.company),
     website: normalizeLeadValue(lead.website),
     industry: normalizeLeadValue(lead.industry),
@@ -435,63 +462,96 @@ export function DataEnhancement() {
     ownerLinkedin: lead.owner_linkedin,
     source: lead.source,
   });
+  const [dbOnlyMode, setDbOnlyMode] = useState(true);
+  const [dbEnrichedCompanies, setDbEnrichedCompanies] = useState<EnrichedCompany[]>([]);
+  const [scrapedEnrichedCompanies, setScrapedEnrichedCompanies] = useState<EnrichedCompany[]>([]);
+  const [fromDatabaseLeads, setFromDatabaseLeads] = useState<string[]>([]); // lowercase names
 
+  const handleStartEnrichment = async (
+    forceScrape = false,
+    overrideCompanies: any[] | null = null
+  ) => {
+    const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+    const user_id = user.id || "";
+    setLoading(true);
 
-  const handleStartEnrichment = async () => {
-    setLoading(true)
-    setEnrichedCompanies([]) // Reset previous state
+    if (!forceScrape) {
+      setDbEnrichedCompanies([]);
+      setScrapedEnrichedCompanies([]);
+    }
+
     try {
-      const selected = normalizedLeads.filter((c) => selectedCompanies.includes(c.id))
-      const headers = { headers: { "Content-Type": "application/json" } }
+      const selected = overrideCompanies ?? normalizedLeads.filter(c =>
+        selectedCompanies.includes(c.id)
+      );
+      const lead_ids = selected.map(c => c.lead_id).filter(Boolean);
+      const queryString = lead_ids.join(",");
 
-      // 1. Fetch all existing leads from DB
-      const dbRes = await axios.get(`${DATABASE_URL}/leads`, headers)
-      const dbLeads = Array.isArray(dbRes.data)
-        ? dbRes.data
-        : Array.isArray(dbRes.data.leads)
-          ? dbRes.data.leads
-          : []
-      const existingNames = new Set(dbLeads.map((lead: any) => lead.company?.toLowerCase()))
+      let existingNames = new Set<string>();
+      let dbLeads: any[] = [];
 
-      const alreadyInDb = dbLeads.filter((lead: any) =>
-        selected.some((s) => s.company.toLowerCase() === lead.company?.toLowerCase())
-      )
+      if (queryString) {
+        const { data: dbRes } = await axios.get(
+          `${DATABASE_URL}/leads/multiple?lead_ids=${queryString}`,
+          { headers: { "Content-Type": "application/json" } }
+        );
+        dbLeads = dbRes.results || [];
+        existingNames = new Set(dbLeads.map((l: any) => l.company?.toLowerCase()));
+        setFromDatabaseLeads(Array.from(existingNames));
+      }
 
-      const needEnrichment = selected.filter(
-        (c) => !existingNames.has(c.company.toLowerCase())
-      )
+      if (!forceScrape && !overrideCompanies) {
+        setDbEnrichedCompanies(dbLeads.map(toCamelCase));
+        setShowResults(true);
+        setLoading(false);
+        return;
+      }
+      
 
-      for (const company of needEnrichment) {
+      // 🚨 Re-enrich mode: skip DB display, scrape all
+      const toScrape = forceScrape
+        ? selected // ← in force mode, scrape all
+        : selected.filter(
+          (c) => !existingNames.has(c.company.toLowerCase())
+        );
+
+      const scrapedResults: EnrichedCompany[] = [];
+
+      for (const company of toScrape) {
         try {
-          const growjoRes = await axios.post(`${BACKEND_URL}/scrape-growjo-single`, { company: company.company }, headers)
-          const growjo = growjoRes.data
+          const headers = { headers: { "Content-Type": "application/json" } };
 
-          const domain = normalizeWebsite(growjo.company_website || company.website)
+          const growjo = (await axios.post(
+            `${BACKEND_URL}/scrape-growjo-single`,
+            { company: company.company },
+            headers
+          )).data;
+
+          const domain = normalizeWebsite(growjo.company_website || company.website);
 
           const [apolloRes, personRes] = await Promise.all([
             axios.post(`${BACKEND_URL}/apollo-scrape-single`, { domain }, headers),
             axios.post(`${BACKEND_URL}/find-best-person-single`, { domain }, headers),
-          ])
+          ]);
 
-          const apollo = apolloRes.data || {}
-          const person = personRes.data || {}
+          const apollo = apolloRes.data || {};
+          const person = personRes.data || {};
 
-          const entry = buildEnrichedCompany(company, growjo, apollo, person)
+          const entry = buildEnrichedCompany(company, growjo, apollo, person);
 
-          // ✅ Normalize values (inline sanitization)
           const cleanVal = (val: any) => {
-            const s = (val || "").toString().trim().toLowerCase()
-            const isObscuredEmail = /^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*")
+            const s = (val ?? "").toString().trim().toLowerCase();
+            const isObscured = /^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*");
             return (
-              ["", "na", "n/a", "none", "not", "found", "not found", "n.a.", "email_not_unlocked@domain.com"].includes(s) ||
-              isObscuredEmail
-            )
-              ? null
-              : val.toString().trim()
-          }
-          const normalizeValue = (val: any): string => cleanVal(val) ?? "N/A"
+              ["", "na", "n/a", "none", "not", "found", "not found"].includes(s) ||
+              isObscured
+            ) ? null : val.toString().trim();
+          };
+          const normalizeValue = (v: any) => cleanVal(v) ?? "N/A";
 
           const validLead = {
+            user_id,
+            lead_id: company.lead_id || "",
             company: normalizeValue(entry.company),
             website: normalizeValue(entry.website),
             industry: normalizeValue(entry.industry),
@@ -513,31 +573,33 @@ export function DataEnhancement() {
             owner_phone_number: normalizeValue(entry.ownerPhoneNumber),
             owner_email: normalizeValue(entry.ownerEmail),
             source: normalizeValue(entry.source),
-          }
+          };
 
-          // ✅ Send to DB immediately
           await axios.post(`${DATABASE_URL}/upload_leads`, JSON.stringify([validLead]), {
-            headers: { "Content-Type": "application/json" }
-          })
+            headers: { "Content-Type": "application/json" },
+          });
 
-          // ✅ Update UI immediately
-          setEnrichedCompanies(prev => [...prev, toCamelCase(validLead)])
-
-        } catch (e) {
-          console.error(`❌ Failed on ${company.company}`, e)
+          scrapedResults.push(toCamelCase(validLead));
+        } catch (err) {
+          console.error(`Failed scraping ${company.company}`, err);
         }
       }
 
-      setShowResults(true)
-    } catch (e) {
-      console.error("Enrichment failed:", e)
-      stopProgressSimulation(0)
+      // Replace all data with scraper results on re-enrich
+      setScrapedEnrichedCompanies(prev => [...prev, ...scrapedResults]);
+      if (forceScrape) setDbEnrichedCompanies([]);
+
+      setShowResults(true);
+    } catch (err) {
+      console.error("Enrichment failed:", err);
+      stopProgressSimulation(0);
     } finally {
-      stopProgressSimulation(100)
-      setLoading(false)
+      stopProgressSimulation(100);
+      setLoading(false);
     }
-      
-  }
+  };
+
+
 
 
 
@@ -867,34 +929,57 @@ export function DataEnhancement() {
                     {/* Progress: {progress}% */}
                   </div>
                 )}
-                <Button onClick={handleStartEnrichment} disabled={selectedCompanies.length === 0 || loading}>
+                <Button
+                  onClick={() => handleStartEnrichment(false)}
+                  disabled={selectedCompanies.length === 0 || loading}
+                >
                   {loading ? "Enriching..." : "Start Enrichment"}
                 </Button>
               </div>
             </div>
 
-            
-
+            {/* Results section */}
           </div>
         </CardContent>
       </Card>
-      {enrichedCompanies.length > 0 ? (
-        <div className="mt-6">
-          <EnrichmentResults />
-        </div>
-      ) : (
-        <div className="mt-6 text-muted-foreground text-sm text-center">
-          {/* Enriching... please wait while data is being fetched and processed. */}
-        </div>
-      )
-      } 
-      {loading && (
+
+      {loading ? (
         <div className="flex flex-col items-center py-8">
           <Loader />
           <p className="mt-4 text-sm text-muted-foreground">Scraping and enriching data… please wait</p>
         </div>
+      ) : (dbEnrichedCompanies.length > 0 || scrapedEnrichedCompanies.length > 0) ? (
+        <div className="mt-6 space-y-4">
+          {fromDatabaseLeads.length > 0 && dbEnrichedCompanies.length > 0 && (
+            <div className="flex justify-center">
+              <div className="border border-yellow-500 bg-yellow-50 text-yellow-800 px-6 py-4 rounded-md max-w-xl text-sm text-center">
+                <p className="font-semibold mb-2">Some results are fetched from our database.</p>
+                <p className="mb-3">Want to update those with fresh data?</p>
+                <button
+                  onClick={async () => {
+                    setDbOnlyMode(false);
+                    const reselected = normalizedLeads.filter((c) =>
+                      fromDatabaseLeads.includes(c.company.toLowerCase())
+                    );
+                    setSelectedCompanies(reselected.map((c) => c.id));
+                    await handleStartEnrichment(true, reselected); // 🔁 force scraper
+                  }}
+                  className="bg-red-500 text-white px-4 py-1.5 rounded hover:bg-red-600 transition"
+                >
+                  Re-enrich those companies
+                </button>
+              </div>
+            </div>
+          )}
+          <EnrichmentResults enrichedCompanies={[...scrapedEnrichedCompanies, ...dbEnrichedCompanies]} />
+        </div>
+      ) : (
+        <div className="mt-6 text-muted-foreground text-sm text-center">
+          No enriched data yet. Please select companies and click "Start Enrichment".
+        </div>
       )}
     </div>
+    
   
   )
 }
