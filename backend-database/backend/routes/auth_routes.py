@@ -74,18 +74,18 @@ def signup():
 
     return render_template('auth/signup.html')
 
-@auth_bp.route('/logout')
-@login_required
-def logout():
-    """Handle user logout"""
-    success, message = AuthController.logout()
+# @auth_bp.route('/logout')
+# @login_required
+# def logout():
+#     """Handle user logout"""
+#     success, message = AuthController.logout()
 
-    if success:
-        flash(message, 'success')
-    else:
-        flash(message, 'danger')
+#     if success:
+#         flash(message, 'success')
+#     else:
+#         flash(message, 'danger')
 
-    return redirect(url_for('auth.login'))
+#     return redirect(url_for('auth.login'))
 
 @auth_bp.route('/manage_users')
 @login_required
@@ -159,6 +159,18 @@ def delete_user():
         flash(f'Error deleting user: {str(e)}', 'danger')
 
     return redirect(url_for('auth.manage_users'))
+
+@auth_bp.route('/api/ping-auth', methods=["GET"])
+@login_required
+def ping_auth():
+    return '', 204
+
+@auth_bp.route('/logout', methods=['GET'])
+@login_required
+def logout():
+    logout_user()
+    return redirect("https://app.saasquatchleads.com/auth")
+
 
 @auth_bp.route('/api/auth/login', methods=['POST'])
 def login_api():
@@ -241,7 +253,8 @@ def get_user_info():
         "id": current_user.user_id,
         "email": current_user.email,
         "name": current_user.username,
-        "role": current_user.role
+        "role": current_user.role,
+        "tier" : current_user.tier,
     })
 
 @auth_bp.route('/api/auth/logout', methods=['POST'])
