@@ -584,37 +584,55 @@ def api_upload_leads():
                 invalid_indices.append(i)
         added_new = 0
         updated = 0
+        no_change = 0
         skipped = 0
         errors = 0
-        for lead_data in valid_leads:
+        detailed_results = []
+        for i, lead_data in enumerate(valid_leads):
             try:
-                success, message = LeadController.add_or_update_lead_by_match(lead_data)
-                if success:
-                    if "updated successfully" in message:
-                        updated += 1
-                    elif "already up to date" in message:
-                        updated += 1
-                    else:
-                        added_new += 1
+                success, result = LeadController.add_or_update_lead_by_match(lead_data)
+                # Add original index for easier frontend mapping
+                result['original_index'] = invalid_indices.index(i) if i in invalid_indices else i
+                detailed_results.append(result)
+                status = result.get('status', '')
+                if status == "created":
+                    added_new += 1
+                elif status == "updated":
+                    updated += 1
+                elif status == "no_change":
+                    no_change += 1
+                elif status == "error":
+                    errors += 1
+                    error_details.append(result.get('message', f'Unknown error for lead at index {i}'))
                 else:
-                    if "already in use" in message or "already exists" in message:
-                        skipped += 1
-                    else:
-                        errors += 1
-                        error_details.append(f"Error saving lead: {message}")
+                     # This might catch unexpected statuses from controller, count as skipped
+                    skipped += 1
+                    error_details.append(f'Skipped lead at index {i} due to unexpected controller status: {status}')
             except Exception as e:
                 errors += 1
-                error_details.append(f"Exception saving lead: {str(e)}")
+                error_details.append(f"Exception saving lead at index {i}: {str(e)}")
+
+        # Determine overall status
+        overall_status = "success"
+        if errors > 0 or len(invalid_indices) > 0:
+            overall_status = "warning"
+        if added_new == 0 and updated == 0 and no_change == 0:
+             # If no leads were successfully processed (added/updated/no_change)
+            overall_status = "error"
+
         return jsonify({
-            "status": "success" if errors == 0 else "error",
-            "message": f"Upload Complete! Added: {added_new}, Updated: {updated}, Skipped: {skipped}, Errors: {errors}",
+            "status": overall_status,
+            "message": f"Upload Complete. Added: {added_new}, Updated: {updated}, No Change: {no_change}, Skipped (Controller): {skipped}, Invalid (Initial Check): {len(invalid_indices)}, Errors: {errors}",
             "stats": {
                 "added_new": added_new,
                 "updated": updated,
-                "skipped_duplicates": skipped,
+                "no_change": no_change,
+                "skipped_controller": skipped, # Skipped by controller logic
+                "invalid_initial_check": len(invalid_indices), # Skipped by initial validation
                 "errors": errors,
-                "invalid_indices": invalid_indices[:10] if invalid_indices else [],
-                "error_details": error_details
+                "invalid_indices": invalid_indices, # Indices from original payload that failed initial check
+                "error_details": error_details,
+                "detailed_results": detailed_results # Results for leads that passed initial check
             }
         }), 200
     except Exception as e:
