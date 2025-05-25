@@ -1081,9 +1081,9 @@ def edit_lead_api(lead_id):
                 lead_id=lead_id,
                 user_id=user_id,
                 draft_data=data,
-                phase='draft',
-                updated_at=datetime.utcnow()
+                phase='draft'
             )
+            draft.updated_at = datetime.utcnow()
             db.session.add(draft)
         else:
             draft.draft_data = data
@@ -1119,7 +1119,11 @@ def apply_edited_lead(lead_id):
     try:
         for key, value in draft.draft_data.items():
             if hasattr(lead, key) and key not in ['lead_id', 'created_at', 'deleted', 'deleted_at']:
-                setattr(lead, key, value)
+                col_type = type(getattr(lead, key))
+                if value == '' and col_type in [int, float, type(None)]:
+                    setattr(lead, key, None)
+                else:
+                    setattr(lead, key, value)
         db.session.delete(draft)
         db.session.commit()
         return jsonify({'success': True, 'message': 'Changes applied and lead finalized.'})
@@ -1127,21 +1131,27 @@ def apply_edited_lead(lead_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@lead_bp.route('/leads/<string:lead_id>/restore', methods=['POST'])
+@lead_bp.route('/api/draft/delete', methods=['POST'])
 #@login_required
 @role_required('admin', 'developer')
-def restore_edited_lead(lead_id):
-    """Restore: discard edit, delete draft, data utama tetap."""
+def delete_draft_api():
+    """Permanently delete a draft by lead_id (API)."""
     from models.user_lead_drafts_model import UserLeadDraft
-    draft = UserLeadDraft.query.filter_by(lead_id=lead_id, is_deleted=False).first()
+    data = request.get_json() or {}
+    lead_id = data.get('lead_id')
+    print('DEBUG: lead_id param:', lead_id)
+    draft = UserLeadDraft.query.filter_by(lead_id=lead_id).first()
+    print('DEBUG: draft found:', draft)
     if not draft:
         return jsonify({'success': False, 'message': 'Draft not found.'}), 404
     try:
         db.session.delete(draft)
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Draft discarded and lead restored to original.'})
+        print('DEBUG: draft permanently deleted')
+        return jsonify({'success': True, 'message': 'Draft permanently deleted.'})
     except Exception as e:
         db.session.rollback()
+        print('DEBUG: error:', e)
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @lead_bp.route('/api/leads/multiple', methods=['GET'])

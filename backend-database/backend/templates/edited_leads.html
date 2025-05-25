@@ -91,6 +91,15 @@
             scrollbar-width: thin;
             scrollbar-color: var(--primary-color) var(--card-bg);
         }
+        .scroll-x {
+            overflow-x: auto;
+            max-width: 400px;
+            display: block;
+        }
+        .edited-field-diff {
+            white-space: nowrap;
+            margin-bottom: 6px;
+        }
     </style>
 </head>
 <body>
@@ -109,42 +118,54 @@
                         <thead>
                             <tr>
                                 <th>Lead ID</th>
-                                <th>Company</th>
-                                <th>Contact Name</th>
-                                <th>Email</th>
+                                <th>Edited Fields</th>
                                 <th>Edited At</th>
                                 <th>Edited By</th>
-                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for item in leads %}
                             <tr>
-                                <td>{% if item.lead.lead_id|length > 12 %}{{ item.lead.lead_id[:6] }}...{{ item.lead.lead_id[-4:] }}{% else %}{{ item.lead.lead_id }}{% endif %}</td>
-                                <td>{{ item.lead.company }}</td>
-                                <td>{{ item.lead.owner_first_name }} {{ item.lead.owner_last_name }}</td>
-                                <td>{{ item.lead.owner_email }}</td>
                                 <td>
-                                    {% if item.lead.edited_at %}
-                                        {{ item.lead.edited_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {% set lead_id = item.edit.lead_id or item.original.lead_id %}
+                                    {% if lead_id|length > 12 %}{{ lead_id[:6] }}...{{ lead_id[-4:] }}{% else %}{{ lead_id }}{% endif %}
+                                </td>
+                                <td class="scroll-x">
+                                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    {% for key, new_val in item.edit.draft_data.items() %}
+                                        {% set old_val = item.original.to_dict()[key] if key in item.original.to_dict() else '' %}
+                                        {% if (new_val|string)|trim != (old_val|string)|trim %}
+                                            <div class="edited-field-diff">
+                                                <span class="badge bg-success">New:</span>
+                                                <strong>{{ key|replace('_', ' ')|title }}</strong>:
+                                                {{ new_val if new_val else '-' }}<br>
+                                                <small class="text-muted">Old: {{ old_val if old_val else '-' }}</small>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% set edited_at = item.edit.updated_at or item.original.updated_at %}
+                                    {% if edited_at %}
+                                        {{ edited_at.strftime('%Y-%m-%d %H:%M') if edited_at else '-' }}
                                     {% else %}
                                         <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
                                     {% if item.edit_user %}
-                                        <span class="badge bg-info text-dark">{{ item.edit_user.full_name or item.edit_user.username or item.edit_user.email }}</span>
+                                        {{ item.edit_user.email or item.edit_user.username or item.edit_user.user_id }}
                                     {% else %}
                                         <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge bg-warning text-dark">Pending Edit</span>
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm btn-success" onclick="applyChanges('{{ item.lead.lead_id }}')">Apply Changes</button>
-                                    <button class="btn btn-sm btn-secondary" onclick="restoreLead('{{ item.lead.lead_id }}')">Restore</button>
+                                    <form method="POST" action="#" style="display:inline;" onsubmit="return false;">
+                                        <button type="button" class="btn btn-success btn-sm apply-btn" data-lead-id="{{ lead_id }}">Apply</button>
+                                    </form>
+                                    <button type="button" class="btn btn-danger btn-sm delete-draft-btn" data-lead-id="{{ lead_id }}">Delete</button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -161,34 +182,48 @@
         </div>
     </div>
     <script>
-    function applyChanges(leadId) {
-        if (!confirm('Are you sure you want to apply these changes to the database?')) return;
-        fetch(`/leads/${leadId}/apply`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin'
-        })
-        .then(res => res.json())
-        .then(data => {
-            alert(data.message || (data.success ? 'Changes applied!' : 'Failed to apply changes.'));
-            if (data.success) location.reload();
-        })
-        .catch(() => alert('Failed to apply changes.'));
-    }
-    function restoreLead(leadId) {
-        if (!confirm('Are you sure you want to restore this lead to its original state?')) return;
-        fetch(`/leads/${leadId}/restore`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin'
-        })
-        .then(res => res.json())
-        .then(data => {
-            alert(data.message || (data.success ? 'Lead restored!' : 'Failed to restore lead.'));
-            if (data.success) location.reload();
-        })
-        .catch(() => alert('Failed to restore lead.'));
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.apply-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const leadId = btn.getAttribute('data-lead-id');
+                fetch(`/leads/${leadId}/apply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '/leads/edited';
+                    } else {
+                        alert(data.message || 'Failed to process action.');
+                    }
+                })
+                .catch(() => alert('Failed to process action.'));
+            });
+        });
+        document.querySelectorAll('.delete-draft-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const leadId = btn.getAttribute('data-lead-id');
+                if (!confirm('Are you sure you want to permanently delete this draft?')) return;
+                fetch('/api/draft/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ lead_id: leadId })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        btn.closest('tr').remove();
+                    } else {
+                        alert(data.message || 'Failed to delete draft.');
+                    }
+                })
+                .catch(() => alert('Failed to delete draft.'));
+            });
+        });
+    });
     </script>
 </body>
 </html> 
