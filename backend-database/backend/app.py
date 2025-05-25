@@ -15,6 +15,10 @@ def create_app(config_class=config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    # :white_check_mark: Production cookie settings for session auth
+    app.config["SESSION_COOKIE_SAMESITE"] = "None"
+    app.config["SESSION_COOKIE_SECURE"] = True
+
     # Initialize CORS
     CORS(app, resources={
         r"/api/*": {  # Enable CORS for all routes under /api/
