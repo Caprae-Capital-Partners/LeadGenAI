@@ -498,7 +498,7 @@ class LeadController:
             return (False, msg)
 
     @staticmethod
-    def search_leads_by_industry_location(industry, location):
+    def search_leads_by_industry_location(industry, location, current_user=None):
         """Search leads by industry and location, with plan-based filtering/masking."""
         query = Lead.query.filter_by(deleted=False)
         if industry:
@@ -529,19 +529,25 @@ class LeadController:
         for lead in leads:
             lead_dict = {}
             # Check user tier
-            if current_user and hasattr(current_user, 'tier') and current_user.tier == 'user':
+            if current_user and hasattr(current_user, 'tier') and current_user.tier == 'free':
                 # Filter and mask for Free plan
                 for field in allowed_fields_free:
                     if hasattr(lead, field):
                         value = getattr(lead, field)
-                        if field == 'phone' and value:
-                            lead_dict[field] = '********' + (str(value)[-4:] if len(str(value)) > 4 else str(value))
-                        elif field == 'owner_email' and value:
-                            email_parts = str(value).split('@')
-                            if len(email_parts) > 1:
-                                lead_dict[field] = f"{email_parts[0][0] if email_parts[0] else ''}***@{email_parts[1]}"
+                        if field == 'phone':
+                            # Always mask, even if empty
+                            last4 = str(value)[-4:] if value and len(str(value)) > 4 else ''
+                            lead_dict[field] = '********' + last4
+                        elif field == 'owner_email':
+                            # Always mask, even if empty
+                            if value:
+                                email_parts = str(value).split('@')
+                                if len(email_parts) > 1:
+                                    lead_dict[field] = f"{email_parts[0][0] if email_parts[0] else ''}***@{email_parts[1]}"
+                                else:
+                                    lead_dict[field] = f"{email_parts[0][0] if email_parts[0] else ''}***@******"
                             else:
-                                lead_dict[field] = f"{email_parts[0][0] if email_parts[0] else ''}***@"
+                                lead_dict[field] = "***@*****.***"
                         elif value is not None and value != '':
                             lead_dict[field] = value
                         else:
@@ -609,9 +615,6 @@ class LeadController:
         #     )
 
         return leads # Return list of Lead model instances for the decorator
-
-
-
 
     @staticmethod
     def get_unique_industries():

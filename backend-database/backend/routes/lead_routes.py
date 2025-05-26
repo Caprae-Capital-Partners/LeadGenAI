@@ -900,7 +900,7 @@ def api_search_leads():
     # logging.debug(f"[IN] /api/search_leads data: {data}")
     industry = data.get("industry", "")
     location = data.get("location", "")
-    results = LeadController.search_leads_by_industry_location(industry, location)
+    results = LeadController.search_leads_by_industry_location(industry, location, current_user)
     # logging.debug(f"[OUT] /api/search_leads results: {results}")
     return jsonify(results)
 
