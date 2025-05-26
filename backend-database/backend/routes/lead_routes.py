@@ -2,6 +2,7 @@ from flask import Blueprint, request, redirect, render_template, flash, url_for,
 from controllers.lead_controller import LeadController
 from controllers.upload_controller import UploadController
 from controllers.export_controller import ExportController
+from models.user_subscription_model import UserSubscription
 from models.lead_model import db, Lead
 from flask_login import login_required, current_user
 from utils.decorators import role_required, credit_required, filter_lead_data_by_plan
@@ -879,18 +880,44 @@ def permanent_delete_lead(lead_id):
         return jsonify({'success': False, 'message': f'Error permanently deleting lead: {str(e)}'}), 500
 
 
-@lead_bp.route('/api/lead_scrape', methods=['POST'])
-@login_required # Ensure user is logged in
+@lead_bp.route('/api/user/deduct_credit', methods=['POST'])
+@login_required
 @credit_required(cost=1)
-@filter_lead_data_by_plan()
+def api_deduct_credit():
+    """API endpoint to deduct 1 credit from the current user's account."""
+    # If we reach this point, the credit_required decorator has already
+    # checked the subscription, credits, and successfully deducted 1 credit.
+    # So, we just need to return a success response.
+    return jsonify({
+        "status": "success",
+        "message": "1 credit deducted successfully.",
+    }), 200
+
+
+@lead_bp.route('/api/lead_scrape', methods=['POST'])
 def api_search_leads():
     data = request.get_json()
     # logging.debug(f"[IN] /api/search_leads data: {data}")
     industry = data.get("industry", "")
     location = data.get("location", "")
-    results = LeadController.search_leads_by_industry_location(industry, location)
+    results = LeadController.search_leads_by_industry_location(industry, location, current_user)
+    # logging.debug(f"[OUT] /api/search_leads results: {results}")
+    return jsonify(results)
+
+@lead_bp.route('/api/lead_scrape_old', methods=['POST'])
+@login_required # Ensure user is logged in
+# @credit_required(cost=1)
+@filter_lead_data_by_plan()
+def api_search_leads_old():
+    data = request.get_json()
+    # logging.debug(f"[IN] /api/search_leads data: {data}")
+    industry = data.get("industry", "")
+    location = data.get("location", "")
+    results = LeadController.search_leads_by_industry_location_old(industry, location)
     # logging.debug(f"[OUT] /api/search_leads results: {results}")
     return results
+
+
 
 @lead_bp.route('/api/industries', methods=['GET'])
 # #@login_required
