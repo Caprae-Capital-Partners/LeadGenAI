@@ -405,7 +405,7 @@ const parseRevenue = (revenueStr: string): number | null => {
   }
   const handleSaveEditedCompanies = async () => {
     const user = JSON.parse(sessionStorage.getItem("user") || "{}");
-    const user_id = user.id;
+    const user_id = user.id || user.user_id || user._id;
 
     if (!user_id) {
       alert("User not found in session. Please re-login.");
