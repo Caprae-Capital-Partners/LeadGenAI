@@ -26,10 +26,13 @@ import { useEnrichment } from "@/components/EnrichmentProvider"
 interface EnrichmentResultsProps {
   enrichedCompanies: EnrichedCompany[]
   loading?: boolean
+  rowClassName?: (company: EnrichedCompany, index: number) => string
 }
+
 
 export interface EnrichedCompany {
   id: string
+  lead_id?: string;
   company: string
   website: string
   industry: string
@@ -51,10 +54,15 @@ export interface EnrichedCompany {
   ownerPhoneNumber: string
   ownerEmail: string
   source: string
+  sourceType?: "database" | "scraped";
 }
 
 
-export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanies, loading }) => {
+export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
+  enrichedCompanies,
+  loading,
+  rowClassName,
+}) => {
   const [editableCompanies, setEditableCompanies] = useState<EnrichedCompany[]>([])
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -396,43 +404,95 @@ const parseRevenue = (revenueStr: string): number | null => {
     window.location.reload()
   }
   const handleSaveEditedCompanies = async () => {
-    try {
-      const payload = editableCompanies.map(c => ({
-        company: c.company,
-        website: c.website,
-        industry: c.industry,
-        product_category: c.productCategory,
-        business_type: c.businessType,
-        employees: typeof c.employees === "number" ? c.employees : parseInt(c.employees as any) || 0,
-        revenue: typeof c.revenue === "string" ? c.revenue.replace(/[^0-9]/g, "") : c.revenue,
-        year_founded: parseInt(c.yearFounded) || 0,
-        bbb_rating: c.bbbRating,
-        street: c.street,
-        city: c.city,
-        state: c.state,
-        company_phone: c.companyPhone,
-        company_linkedin: c.companyLinkedin,
-        owner_first_name: c.ownerFirstName,
-        owner_last_name: c.ownerLastName,
-        owner_title: c.ownerTitle,
-        owner_linkedin: c.ownerLinkedin,
-        owner_phone_number: c.ownerPhoneNumber,
-        owner_email: c.ownerEmail,
-        source: c.source,
-      }))
+    const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+    const user_id = user.id;
 
-      await fetch(`${process.env.NEXT_PUBLIC_DATABASE_URL}/upload_leads`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-
-      alert("✅ Data saved successfully!")
-    } catch (err) {
-      console.error("❌ Failed to upload edited data", err)
-      alert("Error saving data. See console for details.")
+    if (!user_id) {
+      alert("User not found in session. Please re-login.");
+      return;
     }
-  }
+
+    // Make sure selectedCompanies list is correct
+    console.log("🧾 Selected company IDs:", selectedCompanies);
+
+    const companiesToSave = editableCompanies.filter((c) =>
+      selectedCompanies.includes(c.id)
+    );
+
+    if (companiesToSave.length === 0) {
+      alert("Please select at least one company to save.");
+      return;
+    }
+
+    console.log(`💾 Attempting to save ${companiesToSave.length} companies`);
+
+    for (const [index, c] of companiesToSave.entries()) {
+      try {
+        const leadId = c.lead_id || c.id;
+
+        const payload = {
+          user_id,
+          company: c.company,
+          website: c.website,
+          industry: c.industry,
+          product_category: c.productCategory,
+          business_type: c.businessType,
+          employees:
+            typeof c.employees === "number"
+              ? c.employees
+              : parseInt(c.employees as any) || 0,
+          revenue:
+            typeof c.revenue === "string"
+              ? parseFloat(c.revenue.replace(/[^0-9.]/g, ""))
+              : c.revenue,
+          year_founded: parseInt(c.yearFounded) || 0,
+          bbb_rating: c.bbbRating,
+          street: c.street,
+          city: c.city,
+          state: c.state,
+          company_phone: c.companyPhone,
+          company_linkedin: c.companyLinkedin,
+          owner_first_name: c.ownerFirstName,
+          owner_last_name: c.ownerLastName,
+          owner_title: c.ownerTitle,
+          owner_linkedin: c.ownerLinkedin,
+          owner_phone_number: c.ownerPhoneNumber,
+          owner_email: c.ownerEmail,
+          source: c.source,
+        };
+
+        console.log(`📤 Sending (${index + 1}/${companiesToSave.length}):`, leadId, payload);
+
+        const res = await fetch(
+          `https://data.capraeleadseekers.site/leads/${leadId}/edit`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+
+        const data = await res.json();
+        console.log("✅ Server response:", data);
+
+        if (!res.ok || !data.success) {
+          console.error("❌ Failed to save:", leadId, data);
+          alert(`Failed to save company with ID: ${leadId}`);
+          continue;
+        }
+      } catch (err) {
+        console.error("❌ Error saving company:", err);
+        alert(`Error saving a company. See console for details.`);
+      }
+    }
+
+    alert("✅ Done saving selected companies.");
+  };
+  
+  
+  
+  
+  
   
 
   return (
@@ -645,10 +705,20 @@ const parseRevenue = (revenueStr: string): number | null => {
                     </TableRow>
 
                 </TableHeader>
-                <TableBody>
-                {currentItems.length > 0 ? (
-                  currentItems.map((company, index) => (
-                    <TableRow key={company.id || `${company.company}-${index}`}>
+                  <TableBody>
+                    {currentItems.length > 0
+                      ? currentItems.map((company, i) => (
+                        <TableRow
+                          key={company.id}
+                          className={
+                            rowClassName?.(company, i) ??
+                            (company.sourceType === "database"
+                              ? "bg-teal-50"
+                              : company.sourceType === "scraped"
+                                ? "bg-yellow-50"
+                                : "")
+                          }
+                        >
                       {/* Select Checkbox */}
                       <TableCell className="whitespace-nowrap px-2 align-top">
                         <Checkbox
@@ -756,14 +826,15 @@ const parseRevenue = (revenueStr: string): number | null => {
                           : normalizeDisplayValue(company.source)}
                       </TableCell>
                     </TableRow>
+
                   ))
-                ) : (
-                  <TableRow key="no-results">
-                    <TableCell colSpan={22} className="text-center">
-                      No results found.
-                    </TableCell>
-                  </TableRow>
-                )}
+                      : (
+                        <TableRow key="no-results">
+                          <TableCell colSpan={22} className="text-center">
+                            No results found.
+                          </TableCell>
+                        </TableRow>
+                      )}
                   </TableBody>
                 </Table>
               </div>

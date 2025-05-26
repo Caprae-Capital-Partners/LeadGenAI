@@ -11,8 +11,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 export function Header() {
+  const [userEmail, setUserEmail] = useState("");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+      setUserEmail(user.email || "user@example.com");
+    }
+  }, []);
   return (
     <header className="w-full bg-[#1A2133] border-b border-[#2E3A59] overflow-x-auto">
       <div className="min-w-[1200px] flex h-24 items-center px-10">
@@ -78,7 +86,7 @@ export function Header() {
                     User
                   </p>
                   <p className="text-xs leading-none text-gray-400">
-                    user@example.com
+                    {userEmail}
                   </p>
                 </div>
               </DropdownMenuLabel>
@@ -95,7 +103,8 @@ export function Header() {
               <DropdownMenuSeparator className="bg-dark-border" />
               <DropdownMenuItem
                 onClick={() => {
-                  sessionStorage.clear(); // ✅ Clear all session storage
+                  sessionStorage.clear(); // ✅ Clear session storage
+                  localStorage.clear(); // ✅ Clear local storage
                   window.location.href =
                     "https://data.capraeleadseekers.site/logout";
                 }}
