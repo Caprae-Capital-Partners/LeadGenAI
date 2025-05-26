@@ -51,27 +51,33 @@ export default function AuthPage() {
             const res = await fetch(`${DATABASE_URL}${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include", // ⬅️ Ensure session cookies persist
+                credentials: "include", // ⬅️ Important for session cookie
                 body: JSON.stringify(payload),
             });
 
             const result = await res.json();
             if (!res.ok) throw new Error(result.message || "Something went wrong");
 
+            // ✅ Store user info in sessionStorage
+            if (result.user) {
+                sessionStorage.setItem("user", JSON.stringify(result.user));
+            }
+
             if (isSignup) {
                 router.push("/subscription");
             } else {
                 // Determine environment
                 if (window.location.hostname === "localhost") {
-                    router.push("/"); // Or wherever your dashboard lives locally
+                    router.push("/");
                 } else {
                     window.location.href = "https://app.saasquatchleads.com/";
                 }
-              }
+            }
         } catch (err: any) {
             alert(err.message);
         }
     };
+    
       
 
 

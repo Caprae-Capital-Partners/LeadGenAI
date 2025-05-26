@@ -9,6 +9,8 @@ import { Progress } from "@/components/ui/progress"
 import { ScraperResults } from "@/components/scraper-results"
 import axios from "axios"
 import { AlertCircle, DatabaseIcon } from "lucide-react"
+import { useRouter } from "next/navigation";
+
 
 const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/scrape-stream`;
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/industries`;
@@ -16,6 +18,7 @@ const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/lead_scrape`;
 
 // Define interfaces for type safety
 interface LeadData {
+  lead_id?: string; // from backend
   Company?: string;
   company?: string;
   Website?: string;
@@ -38,7 +41,8 @@ interface LeadData {
 }
 
 interface FormattedLead {
-  id: number;
+  id: number;             // local index
+  lead_id: string;        // unique identifier from DB
   company: string;
   website: string;
   industry: string;
@@ -66,33 +70,37 @@ export function Scraper() {
   const [location, setLocation] = useState("")
   const [scrapedResults, setScrapedResults] = useState<FormattedLead[]>([])
   const controllerRef = useRef<{ abort: () => void } | null>(null)
-  
+  const router = useRouter();
   // Track companies we've already seen to prevent duplicates
   const seenCompaniesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const cacheKey = "industries"
-    const cachedIndustries = localStorage.getItem(cacheKey);
-    const CACHE_DURATION = 604800000
-    if (cachedIndustries) {
+    const verifyLogin = async () => {
       try {
-        const {data, timestamp} = JSON.parse(cachedIndustries)
-        if (Array.isArray(data) && Date.now() - timestamp < CACHE_DURATION) {
-          setIndustries(data)
-          return;
+        const res = await fetch("https://data.capraeleadseekers.site/api/ping-auth", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          router.push("/auth");
+        } else {
+          console.log("✅ Authenticated user");
         }
-      } catch {}
-    }
+      } catch (error) {
+        console.error("❌ Error verifying login:", error);
+        router.push("/auth");
+      }
+    };
+
+    verifyLogin();
+
     const fetchIndustries = async () => {
       try {
         const response = await fetch(FETCH_INDUSTRIES_API);
         const data = await response.json();
-        if (data && Array.isArray(data.industries)) {
+        if (data && data.industries) {
           setIndustries(data.industries);
-          localStorage.setItem(
-            cacheKey,
-            JSON.stringify({ data: data.industries, timestamp: Date.now()})
-          );
         } else {
           console.error("Invalid API response format:", data);
         }
@@ -121,7 +129,8 @@ export function Scraper() {
 
   // Format data consistently across all sources
   const formatLeadData = (item: LeadData, index: number): FormattedLead => ({
-    id: item.id || index,
+    id: index, // internal use for React keys or pagination
+    lead_id: item.lead_id || "", // real DB identifier, passed to /leads/multiple
     company: item.Company || item.company || "",
     website: item.Website || item.website || "",
     industry: item.Industry || item.industry || "",
