@@ -1,13 +1,13 @@
 "use client"
-import React from "react"
+import React, { useMemo } from "react"
 import { useState, useEffect, useRef } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../components/ui/card"
 import { EnrichmentResults } from "../components/enrichment-results"
 import { Button } from "../components/ui/button"
 import { Checkbox } from "../components/ui/checkbox"
 import { Input } from "../components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
-import { Search, Filter, Download, X, ExternalLink } from "lucide-react"
+import { Search, Filter, Download, X, ExternalLink, Save } from "lucide-react"
 import { useLeads } from "./LeadsProvider"
 import type { ApolloCompany, GrowjoCompany, ApolloPerson } from "../types/enrichment"
 import axios from "axios"
@@ -24,17 +24,128 @@ import {
 import type { EnrichedCompany } from "@/components/enrichment-results"
 import { useEnrichment } from "@/components/EnrichmentProvider"
 import Loader from "@/components/ui/loader"
+import * as XLSX from "xlsx"
+import { toast } from "sonner"
 
+// In the component body, get setLeads from context
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 
 export function DataEnhancement() {
   const [showResults, setShowResults] = useState(false)
-  const { leads } = useLeads()
+  const { leads, setLeads } = useLeads() 
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [exportFormat, setExportFormat] = useState("csv")
+  const [isSaving, setIsSaving] = useState(false)
+  const [localLeads, setLocalLeads] = useState<any[]>([])
+  // Add near other state declarations
+  const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
+  const [updatedLeads, setUpdatedLeads] = useState<{ id: number }[]>([])
+
+  const handleCellChange = (leadId: number, field: string, value: string) => {
+    setLocalLeads(prev =>
+      prev.map((row) =>
+        row.id === leadId ? { ...row, [field]: value } : row
+      )
+    )
+
+    setUpdatedLeads((prev: { id: number }[]) => {
+      const existing = prev.find((item: { id: number }) => item.id === leadId)
+      
+      if (existing) {
+        return prev.map((item: { id: number }) =>
+          item.id === leadId
+            ? { ...item, [field]: value }
+            : item
+        )
+      } else {
+        return [...prev, { id: leadId, [field]: value }]
+      }
+    })
+  }
+
+  useEffect(() => {
+    const resizeTextareas = () => {
+      textareaRefs.current.forEach(textarea => {
+        if (textarea) {
+          textarea.style.height = 'auto'
+          textarea.style.height = textarea.scrollHeight + 'px'
+        }
+      })
+    }
+    
+    resizeTextareas()
+    textareaRefs.current = textareaRefs.current.slice(0, localLeads.length * 3)
+  }, [localLeads.length])
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const response = await axios.put(
+        `${DATABASE_URL}/leads/batch`,
+        updatedLeads,
+        { headers: { "Content-Type": "application/json" } }
+      );
+      
+      toast.success(`Updated ${response.data.updated || updatedLeads.length} lead(s) successfully`);
+      setUpdatedLeads([]);
+      setLeads(localLeads); // Update global leads state
+    } catch (error) {
+      toast.error("Failed to save changes. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const normalizeDisplayValue = (value: any) => {
+  if (value === null || value === undefined) return ""
+  if (value === "NA") return "N/A"
+  return value
+}
+
+
+  // Add export functions
+  const exportExcel = (data: any[]) => {
+    const worksheet = XLSX.utils.json_to_sheet(data)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Enriched Companies")
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "enriched-companies.xlsx"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportJSON = (data: any[]) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "enriched-companies.json"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExport = () => {
+    const dataToExport = enrichedCompanies.length > 0 ? enrichedCompanies : currentItems;
+    if (dataToExport.length === 0) {
+      toast.error("No data to export")
+      return
+    }
+    if (exportFormat === "csv") {
+      downloadCSV(dataToExport, "companies.csv")
+    } else if (exportFormat === "excel") {
+      exportExcel(dataToExport)
+    } else if (exportFormat === "json") {
+      exportJSON(dataToExport)
+    }
+  }
 
   // Get the original search criteria from URL parameters
   const getSearchCriteria = () => {
@@ -130,31 +241,29 @@ export function DataEnhancement() {
   // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
   const cleanUrlForDisplay = (url: string): string => {
     if (!url || url === "N/A" || url === "NA") return url;
-
-    // First remove http://, https://, and www.
-    let cleanUrl = url.toString().replace(/^(https?:\/\/)?(www\.)?/i, "");
-
-    // Then truncate everything after the domain (matches common TLDs)
+    let cleanUrl = url.replace(/^(https?:\/\/)?(www\.)?/i, "");
     const domainMatch = cleanUrl.match(/^([^\/\?#]+\.(com|org|net|io|ai|co|gov|edu|app|dev|me|info|biz|us|uk|ca|au|de|fr|jp|ru|br|in|cn|nl|se)).*$/i);
-    if (domainMatch) {
-      return domainMatch[1];
-    }
+    return domainMatch ? domainMatch[1] : cleanUrl.split(/[\/\?#]/)[0];
+  };
 
-    // If no common TLD found, just truncate at the first slash, question mark or hash
-    return cleanUrl.split(/[\/\?#]/)[0];
-  }
+  const normalizedLeads = useMemo(() => 
+    leads.map((lead) => ({
+      ...lead,
+      company: normalizeLeadValue(lead.company),
+      website: normalizeLeadValue(lead.website),
+      industry: normalizeLeadValue(lead.industry),
+      street: normalizeLeadValue(lead.street),
+      city: normalizeLeadValue(lead.city),
+      state: normalizeLeadValue(lead.state),
+      bbb_rating: normalizeLeadValue(lead.bbb_rating),
+      business_phone: normalizeLeadValue(lead.business_phone),
+    })),
+    [leads] // Dependency array ensures memoization
+  );
 
-  const normalizedLeads = leads.map((lead) => ({
-    ...lead,
-    company: normalizeLeadValue(lead.company),
-    website: normalizeLeadValue(lead.website),
-    industry: normalizeLeadValue(lead.industry),
-    street: normalizeLeadValue(lead.street),
-    city: normalizeLeadValue(lead.city),
-    state: normalizeLeadValue(lead.state),
-    bbb_rating: normalizeLeadValue(lead.bbb_rating),
-    business_phone: normalizeLeadValue(lead.business_phone),
-  }))
+  useEffect(() => {
+    setLocalLeads(normalizedLeads)
+  }, [normalizedLeads])
 
   const { enrichedCompanies, setEnrichedCompanies } = useEnrichment()
   const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
@@ -195,7 +304,7 @@ export function DataEnhancement() {
     a.click()
     URL.revokeObjectURL(url)
   }
-  const filteredLeads = normalizedLeads.filter((company) => {
+  const filteredLeads = localLeads.filter((company) => { // Changed from normalizedLeads
     return (
       company.industry.toLowerCase().includes(industryFilter.toLowerCase()) &&
       company.city.toLowerCase().includes(cityFilter.toLowerCase()) &&
@@ -245,7 +354,7 @@ export function DataEnhancement() {
   };
 
   // Apply sorting to the filtered data
-  const sortedFilteredLeads = getSortedData(filteredLeads);
+  const sortedFilteredLeads = getSortedData(filteredLeads)
 
   // Use the sorted data for pagination
   const totalPages = Math.ceil(sortedFilteredLeads.length / itemsPerPage)
@@ -313,13 +422,13 @@ export function DataEnhancement() {
   //   }
   // ]
   const handleSelectAll = () => {
-    if (selectAll) {
-      setSelectedCompanies([])
+    const visibleIds = currentItems.map(c => c.id);
+    if (selectedCompanies.length === visibleIds.length) {
+      setSelectedCompanies([]);
     } else {
-      setSelectedCompanies(normalizedLeads.map((company) => company.id))
+      setSelectedCompanies(visibleIds);
     }
-    setSelectAll(!selectAll)
-  }
+  };
 
   const handleSelectCompany = (id: number) => {
     if (selectedCompanies.includes(id)) {
@@ -806,16 +915,68 @@ export function DataEnhancement() {
                               aria-label={`Select ${company.company}`}
                             />
                           </TableCell>
-                          <TableCell className="font-medium">{company.company}</TableCell>
-                          <TableCell>{company.industry}</TableCell>
-                          <TableCell>{company.street}</TableCell>
-                          <TableCell>{company.city}</TableCell>
-                          <TableCell>{company.state}</TableCell>
-                          <TableCell>{company.bbb_rating}</TableCell>
-                          <TableCell>{company.business_phone}</TableCell>
+                          <TableCell>
+                            <input
+                              value={company.company || ""}
+                              onChange={(e) => handleCellChange(company.id, 'company', e.target.value)}
+                              className="border-b bg-transparent w-full"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <input
+                              value={company.industry || ""}
+                              onChange={(e) => handleCellChange(company.id, 'industry', e.target.value)}
+                              className="border-b bg-transparent w-full"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <textarea
+                              value={company.street || ""}
+                              onChange={(e) => handleCellChange(company.id, 'street', e.target.value)}
+                              className="border-b bg-transparent w-full resize-none"
+                              rows={1}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <input
+                              value={company.city || ""}
+                              onChange={(e) => handleCellChange(company.id, 'city', e.target.value)}
+                              className="border-b bg-transparent w-full"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <input
+                              value={company.state || ""}
+                              onChange={(e) => handleCellChange(company.id, 'state', e.target.value)}
+                              className="border-b bg-transparent w-full"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <select
+                              value={company.bbbRating || ""}
+                              onChange={(e) => handleCellChange(company.id, 'bbbRating', e.target.value)}
+                              className="border-b bg-transparent"
+                            >
+                              {['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'].map((rating) => (
+                                <option key={rating} value={rating}>{rating}</option>
+                              ))}
+                            </select>
+                          </TableCell>
+                          <TableCell>
+                            <input
+                              value={company.businessPhone || ""}
+                              onChange={(e) => handleCellChange(company.id, 'companyPhone', e.target.value)}
+                              className="border-b bg-transparent w-full"
+                            />
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              {company.website ? cleanUrlForDisplay(company.website) : "N/A"}
+                              <input
+                                value={company.website || ""}
+                                onChange={(e) => handleCellChange(company.id, 'website', e.target.value)}
+                                className="border-b bg-transparent flex-1"
+                                placeholder="Enter website"
+                              />
                               {company.website && company.website !== "N/A" && company.website !== "NA" && (
                                 <a
                                   href={company.website.toString().startsWith("http") ? company.website : `https://${company.website}`}
@@ -877,6 +1038,38 @@ export function DataEnhancement() {
 
           </div>
         </CardContent>
+        <CardFooter className="flex justify-between">
+          <div className="text-sm text-muted-foreground">
+            {updatedLeads.length} unsaved changes
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSave}
+              disabled={isSaving || updatedLeads.length === 0} // Changed here
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+            <Select
+              value={exportFormat}
+              onValueChange={(val) => val && setExportFormat(val)}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Format" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="excel">Excel</SelectItem>
+                <SelectItem value="json">JSON</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
       {enrichedCompanies.length > 0 ? (
         <div className="mt-6">

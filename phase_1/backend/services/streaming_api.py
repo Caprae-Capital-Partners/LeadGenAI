@@ -20,13 +20,13 @@ from backend.services.background import start_background_scraping
 app = FastAPI()
 
 # Add CORS middleware to allow requests from your frontend
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],  # Specify your frontend URL in production
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Specify your frontend URL in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 async def scraper_stream(industry: str, location: str):
     """Generate SSE stream from the background scraper results"""
@@ -108,5 +108,5 @@ async def stream(industry: str, location: str):
 async def health():
     return {"status": "ok"}
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=5000)
+# if __name__ == "__main__":
+#     uvicorn.run(app, host="127.0.0.1", port=5000)
