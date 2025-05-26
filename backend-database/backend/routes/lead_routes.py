@@ -18,6 +18,8 @@ import requests
 from models.user_model import User
 from models.audit_log_model import LeadAuditLog
 from models.user_lead_drafts_model import UserLeadDraft
+import uuid
+
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -1100,11 +1102,14 @@ def edit_lead_api(lead_id):
         user_id = (
             getattr(current_user, 'id', None) or
             getattr(current_user, 'user_id', None) or
-            data.get('user_id')  # :white_check_mark: fallback to explicit user_id from request payload
+            data.get('user_id')
         )
-
         if not user_id:
             return jsonify({'success': False, 'message': 'Missing user_id'}), 400
+        try:
+            user_id = uuid.UUID(str(user_id))
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'Invalid user_id format'}), 400
         data = dict(data)
         if 'revenue' in data and data['revenue']:
             revenue_str = str(data['revenue']).replace(',', '.')
