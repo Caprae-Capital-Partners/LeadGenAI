@@ -3,12 +3,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models.lead_model import db
 from datetime import datetime
 import hashlib
+import uuid
+from sqlalchemy.dialects.postgresql import UUID
 
 class User(UserMixin, db.Model):
     """User model for authentication"""
     __tablename__ = 'users'
 
-    user_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256))
@@ -71,7 +73,8 @@ class User(UserMixin, db.Model):
 
     def to_dict(self):
         return {
-            "id": self.user_id,
+            "id": str(self.user_id),
+            "user_id": str(self.user_id),
             "username": self.username,
             "email": self.email,
             "role": self.role,
