@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState } from "react";
 
 export type Lead = {
   id: number;
+  lead_id?: string;
   company: string;
   website: string;
   industry: string;

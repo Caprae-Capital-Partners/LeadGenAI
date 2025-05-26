@@ -95,6 +95,7 @@ export function Header() {
               <DropdownMenuSeparator className="bg-dark-border" />
               <DropdownMenuItem
                 onClick={() => {
+                  sessionStorage.clear(); // ✅ Clear all session storage
                   window.location.href =
                     "https://data.capraeleadseekers.site/logout";
                 }}

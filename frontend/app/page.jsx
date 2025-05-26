@@ -53,6 +53,12 @@ import { redirect } from 'next/navigation';
 //   redirect('/auth');
 // }
 export default function Home() {
+  const user =
+    typeof window !== "undefined"
+      ? JSON.parse(sessionStorage.getItem("user") || "{}")
+      : {};
+  const userTier = user?.tier || "free";
+
   const [employeesFilter, setEmployeesFilter] = useState("");
   const [revenueFilter, setRevenueFilter] = useState("");
   const [businessTypeFilter, setBusinessTypeFilter] = useState("");
@@ -201,6 +207,7 @@ export default function Home() {
   useEffect(() => {
     const verifyAndFetchLeads = async () => {
       try {
+        // const authRes = await fetch("http://localhost:8000/api/ping-auth", {
         const authRes = await fetch(
           "https://data.capraeleadseekers.site/api/ping-auth",
           {
@@ -216,6 +223,7 @@ export default function Home() {
 
         console.log("✅ Logged in");
 
+        // const leadsRes = await fetch("http://localhost:8000/api/lead-access", {
         const leadsRes = await fetch(
           "https://data.capraeleadseekers.site/api/lead-access",
           {
@@ -287,15 +295,16 @@ export default function Home() {
       <Header />
       <main className="px-20 py-16 space-y-10">
         <div className="text-2xl font-semibold text-foreground text-white">
-          Hi, Rafi 👋 Are you ready to scrape?
+          Hi, {user.username || "there"} 👋 Are you ready to scrape?
         </div>
+
         {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {[
             {
               label: "Total Leads Scraped",
-              value: "12,340",
-              change: "+4.5%",
+              value: scrapingHistory.length.toLocaleString(), // 👈 from state
+              change: "+0%", // Optionally compute later
               comparison: "vs last month",
             },
             {
@@ -306,9 +315,11 @@ export default function Home() {
             },
             {
               label: "Subscription",
-              value: "Gold Plan",
+              value: `${
+                userTier.charAt(0).toUpperCase() + userTier.slice(1)
+              } Plan`, // Capitalize
               change: "Active",
-              comparison: "until 2025-12-31",
+              comparison: "until 2025-12-31", // You can replace this if you store expiry
             },
           ].map((stat, index) => (
             <Card
