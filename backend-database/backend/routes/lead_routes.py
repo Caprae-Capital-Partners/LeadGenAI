@@ -18,6 +18,7 @@ import requests
 from models.user_model import User
 from models.audit_log_model import LeadAuditLog
 from models.edit_lead_drafts_model import EditLeadDraft
+from models.user_lead_drafts_model import UserLeadDraft
 import uuid
 
 
@@ -1105,11 +1106,19 @@ def edit_lead_api(lead_id):
             data.get('user_id')
         )
         if not user_id:
-            return jsonify({'success': False, 'message': 'Missing user_id'}), 400
+            if request.is_json or request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'message': 'Missing user_id'}), 400
+            else:
+                flash('Missing user_id', 'danger')
+                return redirect(url_for('lead.view_leads'))
         try:
             user_id = uuid.UUID(str(user_id))
         except (ValueError, TypeError):
-            return jsonify({'success': False, 'message': 'Invalid user_id format'}), 400
+            if request.is_json or request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'message': 'Invalid user_id format'}), 400
+            else:
+                flash('Invalid user_id format', 'danger')
+                return redirect(url_for('lead.view_leads'))
         data = dict(data)
         if 'revenue' in data and data['revenue']:
             revenue_str = str(data['revenue']).replace(',', '.')
@@ -1132,7 +1141,7 @@ def edit_lead_api(lead_id):
             draft.updated_at = datetime.utcnow()
             draft.phase = 'draft'
         db.session.commit()
-        if request.is_json:
+        if request.is_json or request.headers.get('Accept') == 'application/json':
             return jsonify({'success': True, 'message': 'Draft saved successfully'})
         else:
             flash('Draft saved successfully', 'success')
@@ -1141,7 +1150,7 @@ def edit_lead_api(lead_id):
         db.session.rollback()
         import traceback
         print(traceback.format_exc())
-        if request.is_json:
+        if request.is_json or request.headers.get('Accept') == 'application/json':
             return jsonify({'success': False, 'message': str(e)}), 500
         else:
             flash(f'Error saving draft: {str(e)}', 'danger')
