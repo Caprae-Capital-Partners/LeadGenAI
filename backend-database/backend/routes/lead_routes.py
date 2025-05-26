@@ -881,7 +881,7 @@ def permanent_delete_lead(lead_id):
 
 @lead_bp.route('/api/lead_scrape', methods=['POST'])
 @login_required # Ensure user is logged in
-@credit_required(cost=1)
+# @credit_required(cost=1)
 @filter_lead_data_by_plan()
 def api_search_leads():
     data = request.get_json()
