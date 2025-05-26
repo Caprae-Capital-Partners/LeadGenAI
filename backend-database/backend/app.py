@@ -10,9 +10,11 @@ from models.user_model import User
 from sqlalchemy import event, text
 from flask_cors import CORS  # Import CORS
 from routes.subscription_routes import subscription_bp
+from logging_setup import setup_logging
 
 def create_app(config_class=config):
     """Create and configure the Flask application"""
+    setup_logging()
     app = Flask(__name__)
     app.config.from_object(config_class)
 
