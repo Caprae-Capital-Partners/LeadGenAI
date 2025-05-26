@@ -95,12 +95,29 @@ export function Scraper() {
 
     verifyLogin();
 
+    const cacheKey = "industries"
+    const cachedIndustries = localStorage.getItem(cacheKey);
+    const CACHE_DURATION = 604800000
+    if (cachedIndustries) {
+      try {
+        const {data, timestamp} = JSON.parse(cachedIndustries)
+        if (Array.isArray(data) && Date.now() - timestamp < CACHE_DURATION) {
+          setIndustries(data)
+          return;
+        }
+      } catch {}
+    }
+
     const fetchIndustries = async () => {
       try {
         const response = await fetch(FETCH_INDUSTRIES_API);
         const data = await response.json();
-        if (data && data.industries) {
+        if (data && Array.isArray(data.industries)) {
           setIndustries(data.industries);
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({ data: data.industries, timestamp: Date.now()})
+          );
         } else {
           console.error("Invalid API response format:", data);
         }
@@ -267,6 +284,16 @@ export function Scraper() {
         setScrapedResults((prev) => {
           const updatedResults = addNewLeads(prev, formattedItems);
           console.log(`Current lead count: ${updatedResults.length}`);
+          
+          // NEW: Check if we've reached the limit
+          if (updatedResults.length >= 500) {
+            console.log("Reached 500 leads limit, stopping scraper");
+            eventSource.close();
+            setIsScrapingActive(false);
+            setProgress(100);
+            return updatedResults.slice(0, 500); // Ensure exactly 500
+          }
+          
           return updatedResults;
         });
         
@@ -375,6 +402,60 @@ export function Scraper() {
       controllerRef.current = null
     }
   }
+
+  // const handleCollectData = async () => {
+  //   setIsScrapingActive(true);
+  //   setProgress(0);
+  //   setShowResults(false);
+  //   setScrapingSource('database');
+    
+  //   // Reset our seen companies set
+  //   seenCompaniesRef.current = new Set();
+
+  //   const controller = new AbortController();
+  //   controllerRef.current = {
+  //     abort: () => controller.abort()
+  //   };
+
+  //   let formattedData: FormattedLead[] = [];
+
+  //   try {
+  //     const response = await axios.post(
+  //       FETCH_DB_API,
+  //       { industry, location },
+  //       { signal: controller.signal }
+  //     );
+  //     const data = response.data;
+  //     formattedData = data.map((item: LeadData, index: number) => formatLeadData(item, index));
+  //     if (formattedData.length > 500) {
+  //       formattedData = formattedData.slice(0, 500);
+  //     }
+  //   } catch (error: any) {
+  //     if (axios.isCancel(error)) {
+  //       console.warn("Database fetch canceled");
+  //     } else {
+  //       console.error("Database fetch failed:", error);
+  //       // Treat API failure as empty data
+  //       formattedData = [];
+  //     }
+  //   } finally {
+  //     // Process results whether API succeeded or failed
+  //     formattedData.forEach((item: FormattedLead) => {
+  //       if (item.company.trim()) {
+  //         seenCompaniesRef.current.add(item.company.toLowerCase().trim());
+  //       }
+  //     });
+      
+  //     setScrapedResults(formattedData);
+  //     setShowResults(true);
+  //     setNeedMoreLeads(formattedData.length < 100 && formattedData.length < 500);
+
+  //     // Cleanup operations
+  //     setIsScrapingActive(false);
+  //     setProgress(100);
+  //     controllerRef.current = null;
+  //   }
+  // };
 
   const handleClearSearch = () => {
     setIndustry('');
