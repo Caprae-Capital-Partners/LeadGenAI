@@ -403,60 +403,6 @@ export function Scraper() {
     }
   }
 
-  // const handleCollectData = async () => {
-  //   setIsScrapingActive(true);
-  //   setProgress(0);
-  //   setShowResults(false);
-  //   setScrapingSource('database');
-    
-  //   // Reset our seen companies set
-  //   seenCompaniesRef.current = new Set();
-
-  //   const controller = new AbortController();
-  //   controllerRef.current = {
-  //     abort: () => controller.abort()
-  //   };
-
-  //   let formattedData: FormattedLead[] = [];
-
-  //   try {
-  //     const response = await axios.post(
-  //       FETCH_DB_API,
-  //       { industry, location },
-  //       { signal: controller.signal }
-  //     );
-  //     const data = response.data;
-  //     formattedData = data.map((item: LeadData, index: number) => formatLeadData(item, index));
-  //     if (formattedData.length > 500) {
-  //       formattedData = formattedData.slice(0, 500);
-  //     }
-  //   } catch (error: any) {
-  //     if (axios.isCancel(error)) {
-  //       console.warn("Database fetch canceled");
-  //     } else {
-  //       console.error("Database fetch failed:", error);
-  //       // Treat API failure as empty data
-  //       formattedData = [];
-  //     }
-  //   } finally {
-  //     // Process results whether API succeeded or failed
-  //     formattedData.forEach((item: FormattedLead) => {
-  //       if (item.company.trim()) {
-  //         seenCompaniesRef.current.add(item.company.toLowerCase().trim());
-  //       }
-  //     });
-      
-  //     setScrapedResults(formattedData);
-  //     setShowResults(true);
-  //     setNeedMoreLeads(formattedData.length < 100 && formattedData.length < 500);
-
-  //     // Cleanup operations
-  //     setIsScrapingActive(false);
-  //     setProgress(100);
-  //     controllerRef.current = null;
-  //   }
-  // };
-
   const handleClearSearch = () => {
     setIndustry('');
     setLocation('');
@@ -479,6 +425,29 @@ export function Scraper() {
     const deduped = new Set(scrapedResults.map(l => l.company.toLowerCase().trim()));
     setNeedMoreLeads(deduped.size < 100);
   }, [scrapedResults]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("scrapedResults");
+    if (saved) {
+      try {
+        const parsed: FormattedLead[] = JSON.parse(saved);
+        if (parsed.length > 0) {
+          setScrapedResults(parsed);
+          setShowResults(true);
+          seenCompaniesRef.current = new Set(parsed.map(l => l.company.toLowerCase().trim()));
+        }
+      } catch (err) {
+        console.error("Failed to parse saved scraped results:", err);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (scrapedResults.length > 0) {
+      sessionStorage.setItem("leads", JSON.stringify(scrapedResults));
+    }
+  }, [scrapedResults]);
+  
 
   return (
     <div className="space-y-6">
