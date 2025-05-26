@@ -1070,7 +1070,14 @@ def edit_lead_api(lead_id):
     else:
         data = request.form
     try:
-        user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        user_id = (
+            getattr(current_user, 'id', None) or
+            getattr(current_user, 'user_id', None) or
+            data.get('user_id')  # :white_check_mark: fallback to explicit user_id from request payload
+        )
+
+        if not user_id:
+            return jsonify({'success': False, 'message': 'Missing user_id'}), 400
         data = dict(data)
         if 'revenue' in data and data['revenue']:
             revenue_str = str(data['revenue']).replace(',', '.')
