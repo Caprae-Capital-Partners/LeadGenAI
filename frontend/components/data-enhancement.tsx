@@ -25,13 +25,14 @@ import type { EnrichedCompany } from "@/components/enrichment-results"
 import { useEnrichment } from "@/components/EnrichmentProvider"
 import Loader from "@/components/ui/loader"
 import { useRouter } from "next/navigation";
+import { flushSync } from "react-dom";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 
 export function DataEnhancement() {
   const [showResults, setShowResults] = useState(false)
-  const { leads } = useLeads()
+  const { leads, setLeads } = useLeads()
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -92,50 +93,8 @@ export function DataEnhancement() {
     };
   }, []);
 
+  
 
-  // // Function to simulate progress updates
-  // const startProgressSimulation = () => {
-  //   // Clear any existing interval
-  //   if (progressIntervalRef.current) {
-  //     clearInterval(progressIntervalRef.current);
-  //   }
-
-  //   // Reset progress
-  //   setProgress(0);
-
-  //   // Start a new interval that gradually increases the progress
-  //   progressIntervalRef.current = setInterval(() => {
-  //     setProgress((prevProgress) => {
-  //       // Only use integer increments, gradually slowing down
-  //       // as we approach 90%
-  //       let increment = 1; // Default increment
-
-  //       // Adjust the interval based on current progress
-  //       if (prevProgress < 30) {
-  //         increment = 2; // Faster at the beginning
-  //       } else if (prevProgress < 60) {
-  //         increment = 1; // Medium speed in the middle
-  //       } else if (prevProgress < 85) {
-  //         // Slow down near the end, but ensure we only increment by whole numbers
-  //         // We'll use 1 but slow down the frequency by skipping some updates
-  //         const shouldIncrement = Math.random() > 0.5; // 50% chance to increment
-  //         increment = shouldIncrement ? 1 : 0;
-  //       } else if (prevProgress < 90) {
-  //         // Very slow near the end
-  //         const shouldIncrement = Math.random() > 0.7; // 30% chance to increment
-  //         increment = shouldIncrement ? 1 : 0;
-  //       } else {
-  //         increment = 0; // Stop at 90%
-  //       }
-
-  //       // Ensure we don't exceed 90%
-  //       const newProgress = Math.min(prevProgress + increment, 90);
-
-  //       // Return whole number progress
-  //       return Math.floor(newProgress);
-  //     });
-  //   }, 300);
-  // };
 
   // Function to stop progress simulation
   const stopProgressSimulation = (finalValue = 100) => {
@@ -183,8 +142,49 @@ export function DataEnhancement() {
     business_phone: normalizeLeadValue(lead.business_phone),
   }))
 
-  const { enrichedCompanies, setEnrichedCompanies } = useEnrichment()
-  const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
+  // 1. Declare state variables first
+  const [dbEnrichedCompanies, setDbEnrichedCompanies] = useState<EnrichedCompany[]>([]);
+  const [scrapedEnrichedCompanies, setScrapedEnrichedCompanies] = useState<EnrichedCompany[]>([]);
+  const [selectedCompanies, setSelectedCompanies] = useState<number[]>([]);
+
+  // 2. Restore from sessionStorage on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem("enrichedResults");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setDbEnrichedCompanies(parsed);
+        setShowResults(true);
+      } catch (err) {
+        console.error("Failed to parse enriched results:", err);
+      }
+    }
+  }, []);
+  
+
+  // 3. Persist to sessionStorage on updates
+  useEffect(() => {
+    const combined = [...scrapedEnrichedCompanies, ...dbEnrichedCompanies];
+    if (combined.length > 0) {
+      sessionStorage.setItem("enrichedResults", JSON.stringify(combined));
+    }
+  }, [scrapedEnrichedCompanies, dbEnrichedCompanies]);
+  
+  // const { leads, setLeads } = useLeads(); // from LeadsContext or LeadsProvider
+
+  useEffect(() => {
+    const savedLeads = sessionStorage.getItem("leads");
+    if (savedLeads) {
+      try {
+        const parsed = JSON.parse(savedLeads);
+        setLeads(parsed);
+      } catch (err) {
+        console.error("Failed to restore leads from sessionStorage:", err);
+      }
+    }
+  }, []);
+
+
   const [selectAll, setSelectAll] = useState(false)
   const [industryFilter, setIndustryFilter] = useState("")
   const [cityFilter, setCityFilter] = useState("")
@@ -463,9 +463,8 @@ export function DataEnhancement() {
     source: lead.source,
   });
   const [dbOnlyMode, setDbOnlyMode] = useState(true);
-  const [dbEnrichedCompanies, setDbEnrichedCompanies] = useState<EnrichedCompany[]>([]);
-  const [scrapedEnrichedCompanies, setScrapedEnrichedCompanies] = useState<EnrichedCompany[]>([]);
   const [fromDatabaseLeads, setFromDatabaseLeads] = useState<string[]>([]); // lowercase names
+  const { enrichedCompanies, setEnrichedCompanies } = useEnrichment();
 
   const handleStartEnrichment = async (
     forceScrape = false,
@@ -501,7 +500,23 @@ export function DataEnhancement() {
       }
 
       if (!forceScrape && !overrideCompanies) {
-        setDbEnrichedCompanies(dbLeads.map(toCamelCase));
+        const enriched = dbLeads.map(toCamelCase);
+        setDbEnrichedCompanies(enriched);
+
+        // 🔁 Also upload with user_id
+        const payload = dbLeads.map((lead: any) => ({
+          ...lead,
+          user_id,
+        }));
+
+        try {
+          await axios.post(`${DATABASE_URL}/upload_leads`, JSON.stringify(payload), {
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch (err) {
+          console.error("Failed to re-upload DB leads with user_id:", err);
+        }
+
         setShowResults(true);
         setLoading(false);
         return;
@@ -547,6 +562,7 @@ export function DataEnhancement() {
               isObscured
             ) ? null : val.toString().trim();
           };
+
           const normalizeValue = (v: any) => cleanVal(v) ?? "N/A";
 
           const validLead = {
@@ -575,18 +591,29 @@ export function DataEnhancement() {
             source: normalizeValue(entry.source),
           };
 
+          // Upload immediately to DB
           await axios.post(`${DATABASE_URL}/upload_leads`, JSON.stringify([validLead]), {
             headers: { "Content-Type": "application/json" },
           });
 
-          scrapedResults.push(toCamelCase(validLead));
+          // Convert lead
+          const enriched = toCamelCase(validLead);
+
+          setScrapedEnrichedCompanies(prev => {
+            const updated = [...prev, enriched];
+            setEnrichedCompanies(updated); // propagate to context
+            return updated;
+          });
+          setShowResults(true);
+
+          // 👇 Delay helps React commit before next loop
+          await new Promise((r) => setTimeout(r, 150));
+
         } catch (err) {
           console.error(`Failed scraping ${company.company}`, err);
         }
       }
 
-      // Replace all data with scraper results on re-enrich
-      setScrapedEnrichedCompanies(prev => [...prev, ...scrapedResults]);
       if (forceScrape) setDbEnrichedCompanies([]);
 
       setShowResults(true);

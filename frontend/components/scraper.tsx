@@ -400,6 +400,29 @@ export function Scraper() {
     setNeedMoreLeads(deduped.size < 100);
   }, [scrapedResults]);
 
+  useEffect(() => {
+    const saved = localStorage.getItem("scrapedResults");
+    if (saved) {
+      try {
+        const parsed: FormattedLead[] = JSON.parse(saved);
+        if (parsed.length > 0) {
+          setScrapedResults(parsed);
+          setShowResults(true);
+          seenCompaniesRef.current = new Set(parsed.map(l => l.company.toLowerCase().trim()));
+        }
+      } catch (err) {
+        console.error("Failed to parse saved scraped results:", err);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (scrapedResults.length > 0) {
+      sessionStorage.setItem("leads", JSON.stringify(scrapedResults));
+    }
+  }, [scrapedResults]);
+  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
