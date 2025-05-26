@@ -9,6 +9,10 @@ from flask_login import current_user
 import time
 import re
 import logging
+from models.user_model import User
+from models.user_lead_drafts_model import UserLeadDraft
+from models.audit_log_model import LeadAuditLog
+from models.user_subscription_model import UserSubscription
 
 class LeadController:
     @staticmethod
@@ -494,7 +498,64 @@ class LeadController:
             return (False, msg)
 
     @staticmethod
-    def search_leads_by_industry_location(industry=None, location=None):
+    def search_leads_by_industry_location(industry, location):
+        """Search leads by industry and location, with plan-based filtering/masking."""
+        query = Lead.query.filter_by(deleted=False)
+        if industry:
+            query = query.filter(Lead.industry.ilike(f"%{industry}%"))
+
+        if location:
+            location_filter = db.or_(
+                Lead.city.ilike(f"%{location}%"),
+                Lead.state.ilike(f"%{location}%"),
+                Lead.street.ilike(f"%{location}%")
+            )
+            not_null_or_empty = db.or_(
+                Lead.city.isnot(None) & (Lead.city != ''),
+                Lead.state.isnot(None) & (Lead.state != ''),
+                Lead.street.isnot(None) & (Lead.street != '')
+            )
+            query = query.filter(location_filter, not_null_or_empty)
+
+        leads = query.all()
+
+        processed_results = []
+
+        allowed_fields_free = [
+            'lead_id', 'company', 'industry', 'street', 'city', 'state',
+            'bbb_rating', 'phone', 'website', 'owner_email'
+        ]
+
+        for lead in leads:
+            lead_dict = {}
+            # Check user tier
+            if current_user and hasattr(current_user, 'tier') and current_user.tier == 'user':
+                # Filter and mask for Free plan
+                for field in allowed_fields_free:
+                    if hasattr(lead, field):
+                        value = getattr(lead, field)
+                        if field == 'phone' and value:
+                            lead_dict[field] = '********' + (str(value)[-4:] if len(str(value)) > 4 else str(value))
+                        elif field == 'owner_email' and value:
+                            email_parts = str(value).split('@')
+                            if len(email_parts) > 1:
+                                lead_dict[field] = f"{email_parts[0][0] if email_parts[0] else ''}***@{email_parts[1]}"
+                            else:
+                                lead_dict[field] = f"{email_parts[0][0] if email_parts[0] else ''}***@"
+                        elif value is not None and value != '':
+                            lead_dict[field] = value
+                        else:
+                            lead_dict[field] = value if value is not None else ''
+            else:
+                # Return full details for other plans
+                lead_dict = lead.to_dict()
+
+            processed_results.append(lead_dict)
+
+        return processed_results
+
+    @staticmethod
+    def search_leads_by_industry_location_old(industry=None, location=None):
         """Search leads by industry and location (for API), with search_logs caching"""
         # Temporarily commenting out caching logic to ensure function returns Lead instances for decorator
         # start_time = time.time()
@@ -548,6 +609,9 @@ class LeadController:
         #     )
 
         return leads # Return list of Lead model instances for the decorator
+
+
+
 
     @staticmethod
     def get_unique_industries():
