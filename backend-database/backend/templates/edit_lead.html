@@ -355,7 +355,7 @@
             {% endif %}
         {% endwith %}
         
-        <form method="POST" action="{{ url_for('lead.edit_lead', lead_id=lead.lead_id) }}" id="editLeadForm">
+        <form method="POST" action="{{ url_for('lead.edit_lead_api', lead_id=lead.lead_id) }}" id="editLeadForm">
             <div class="section-title">Base Information</div>
             <div class="form-row">
                 <div class="form-group">
@@ -406,7 +406,7 @@
                 </div>
                 <div class="form-group">
                     <label for="revenue">Revenue</label>
-                    <input type="number" name="revenue" id="revenue" value="{{ lead.revenue if lead.revenue != None }}" min="0">
+                    <input type="text" name="revenue" id="revenue" value="{{ lead.revenue if lead.revenue != None }}">
                 </div>
             </div>
             <div class="form-row">
