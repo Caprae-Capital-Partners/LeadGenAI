@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from models.user_lead_access_model import UserLeadAccess
-from models.user_lead_drafts_model import UserLeadDraft
+from models.edit_lead_drafts_model import EditLeadDraft
 from models.lead_model import Lead, db
 from models.user_model import User
 from controllers.audit_controller import AuditController

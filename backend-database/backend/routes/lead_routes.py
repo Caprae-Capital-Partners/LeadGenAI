@@ -17,7 +17,7 @@ from sqlalchemy import or_, and_
 import requests
 from models.user_model import User
 from models.audit_log_model import LeadAuditLog
-from models.user_lead_drafts_model import UserLeadDraft
+from models.edit_lead_drafts_model import EditLeadDraft
 import uuid
 
 
@@ -1075,10 +1075,10 @@ def leads_summary():
 def view_edited_leads():
     """View all edited leads (pending drafts)"""
     from models.user_model import User
-    from models.user_lead_drafts_model import UserLeadDraft
+    from models.edit_lead_drafts_model import EditLeadDraft
     from models.lead_model import Lead
     # Only show drafts that are not deleted and in draft/review phase
-    drafts = UserLeadDraft.query.filter_by(is_deleted=False).filter(UserLeadDraft.phase.in_(['draft', 'review'])).order_by(UserLeadDraft.updated_at.desc()).all()
+    drafts = EditLeadDraft.query.filter_by(is_deleted=False).filter(EditLeadDraft.phase.in_(['draft', 'review'])).order_by(EditLeadDraft.updated_at.desc()).all()
     rows = []
     for draft in drafts:
         original = Lead.query.filter_by(lead_id=draft.lead_id).first()
@@ -1090,9 +1090,9 @@ def view_edited_leads():
 #@login_required
 @role_required('admin', 'developer', 'user')
 def edit_lead_api(lead_id):
-    """Edit lead - Admin, Developer, User. Save to UserLeadDraft, not to Lead."""
+    """Edit lead - Admin, Developer, User. Save to EditLeadDraft, not to Lead."""
     from datetime import datetime
-    from models.user_lead_drafts_model import UserLeadDraft
+    from models.edit_lead_drafts_model import EditLeadDraft
     lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first_or_404()
     if request.is_json:
         data = request.get_json()
@@ -1117,9 +1117,9 @@ def edit_lead_api(lead_id):
                 data['revenue'] = float(revenue_str)
             except ValueError:
                 data['revenue'] = None
-        draft = UserLeadDraft.query.filter_by(lead_id=lead_id, user_id=user_id, is_deleted=False).first()
+        draft = EditLeadDraft.query.filter_by(lead_id=lead_id, user_id=user_id, is_deleted=False).first()
         if not draft:
-            draft = UserLeadDraft(
+            draft = EditLeadDraft(
                 lead_id=lead_id,
                 user_id=user_id,
                 draft_data=data,
@@ -1152,9 +1152,9 @@ def edit_lead_api(lead_id):
 @role_required('admin', 'developer')
 def apply_edited_lead(lead_id):
     """Apply changes: finalize the edit, salin data dari draft ke Lead, hapus draft."""
-    from models.user_lead_drafts_model import UserLeadDraft
+    from models.edit_lead_drafts_model import EditLeadDraft
     from models.lead_model import Lead
-    draft = UserLeadDraft.query.filter_by(lead_id=lead_id, is_deleted=False).first()
+    draft = EditLeadDraft.query.filter_by(lead_id=lead_id, is_deleted=False).first()
     lead = Lead.query.filter_by(lead_id=lead_id).first()
     if not draft or not lead:
         return jsonify({'success': False, 'message': 'Draft or lead not found.'}), 404
@@ -1178,11 +1178,11 @@ def apply_edited_lead(lead_id):
 @role_required('admin', 'developer')
 def delete_draft_api():
     """Permanently delete a draft by lead_id (API)."""
-    from models.user_lead_drafts_model import UserLeadDraft
+    from models.edit_lead_drafts_model import EditLeadDraft
     data = request.get_json() or {}
     lead_id = data.get('lead_id')
     print('DEBUG: lead_id param:', lead_id)
-    draft = UserLeadDraft.query.filter_by(lead_id=lead_id).first()
+    draft = EditLeadDraft.query.filter_by(lead_id=lead_id).first()
     print('DEBUG: draft found:', draft)
     if not draft:
         return jsonify({'success': False, 'message': 'Draft not found.'}), 404

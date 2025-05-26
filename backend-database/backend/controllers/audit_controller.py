@@ -1,7 +1,7 @@
 from models.audit_logs_model import AuditLog
 from models.search_logs_model import SearchLog
 from models.user_lead_access_model import UserLeadAccess
-from models.user_lead_drafts_model import UserLeadDraft
+from models.edit_lead_drafts_model import EditLeadDraft
 from models.lead_model import db
 from flask import request
 

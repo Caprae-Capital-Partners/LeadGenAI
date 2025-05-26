@@ -10,7 +10,7 @@ import time
 import re
 import logging
 from models.user_model import User
-from models.user_lead_drafts_model import UserLeadDraft
+from models.edit_lead_drafts_model import EditLeadDraft
 from models.audit_log_model import LeadAuditLog
 from models.user_subscription_model import UserSubscription
 

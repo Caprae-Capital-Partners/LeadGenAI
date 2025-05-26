@@ -8,7 +8,7 @@ from config.config import config
 from flask_login import LoginManager, current_user
 from models.user_model import User
 from sqlalchemy import event, text
-from flask_cors import CORS  # Import CORS
+from flask_cors import CORS
 from routes.subscription_routes import subscription_bp
 from logging_setup import setup_logging
 
@@ -23,25 +23,20 @@ def create_app(config_class=config):
     app.config["SESSION_COOKIE_SECURE"] = True
 
     # Initialize CORS
-    CORS(app, resources={
-        r"/api/*": {  # Enable CORS for all routes under /api/
-            "origins": [
-                "http://localhost:3000",     # React development server
-                "http://localhost:5173",
-                "https://capraeleadseekers.site", # Development frontend
-                "https://35.165.209.201",
-                "https://main.d2fzqm2i2qb7f3.amplifyapp.com", # Production frontend
-                "http://35.165.209.201",
-                "https://www.saasquatchleads.com", # Production frontend
-                "http://54.166.155.63:3000", # Production frontend
-                "http://54.166.155.63",       # Production frontend without port
-                "https://app.saasquatchleads.com",
-            ],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
-            "supports_credentials": True     # Allow cookies/credentials
-        }
-    })
+    CORS(app, origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://capraeleadseekers.site",
+        "https://35.165.209.201",
+        "https://main.d2fzqm2i2qb7f3.amplifyapp.com",
+        "http://35.165.209.201",
+        "https://www.saasquatchleads.com",
+        "http://54.166.155.63:3000",
+        "http://54.166.155.63",
+        "https://app.saasquatchleads.com",
+    ], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+       allow_headers=["Content-Type", "Authorization"],
+       supports_credentials=True)
 
     # Initialize extensions
     db.init_app(app)
