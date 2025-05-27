@@ -18,7 +18,7 @@ DROP TABLE IF EXISTS lead_audit_log;
 CREATE TABLE IF NOT EXISTS lead_audit_log (
     id SERIAL PRIMARY KEY,
     table_name TEXT NOT NULL,
-    row_id INTEGER NOT NULL,
+    row_id TEXT NOT NULL,
     column_name TEXT NOT NULL,
     old_value TEXT,
     new_value TEXT,
@@ -59,7 +59,7 @@ BEGIN
             EXECUTE format('SELECT ($1).%I::text', col_name) INTO old_val USING OLD;
             EXECUTE format('SELECT ($1).%I::text', col_name) INTO new_val USING NEW;
             IF old_val IS DISTINCT FROM new_val THEN
-                EXECUTE format('INSERT INTO lead_audit_log (table_name, row_id, column_name, old_value, new_value, username, changed_at) VALUES (%L, %s, %L, %L, %L, %L, now())',
+                EXECUTE format('INSERT INTO lead_audit_log (table_name, row_id, column_name, old_value, new_value, username, changed_at) VALUES (%L, %L, %L, %L, %L, %L, now())',
                     TG_TABLE_NAME,
                     OLD.lead_id,
                     col_name,

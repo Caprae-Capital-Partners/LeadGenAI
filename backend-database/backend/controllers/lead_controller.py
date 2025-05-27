@@ -7,6 +7,8 @@ from sqlalchemy import text
 from controllers.search_log_controller import SearchLogController
 from flask_login import current_user
 import time
+import re
+import logging
 
 class LeadController:
     @staticmethod
@@ -338,162 +340,214 @@ class LeadController:
         return [lead.to_dict() for lead in leads]
 
     @staticmethod
+    def normalize_company_name(name):
+        if not name:
+            return ''
+        return re.sub(r'[^a-zA-Z0-9 ]', '', name).strip().lower()
+
+    @staticmethod
+    def find_duplicate_lead(lead_data):
+        """Find a duplicate lead using lead_id, composite key, company, or contact info."""
+        Lead = globals()['Lead']  # for staticmethod context
+        db = globals()['db']
+        logging = globals()['logging']
+        # 1. Check by lead_id
+        if lead_data.get('lead_id'):
+            lead = Lead.query.filter_by(lead_id=lead_data['lead_id']).first()
+            if lead:
+                return lead, 'lead_id'
+        # 2. Composite key: normalized company + owner_email + phone
+        company = LeadController.normalize_company_name(lead_data.get('company', ''))
+        owner_email = str(lead_data.get('owner_email', '')).strip().lower()
+        phone = str(lead_data.get('phone', '')).strip()
+        if company and owner_email and phone:
+            lead = Lead.query.filter(
+                db.func.lower(db.func.replace(db.func.replace(db.func.replace(Lead.company, '-', ''), '.', ''), ',', '')) == company,
+                db.func.lower(Lead.owner_email) == owner_email,
+                Lead.phone == phone,
+                Lead.deleted == False
+            ).first()
+            if lead:
+                return lead, 'composite (company+email+phone)'
+        # 3. Normalized company only
+        if company:
+            lead = Lead.query.filter(
+                db.func.lower(db.func.replace(db.func.replace(db.func.replace(Lead.company, '-', ''), '.', ''), ',', '')) == company,
+                Lead.deleted == False
+            ).first()
+            if lead:
+                return lead, 'company only'
+        # 4. owner_email or phone only
+        query = Lead.query
+        conditions = []
+        if owner_email:
+            conditions.append(Lead.owner_email == owner_email)
+        if phone:
+            conditions.append(Lead.phone == phone)
+        if conditions:
+            lead = query.filter(db.or_(*conditions)).first()
+            if lead:
+                return lead, 'email or phone only'
+        return None, None
+
+    @staticmethod
+    def update_existing_lead(existing_lead, lead_data):
+        logging = globals()['logging']
+        updated = False
+        updated_fields = []
+        for key, value in lead_data.items():
+            if hasattr(existing_lead, key):
+                current_value = getattr(existing_lead, key)
+                if value not in [None, '', 'N/A'] and current_value != value:
+                    setattr(existing_lead, key, value)
+                    updated = True
+                    updated_fields.append(key)
+                    logging.info(f"Updated field '{key}': '{current_value}' -> '{value}'")
+            else:
+                logging.warning(f"Skipping key '{key}': not in Lead model")
+        return updated, updated_fields
+
+    @staticmethod
+    def create_new_lead(lead_data):
+        Lead = globals()['Lead']
+        db = globals()['db']
+        logging = globals()['logging']
+        clean_data = {k: v for k, v in lead_data.items() if v is not None and v != ""}
+        lead = Lead(**clean_data)
+        db.session.add(lead)
+        db.session.commit()
+        logging.info(f"Added new lead with ID: {lead.lead_id}")
+        return lead
+
+    @staticmethod
     def add_or_update_lead_by_match(lead_data):
-        """Add a new lead or update existing lead by matching lead_id, email, or phone"""
+        """Add a new lead or update existing lead by matching lead_id, company+email+phone, or email/phone only"""
         try:
-            print(f"Processing lead: {lead_data.get('company')}")
-
-            # Check based on lead_id if exists
-            existing_lead = None
-            if lead_data.get('lead_id'):
-                existing_lead = Lead.query.filter_by(lead_id=lead_data['lead_id']).first()
-
-            # If not found, check by company/email/phone (old logic)
-            if not existing_lead:
-                if lead_data.get('company'):
-                    company_name = lead_data['company']
-                    existing_lead = Lead.query.filter(
-                        db.func.lower(Lead.company) == db.func.lower(company_name),
-                        Lead.deleted == False
-                    ).first()
-                else:
-                    existing_lead = None
-
-                # add check for email/phone if exists
-                query = Lead.query
-                conditions = []
-                if lead_data.get('owner_email'):
-                    lead_data['owner_email'] = str(lead_data['owner_email']).strip().lower()
-                    conditions.append(Lead.owner_email == lead_data['owner_email'])
-                if lead_data.get('phone'):
-                    lead_data['phone'] = str(lead_data['phone']).strip()
-                    conditions.append(Lead.phone == lead_data['phone'])
-
-                if conditions:
-                    lead_by_contact = query.filter(db.or_(*conditions)).first()
-                    if lead_by_contact:
-                        existing_lead = lead_by_contact
-
+            logging.info(f"Processing lead: {lead_data.get('company')}")
+            existing_lead, match_type = LeadController.find_duplicate_lead(lead_data)
             if existing_lead:
-                # Update only fields that are empty/null, EXCEPT 'source' which is always updated
-                updated = False
-                for key, value in lead_data.items():
-                    if hasattr(existing_lead, key):
-                        current_value = getattr(existing_lead, key)
-                        if key == 'source':
-                            # Always update 'source' to the latest value
-                            if value not in [None, '', 'N/A'] and current_value != value:
-                                setattr(existing_lead, key, value)
-                                updated = True
-                                print(f"Updated field 'source': '{current_value}' -> '{value}'")
-                        elif key == 'revenue':
-                            if value not in [None, '', 'N/A'] and current_value != value:
-                                setattr(existing_lead, key, value)
-                                updated = True
-                                print(f"Updated field 'revenue': '{current_value}' -> '{value}'")
-                        elif key == 'employees':
-                            if value not in [None, '', 'N/A'] and current_value != value:
-                                setattr(existing_lead, key, value)
-                                updated = True
-                                print(f"Updated field 'employees': '{current_value}' -> '{value}'")
-                        else:
-                            if (current_value in [None, '', 'N/A']) and (value not in [None, '', 'N/A']):
-                                setattr(existing_lead, key, value)
-                                updated = True
-                                print(f"Updated field '{key}': '{current_value}' -> '{value}'")
+                logging.info(f"Duplicate found by {match_type}")
+                updated, updated_fields = LeadController.update_existing_lead(existing_lead, lead_data)
                 try:
                     if updated:
                         db.session.commit()
-                        print(f"Updated lead with ID: {existing_lead.lead_id}")
-                        return (True, "Lead updated successfully")
+                        msg = {
+                            "status": "updated",
+                            "message": f"Lead was found as a duplicate (matched by {match_type}) and has been updated.",
+                            "updated_fields": updated_fields,
+                            "match_type": match_type,
+                            "lead_id": existing_lead.lead_id
+                        }
+                        logging.info(msg["message"])
+                        return (True, msg)
                     else:
-                        print(f"No changes needed for lead with ID: {existing_lead.lead_id}")
-                        return (True, "Lead already up to date")
+                        msg = {
+                            "status": "no_change",
+                            "message": f"Lead was found as a duplicate (matched by {match_type}) but no changes were needed.",
+                            "match_type": match_type,
+                            "lead_id": existing_lead.lead_id
+                        }
+                        logging.info(msg["message"])
+                        return (True, msg)
                 except Exception as e:
                     db.session.rollback()
-                    print(f"Failed to update lead: {str(e)}")
-                    return (False, f"Error updating lead: {str(e)}")
+                    msg = {
+                        "status": "error",
+                        "message": f"Error updating duplicate lead (matched by {match_type}): {str(e)}",
+                        "match_type": match_type
+                    }
+                    logging.error(msg["message"])
+                    return (False, msg)
             else:
-                # Create new lead
-                clean_data = {k: v for k, v in lead_data.items() if v is not None and v != ""}
                 try:
-                    lead = Lead(**clean_data)
-                    db.session.add(lead)
-                    db.session.commit()
-                    print(f"Added new lead with ID: {lead.lead_id}")
-                    return (True, "Lead added successfully")
+                    lead = LeadController.create_new_lead(lead_data)
+                    msg = {
+                        "status": "created",
+                        "message": "Lead was created successfully (no duplicate found).",
+                        "lead_id": lead.lead_id
+                    }
+                    logging.info(msg["message"])
+                    return (True, msg)
                 except Exception as e:
                     db.session.rollback()
-                    print(f"Failed to create lead: {str(e)}")
-                    return (False, f"Error creating lead: {str(e)}")
+                    msg = {
+                        "status": "error",
+                        "message": f"Error creating new lead: {str(e)}"
+                    }
+                    logging.error(msg["message"])
+                    return (False, msg)
         except IntegrityError as e:
             db.session.rollback()
-            print(f"IntegrityError: {str(e)}")
-            if "lead_owner_email_key" in str(e):
-                return (False, f"Email address '{lead_data.get('owner_email')}' is already in use")
-            elif "lead_phone_key" in str(e):
-                return (False, f"Phone number '{lead_data.get('phone')}' is already in use")
-            else:
-                return (False, f"Duplicate data detected: {str(e)}")
+            msg = {
+                "status": "error",
+                "message": f"IntegrityError while adding/updating lead: {str(e)}"
+            }
+            logging.error(msg["message"])
+            return (False, msg)
         except Exception as e:
             db.session.rollback()
-            print(f"General exception: {str(e)}")
-            return (False, f"Error adding/updating lead: {str(e)}")
+            msg = {
+                "status": "error",
+                "message": f"General exception while adding/updating lead: {str(e)}"
+            }
+            logging.error(msg["message"])
+            return (False, msg)
 
     @staticmethod
-    def search_leads_by_industry_location(industry, location):
+    def search_leads_by_industry_location(industry=None, location=None):
         """Search leads by industry and location (for API), with search_logs caching"""
-        start_time = time.time()
-        # Normalize and hash the search
-        search_hash = SearchLogController.normalize_and_hash(industry, location)
-        # Check if log exists
-        log = SearchLogController.get_log_by_hash(search_hash)
-        if log and log.search_parameters:
-            # Increment result_count and update timestamp
-            log.result_count += 1
-            log.searched_at = datetime.utcnow()
-            db.session.commit()
-            return log.search_parameters  # Already JSON serializable
-        # If not found, search leads
+        # Temporarily commenting out caching logic to ensure function returns Lead instances for decorator
+        # start_time = time.time()
+        # # Normalize and hash the search
+        # search_hash = SearchLogController.normalize_and_hash(industry, location)
+        # # Check if log exists
+        # log = SearchLogController.get_log_by_hash(search_hash)
+        # if log and log.search_parameters:
+        #     # Increment result_count and update timestamp
+        #     log.result_count += 1
+        #     log.searched_at = datetime.utcnow()
+        #     db.session.commit()
+        #     return log.search_parameters  # Already JSON serializable
+
+        # If no log found or caching is off, search leads
         query = Lead.query.filter_by(deleted=False)
         if industry:
-            query = query.filter(Lead.industry.ilike(f"%{industry}%"))
-        if location:
-            if hasattr(Lead, 'location'):
-                # Search in city, state, and location columns
-                query = query.filter(
-                    (Lead.city.ilike(f"%{location}%")) |
-                    (Lead.state.ilike(f"%{location}%")) |
-                    (Lead.location.ilike(f"%{location}%"))
-                )
-            else:
-                # Fallback: only city and state
-                if ',' in location:
-                    city, state = [x.strip() for x in location.split(',', 1)]
-                    query = query.filter(
-                        Lead.city.ilike(f"%{city}%"),
-                        Lead.state.ilike(f"%{state}%"),
-                        # Lead.location.ilike(f"%{location}%")
-                    )
+            query = query.filter(db.func.lower(Lead.industry) == industry.lower())
 
-        results = [lead.to_dict() for lead in query.all()]
-        exec_time = int((time.time() - start_time) * 1000)
-        # Log the search
-        user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
-        if not user_id:
-            # If no user is logged in, don't log the search
-            return results
-            
-        search_query = f"industry: {industry}, location: {location}"
-        SearchLogController.log_search(
-            user_id=user_id,
-            search_query=search_query,
-            search_hash=search_hash,
-            search_parameters=results,
-            result_count=len(results),
-            execution_time_ms=exec_time
-        )
-        return results
+        if location:
+            # Restore location filtering to search city, state, or street and exclude nulls/empty
+            # Search in city, state, or street
+            location_filter = db.or_(
+                Lead.city.ilike(f"%{location}%"),
+                Lead.state.ilike(f"%{location}%"),
+                Lead.street.ilike(f"%{location}%") # Add street to the search
+            )
+            # Ensure at least one of city, state, or street is not null/empty
+            not_null_or_empty = db.or_(
+                Lead.city.isnot(None) & (Lead.city != ''),
+                Lead.state.isnot(None) & (Lead.state != ''),
+                Lead.street.isnot(None) & (Lead.street != '')
+            )
+            query = query.filter(location_filter, not_null_or_empty)
+
+        leads = query.all()
+
+        # Temporarily commenting out search logging
+        # exec_time = int((time.time() - start_time) * 1000)
+        # # Log the search
+        # user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        # if user_id:
+        #     search_query = f"industry: {industry}, location: {location}"
+        #     SearchLogController.log_search(
+        #         user_id=user_id,
+        #         search_query=search_query,
+        #         search_hash=search_hash,
+        #         search_parameters=[lead.to_dict() for lead in leads], # Log dictionary representation
+        #         result_count=len(leads),
+        #         execution_time_ms=exec_time
+        #     )
+
+        return leads # Return list of Lead model instances for the decorator
 
     @staticmethod
     def get_unique_industries():

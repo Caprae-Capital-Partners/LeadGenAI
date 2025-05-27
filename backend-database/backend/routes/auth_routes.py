@@ -74,16 +74,19 @@ def signup():
 
     return render_template('auth/signup.html')
 
-@auth_bp.route('/api/ping-auth', methods=["GET"])
-@login_required
-def ping_auth():
-    return '', 204
 
-@auth_bp.route('/logout', methods=['GET'])
-@login_required
-def logout():
-    logout_user()
-    return redirect("http://localhost:3000/auth")
+# @auth_bp.route('/logout')
+# @login_required
+# def logout():
+#     """Handle user logout"""
+#     success, message = AuthController.logout()
+
+#     if success:
+#         flash(message, 'success')
+#     else:
+#         flash(message, 'danger')
+
+#     return redirect(url_for('auth.login'))
 
 @auth_bp.route('/manage_users')
 @login_required
@@ -158,6 +161,18 @@ def delete_user():
 
     return redirect(url_for('auth.manage_users'))
 
+@auth_bp.route('/api/ping-auth', methods=["GET"])
+@login_required
+def ping_auth():
+    return '', 204
+
+@auth_bp.route('/logout', methods=['GET'])
+@login_required
+def logout():
+    logout_user()
+    return redirect("https://app.saasquatchleads.com/auth")
+
+
 @auth_bp.route('/api/auth/login', methods=['POST'])
 def login_api():
     """Login to get access token"""
@@ -188,7 +203,7 @@ def login_api():
 
 @auth_bp.route('/api/auth/register', methods=['POST'])
 def register_api():
-    """Register a new user"""
+    """Register a new user via API"""
     data = request.json
 
     if not data:
@@ -198,38 +213,28 @@ def register_api():
     password = data.get('password')
     username = data.get('username', '')
     role = data.get('role', 'user')  # Default role is user
+    company = data.get('company', '') # Get company from JSON payload
 
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
-    # Check if user already exists
-    existing_user = User.query.filter_by(email=email).first()
-    if existing_user:
-        return jsonify({"error": "Email already registered"}), 400
+    # Call the AuthController.register function
+    success, message = AuthController.register(username, email, password, role, company)
 
-    # Create new user
-    new_user = User(
-        email=email,
-        password_hash=generate_password_hash(password),
-        username=username,
-        role=role
-    )
-
-    try:
-        db.session.add(new_user)
-        db.session.commit()
-
-        # Log in the new user
-        login_user(new_user)
+    if success:
+        # Fetch the newly created user to log them in if needed for API flow
+        user = User.query.filter_by(email=email).first()
+        if user:
+            login_user(user) # Log in the user with Flask-Login
 
         return jsonify({
             "message": "Registration successful",
-            "user": new_user.to_dict()
+            "user": user.to_dict() if user else None # Return user data if fetched
         }), 201
 
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+    else:
+        # Registration failed, return the error message from the controller
+        return jsonify({"error": message}), 400 # Use 400 for bad request/validation errors
 
 @auth_bp.route('/api/auth/me', methods=['GET'])
 @login_required
@@ -239,7 +244,8 @@ def get_user_info():
         "id": current_user.user_id,
         "email": current_user.email,
         "name": current_user.username,
-        "role": current_user.role
+        "role": current_user.role,
+        "tier" : current_user.tier,
     })
 
 @auth_bp.route('/api/auth/logout', methods=['POST'])
