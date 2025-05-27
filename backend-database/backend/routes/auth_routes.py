@@ -173,9 +173,14 @@ def logout():
     return redirect("https://app.saasquatchleads.com/auth")
 
 
-@auth_bp.route('/api/auth/login', methods=['POST'])
+@auth_bp.route('/api/auth/login', methods=['POST', 'OPTIONS'])
 def login_api():
-    """Login to get access token"""
+    """Login to get access token, supports CORS preflight"""
+
+    # ✅ Handle CORS preflight
+    if request.method == 'OPTIONS':
+        return '', 204
+
     data = request.json
 
     if not data:
@@ -200,6 +205,7 @@ def login_api():
         "message": "Login successful",
         "user": user.to_dict()
     })
+
 
 @auth_bp.route('/api/auth/register', methods=['POST'])
 def register_api():
