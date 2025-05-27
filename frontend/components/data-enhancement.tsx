@@ -37,7 +37,6 @@ export function DataEnhancement() {
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const router = useRouter();
   // Get the original search criteria from URL parameters
   const getSearchCriteria = () => {
     if (typeof window === 'undefined') return { industry: '', location: '' };
@@ -62,6 +61,13 @@ export function DataEnhancement() {
 
   // Cleanup function for progress simulation
 
+  const router = useRouter();
+
+  const handleBack = () => {
+    sessionStorage.removeItem("leads");
+    sessionStorage.removeItem("enrichedResults");
+    router.push("/scraper"); // 🔁 adjust the path if needed
+  };
 
   useEffect(() => {
 
@@ -146,7 +152,6 @@ export function DataEnhancement() {
       console.error("Failed to restore enriched results:", err);
     }
   }, []);
-
 
 
   // 3. Persist to sessionStorage on updates
@@ -691,7 +696,14 @@ export function DataEnhancement() {
 
 
   return (
+    
     <div className="space-y-6">
+      <Button
+        onClick={handleBack}
+        className="text-sm text-blue-600 hover:underline mb-4"
+      >
+        Back
+      </Button>
       <div>
         <h1 className="text-3xl font-bold">Data Enhancement</h1>
         <p className="text-muted-foreground">Enrich company data with additional information</p>
@@ -1100,7 +1112,17 @@ export function DataEnhancement() {
           />
         </div>
       )}
-
+      <div className="flex justify-end mb-4">
+        <Button
+          onClick={() => {
+            sessionStorage.removeItem("leads");
+            sessionStorage.removeItem("enrichedResults");
+            router.push("/dashboard");
+          }}
+        >
+          Finish and Go Back to Home
+        </Button>
+      </div>
     </div>
   )
 }
