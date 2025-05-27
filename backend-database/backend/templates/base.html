@@ -440,14 +440,6 @@
                 <span>Edit & Export Leads</span>
             </a>
             {% if current_user.is_authenticated and (current_user.is_admin() or current_user.role == 'developer') %}
-            <a href="{{ url_for('lead.view_edited_leads') }}" class="nav-item {% if request.endpoint == 'lead.view_edited_leads' %}active{% endif %}">
-                <i class="bi bi-pencil"></i>
-                <span>Edited Leads</span>
-            </a>
-            <a href="{{ url_for('lead.view_deleted_leads') }}" class="nav-item {% if request.endpoint == 'lead.view_deleted_leads' %}active{% endif %}">
-                <i class="bi bi-trash"></i>
-                <span>Deleted Leads</span>
-            </a>
             <a href="{{ url_for('main.audit_log') }}" class="nav-item {% if request.endpoint == 'main.audit_log' %}active{% endif %}">
                 <i class="bi bi-clipboard-data"></i>
                 <span>Audit Log</span>
@@ -465,6 +457,23 @@
             <a href="{{ url_for('lead.upload_page') }}" class="nav-item {% if request.endpoint == 'lead.upload_page' %}active{% endif %}">
                 <i class="bi bi-cloud-upload"></i>
                 <span>Bulk Import</span>
+            </a>
+        </div>
+
+        <!-- Drafts Section -->
+        <div class="nav-section">
+            <div class="nav-section-title">DRAFTS</div>
+            <a href="{{ url_for('lead.view_edited_leads') }}" class="nav-item {% if request.endpoint == 'lead.view_edited_leads' %}active{% endif %}">
+                <i class="bi bi-pencil"></i>
+                <span>Edited Leads</span>
+            </a>
+            <a href="{{ url_for('lead.view_deleted_leads') }}" class="nav-item {% if request.endpoint == 'lead.view_deleted_leads' %}active{% endif %}">
+                <i class="bi bi-trash"></i>
+                <span>Deleted Leads</span>
+            </a>
+            <a href="{{ url_for('lead.view_drafts') }}" class="nav-item {% if request.endpoint == 'lead.view_drafts' %}active{% endif %}">
+                <i class="bi bi-file-earmark-text"></i>
+                <span>Lead Drafts</span>
             </a>
         </div>
 

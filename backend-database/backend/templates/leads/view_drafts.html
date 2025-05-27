@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Lead Drafts - LeadGen{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="text-white">Lead Drafts</h2>
+            <p class="text-muted">View and manage all your lead drafts</p>
+        </div>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <form id="searchForm" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="searchType" class="form-label">Search Type</label>
+                            <select class="form-select bg-dark text-white" id="searchType">
+                                <option value="all">All Drafts</option>
+                                <option value="search">Search Drafts</option>
+                                <option value="recent">Recent Searches</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 search-field" id="industryField">
+                            <label for="industry" class="form-label">Industry</label>
+                            <input type="text" class="form-control bg-dark text-white" id="industry" name="industry">
+                        </div>
+                        <div class="col-md-3 search-field" id="locationField">
+                            <label for="location" class="form-label">Location</label>
+                            <input type="text" class="form-control bg-dark text-white" id="location" name="location">
+                        </div>
+                        <div class="col-md-2 search-field" id="limitField">
+                            <label for="limit" class="form-label">Limit</label>
+                            <input type="number" class="form-control bg-dark text-white" id="limit" name="limit" value="5" min="1" max="50">
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="row">
+        <div class="col">
+            <div id="searchResults">
+                <!-- Results will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Draft Modal -->
+<div class="modal fade" id="viewDraftModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header">
+                <h5 class="modal-title">Draft Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="draftData" class="bg-dark text-white" style="white-space: pre-wrap;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.getElementById('searchForm');
+    const searchType = document.getElementById('searchType');
+    const searchResults = document.getElementById('searchResults');
+    const searchFields = document.querySelectorAll('.search-field');
+
+    // Function to toggle search fields based on search type
+    function updateSearchFields() {
+        const type = searchType.value;
+        searchFields.forEach(field => field.style.display = 'none');
+        
+        if (type === 'search') {
+            document.getElementById('industryField').style.display = 'block';
+            document.getElementById('locationField').style.display = 'block';
+        } else if (type === 'recent') {
+            document.getElementById('limitField').style.display = 'block';
+        }
+    }
+
+    // Initial update of search fields
+    updateSearchFields();
+
+    // Update fields when search type changes
+    searchType.addEventListener('change', updateSearchFields);
+
+    // Function to display search results
+    function displayResults(data) {
+        searchResults.innerHTML = '';
+        
+        if (!data || (data.sessions && data.sessions.length === 0) || (Array.isArray(data) && data.length === 0)) {
+            searchResults.innerHTML = `
+                <div class="alert alert-info">
+                    No drafts found. Try different search criteria.
+                </div>
+            `;
+            return;
+        }
+
+        if (searchType.value === 'all') {
+            // Display all drafts in a table
+            const table = document.createElement('div');
+            table.className = 'card bg-dark text-white';
+            table.innerHTML = `
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Draft ID</th>
+                                    <th>Lead ID</th>
+                                    <th>Version</th>
+                                    <th>Change Summary</th>
+                                    <th>Created At</th>
+                                    <th>Updated At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(draft => `
+                                    <tr>
+                                        <td>${draft.draft_id}</td>
+                                        <td>${draft.lead_id}</td>
+                                        <td>${draft.version}</td>
+                                        <td>${draft.change_summary || '-'}</td>
+                                        <td>${new Date(draft.created_at).toLocaleString()}</td>
+                                        <td>${new Date(draft.updated_at).toLocaleString()}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary view-draft" data-draft-id="${draft.draft_id}">
+                                                <i class="bi bi-eye"></i> View
+                                            </button>
+                                            <button class="btn btn-sm btn-danger delete-draft" data-draft-id="${draft.draft_id}">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            searchResults.appendChild(table);
+        } else {
+            // Display search sessions
+            data.sessions.forEach(session => {
+                const sessionCard = document.createElement('div');
+                sessionCard.className = 'card bg-dark text-white mb-4';
+                sessionCard.innerHTML = `
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">Search Session: ${session.search_session_id}</h5>
+                            <small class="text-muted">
+                                Industry: ${session.search_criteria.industry || 'Any'} | 
+                                Location: ${session.search_criteria.location || 'Any'} | 
+                                Date: ${new Date(session.created_at).toLocaleString()}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Draft ID</th>
+                                        <th>Lead ID</th>
+                                        <th>Version</th>
+                                        <th>Change Summary</th>
+                                        <th>Created At</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${session.drafts.map(draft => `
+                                        <tr>
+                                            <td>${draft.draft_id}</td>
+                                            <td>${draft.lead_id}</td>
+                                            <td>${draft.version}</td>
+                                            <td>${draft.change_summary || '-'}</td>
+                                            <td>${new Date(draft.created_at).toLocaleString()}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary view-draft" data-draft-id="${draft.draft_id}">
+                                                    <i class="bi bi-eye"></i> View
+                                                </button>
+                                                <button class="btn btn-sm btn-danger delete-draft" data-draft-id="${draft.draft_id}">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                searchResults.appendChild(sessionCard);
+            });
+        }
+
+        // Add event listeners for view buttons
+        document.querySelectorAll('.view-draft').forEach(button => {
+            button.addEventListener('click', function() {
+                const draftId = this.dataset.draftId;
+                fetch(`/api/leads/drafts/${draftId}`, {
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(draft => {
+                    document.getElementById('draftData').textContent = 
+                        JSON.stringify(draft.draft_data, null, 2);
+                    new bootstrap.Modal(document.getElementById('viewDraftModal')).show();
+                });
+            });
+        });
+
+        // Add event listeners for delete buttons
+        document.querySelectorAll('.delete-draft').forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to delete this draft?')) {
+                    const draftId = this.dataset.draftId;
+                    fetch(`/api/leads/drafts/${draftId}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    })
+                    .then(response => response.json())
+                    .then(() => {
+                        this.closest('tr').remove();
+                    });
+                }
+            });
+        });
+    }
+
+    // Handle form submission
+    searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const type = searchType.value;
+        let url = '/api/leads/drafts';
+        let params = new URLSearchParams();
+
+        if (type === 'search') {
+            url = '/api/leads/search-drafts';
+            const industry = document.getElementById('industry').value;
+            const location = document.getElementById('location').value;
+            if (!industry && !location) {
+                alert('Please enter at least one search criteria (industry or location)');
+                return;
+            }
+            if (industry) params.append('industry', industry);
+            if (location) params.append('location', location);
+        } else if (type === 'recent') {
+            url = '/api/leads/recent-searches';
+            const limit = document.getElementById('limit').value;
+            params.append('limit', limit);
+        }
+
+        fetch(`${url}?${params}`, {
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+            displayResults(data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            searchResults.innerHTML = `
+                <div class="alert alert-danger">
+                    An error occurred while fetching results.
+                </div>
+            `;
+        });
+    });
+
+    // Load all drafts on page load
+    fetch('/api/leads/drafts', {
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        displayResults(data);
+    });
+});
+</script>
+{% endblock %} 
