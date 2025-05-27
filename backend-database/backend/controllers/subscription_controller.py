@@ -34,9 +34,9 @@ class SubscriptionController:
                 payment_method_types=['card']
             )
             current_app.logger.info(f"[Subscription] Stripe session created successfully for user {user.user_id}, plan {plan_type}")
-            user.tier = plan_type
-            db.session.commit()
-            current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier}")
+            # user.tier = plan_type
+            # db.session.commit()
+            # current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier}")
             return {'sessionId': checkout_session.id}, 200
         except Exception as e:
             import traceback
