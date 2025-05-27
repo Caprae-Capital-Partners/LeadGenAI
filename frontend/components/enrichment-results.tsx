@@ -428,7 +428,7 @@ const parseRevenue = (revenueStr: string): number | null => {
 
     for (const [index, c] of companiesToSave.entries()) {
       try {
-        const leadId = c.lead_id || c.id;
+        const leadId = c.lead_id || c.id || "";
 
         const payload = {
           user_id,

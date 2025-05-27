@@ -1,3 +1,4 @@
+'''
 import asyncio
 import sys
 from quart import Quart
@@ -11,10 +12,10 @@ app = Quart(__name__)
 app = cors(app, allow_origin="*")  # You can restrict to frontend domain if needed
 
 app.register_blueprint(scraper_bp, url_prefix='/api')
-
+'''
 # ------- TESTING LOCAL ------ #
 
-'''import os
+import os
 import sys
 
 # Add the phase_1 directory to Python path
@@ -31,4 +32,4 @@ app = cors(app, allow_origin="*", allow_methods=["GET", "POST", "OPTIONS"], allo
 app.register_blueprint(scraper_bp, url_prefix="/api")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)'''
+    app.run(host="0.0.0.0", port=5001, debug=True)

@@ -76,7 +76,7 @@ export function ScraperResults({ data, industry, location }: { data: string | an
     // Normalize the data
     const normalizedWithoutIds = parsedData.map((item, idx) => ({
       id: idx + 1,  // Use 1-based index as ID
-      lead_id: item.lead_id || "",
+      lead_id: item.lead_id || "",  // Ensure empty string for undefined lead_id
       company: defaultNA(item.Company || item.company),
       website: defaultNA(item.Website || item.website),
       industry: defaultNA(item.Industry || item.industry),

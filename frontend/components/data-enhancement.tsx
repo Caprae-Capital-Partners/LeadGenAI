@@ -457,7 +457,7 @@ export function DataEnhancement() {
   }
   const toCamelCase = (lead: any): EnrichedCompany => ({
     id: lead.id || `${lead.company}-${Math.random()}`,
-    lead_id: lead.lead_id,
+    lead_id: lead.lead_id || "",
     company: lead.company,
     website: lead.website,
     industry: lead.industry,
@@ -504,7 +504,7 @@ export function DataEnhancement() {
       const selected = overrideCompanies ?? normalizedLeads.filter(c =>
         selectedCompanies.includes(c.id)
       );
-      const lead_ids = selected.map(c => c.lead_id).filter(Boolean);
+      const lead_ids = selected.map(c => c.lead_id || "").filter(Boolean);
       const queryString = lead_ids.join(",");
 
       let existingNames = new Set<string>();
