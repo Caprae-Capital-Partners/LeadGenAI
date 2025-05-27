@@ -107,35 +107,33 @@
     <div class="row mb-4">
         <div class="col">
             <div class="card bg-dark text-white">
-                <div class="card-body" style="background: var(--background-color)">
-                    <form id="searchForm" class="row g-3" style="background: #181c24; display: none;">
-                        <div class="col-md-3">
-                            <label for="searchType" class="form-label">Search Type</label>
-                            <select class="form-select bg-dark text-white" id="searchType">
-                                <option value="all">All Drafts</option>
-                                <option value="search">Search Drafts</option>
-                                <option value="recent">Recent Searches</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3 search-field" id="industryField">
-                            <label for="industry" class="form-label">Industry</label>
-                            <input type="text" class="form-control bg-dark text-white" id="industry" name="industry">
-                        </div>
-                        <div class="col-md-3 search-field" id="locationField">
-                            <label for="location" class="form-label">Location</label>
-                            <input type="text" class="form-control bg-dark text-white" id="location" name="location">
-                        </div>
-                        <div class="col-md-2 search-field" id="limitField">
-                            <label for="limit" class="form-label">Limit</label>
-                            <input type="number" class="form-control bg-dark text-white" id="limit" name="limit" value="5" min="1" max="50">
-                        </div>
-                        <div class="col-md-1 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="bi bi-search"></i>
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                <form id="searchForm" class="row g-3" style="background: #181c24; display: none;">
+                    <div class="col-md-3">
+                        <label for="searchType" class="form-label">Search Type</label>
+                        <select class="form-select bg-dark text-white" id="searchType">
+                            <option value="all">All Drafts</option>
+                            <option value="search">Search Drafts</option>
+                            <option value="recent">Recent Searches</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 search-field" id="industryField">
+                        <label for="industry" class="form-label">Industry</label>
+                        <input type="text" class="form-control bg-dark text-white" id="industry" name="industry">
+                    </div>
+                    <div class="col-md-3 search-field" id="locationField">
+                        <label for="location" class="form-label">Location</label>
+                        <input type="text" class="form-control bg-dark text-white" id="location" name="location">
+                    </div>
+                    <div class="col-md-2 search-field" id="limitField">
+                        <label for="limit" class="form-label">Limit</label>
+                        <input type="number" class="form-control bg-dark text-white" id="limit" name="limit" value="5" min="1" max="50">
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
