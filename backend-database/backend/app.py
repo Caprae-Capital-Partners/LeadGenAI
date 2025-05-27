@@ -1,11 +1,11 @@
-from flask import Flask, has_request_context, g, jsonify, request, redirect, url_for
+from flask import Flask, has_request_context, g
 from models.lead_model import db
 from routes.lead_routes import lead_bp
 from routes.main_routes import main_bp
 from routes.auth_routes import auth_bp
 from routes.lead_access_routes import access_bp
 from config.config import config
-from flask_login import LoginManager, current_user, request
+from flask_login import LoginManager, current_user
 from models.user_model import User
 from sqlalchemy import event, text
 from flask_cors import CORS
@@ -44,15 +44,7 @@ def create_app(config_class=config):
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
-
-
-    @login_manager.unauthorized_handler
-    def handle_unauthorized():
-        if request.path.startswith("/api/"):
-            return jsonify({"error": "Unauthorized"}), 401
-        return redirect(url_for('auth.login'))
     
-
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(str(user_id))
