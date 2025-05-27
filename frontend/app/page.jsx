@@ -210,7 +210,7 @@ export default function Home() {
     const verifyAndFetchLeads = async () => {
       try {
         const authRes = await fetch(
-          "https://app.saasquatchleads.com/api/ping-auth",
+          "https://data.capraeleadseekers.site/api/ping-auth",
           {
             method: "GET",
             credentials: "include",
@@ -226,7 +226,8 @@ export default function Home() {
 
         // const leadsRes = await fetch("http://localhost:8000/api/lead-access", {
         const leadsRes = await fetch(
-          "https://app.saasquatchleads.com//api/lead-access",
+
+          "https://data.capraeleadseekers.site/api/lead-access",
 
           {
             method: "GET",

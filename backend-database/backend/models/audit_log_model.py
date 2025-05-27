@@ -47,7 +47,7 @@ def ensure_audit_log_infrastructure(db):
 
             -- Special handling for soft delete
             IF NEW.deleted = TRUE AND OLD.deleted = FALSE THEN
-                EXECUTE format('INSERT INTO lead_audit_log (table_name, row_id, column_name, old_value, new_value, username, changed_at) VALUES (%L, %s, %L, %L, %L, %L, now())',
+                EXECUTE format('INSERT INTO lead_audit_log (table_name, row_id, column_name, old_value, new_value, username, changed_at) VALUES (%L, %L, %L, %L, %L, %L, now())',
                     TG_TABLE_NAME,
                     OLD.lead_id,
                     'LEAD_DELETED',
@@ -70,7 +70,7 @@ def ensure_audit_log_infrastructure(db):
                     EXECUTE format('SELECT ($1).%I::text', col_name) INTO old_val USING OLD;
                     EXECUTE format('SELECT ($1).%I::text', col_name) INTO new_val USING NEW;
                     IF old_val IS DISTINCT FROM new_val THEN
-                        EXECUTE format('INSERT INTO lead_audit_log (table_name, row_id, column_name, old_value, new_value, username, changed_at) VALUES (%L, %s, %L, %L, %L, %L, now())',
+                        EXECUTE format('INSERT INTO lead_audit_log (table_name, row_id, column_name, old_value, new_value, username, changed_at) VALUES (%L, %L, %L, %L, %L, %L, now())',
                             TG_TABLE_NAME,
                             OLD.lead_id,
                             col_name,

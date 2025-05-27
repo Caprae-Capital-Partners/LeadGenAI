@@ -151,7 +151,7 @@ export default function SubscriptionPage() {
                                     className="w-full"
                                     onClick={() =>
                                         plan.id === "free"
-                                            ? (window.location.href = "https://www.saasquatchleads.com/")
+                                            ? (window.location.href = "https://app.saasquatchleads.com/")
                                             : handleSelectPlan(plan.id)
                                     }
                                 >
@@ -164,7 +164,7 @@ export default function SubscriptionPage() {
                 </div>
 
                 <div className="text-center mt-6">
-                    <a href="https://www.saasquatchleads.com/">
+                    <a href="https://app.saasquatchleads.com/">
                         <Button variant="secondary">Continue to Dashboard (Free Plan)</Button>
                     </a>
                 </div>

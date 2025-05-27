@@ -4,7 +4,7 @@ from controllers.upload_controller import UploadController
 from controllers.export_controller import ExportController
 from models.lead_model import db, Lead
 from flask_login import login_required, current_user
-from utils.decorators import role_required
+from utils.decorators import role_required, credit_required, filter_lead_data_by_plan
 import csv
 from io import StringIO, BytesIO
 import logging
@@ -14,6 +14,9 @@ import io
 from werkzeug.exceptions import NotFound
 from sqlalchemy import or_, and_
 import requests
+from models.user_model import User
+from models.audit_log_model import LeadAuditLog
+from models.user_lead_drafts_model import UserLeadDraft
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -274,7 +277,7 @@ def update_status(lead_id):
 
 @lead_bp.route('/leads/<string:lead_id>/delete', methods=['POST'])
 #@login_required
-@role_required('admin', 'developer')
+@role_required('admin', 'developer', 'user')
 def delete_lead(lead_id):
     """Soft delete lead - Admin and Developer only"""
     try:
@@ -428,7 +431,11 @@ def update_lead_api(lead_id):
         for key, value in data.items():
             setattr(lead, key, value)
         db.session.commit()
-        return jsonify({"message": "Lead updated successfully", "lead": lead.to_dict()})
+        if request.is_json:
+            return jsonify({'success': True, 'message': 'Lead updated successfully'})
+        else:
+            flash('Lead updated successfully', 'success')
+            return redirect(url_for('lead.view_leads'))
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
@@ -577,37 +584,55 @@ def api_upload_leads():
                 invalid_indices.append(i)
         added_new = 0
         updated = 0
+        no_change = 0
         skipped = 0
         errors = 0
-        for lead_data in valid_leads:
+        detailed_results = []
+        for i, lead_data in enumerate(valid_leads):
             try:
-                success, message = LeadController.add_or_update_lead_by_match(lead_data)
-                if success:
-                    if "updated successfully" in message:
-                        updated += 1
-                    elif "already up to date" in message:
-                        updated += 1
-                    else:
-                        added_new += 1
+                success, result = LeadController.add_or_update_lead_by_match(lead_data)
+                # Add original index for easier frontend mapping
+                result['original_index'] = invalid_indices.index(i) if i in invalid_indices else i
+                detailed_results.append(result)
+                status = result.get('status', '')
+                if status == "created":
+                    added_new += 1
+                elif status == "updated":
+                    updated += 1
+                elif status == "no_change":
+                    no_change += 1
+                elif status == "error":
+                    errors += 1
+                    error_details.append(result.get('message', f'Unknown error for lead at index {i}'))
                 else:
-                    if "already in use" in message or "already exists" in message:
-                        skipped += 1
-                    else:
-                        errors += 1
-                        error_details.append(f"Error saving lead: {message}")
+                     # This might catch unexpected statuses from controller, count as skipped
+                    skipped += 1
+                    error_details.append(f'Skipped lead at index {i} due to unexpected controller status: {status}')
             except Exception as e:
                 errors += 1
-                error_details.append(f"Exception saving lead: {str(e)}")
+                error_details.append(f"Exception saving lead at index {i}: {str(e)}")
+
+        # Determine overall status
+        overall_status = "success"
+        if errors > 0 or len(invalid_indices) > 0:
+            overall_status = "warning"
+        if added_new == 0 and updated == 0 and no_change == 0:
+             # If no leads were successfully processed (added/updated/no_change)
+            overall_status = "error"
+
         return jsonify({
-            "status": "success" if errors == 0 else "error",
-            "message": f"Upload Complete! Added: {added_new}, Updated: {updated}, Skipped: {skipped}, Errors: {errors}",
+            "status": overall_status,
+            "message": f"Upload Complete. Added: {added_new}, Updated: {updated}, No Change: {no_change}, Skipped (Controller): {skipped}, Invalid (Initial Check): {len(invalid_indices)}, Errors: {errors}",
             "stats": {
                 "added_new": added_new,
                 "updated": updated,
-                "skipped_duplicates": skipped,
+                "no_change": no_change,
+                "skipped_controller": skipped, # Skipped by controller logic
+                "invalid_initial_check": len(invalid_indices), # Skipped by initial validation
                 "errors": errors,
-                "invalid_indices": invalid_indices[:10] if invalid_indices else [],
-                "error_details": error_details
+                "invalid_indices": invalid_indices, # Indices from original payload that failed initial check
+                "error_details": error_details,
+                "detailed_results": detailed_results # Results for leads that passed initial check
             }
         }), 200
     except Exception as e:
@@ -855,6 +880,9 @@ def permanent_delete_lead(lead_id):
 
 
 @lead_bp.route('/api/lead_scrape', methods=['POST'])
+@login_required # Ensure user is logged in
+@credit_required(cost=1)
+@filter_lead_data_by_plan()
 def api_search_leads():
     data = request.get_json()
     # logging.debug(f"[IN] /api/search_leads data: {data}")
@@ -862,7 +890,7 @@ def api_search_leads():
     location = data.get("location", "")
     results = LeadController.search_leads_by_industry_location(industry, location)
     # logging.debug(f"[OUT] /api/search_leads results: {results}")
-    return jsonify(results)
+    return results
 
 @lead_bp.route('/api/industries', methods=['GET'])
 # #@login_required
@@ -887,141 +915,6 @@ def get_industries():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-@lead_bp.route('/api/leads/enrichment-status', methods=['GET'])
-#@login_required
-def get_leads_enrichment_status():
-    """Get enrichment status for leads"""
-    try:
-        # Get pagination parameters
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 10, type=int)
-
-        # Build base query
-        query = Lead.query.filter(Lead.deleted == False)
-
-        # Get leads with their enrichment status
-        leads = query.paginate(page=page, per_page=per_page)
-
-        # Check enrichment status for each lead
-        enriched_leads = []
-        for lead in leads.items:
-            lead_dict = lead.to_dict()
-
-            # Check required fields
-            required_fields = {
-                'owner_email': bool(lead.owner_email),
-                'owner_phone_number': bool(lead.owner_phone_number),
-                'website': bool(lead.website),
-                'owner_linkedin': bool(lead.owner_linkedin)
-            }
-
-            # Calculate enrichment status
-            missing_fields = [field for field, has_value in required_fields.items() if not has_value]
-            is_fully_enriched = len(missing_fields) == 0
-
-            # Add enrichment info to lead data
-            lead_dict.update({
-                'enrichment_status': {
-                    'is_fully_enriched': is_fully_enriched,
-                    'missing_fields': missing_fields,
-                    'last_enriched_at': lead.updated_at.isoformat() if lead.updated_at else None,
-                    'needs_enrichment': not is_fully_enriched
-                }
-            })
-
-            enriched_leads.append(lead_dict)
-
-        return jsonify({
-            "total": leads.total,
-            "pages": leads.pages,
-            "current_page": page,
-            "per_page": per_page,
-            "leads": enriched_leads
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@lead_bp.route('/api/leads/<string:lead_id>/enrich', methods=['POST'])
-# #@login_required
-def enrich_lead(lead_id):
-    """Enrich a single lead's data"""
-    try:
-        lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
-
-        # Check if lead needs enrichment
-        required_fields = {
-            'owner_email': bool(lead.owner_email),
-            'owner_phone_number': bool(lead.owner_phone_number),
-            'website': bool(lead.website),
-            'owner_linkedin': bool(lead.owner_linkedin)
-        }
-
-        missing_fields = [field for field, has_value in required_fields.items() if not has_value]
-
-        if not missing_fields:
-            return jsonify({
-                "message": "Lead already fully enriched",
-                "lead": lead.to_dict()
-            })
-
-        # TODO: Implement enrichment logic here
-        # This would be where you call your scraping service
-
-        # Update lead with new data
-        lead.updated_at = datetime.datetime.now()
-        db.session.commit()
-
-        return jsonify({
-            "message": "Lead enriched successfully",
-            "lead": lead.to_dict(),
-            "enriched_fields": missing_fields
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-@lead_bp.route('/api/leads/check-missing', methods=['POST'])
-# #@login_required
-def check_missing_fields():
-    """
-    Check which required fields are missing for a batch of leads.
-    Request body: { "lead_ids": [1, 2, 3, ...] }
-    Response: {
-      "results": [
-        {"lead_id": 1, "missing_fields": ["owner_email", ...], "status": "ok"},
-        {"lead_id": 2, "missing_fields": [], "status": "ok"},
-        {"lead_id": 3, "missing_fields": null, "status": "not_found"}
-      ]
-    }
-    """
-    lead_ids = request.json.get('lead_ids', [])
-    required_fields = ['owner_email', 'owner_phone_number', 'website', 'owner_linkedin']
-    results = []
-    for lead_id in lead_ids:
-        lead = Lead.query.get(lead_id)
-        if not lead:
-            results.append({
-                "lead_id": lead_id,
-                "missing_fields": None,
-                "status": "not_found"
-            })
-            continue
-        missing = [field for field in required_fields if not getattr(lead, field)]
-        results.append({
-            "lead_id": lead_id,
-            "missing_fields": missing,
-            "status": "ok"
-        })
-    return jsonify({"results": results})
-
-
-@lead_bp.route('/enrichment-test')
-# @login_required
-def enrichment_test_page():
-    return render_template('enrichment_test.html')
 
 @lead_bp.route('/api/leads/batch', methods=['PUT'])
 def batch_update_leads():
@@ -1113,40 +1006,28 @@ def api_delete_multiple_leads():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @lead_bp.route('/api/leads/enrich-multiple', methods=['POST'])
+#@login_required
 def enrich_multiple_leads():
     data = request.get_json()
-    lead_ids = data.get('lead_ids', [])
-    if not lead_ids:
-        return jsonify({"error": "No lead_ids provided"}), 400
+    leads = data.get('leads', [])
+    if not leads or not isinstance(leads, list):
+        return jsonify({"error": "No leads provided"}), 400
 
-    required_fields = ['owner_email', 'owner_phone_number', 'website', 'owner_linkedin']
     results = []
-
-    for lead_id in lead_ids:
-        lead = Lead.query.filter_by(lead_id=lead_id).first()
-        if not lead:
-            results.append({"lead_id": lead_id, "error": "Not found"})
+    for lead_data in leads:
+        lead_id = lead_data.get('lead_id')
+        user_id = lead_data.get('user_id')
+        if not lead_id:
+            results.append({"error": "Missing lead_id", "lead_data": lead_data})
             continue
-
-        missing = [f for f in required_fields if not getattr(lead, f) or getattr(lead, f) in ['-', 'N/A', '']]
-        if not missing:
-            results.append(lead.to_dict())
-            continue
-
-        # call external enrichment API (dummy example)
-        # response = requests.post('http://enrichment-api/endpoint', json={"lead_id": lead_id})
-        # enriched_data = response.json()
-        # Simulate enrichment:
-        enriched_data = {f: f"enriched_{f}@example.com" if 'email' in f else "enriched_value" for f in missing}
-
-        # Update lead in database
-        for f, v in enriched_data.items():
-            setattr(lead, f, v)
-        db.session.commit()
-
-        # get the latest data
-        refreshed = Lead.query.filter_by(lead_id=lead_id).first()
-        results.append(refreshed.to_dict())
+        # Update only null/empty fields using add_or_update_lead_by_match
+        success, message = LeadController.add_or_update_lead_by_match(lead_data)
+        results.append({
+            "lead_id": lead_id,
+            "user_id": user_id,
+            "success": success,
+            "message": message
+        })
 
     return jsonify({"results": results})
 
@@ -1159,3 +1040,133 @@ def leads_summary():
         "total": total,
         "status_counts": {status: count for status, count in status_counts}
     })
+
+@lead_bp.route('/leads/edited', methods=['GET'])
+#@login_required
+def view_edited_leads():
+    """View all edited leads (pending drafts)"""
+    from models.user_model import User
+    from models.user_lead_drafts_model import UserLeadDraft
+    from models.lead_model import Lead
+    # Only show drafts that are not deleted and in draft/review phase
+    drafts = UserLeadDraft.query.filter_by(is_deleted=False).filter(UserLeadDraft.phase.in_(['draft', 'review'])).order_by(UserLeadDraft.updated_at.desc()).all()
+    rows = []
+    for draft in drafts:
+        original = Lead.query.filter_by(lead_id=draft.lead_id).first()
+        edit_user = User.query.get(draft.user_id) if draft.user_id else None
+        rows.append({'original': original, 'edit': draft, 'edit_user': edit_user})
+    return render_template('edited_leads.html', leads=rows)
+
+@lead_bp.route('/leads/<string:lead_id>/edit', methods=['POST'])
+#@login_required
+@role_required('admin', 'developer', 'user')
+def edit_lead_api(lead_id):
+    """Edit lead - Admin, Developer, User. Save to UserLeadDraft, not to Lead."""
+    from datetime import datetime
+    from models.user_lead_drafts_model import UserLeadDraft
+    lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first_or_404()
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form
+    try:
+        user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        data = dict(data)
+        if 'revenue' in data and data['revenue']:
+            revenue_str = str(data['revenue']).replace(',', '.')
+            try:
+                data['revenue'] = float(revenue_str)
+            except ValueError:
+                data['revenue'] = None
+        draft = UserLeadDraft.query.filter_by(lead_id=lead_id, user_id=user_id, is_deleted=False).first()
+        if not draft:
+            draft = UserLeadDraft(
+                lead_id=lead_id,
+                user_id=user_id,
+                draft_data=data,
+                phase='draft'
+            )
+            draft.updated_at = datetime.utcnow()
+            db.session.add(draft)
+        else:
+            draft.draft_data = data
+            draft.updated_at = datetime.utcnow()
+            draft.phase = 'draft'
+        db.session.commit()
+        if request.is_json:
+            return jsonify({'success': True, 'message': 'Draft saved successfully'})
+        else:
+            flash('Draft saved successfully', 'success')
+            return redirect(url_for('lead.view_leads'))
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        print(traceback.format_exc())
+        if request.is_json:
+            return jsonify({'success': False, 'message': str(e)}), 500
+        else:
+            flash(f'Error saving draft: {str(e)}', 'danger')
+            return redirect(url_for('lead.view_leads'))
+
+@lead_bp.route('/leads/<string:lead_id>/apply', methods=['POST'])
+#@login_required
+@role_required('admin', 'developer')
+def apply_edited_lead(lead_id):
+    """Apply changes: finalize the edit, salin data dari draft ke Lead, hapus draft."""
+    from models.user_lead_drafts_model import UserLeadDraft
+    from models.lead_model import Lead
+    draft = UserLeadDraft.query.filter_by(lead_id=lead_id, is_deleted=False).first()
+    lead = Lead.query.filter_by(lead_id=lead_id).first()
+    if not draft or not lead:
+        return jsonify({'success': False, 'message': 'Draft or lead not found.'}), 404
+    try:
+        for key, value in draft.draft_data.items():
+            if hasattr(lead, key) and key not in ['lead_id', 'created_at', 'deleted', 'deleted_at']:
+                col_type = type(getattr(lead, key))
+                if value == '' and col_type in [int, float, type(None)]:
+                    setattr(lead, key, None)
+                else:
+                    setattr(lead, key, value)
+        db.session.delete(draft)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Changes applied and lead finalized.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@lead_bp.route('/api/draft/delete', methods=['POST'])
+#@login_required
+@role_required('admin', 'developer')
+def delete_draft_api():
+    """Permanently delete a draft by lead_id (API)."""
+    from models.user_lead_drafts_model import UserLeadDraft
+    data = request.get_json() or {}
+    lead_id = data.get('lead_id')
+    print('DEBUG: lead_id param:', lead_id)
+    draft = UserLeadDraft.query.filter_by(lead_id=lead_id).first()
+    print('DEBUG: draft found:', draft)
+    if not draft:
+        return jsonify({'success': False, 'message': 'Draft not found.'}), 404
+    try:
+        db.session.delete(draft)
+        db.session.commit()
+        print('DEBUG: draft permanently deleted')
+        return jsonify({'success': True, 'message': 'Draft permanently deleted.'})
+    except Exception as e:
+        db.session.rollback()
+        print('DEBUG: error:', e)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@lead_bp.route('/api/leads/multiple', methods=['GET'])
+#@login_required
+def get_leads_by_multiple_ids():
+    """Get details of multiple leads by comma-separated IDs in query param 'lead_ids'"""
+    lead_ids_param = request.args.get('lead_ids', '')
+    if not lead_ids_param:
+        return jsonify({"error": "No lead_ids provided"}), 400
+    lead_ids = [lid.strip() for lid in lead_ids_param.split(',') if lid.strip()]
+    if not lead_ids:
+        return jsonify({"error": "No valid lead_ids provided"}), 400
+    leads = Lead.query.filter(Lead.lead_id.in_(lead_ids), Lead.deleted == False).all()
+    results = [lead.to_dict() for lead in leads]
+    return jsonify({"results": results})

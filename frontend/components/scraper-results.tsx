@@ -215,9 +215,7 @@ export function ScraperResults({ data, industry, location }: { data: string | an
     }
   }
 
-  const [dbOnlyMode, setDbOnlyMode] = useState(true); // default to true
-
-
+  
   const filteredResults = leads.filter(
     (result) =>
       result.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -625,14 +623,14 @@ export function ScraperResults({ data, industry, location }: { data: string | an
             <Trash2 className="mr-2 h-4 w-4" />
             {isDeleting ? "Deleting..." : `Delete Selected (${selectedCompanies.length})`}
           </Button>
-          <Button
+          {/* <Button
             variant="outline"
             onClick={handleSave}
             disabled={isSaving}
           >
             <Save className="mr-2 h-4 w-4" />
             {isSaving ? "Saving..." : "Save"}
-          </Button>
+          </Button> */}
           <Button
             className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
             onClick={handleNext}
@@ -640,7 +638,7 @@ export function ScraperResults({ data, industry, location }: { data: string | an
             <ArrowRight className="mr-2 h-4 w-4" />
             Next
           </Button>
-          <Select value={exportFormat} onValueChange={setExportFormat}>
+          {/* <Select value={exportFormat} onValueChange={setExportFormat}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Format" />
             </SelectTrigger>
@@ -649,11 +647,11 @@ export function ScraperResults({ data, industry, location }: { data: string | an
               <SelectItem value="excel">Excel</SelectItem>
               <SelectItem value="json">JSON</SelectItem>
             </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={handleExport}>
+          </Select> */}
+          {/* <Button variant="outline" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Export
-          </Button>
+          </Button> */}
         </div>
       </CardFooter>
     </Card>

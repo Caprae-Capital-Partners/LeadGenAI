@@ -459,7 +459,9 @@
                             <th>Owner Email</th>
                             <th>Phone Number</th>
                             <th>Owner Title</th>
-                            <th>Location</th>
+                            <th>Street</th>
+                            <th>City</th>
+                            <th>State</th>
                             <!-- Company Info -->
                             <th>Website</th>
                             <th>Company LinkedIn</th>
@@ -501,7 +503,9 @@
                             <td>{{ lead.owner_email or '-' }}</td>
                             <td>{{ lead.phone or '-' }}</td>
                             <td>{{ lead.owner_title or '-' }}</td>
-                            <td>{{ (lead.city ~ ', ' ~ lead.state) if (lead.city and lead.state) else (lead.city or lead.state or '-') }}</td>
+                            <td>{{ lead.street or '-' }}</td>
+                            <td>{{ lead.city or '-' }}</td>
+                            <td>{{ lead.state or '-' }}</td>
                             <!-- Company Details -->
                             <td>{{ lead.website or '-' }}</td>
                             <td>{{ lead.company_linkedin or '-' }}</td>
@@ -550,7 +554,7 @@
                                     </svg>
                                     Edit
                                 </a>
-                                <button type="button" class="btn btn-delete" style="margin-left: 8px;" onclick="deleteLead({{ lead.lead_id }})" title="Delete Lead">
+                                <button type="button" class="btn btn-delete" style="margin-left: 8px;" onclick="deleteLead('{{ lead.lead_id }}')" title="Delete Lead">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="3 6 5 6 21 6"></polyline>
                                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
