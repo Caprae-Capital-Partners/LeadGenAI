@@ -374,7 +374,9 @@ export function Scraper() {
       const response = await axios.post(
         FETCH_DB_API,
         { industry, location },
-        { signal: controller.signal }
+        { signal: controller.signal, 
+          withCredentials: true
+        }
       )
 
       const data = response.data
