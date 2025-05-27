@@ -290,7 +290,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentItems = editableCompanies.slice(indexOfFirstItem, indexOfLastItem)
-
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
@@ -707,39 +707,48 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
 
             <div className="w-full overflow-x-auto rounded-md border">
               <div className="w-full overflow-x-auto rounded-md border">
-                <Table className="w-full table-fixed">
+                <Table className="w-full overflow-x-auto">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12 px-2">
+                      <TableHead className="px-6 py-2 w-12">
                         <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
                       </TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Company</TableHead>
-                      <TableHead className="text-xs break-words max-w-[180px] px-2 py-1">Website</TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Industry</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Product/Service Category</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Business Type (B2B, B2B2C)</TableHead>
-                      <TableHead className="text-xs break-words max-w-[140px] px-2 py-1">Employees Count</TableHead>
-                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">Revenue</TableHead>
-                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">Year Founded</TableHead>
-                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">BBB Rating</TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Street</TableHead>
-                      <TableHead className="text-xs break-words max-w-[140px] px-2 py-1">City</TableHead>
-                      <TableHead className="text-xs break-words max-w-[100px] px-2 py-1">State</TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Company Phone</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Company LinkedIn</TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Owner's First Name</TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Owner's Last Name</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's Title</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's LinkedIn</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's Phone Number</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's Email</TableHead>
-                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">Source</TableHead>
+                      {[
+                        "Company",
+                        "Website",
+                        "Industry",
+                        "Product/Service Category",
+                        "Business Type (B2B, B2B2C)",
+                        "Employees Count",
+                        "Revenue",
+                        "Year Founded",
+                        "BBB Rating",
+                        "Street",
+                        "City",
+                        "State",
+                        "Company Phone",
+                        "Company LinkedIn",
+                        "Owner's First Name",
+                        "Owner's Last Name",
+                        "Owner's Title",
+                        "Owner's LinkedIn",
+                        "Owner's Phone Number",
+                        "Owner's Email",
+                        "Source",
+                      ].map((label, i) => (
+                        <TableHead
+                          key={i}
+                          className="text-xs font-semibold text-black px-6 py-2 whitespace-nowrap"
+                        >
+                          {label}
+                        </TableHead>
+                      ))}
                     </TableRow>
-
                   </TableHeader>
+
                   <TableBody>
-                    {currentItems.length > 0
-                      ? currentItems.map((company, i) => (
+                    {currentItems.length > 0 ? (
+                      currentItems.map((company, i) => (
                         <TableRow
                           key={company.id}
                           className={
@@ -751,45 +760,16 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                                 : "")
                           }
                         >
-                          {/* Select Checkbox */}
-                          <TableCell className="whitespace-nowrap px-2 align-top">
+                          <TableCell className="px-6 py-2">
                             <Checkbox
                               checked={selectedCompanies.includes(company.id)}
                               onCheckedChange={() => handleSelectCompany(company.id)}
                             />
                           </TableCell>
 
-                          {/* Company Name */}
-                          <TableCell className="max-w-[160px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2">
-                            {normalizeDisplayValue(company.company)}
-                          </TableCell>
-
-                          {/* Website + Link */}
-                          <TableCell className="max-w-[200px] break-all text-sm align-top px-3 py-2">
-                            <div className="flex flex-col gap-1">
-                              <span className="break-all">{cleanUrlForDisplay(company.website)}</span>
-                              {company.website &&
-                                normalizeDisplayValue(company.website) !== "N/A" && (
-                                  <a
-                                    href={
-                                      company.website.toString().startsWith("http")
-                                        ? company.website
-                                        : `https://${company.website}`
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-500 hover:text-blue-700 break-all"
-                                    title="Open website in new tab"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <ExternalLink className="h-4 w-4 inline" />
-                                  </a>
-                                )}
-                            </div>
-                          </TableCell>
-
-                          {/* Editable Fields */}
                           {[
+                            "company",
+                            "website",
                             "industry",
                             "productCategory",
                             "businessType",
@@ -808,40 +788,68 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                             "ownerLinkedin",
                             "ownerPhoneNumber",
                             "ownerEmail",
+                            "source",
                           ].map((field) => {
                             const value = company[field as keyof EnrichedCompany] ?? "";
                             const displayValue = normalizeDisplayValue(value);
 
-                            const isLinkedInField = field === "companyLinkedin" || field === "ownerLinkedin";
+                            const isLinkedInField = ["companyLinkedin", "ownerLinkedin"].includes(field);
                             const isValidLink = typeof value === "string" && value.startsWith("http");
+
+                            // Toggle logic only for productCategory
+                            if (field === "productCategory") {
+                              const isExpanded = expandedRows.has(i);
+                              return (
+                                <TableCell
+                                  key={field}
+                                  className="px-6 py-2 text-sm align-top max-w-[240px]"
+                                >
+                                  <div className={`${isExpanded ? "" : "line-clamp-3"} break-words overflow-hidden`}>
+                                    {displayValue}
+                                  </div>
+                                  {displayValue.length > 100 && (
+                                    <button
+                                      onClick={() => {
+                                        const newSet = new Set(expandedRows);
+                                        isExpanded ? newSet.delete(i) : newSet.add(i);
+                                        setExpandedRows(newSet);
+                                      }}
+                                      className="text-xs text-blue-500 hover:underline mt-1 block"
+                                    >
+                                      {isExpanded ? "Show less" : "Show more"}
+                                    </button>
+                                  )}
+                                </TableCell>
+                              );
+                            }
 
                             return (
                               <TableCell
                                 key={field}
-                                className="max-w-[220px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2"
+                                className="px-6 py-2 text-sm align-top whitespace-nowrap"
+                                title={displayValue}
                               >
                                 {isEditing ? (
                                   <input
                                     type="text"
-                                    className="w-full bg-transparent border-0 focus:border-b focus:outline-none focus:ring-0 text-sm"
+                                    className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
                                     value={String(value)}
                                     onChange={(e) =>
                                       handleFieldChange(company.id, field as keyof EnrichedCompany, e.target.value)
                                     }
                                   />
                                 ) : isLinkedInField && isValidLink ? (
-                                  <div className="flex flex-col gap-1">
-                                    <span className="break-all text-sm">
-                                      {value.replace("https://", "").replace("www.", "").split("/").slice(0, 3).join("/")}...
+                                  <div className="flex items-center gap-1">
+                                    <span className="truncate">
+                                      {value.replace("https://", "").replace("www.", "").split("/")[0]}
                                     </span>
                                     <a
                                       href={value}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-blue-500 hover:text-blue-700"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <ExternalLink className="h-4 w-4 inline" />
+                                      <ExternalLink className="h-4 w-4 text-blue-500 hover:text-blue-700" />
                                     </a>
                                   </div>
                                 ) : (
@@ -850,25 +858,19 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                               </TableCell>
                             );
                           })}
-
-                          {/* Source */}
-                          <TableCell className="max-w-[160px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2">
-                            {normalizeDisplayValue(company.source) === "N/A"
-                              ? "Not available in any source"
-                              : normalizeDisplayValue(company.source)}
-                          </TableCell>
                         </TableRow>
-
                       ))
-                      : (
-                        <TableRow key="no-results">
-                          <TableCell colSpan={22} className="text-center">
-                            No results found.
-                          </TableCell>
-                        </TableRow>
-                      )}
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={22} className="text-center py-4">
+                          No results found.
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
+
                 </Table>
+
               </div>
             </div>
           </div>
