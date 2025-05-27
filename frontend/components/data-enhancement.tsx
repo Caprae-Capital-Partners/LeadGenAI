@@ -25,13 +25,15 @@ import type { EnrichedCompany } from "@/components/enrichment-results"
 import { useEnrichment } from "@/components/EnrichmentProvider"
 import Loader from "@/components/ui/loader"
 import { useRouter } from "next/navigation";
+import { flushSync } from "react-dom";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 
 export function DataEnhancement() {
+  const [mergedView, setMergedView] = useState(false)
   const [showResults, setShowResults] = useState(false)
-  const { leads } = useLeads()
+  const { leads, setLeads } = useLeads()
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -39,11 +41,11 @@ export function DataEnhancement() {
   // Get the original search criteria from URL parameters
   const getSearchCriteria = () => {
     if (typeof window === 'undefined') return { industry: '', location: '' };
-    
+
     const params = new URLSearchParams(window.location.search);
     const industry = params.get('industry') || '';
     const location = params.get('location') || '';
-    
+
     return {
       industry: industry,
       location: location
@@ -59,7 +61,7 @@ export function DataEnhancement() {
   } | null>(null);
 
   // Cleanup function for progress simulation
- 
+
 
   useEffect(() => {
 
@@ -72,49 +74,7 @@ export function DataEnhancement() {
   }, []);
 
 
-  // // Function to simulate progress updates
-  // const startProgressSimulation = () => {
-  //   // Clear any existing interval
-  //   if (progressIntervalRef.current) {
-  //     clearInterval(progressIntervalRef.current);
-  //   }
 
-  //   // Reset progress
-  //   setProgress(0);
-
-  //   // Start a new interval that gradually increases the progress
-  //   progressIntervalRef.current = setInterval(() => {
-  //     setProgress((prevProgress) => {
-  //       // Only use integer increments, gradually slowing down
-  //       // as we approach 90%
-  //       let increment = 1; // Default increment
-
-  //       // Adjust the interval based on current progress
-  //       if (prevProgress < 30) {
-  //         increment = 2; // Faster at the beginning
-  //       } else if (prevProgress < 60) {
-  //         increment = 1; // Medium speed in the middle
-  //       } else if (prevProgress < 85) {
-  //         // Slow down near the end, but ensure we only increment by whole numbers
-  //         // We'll use 1 but slow down the frequency by skipping some updates
-  //         const shouldIncrement = Math.random() > 0.5; // 50% chance to increment
-  //         increment = shouldIncrement ? 1 : 0;
-  //       } else if (prevProgress < 90) {
-  //         // Very slow near the end
-  //         const shouldIncrement = Math.random() > 0.7; // 30% chance to increment
-  //         increment = shouldIncrement ? 1 : 0;
-  //       } else {
-  //         increment = 0; // Stop at 90%
-  //       }
-
-  //       // Ensure we don't exceed 90%
-  //       const newProgress = Math.min(prevProgress + increment, 90);
-
-  //       // Return whole number progress
-  //       return Math.floor(newProgress);
-  //     });
-  //   }, 300);
-  // };
 
   // Function to stop progress simulation
   const stopProgressSimulation = (finalValue = 100) => {
@@ -162,8 +122,65 @@ export function DataEnhancement() {
     business_phone: normalizeLeadValue(lead.business_phone),
   }))
 
-  const { enrichedCompanies, setEnrichedCompanies } = useEnrichment()
-  const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
+  // 1. Declare state variables first
+  const [dbEnrichedCompanies, setDbEnrichedCompanies] = useState<EnrichedCompany[]>([]);
+  const [scrapedEnrichedCompanies, setScrapedEnrichedCompanies] = useState<EnrichedCompany[]>([]);
+  const [selectedCompanies, setSelectedCompanies] = useState<number[]>([]);
+
+  // 2. Restore from sessionStorage on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem("enrichedResults");
+    if (!saved) return;
+
+    try {
+      const all = JSON.parse(saved) as EnrichedCompany[];
+      // split them back out by sourceType
+      setDbEnrichedCompanies(
+        all.filter(c => c.sourceType === "database")
+      );
+      setScrapedEnrichedCompanies(
+        all.filter(c => c.sourceType === "scraped")
+      );
+      setShowResults(true);
+    } catch (err) {
+      console.error("Failed to restore enriched results:", err);
+    }
+  }, []);
+
+
+
+  // 3. Persist to sessionStorage on updates
+  useEffect(() => {
+    // 1️⃣ build in the order: database results first, then freshly scraped
+    const combined = [...dbEnrichedCompanies, ...scrapedEnrichedCompanies];
+
+    // 2️⃣ persist into sessionStorage
+    if (combined.length > 0) {
+      sessionStorage.setItem("enrichedResults", JSON.stringify(combined));
+    } else {
+      sessionStorage.removeItem("enrichedResults");
+    }
+
+    // 3️⃣ sync through context so EnrichmentProvider has the up-to-date combined list
+    setEnrichedCompanies(combined);
+
+  }, [dbEnrichedCompanies, scrapedEnrichedCompanies]);
+
+  // const { leads, setLeads } = useLeads(); // from LeadsContext or LeadsProvider
+
+  useEffect(() => {
+    const savedLeads = sessionStorage.getItem("leads");
+    if (savedLeads) {
+      try {
+        const parsed = JSON.parse(savedLeads);
+        setLeads(parsed);
+      } catch (err) {
+        console.error("Failed to restore leads from sessionStorage:", err);
+      }
+    }
+  }, []);
+
+
   const [selectAll, setSelectAll] = useState(false)
   const [industryFilter, setIndustryFilter] = useState("")
   const [cityFilter, setCityFilter] = useState("")
@@ -367,7 +384,7 @@ export function DataEnhancement() {
         ? null
         : val.toString().trim();
     };
-    
+
 
     const preferValue = (g: any, a: any, fallback: any = "") => cleanVal(g) ?? cleanVal(a) ?? fallback
 
@@ -419,6 +436,7 @@ export function DataEnhancement() {
   }
   const toCamelCase = (lead: any): EnrichedCompany => ({
     id: lead.id || `${lead.company}-${Math.random()}`,
+    lead_id: lead.lead_id,
     company: lead.company,
     website: lead.website,
     industry: lead.industry,
@@ -440,11 +458,11 @@ export function DataEnhancement() {
     ownerPhoneNumber: lead.owner_phone_number,
     ownerLinkedin: lead.owner_linkedin,
     source: lead.source,
+    sourceType: lead.source_type,
   });
   const [dbOnlyMode, setDbOnlyMode] = useState(true);
-  const [dbEnrichedCompanies, setDbEnrichedCompanies] = useState<EnrichedCompany[]>([]);
-  const [scrapedEnrichedCompanies, setScrapedEnrichedCompanies] = useState<EnrichedCompany[]>([]);
   const [fromDatabaseLeads, setFromDatabaseLeads] = useState<string[]>([]); // lowercase names
+  const { enrichedCompanies, setEnrichedCompanies } = useEnrichment();
 
   const handleStartEnrichment = async (
     forceScrape = false,
@@ -455,11 +473,13 @@ export function DataEnhancement() {
     setLoading(true);
 
     if (!forceScrape) {
+      // clear prior results
       setDbEnrichedCompanies([]);
       setScrapedEnrichedCompanies([]);
     }
 
     try {
+      // pick which leads to enrich
       const selected = overrideCompanies ?? normalizedLeads.filter(c =>
         selectedCompanies.includes(c.id)
       );
@@ -469,64 +489,95 @@ export function DataEnhancement() {
       let existingNames = new Set<string>();
       let dbLeads: any[] = [];
 
+      // fetch any already‐in‐DB
       if (queryString) {
         const { data: dbRes } = await axios.get(
           `${DATABASE_URL}/leads/multiple?lead_ids=${queryString}`,
           { headers: { "Content-Type": "application/json" } }
         );
         dbLeads = dbRes.results || [];
-        existingNames = new Set(dbLeads.map((l: any) => l.company?.toLowerCase()));
+        existingNames = new Set(
+          dbLeads.map((l: any) => l.company?.toLowerCase())
+        );
         setFromDatabaseLeads(Array.from(existingNames));
       }
 
+      // if this is a fresh-run (not force) then immediately show the DB hits
       if (!forceScrape && !overrideCompanies) {
-        setDbEnrichedCompanies(dbLeads.map(toCamelCase));
-        setShowResults(true);
-        setLoading(false);
-        return;
-      }
-      
-
-      // 🚨 Re-enrich mode: skip DB display, scrape all
-      const toScrape = forceScrape
-        ? selected // ← in force mode, scrape all
-        : selected.filter(
-          (c) => !existingNames.has(c.company.toLowerCase())
+        const tealRows = dbLeads.map(lead =>
+          toCamelCase({ ...lead, source_type: "database" })
         );
+        setDbEnrichedCompanies(tealRows);
+        setShowResults(true);
 
-      const scrapedResults: EnrichedCompany[] = [];
+        // re‐upload them if needed
+        const payload = dbLeads
+          .filter(l => !!l.lead_id)
+          .map(l => ({ ...l, user_id }));
+        if (payload.length) {
+          try {
+            await axios.post(
+              `${DATABASE_URL}/upload_leads`,
+              JSON.stringify(payload),
+              { headers: { "Content-Type": "application/json" } }
+            );
+          } catch (err) {
+            console.error("Failed to re-upload DB leads:", err);
+          }
+        }
+      }
 
+      // determine which ones still need scraping
+      const toScrape = forceScrape
+        ? selected
+        : selected.filter(c => !existingNames.has(c.company.toLowerCase()));
+
+      // loop through them one by one
       for (const company of toScrape) {
         try {
           const headers = { headers: { "Content-Type": "application/json" } };
 
+          // 1) growjo
           const growjo = (await axios.post(
             `${BACKEND_URL}/scrape-growjo-single`,
             { company: company.company },
             headers
           )).data;
 
-          const domain = normalizeWebsite(growjo.company_website || company.website);
-
+          // 2) apollo + person
+          const domain = normalizeWebsite(
+            growjo.company_website || company.website
+          );
           const [apolloRes, personRes] = await Promise.all([
-            axios.post(`${BACKEND_URL}/apollo-scrape-single`, { domain }, headers),
-            axios.post(`${BACKEND_URL}/find-best-person-single`, { domain }, headers),
+            axios.post(
+              `${BACKEND_URL}/apollo-scrape-single`,
+              { domain },
+              headers
+            ),
+            axios.post(
+              `${BACKEND_URL}/find-best-person-single`,
+              { domain },
+              headers
+            ),
           ]);
-
           const apollo = apolloRes.data || {};
           const person = personRes.data || {};
 
-          const entry = buildEnrichedCompany(company, growjo, apollo, person);
-
-          const cleanVal = (val: any) => {
-            const s = (val ?? "").toString().trim().toLowerCase();
-            const isObscured = /^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*");
-            return (
-              ["", "na", "n/a", "none", "not", "found", "not found"].includes(s) ||
-              isObscured
-            ) ? null : val.toString().trim();
+          // build one enriched record
+          const entry = buildEnrichedCompany(
+            company,
+            growjo,
+            apollo,
+            person
+          );
+          const normalizeValue = (v: any) => {
+            const s = (v ?? "").toString().trim().toLowerCase();
+            const isBad =
+              ["", "na", "n/a", "none", "not", "found", "not found"].includes(
+                s
+              ) || (/^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*"));
+            return isBad ? "N/A" : v.toString().trim();
           };
-          const normalizeValue = (v: any) => cleanVal(v) ?? "N/A";
 
           const validLead = {
             user_id,
@@ -536,9 +587,15 @@ export function DataEnhancement() {
             industry: normalizeValue(entry.industry),
             product_category: normalizeValue(entry.productCategory),
             business_type: normalizeValue(entry.businessType),
-            employees: typeof entry.employees === "number" ? entry.employees : parseInt(entry.employees) || 0,
+            employees:
+              typeof entry.employees === "number"
+                ? entry.employees
+                : parseInt(entry.employees) || 0,
             revenue: normalizeValue(entry.revenue),
-            year_founded: typeof entry.yearFounded === "number" ? entry.yearFounded : parseInt(entry.yearFounded) || 0,
+            year_founded:
+              typeof entry.yearFounded === "number"
+                ? entry.yearFounded
+                : parseInt(entry.yearFounded) || 0,
             bbb_rating: normalizeValue(entry.bbbRating),
             street: normalizeValue(entry.street),
             city: normalizeValue(entry.city),
@@ -554,19 +611,35 @@ export function DataEnhancement() {
             source: normalizeValue(entry.source),
           };
 
-          await axios.post(`${DATABASE_URL}/upload_leads`, JSON.stringify([validLead]), {
-            headers: { "Content-Type": "application/json" },
+          // upload immediately
+          await axios.post(
+            `${DATABASE_URL}/upload_leads`,
+            JSON.stringify([validLead]),
+            { headers: { "Content-Type": "application/json" } }
+          );
+
+          // map it with scraped flag
+          const yellowRow = toCamelCase({
+            ...validLead,
+            source_type: "scraped",
+          });
+          setScrapedEnrichedCompanies(prev => {
+            const next = [...prev, yellowRow];
+            // setEnrichedCompanies(next);
+            return next;
           });
 
-          scrapedResults.push(toCamelCase(validLead));
+          // small delay so React can paint
+          await new Promise(r => setTimeout(r, 150));
         } catch (err) {
           console.error(`Failed scraping ${company.company}`, err);
         }
       }
 
-      // Replace all data with scraper results on re-enrich
-      setScrapedEnrichedCompanies(prev => [...prev, ...scrapedResults]);
-      if (forceScrape) setDbEnrichedCompanies([]);
+      // if this *was* a force-scrape run, hide the old DB rows
+      if (forceScrape) {
+        setDbEnrichedCompanies([]);
+      }
 
       setShowResults(true);
     } catch (err) {
@@ -582,7 +655,8 @@ export function DataEnhancement() {
 
 
 
-  
+
+
 
 
 
@@ -720,161 +794,161 @@ export function DataEnhancement() {
             <div className="w-full overflow-x-auto rounded-md border">
               <div className="w-full overflow-x-auto rounded-md border">
                 <Table className="w-full table-fixed">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={selectAll}
-                        onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
-                      />
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('company')}
-                    >
-                      <div className="flex items-center">
-                        Company
-                        {sortConfig?.key === 'company' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('industry')}
-                    >
-                      <div className="flex items-center">
-                        Industry
-                        {sortConfig?.key === 'industry' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('street')}
-                    >
-                      <div className="flex items-center">
-                        Street
-                        {sortConfig?.key === 'street' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('city')}
-                    >
-                      <div className="flex items-center">
-                        City
-                        {sortConfig?.key === 'city' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('state')}
-                    >
-                      <div className="flex items-center">
-                        State
-                        {sortConfig?.key === 'state' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('bbb_rating')}
-                    >
-                      <div className="flex items-center">
-                        BBB Rating
-                        {sortConfig?.key === 'bbb_rating' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('business_phone')}
-                    >
-                      <div className="flex items-center">
-                        Company Phone
-                        {sortConfig?.key === 'business_phone' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('website')}
-                    >
-                      <div className="flex items-center">
-                        Website
-                        {sortConfig?.key === 'website' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <>
-                    {currentItems.length > 0 &&
-                      currentItems.map((company) => (
-                        <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedCompanies.includes(company.id)}
-                              onCheckedChange={() => handleSelectCompany(company.id)}
-                              aria-label={`Select ${company.company}`}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{company.company}</TableCell>
-                          <TableCell>{company.industry}</TableCell>
-                          <TableCell>{company.street}</TableCell>
-                          <TableCell>{company.city}</TableCell>
-                          <TableCell>{company.state}</TableCell>
-                          <TableCell>{company.bbb_rating}</TableCell>
-                          <TableCell>{company.business_phone}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {company.website ? cleanUrlForDisplay(company.website) : "N/A"}
-                              {company.website && company.website !== "N/A" && company.website !== "NA" && (
-                                <a
-                                  href={company.website.toString().startsWith("http") ? company.website : `https://${company.website}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-700"
-                                  title="Open website in new tab"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </a>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectAll}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('company')}
+                      >
+                        <div className="flex items-center">
+                          Company
+                          {sortConfig?.key === 'company' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('industry')}
+                      >
+                        <div className="flex items-center">
+                          Industry
+                          {sortConfig?.key === 'industry' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('street')}
+                      >
+                        <div className="flex items-center">
+                          Street
+                          {sortConfig?.key === 'street' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('city')}
+                      >
+                        <div className="flex items-center">
+                          City
+                          {sortConfig?.key === 'city' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('state')}
+                      >
+                        <div className="flex items-center">
+                          State
+                          {sortConfig?.key === 'state' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('bbb_rating')}
+                      >
+                        <div className="flex items-center">
+                          BBB Rating
+                          {sortConfig?.key === 'bbb_rating' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('business_phone')}
+                      >
+                        <div className="flex items-center">
+                          Company Phone
+                          {sortConfig?.key === 'business_phone' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('website')}
+                      >
+                        <div className="flex items-center">
+                          Website
+                          {sortConfig?.key === 'website' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <>
+                      {currentItems.length > 0 &&
+                        currentItems.map((company) => (
+                          <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedCompanies.includes(company.id)}
+                                onCheckedChange={() => handleSelectCompany(company.id)}
+                                aria-label={`Select ${company.company}`}
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium">{company.company}</TableCell>
+                            <TableCell>{company.industry}</TableCell>
+                            <TableCell>{company.street}</TableCell>
+                            <TableCell>{company.city}</TableCell>
+                            <TableCell>{company.state}</TableCell>
+                            <TableCell>{company.bbb_rating}</TableCell>
+                            <TableCell>{company.business_phone}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {company.website ? cleanUrlForDisplay(company.website) : "N/A"}
+                                {company.website && company.website !== "N/A" && company.website !== "NA" && (
+                                  <a
+                                    href={company.website.toString().startsWith("http") ? company.website : `https://${company.website}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:text-blue-700"
+                                    title="Open website in new tab"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </a>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
 
-                    {/* {loading && (
+                      {/* {loading && (
                       <TableRow key="loading-row">
                         <TableCell colSpan={9} className="text-center py-8">
                           <div className="flex justify-center">
@@ -885,16 +959,16 @@ export function DataEnhancement() {
                       </TableRow>
                     )} */}
 
-                    {!loading && currentItems.length === 0 && (
-                      <TableRow key="no-results">
-                        <TableCell colSpan={9} className="text-center">
-                          No results found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </>
-                </TableBody>
-              </Table>
+                      {!loading && currentItems.length === 0 && (
+                        <TableRow key="no-results">
+                          <TableCell colSpan={9} className="text-center">
+                            No results found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  </TableBody>
+                </Table>
               </div>
             </div>
 
@@ -909,7 +983,10 @@ export function DataEnhancement() {
                   </div>
                 )}
                 <Button
-                  onClick={() => handleStartEnrichment(false)}
+                  onClick={() => {
+                    setMergedView(false);
+                    handleStartEnrichment(false);
+                  }}
                   disabled={selectedCompanies.length === 0 || loading}
                 >
                   {loading ? "Enriching..." : "Start Enrichment"}
@@ -925,40 +1002,75 @@ export function DataEnhancement() {
       {loading ? (
         <div className="flex flex-col items-center py-8">
           <Loader />
-          <p className="mt-4 text-sm text-muted-foreground">Scraping and enriching data… please wait</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Scraping and enriching data… please wait
+          </p>
         </div>
-      ) : (dbEnrichedCompanies.length > 0 || scrapedEnrichedCompanies.length > 0) ? (
-        <div className="mt-6 space-y-4">
-          {fromDatabaseLeads.length > 0 && dbEnrichedCompanies.length > 0 && (
-            <div className="flex justify-center">
-              <div className="border border-yellow-500 bg-yellow-50 text-yellow-800 px-6 py-4 rounded-md max-w-xl text-sm text-center">
-                <p className="font-semibold mb-2">Some results are fetched from our database.</p>
-                <p className="mb-3">Want to update those with fresh data?</p>
-                <button
-                  onClick={async () => {
-                    setDbOnlyMode(false);
-                    const reselected = normalizedLeads.filter((c) =>
-                      fromDatabaseLeads.includes(c.company.toLowerCase())
-                    );
-                    setSelectedCompanies(reselected.map((c) => c.id));
-                    await handleStartEnrichment(true, reselected); // 🔁 force scraper
-                  }}
-                  className="bg-red-500 text-white px-4 py-1.5 rounded hover:bg-red-600 transition"
-                >
-                  Re-enrich those companies
-                </button>
-              </div>
+      ) : !mergedView ? (
+        <div className="mt-6 space-y-8">
+          {/* ── DATABASE RESULTS ── */}
+          {dbEnrichedCompanies.length > 0 && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Fetched from Database</h2>
+              <EnrichmentResults
+                enrichedCompanies={dbEnrichedCompanies}
+                rowClassName={() => "bg-teal-50"}
+              />
+
+              {/* … re-enrich button … */}
+              {fromDatabaseLeads.length > 0 && (
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      // switch off merged view
+                      setMergedView(false);
+                      // re-select only the DB companies
+                      const toReselect = normalizedLeads.filter(c =>
+                        fromDatabaseLeads.includes(c.company.toLowerCase())
+                      );
+                      setSelectedCompanies(toReselect.map(c => c.id));
+                      await handleStartEnrichment(true, toReselect);
+                    }}
+                  >
+                    Re-enrich those companies
+                  </Button>
+                </div>
+              )}
             </div>
           )}
-          <EnrichmentResults enrichedCompanies={[...scrapedEnrichedCompanies, ...dbEnrichedCompanies]} />
+
+          {/* ── SCRAPED RESULTS ── */}
+          {scrapedEnrichedCompanies.length > 0 && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Freshly Scraped</h2>
+              <EnrichmentResults
+                enrichedCompanies={scrapedEnrichedCompanies}
+                rowClassName={() => "bg-yellow-50"}
+              />
+            </div>
+          )}
+
+          {/* switch to merged only when user explicitly clicks */}
+          <div className="flex justify-center">
+            <Button onClick={() => setMergedView(true)}>
+              Show Combined Table
+            </Button>
+          </div>
         </div>
       ) : (
-        <div className="mt-6 text-muted-foreground text-sm text-center">
-          No enriched data yet. Please select companies and click "Start Enrichment".
+        /* ── MERGED VIEW ── */
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold mb-2">All Enriched Results</h2>
+          <EnrichmentResults
+            enrichedCompanies={[
+              ...dbEnrichedCompanies,
+              ...scrapedEnrichedCompanies,
+            ]}
+          />
         </div>
       )}
+
     </div>
-    
-  
   )
 }

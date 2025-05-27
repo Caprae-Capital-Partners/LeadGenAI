@@ -222,16 +222,12 @@ export default function Home() {
           return;
         }
 
-<<<<<<< Updated upstream
         console.log("✅ Logged in");
 
         // const leadsRes = await fetch("http://localhost:8000/api/lead-access", {
         const leadsRes = await fetch(
           "https://app.saasquatchleads.com//api/lead-access",
-=======
-        const draftsRes = await fetch(
-          "https://data.capraeleadseekers.site/api/leads/drafts",
->>>>>>> Stashed changes
+
           {
             method: "GET",
             credentials: "include",

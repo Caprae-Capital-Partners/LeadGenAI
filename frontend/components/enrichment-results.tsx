@@ -26,10 +26,13 @@ import { useEnrichment } from "@/components/EnrichmentProvider"
 interface EnrichmentResultsProps {
   enrichedCompanies: EnrichedCompany[]
   loading?: boolean
+  rowClassName?: (company: EnrichedCompany, index: number) => string
 }
+
 
 export interface EnrichedCompany {
   id: string
+  lead_id?: string;
   company: string
   website: string
   industry: string
@@ -51,10 +54,15 @@ export interface EnrichedCompany {
   ownerPhoneNumber: string
   ownerEmail: string
   source: string
+  sourceType?: "database" | "scraped";
 }
 
 
-export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanies, loading }) => {
+export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
+  enrichedCompanies,
+  loading,
+  rowClassName,
+}) => {
   const [editableCompanies, setEditableCompanies] = useState<EnrichedCompany[]>([])
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -85,18 +93,18 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
   const handleDiscardChanges = () => {
     setEditableCompanies([...enrichedCompanies])
   }
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
-  
-  
+
+
   // Reset to first page when search term or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, employeesFilter, revenueFilter, businessTypeFilter, productFilter, 
-      yearFoundedFilter, bbbRatingFilter, streetFilter, cityFilter, stateFilter, sourceFilter]);
-  
+  }, [searchTerm, employeesFilter, revenueFilter, businessTypeFilter, productFilter,
+    yearFoundedFilter, bbbRatingFilter, streetFilter, cityFilter, stateFilter, sourceFilter]);
+
   const downloadCSV = (data: any[], filename: string) => {
     const headers = Object.keys(data[0])
     const normalizeCSVValue = (field: string, value: any) => {
@@ -105,9 +113,9 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
         ? "Not available in any source"
         : normalized
     }
-    
-    
-    
+
+
+
     const csvRows = [
       headers.join(","),
       ...data.map(row =>
@@ -115,7 +123,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
           `"${normalizeCSVValue(field, row[field]).toString().replace(/"/g, '""')}"`
         ).join(",")
       ),
-    ]  
+    ]
     const csvContent = csvRows.join("\n")
     const blob = new Blob([csvContent], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
@@ -125,30 +133,30 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({ enrichedCompanie
     a.download = filename
     a.click()
     URL.revokeObjectURL(url)
-}
-
-
-const parseRevenue = (revenueStr: string): number | null => {
-  revenueStr = revenueStr.toLowerCase().trim().replace(/[$,]/g, "")
-  let multiplier = 1
-
-  if (revenueStr.endsWith("k")) {
-    multiplier = 1_000
-    revenueStr = revenueStr.slice(0, -1)
-  } else if (revenueStr.endsWith("m")) {
-    multiplier = 1_000_000
-    revenueStr = revenueStr.slice(0, -1)
-  } else if (revenueStr.endsWith("b")) {
-    multiplier = 1_000_000_000
-    revenueStr = revenueStr.slice(0, -1)
-  } else {
-    // If there's no suffix, treat as-is (e.g. user inputs "50000")
-    multiplier = 1
   }
 
-  const value = parseFloat(revenueStr)
-  return isNaN(value) ? null : value * multiplier
-}
+
+  const parseRevenue = (revenueStr: string): number | null => {
+    revenueStr = revenueStr.toLowerCase().trim().replace(/[$,]/g, "")
+    let multiplier = 1
+
+    if (revenueStr.endsWith("k")) {
+      multiplier = 1_000
+      revenueStr = revenueStr.slice(0, -1)
+    } else if (revenueStr.endsWith("m")) {
+      multiplier = 1_000_000
+      revenueStr = revenueStr.slice(0, -1)
+    } else if (revenueStr.endsWith("b")) {
+      multiplier = 1_000_000_000
+      revenueStr = revenueStr.slice(0, -1)
+    } else {
+      // If there's no suffix, treat as-is (e.g. user inputs "50000")
+      multiplier = 1
+    }
+
+    const value = parseFloat(revenueStr)
+    return isNaN(value) ? null : value * multiplier
+  }
 
 
 
@@ -208,7 +216,7 @@ const parseRevenue = (revenueStr: string): number | null => {
           const val = typeof company.revenue === "string"
             ? parseRevenue(company.revenue)
             : company.revenue ?? 0
-    
+
           if (val === null) return false
           if (operation === "exact") return val === value
           if (operation === "less than") return val < value
@@ -220,7 +228,7 @@ const parseRevenue = (revenueStr: string): number | null => {
         })
       }
     }
-    
+
 
     if (businessTypeFilter) {
       filtered = filtered.filter((c) => c.businessType.toLowerCase().includes(businessTypeFilter.toLowerCase()))
@@ -270,7 +278,7 @@ const parseRevenue = (revenueStr: string): number | null => {
     setEditableCompanies(filtered)
 
     setFilteredCompanies(filtered)
-    
+
     // Initialize all companies as selected if selectAll is true
     if (selectAll) {
       setSelectedCompanies(filtered.map(c => c.id))
@@ -286,7 +294,7 @@ const parseRevenue = (revenueStr: string): number | null => {
   // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
-    
+
     if (totalPages <= 7) {
       // Show all pages if there are 7 or fewer
       for (let i = 1; i <= totalPages; i++) {
@@ -295,36 +303,36 @@ const parseRevenue = (revenueStr: string): number | null => {
     } else {
       // Always show first and last page, with ellipsis for hidden pages
       pageNumbers.push(1);
-      
+
       // Determine range to show around current page
       let startPage = Math.max(2, currentPage - 2);
       let endPage = Math.min(totalPages - 1, currentPage + 2);
-      
+
       // Adjust if we're near the beginning or end
       if (currentPage <= 4) {
         endPage = 5;
       } else if (currentPage >= totalPages - 3) {
         startPage = totalPages - 4;
       }
-      
+
       // Add ellipsis if needed
       if (startPage > 2) {
         pageNumbers.push('ellipsis');
       }
-      
+
       // Add middle pages
       for (let i = startPage; i <= endPage; i++) {
         pageNumbers.push(i);
       }
-      
+
       // Add ellipsis if needed
       if (endPage < totalPages - 1) {
         pageNumbers.push('ellipsis');
       }
-      
+
       pageNumbers.push(totalPages);
     }
-    
+
     return pageNumbers;
   };
 
@@ -362,24 +370,24 @@ const parseRevenue = (revenueStr: string): number | null => {
     ) {
       return "N/A"
     }
-    
+
     return value
   }
-  
+
 
   // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
   const cleanUrlForDisplay = (url: string): string => {
     if (!url || url === "N/A" || url === "NA") return url;
-    
+
     // First remove http://, https://, and www.
     let cleanUrl = url.toString().replace(/^(https?:\/\/)?(www\.)?/i, "");
-    
+
     // Then truncate everything after the domain (matches common TLDs)
     const domainMatch = cleanUrl.match(/^([^\/\?#]+\.(com|org|net|io|ai|co|gov|edu|app|dev|me|info|biz|us|uk|ca|au|de|fr|jp|ru|br|in|cn|nl|se)).*$/i);
     if (domainMatch) {
       return domainMatch[1];
     }
-    
+
     // If no common TLD found, just truncate at the first slash, question mark or hash
     return cleanUrl.split(/[\/\?#]/)[0];
   }
@@ -395,47 +403,15 @@ const parseRevenue = (revenueStr: string): number | null => {
     router.push("?tab=data-enhancement")
     window.location.reload()
   }
-  
+
   const handleSaveEditedCompanies = async () => {
-    try {
-      const payload = editableCompanies.map(c => ({
-        company: c.company,
-        website: c.website,
-        industry: c.industry,
-        product_category: c.productCategory,
-        business_type: c.businessType,
-        employees: typeof c.employees === "number" ? c.employees : parseInt(c.employees as any) || 0,
-        revenue: typeof c.revenue === "string" ? c.revenue.replace(/[^0-9]/g, "") : c.revenue,
-        year_founded: parseInt(c.yearFounded) || 0,
-        bbb_rating: c.bbbRating,
-        street: c.street,
-        city: c.city,
-        state: c.state,
-        company_phone: c.companyPhone,
-        company_linkedin: c.companyLinkedin,
-        owner_first_name: c.ownerFirstName,
-        owner_last_name: c.ownerLastName,
-        owner_title: c.ownerTitle,
-        owner_linkedin: c.ownerLinkedin,
-        owner_phone_number: c.ownerPhoneNumber,
-        owner_email: c.ownerEmail,
-        source: c.source,
-      }))
+    const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+    const user_id = user.id || user.user_id || user._id;
 
-      await fetch(`${process.env.NEXT_PUBLIC_DATABASE_URL}/upload_leads`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-
-      alert("✅ Data saved successfully!")
-    } catch (err) {
-      console.error("❌ Failed to upload edited data", err)
-      alert("Error saving data. See console for details.")
+    if (!user_id) {
+      alert("User not found in session. Please re-login.");
+      return;
     }
-<<<<<<< Updated upstream
-  }
-=======
 
     const companiesToSave = editableCompanies.filter((c) =>
       selectedCompanies.includes(c.id)
@@ -512,12 +488,16 @@ const parseRevenue = (revenueStr: string): number | null => {
       alert("Error saving drafts. See console for details.");
     }
   };
-  
-  
-  
-  
->>>>>>> Stashed changes
-  
+
+
+
+
+
+
+
+
+
+
 
   return (
     <div className="space-y-6">
@@ -636,14 +616,14 @@ const parseRevenue = (revenueStr: string): number | null => {
                 </Button>
               </div>
             )}
-            
+
             {/* Pagination controls */}
             {filteredCompanies.length > 0 && (
               <div className="mb-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
                   Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCompanies.length)} of {filteredCompanies.length} results
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   <Select value={itemsPerPage.toString()} onValueChange={(value) => {
                     setItemsPerPage(Number(value));
@@ -658,17 +638,17 @@ const parseRevenue = (revenueStr: string): number | null => {
                       <SelectItem value="100">100 per page</SelectItem>
                     </SelectContent>
                   </Select>
-                  
+
                   <Pagination>
                     <PaginationContent>
                       <PaginationItem>
-                        <PaginationPrevious 
+                        <PaginationPrevious
                           onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                           aria-disabled={currentPage === 1}
                           className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                         />
                       </PaginationItem>
-                      
+
                       {getPageNumbers().map((page, index) => (
                         <PaginationItem key={index}>
                           {page === 'ellipsis' ? (
@@ -683,9 +663,9 @@ const parseRevenue = (revenueStr: string): number | null => {
                           )}
                         </PaginationItem>
                       ))}
-                      
+
                       <PaginationItem>
-                        <PaginationNext 
+                        <PaginationNext
                           onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                           aria-disabled={currentPage === totalPages}
                           className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
@@ -696,11 +676,11 @@ const parseRevenue = (revenueStr: string): number | null => {
                 </div>
               </div>
             )}
-            
+
             <div className="w-full overflow-x-auto rounded-md border">
               <div className="w-full overflow-x-auto rounded-md border">
                 <Table className="w-full table-fixed">
-                <TableHeader>
+                  <TableHeader>
                     <TableRow>
                       <TableHead className="w-12 px-2">
                         <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
@@ -728,126 +708,137 @@ const parseRevenue = (revenueStr: string): number | null => {
                       <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">Source</TableHead>
                     </TableRow>
 
-                </TableHeader>
-                <TableBody>
-                {currentItems.length > 0 ? (
-                  currentItems.map((company, index) => (
-                    <TableRow key={company.id || `${company.company}-${index}`}>
-                      {/* Select Checkbox */}
-                      <TableCell className="whitespace-nowrap px-2 align-top">
-                        <Checkbox
-                          checked={selectedCompanies.includes(company.id)}
-                          onCheckedChange={() => handleSelectCompany(company.id)}
-                        />
-                      </TableCell>
-
-                      {/* Company Name */}
-                      <TableCell className="max-w-[160px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2">
-                        {normalizeDisplayValue(company.company)}
-                      </TableCell>
-
-                      {/* Website + Link */}
-                      <TableCell className="max-w-[200px] break-all text-sm align-top px-3 py-2">
-                        <div className="flex flex-col gap-1">
-                          <span className="break-all">{cleanUrlForDisplay(company.website)}</span>
-                          {company.website &&
-                            normalizeDisplayValue(company.website) !== "N/A" && (
-                              <a
-                                href={
-                                  company.website.toString().startsWith("http")
-                                    ? company.website
-                                    : `https://${company.website}`
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-500 hover:text-blue-700 break-all"
-                                title="Open website in new tab"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <ExternalLink className="h-4 w-4 inline" />
-                              </a>
-                            )}
-                        </div>
-                      </TableCell>
-
-                      {/* Editable Fields */}
-                      {[
-                        "industry",
-                        "productCategory",
-                        "businessType",
-                        "employees",
-                        "revenue",
-                        "yearFounded",
-                        "bbbRating",
-                        "street",
-                        "city",
-                        "state",
-                        "companyPhone",
-                        "companyLinkedin",
-                        "ownerFirstName",
-                        "ownerLastName",
-                        "ownerTitle",
-                        "ownerLinkedin",
-                        "ownerPhoneNumber",
-                        "ownerEmail",
-                      ].map((field) => {
-                        const value = company[field as keyof EnrichedCompany] ?? "";
-                        const displayValue = normalizeDisplayValue(value);
-
-                        const isLinkedInField = field === "companyLinkedin" || field === "ownerLinkedin";
-                        const isValidLink = typeof value === "string" && value.startsWith("http");
-
-                        return (
-                          <TableCell
-                            key={field}
-                            className="max-w-[220px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2"
-                          >
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                className="w-full bg-transparent border-0 focus:border-b focus:outline-none focus:ring-0 text-sm"
-                                value={String(value)}
-                                onChange={(e) =>
-                                  handleFieldChange(company.id, field as keyof EnrichedCompany, e.target.value)
-                                }
-                              />
-                            ) : isLinkedInField && isValidLink ? (
-                              <div className="flex flex-col gap-1">
-                                <span className="break-all text-sm">
-                                  {value.replace("https://", "").replace("www.", "").split("/").slice(0, 3).join("/")}...
-                                </span>
-                                <a
-                                  href={value}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-700"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ExternalLink className="h-4 w-4 inline" />
-                                </a>
-                              </div>
-                            ) : (
-                              displayValue
-                            )}
+                  </TableHeader>
+                  <TableBody>
+                    {currentItems.length > 0
+                      ? currentItems.map((company, i) => (
+                        <TableRow
+                          key={company.id}
+                          className={
+                            rowClassName?.(company, i) ??
+                            (company.sourceType === "database"
+                              ? "bg-teal-50"
+                              : company.sourceType === "scraped"
+                                ? "bg-yellow-50"
+                                : "")
+                          }
+                        >
+                          {/* Select Checkbox */}
+                          <TableCell className="whitespace-nowrap px-2 align-top">
+                            <Checkbox
+                              checked={selectedCompanies.includes(company.id)}
+                              onCheckedChange={() => handleSelectCompany(company.id)}
+                            />
                           </TableCell>
-                        );
-                      })}
 
-                      {/* Source */}
-                      <TableCell className="max-w-[160px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2">
-                        {normalizeDisplayValue(company.source) === "N/A"
-                          ? "Not available in any source"
-                          : normalizeDisplayValue(company.source)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow key="no-results">
-                    <TableCell colSpan={22} className="text-center">
-                      No results found.
-                    </TableCell>
-                  </TableRow>
-                )}
+                          {/* Company Name */}
+                          <TableCell className="max-w-[160px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2">
+                            {normalizeDisplayValue(company.company)}
+                          </TableCell>
+
+                          {/* Website + Link */}
+                          <TableCell className="max-w-[200px] break-all text-sm align-top px-3 py-2">
+                            <div className="flex flex-col gap-1">
+                              <span className="break-all">{cleanUrlForDisplay(company.website)}</span>
+                              {company.website &&
+                                normalizeDisplayValue(company.website) !== "N/A" && (
+                                  <a
+                                    href={
+                                      company.website.toString().startsWith("http")
+                                        ? company.website
+                                        : `https://${company.website}`
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:text-blue-700 break-all"
+                                    title="Open website in new tab"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <ExternalLink className="h-4 w-4 inline" />
+                                  </a>
+                                )}
+                            </div>
+                          </TableCell>
+
+                          {/* Editable Fields */}
+                          {[
+                            "industry",
+                            "productCategory",
+                            "businessType",
+                            "employees",
+                            "revenue",
+                            "yearFounded",
+                            "bbbRating",
+                            "street",
+                            "city",
+                            "state",
+                            "companyPhone",
+                            "companyLinkedin",
+                            "ownerFirstName",
+                            "ownerLastName",
+                            "ownerTitle",
+                            "ownerLinkedin",
+                            "ownerPhoneNumber",
+                            "ownerEmail",
+                          ].map((field) => {
+                            const value = company[field as keyof EnrichedCompany] ?? "";
+                            const displayValue = normalizeDisplayValue(value);
+
+                            const isLinkedInField = field === "companyLinkedin" || field === "ownerLinkedin";
+                            const isValidLink = typeof value === "string" && value.startsWith("http");
+
+                            return (
+                              <TableCell
+                                key={field}
+                                className="max-w-[220px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2"
+                              >
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    className="w-full bg-transparent border-0 focus:border-b focus:outline-none focus:ring-0 text-sm"
+                                    value={String(value)}
+                                    onChange={(e) =>
+                                      handleFieldChange(company.id, field as keyof EnrichedCompany, e.target.value)
+                                    }
+                                  />
+                                ) : isLinkedInField && isValidLink ? (
+                                  <div className="flex flex-col gap-1">
+                                    <span className="break-all text-sm">
+                                      {value.replace("https://", "").replace("www.", "").split("/").slice(0, 3).join("/")}...
+                                    </span>
+                                    <a
+                                      href={value}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-500 hover:text-blue-700"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <ExternalLink className="h-4 w-4 inline" />
+                                    </a>
+                                  </div>
+                                ) : (
+                                  displayValue
+                                )}
+                              </TableCell>
+                            );
+                          })}
+
+                          {/* Source */}
+                          <TableCell className="max-w-[160px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2">
+                            {normalizeDisplayValue(company.source) === "N/A"
+                              ? "Not available in any source"
+                              : normalizeDisplayValue(company.source)}
+                          </TableCell>
+                        </TableRow>
+
+                      ))
+                      : (
+                        <TableRow key="no-results">
+                          <TableCell colSpan={22} className="text-center">
+                            No results found.
+                          </TableCell>
+                        </TableRow>
+                      )}
                   </TableBody>
                 </Table>
               </div>
