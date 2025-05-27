@@ -41,11 +41,11 @@ export function DataEnhancement() {
   // Get the original search criteria from URL parameters
   const getSearchCriteria = () => {
     if (typeof window === 'undefined') return { industry: '', location: '' };
-    
+
     const params = new URLSearchParams(window.location.search);
     const industry = params.get('industry') || '';
     const location = params.get('location') || '';
-    
+
     return {
       industry: industry,
       location: location
@@ -61,30 +61,9 @@ export function DataEnhancement() {
   } | null>(null);
 
   // Cleanup function for progress simulation
- 
+
 
   useEffect(() => {
-    
-
-    const verifyLogin = async () => {
-      try {
-        const res = await fetch("https://data.capraeleadseekers.site/api/ping-auth", {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (!res.ok) {
-          router.push("/auth");
-        } else {
-          console.log("✅ Authenticated user");
-        }
-      } catch (error) {
-        console.error("❌ Error verifying login:", error);
-        router.push("/auth");
-      }
-    };
-
-    verifyLogin();
 
     // Cleanup: clear progress simulation
     return () => {
@@ -94,7 +73,7 @@ export function DataEnhancement() {
     };
   }, []);
 
-  
+
 
 
   // Function to stop progress simulation
@@ -167,8 +146,8 @@ export function DataEnhancement() {
       console.error("Failed to restore enriched results:", err);
     }
   }, []);
-  
-  
+
+
 
   // 3. Persist to sessionStorage on updates
   useEffect(() => {
@@ -186,7 +165,7 @@ export function DataEnhancement() {
     setEnrichedCompanies(combined);
 
   }, [dbEnrichedCompanies, scrapedEnrichedCompanies]);
-  
+
   // const { leads, setLeads } = useLeads(); // from LeadsContext or LeadsProvider
 
   useEffect(() => {
@@ -405,7 +384,7 @@ export function DataEnhancement() {
         ? null
         : val.toString().trim();
     };
-    
+
 
     const preferValue = (g: any, a: any, fallback: any = "") => cleanVal(g) ?? cleanVal(a) ?? fallback
 
@@ -671,13 +650,13 @@ export function DataEnhancement() {
       setLoading(false);
     }
   };
-  
 
 
 
 
 
-  
+
+
 
 
 
@@ -815,161 +794,161 @@ export function DataEnhancement() {
             <div className="w-full overflow-x-auto rounded-md border">
               <div className="w-full overflow-x-auto rounded-md border">
                 <Table className="w-full table-fixed">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={selectAll}
-                        onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
-                      />
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('company')}
-                    >
-                      <div className="flex items-center">
-                        Company
-                        {sortConfig?.key === 'company' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('industry')}
-                    >
-                      <div className="flex items-center">
-                        Industry
-                        {sortConfig?.key === 'industry' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('street')}
-                    >
-                      <div className="flex items-center">
-                        Street
-                        {sortConfig?.key === 'street' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('city')}
-                    >
-                      <div className="flex items-center">
-                        City
-                        {sortConfig?.key === 'city' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('state')}
-                    >
-                      <div className="flex items-center">
-                        State
-                        {sortConfig?.key === 'state' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('bbb_rating')}
-                    >
-                      <div className="flex items-center">
-                        BBB Rating
-                        {sortConfig?.key === 'bbb_rating' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('business_phone')}
-                    >
-                      <div className="flex items-center">
-                        Company Phone
-                        {sortConfig?.key === 'business_phone' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('website')}
-                    >
-                      <div className="flex items-center">
-                        Website
-                        {sortConfig?.key === 'website' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <>
-                    {currentItems.length > 0 &&
-                      currentItems.map((company) => (
-                        <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedCompanies.includes(company.id)}
-                              onCheckedChange={() => handleSelectCompany(company.id)}
-                              aria-label={`Select ${company.company}`}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{company.company}</TableCell>
-                          <TableCell>{company.industry}</TableCell>
-                          <TableCell>{company.street}</TableCell>
-                          <TableCell>{company.city}</TableCell>
-                          <TableCell>{company.state}</TableCell>
-                          <TableCell>{company.bbb_rating}</TableCell>
-                          <TableCell>{company.business_phone}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {company.website ? cleanUrlForDisplay(company.website) : "N/A"}
-                              {company.website && company.website !== "N/A" && company.website !== "NA" && (
-                                <a
-                                  href={company.website.toString().startsWith("http") ? company.website : `https://${company.website}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-700"
-                                  title="Open website in new tab"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </a>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectAll}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('company')}
+                      >
+                        <div className="flex items-center">
+                          Company
+                          {sortConfig?.key === 'company' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('industry')}
+                      >
+                        <div className="flex items-center">
+                          Industry
+                          {sortConfig?.key === 'industry' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('street')}
+                      >
+                        <div className="flex items-center">
+                          Street
+                          {sortConfig?.key === 'street' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('city')}
+                      >
+                        <div className="flex items-center">
+                          City
+                          {sortConfig?.key === 'city' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('state')}
+                      >
+                        <div className="flex items-center">
+                          State
+                          {sortConfig?.key === 'state' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('bbb_rating')}
+                      >
+                        <div className="flex items-center">
+                          BBB Rating
+                          {sortConfig?.key === 'bbb_rating' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('business_phone')}
+                      >
+                        <div className="flex items-center">
+                          Company Phone
+                          {sortConfig?.key === 'business_phone' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('website')}
+                      >
+                        <div className="flex items-center">
+                          Website
+                          {sortConfig?.key === 'website' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <>
+                      {currentItems.length > 0 &&
+                        currentItems.map((company) => (
+                          <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedCompanies.includes(company.id)}
+                                onCheckedChange={() => handleSelectCompany(company.id)}
+                                aria-label={`Select ${company.company}`}
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium">{company.company}</TableCell>
+                            <TableCell>{company.industry}</TableCell>
+                            <TableCell>{company.street}</TableCell>
+                            <TableCell>{company.city}</TableCell>
+                            <TableCell>{company.state}</TableCell>
+                            <TableCell>{company.bbb_rating}</TableCell>
+                            <TableCell>{company.business_phone}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {company.website ? cleanUrlForDisplay(company.website) : "N/A"}
+                                {company.website && company.website !== "N/A" && company.website !== "NA" && (
+                                  <a
+                                    href={company.website.toString().startsWith("http") ? company.website : `https://${company.website}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:text-blue-700"
+                                    title="Open website in new tab"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </a>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
 
-                    {/* {loading && (
+                      {/* {loading && (
                       <TableRow key="loading-row">
                         <TableCell colSpan={9} className="text-center py-8">
                           <div className="flex justify-center">
@@ -980,16 +959,16 @@ export function DataEnhancement() {
                       </TableRow>
                     )} */}
 
-                    {!loading && currentItems.length === 0 && (
-                      <TableRow key="no-results">
-                        <TableCell colSpan={9} className="text-center">
-                          No results found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </>
-                </TableBody>
-              </Table>
+                      {!loading && currentItems.length === 0 && (
+                        <TableRow key="no-results">
+                          <TableCell colSpan={9} className="text-center">
+                            No results found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  </TableBody>
+                </Table>
               </div>
             </div>
 
@@ -1005,9 +984,9 @@ export function DataEnhancement() {
                 )}
                 <Button
                   onClick={() => {
-                       setMergedView(false);
-                       handleStartEnrichment(false);
-                     }}
+                    setMergedView(false);
+                    handleStartEnrichment(false);
+                  }}
                   disabled={selectedCompanies.length === 0 || loading}
                 >
                   {loading ? "Enriching..." : "Start Enrichment"}
@@ -1039,25 +1018,25 @@ export function DataEnhancement() {
               />
 
               {/* … re-enrich button … */}
-                {fromDatabaseLeads.length > 0 && (
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      variant="destructive"
-                      onClick={async () => {
-                        // switch off merged view
-                        setMergedView(false);
-                        // re-select only the DB companies
-                        const toReselect = normalizedLeads.filter(c =>
-                          fromDatabaseLeads.includes(c.company.toLowerCase())
-                        );
-                        setSelectedCompanies(toReselect.map(c => c.id));
-                        await handleStartEnrichment(true, toReselect);
-                      }}
-                    >
-                      Re-enrich those companies
-                    </Button>
-                  </div>
-                )}
+              {fromDatabaseLeads.length > 0 && (
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      // switch off merged view
+                      setMergedView(false);
+                      // re-select only the DB companies
+                      const toReselect = normalizedLeads.filter(c =>
+                        fromDatabaseLeads.includes(c.company.toLowerCase())
+                      );
+                      setSelectedCompanies(toReselect.map(c => c.id));
+                      await handleStartEnrichment(true, toReselect);
+                    }}
+                  >
+                    Re-enrich those companies
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1092,5 +1071,6 @@ export function DataEnhancement() {
         </div>
       )}
 
-        </div>
-      )}
+    </div>
+  )
+}
