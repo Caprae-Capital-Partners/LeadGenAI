@@ -1497,3 +1497,9 @@ def create_draft():
     db.session.add(draft)
     db.session.commit()
     return jsonify(draft.to_dict()), 201
+
+@lead_bp.route('/drafts')
+@login_required
+def view_drafts():
+    """Render the drafts view template"""
+    return render_template('leads/view_drafts.html')
