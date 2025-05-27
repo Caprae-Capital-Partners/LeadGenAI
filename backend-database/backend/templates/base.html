@@ -463,7 +463,7 @@
         <!-- Drafts Section -->
         <div class="nav-section">
             <div class="nav-section-title">DRAFTS</div>
-            % if current_user.is_authenticated and (current_user.is_admin() or current_user.role == 'developer') %}
+            {% if current_user.is_authenticated and (current_user.is_admin() or current_user.role == 'developer') %}
             <a href="{{ url_for('lead.view_edited_leads') }}" class="nav-item {% if request.endpoint == 'lead.view_edited_leads' %}active{% endif %}">
                 <i class="bi bi-pencil"></i>
                 <span>Edited Leads</span>
