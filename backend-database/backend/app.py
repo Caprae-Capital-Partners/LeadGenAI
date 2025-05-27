@@ -3,6 +3,7 @@ from models.lead_model import db
 from routes.lead_routes import lead_bp
 from routes.main_routes import main_bp
 from routes.auth_routes import auth_bp
+from routes.credit_routes import credit_bp
 from routes.lead_access_routes import access_bp
 from config.config import config
 from flask_login import LoginManager, current_user
@@ -44,7 +45,7 @@ def create_app(config_class=config):
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
-    
+
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(str(user_id))
@@ -75,6 +76,7 @@ def create_app(config_class=config):
     app.register_blueprint(lead_bp)  # Then register other routes
     app.register_blueprint(subscription_bp)  # Register subscription routes
     app.register_blueprint(access_bp) # Register lead access routes
+    app.register_blueprint(credit_bp)
 
     # Create database tables
     with app.app_context():
