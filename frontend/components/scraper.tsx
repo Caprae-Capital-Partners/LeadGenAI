@@ -13,8 +13,10 @@ import { useRouter } from "next/navigation";
 
 
 const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/scrape-stream`;
+// const SCRAPER_API = "127.0.0.1:8000/api/scrape-stream";
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/industries`;
 const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/lead_scrape`;
+
 
 // Define interfaces for type safety
 interface LeadData {
@@ -59,6 +61,7 @@ export function Scraper() {
   const [showResults, setShowResults] = useState(false)
   const [needMoreLeads, setNeedMoreLeads] = useState(false)
   const [scrapingSource, setScrapingSource] = useState<'database' | 'scraper'>('database')
+  const [userdetails, setUserDetails] = useState<{ name: string; email: string; tier:string } | null>(JSON.parse(sessionStorage.getItem("user") || "null"));
 
   // Industry dropdown states
   const [industries, setIndustries] = useState<string[]>([]); // Full list from API
@@ -581,6 +584,7 @@ export function Scraper() {
             data={scrapedResults} 
             industry={industry}
             location={location}
+            tier={userdetails?.tier}
           />
         </>
       )}
