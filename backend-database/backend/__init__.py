@@ -55,11 +55,13 @@ def create_app(test_config=None):
     from routes.auth_routes import auth_bp
     from routes.lead_access_routes import access_bp
     from routes.lead_drafts_routes import drafts_bp
+    from routes.edit_drafts_routes import drafts_edit_bp
 
     app.register_blueprint(lead_bp, url_prefix='')
     app.register_blueprint(auth_bp, url_prefix='')
     app.register_blueprint(access_bp, url_prefix='')
     app.register_blueprint(drafts_bp, url_prefix='')
+    app.register_blueprint(drafts_edit_bp, url_prefix='')
 
     # Create a basic route
     @app.route('/')

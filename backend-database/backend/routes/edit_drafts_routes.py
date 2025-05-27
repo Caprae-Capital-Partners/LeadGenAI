@@ -7,9 +7,9 @@ from utils.decorators import role_required
 from datetime import datetime, timedelta
 
 # Create blueprint
-drafts_bp = Blueprint('drafts', __name__)
+drafts_edit_bp = Blueprint('drafts_edit', __name__)
 
-@drafts_bp.route('/api/lead-drafts', methods=['POST'])
+@drafts_edit_bp.route('/api/lead-drafts', methods=['POST'])
 @login_required
 def create_lead_draft():
     """Create a new lead draft"""
@@ -56,17 +56,17 @@ def create_lead_draft():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-@drafts_bp.route('/api/lead-drafts', methods=['GET'])
+@drafts_edit_bp.route('/api/lead-drafts', methods=['GET'])
 @login_required
 def get_user_drafts():
     """Get all drafts for the current user"""
     try:
         # Get all non-deleted drafts for the current user
-        drafts = EditLeadDraft.query.filter_by(user_id=str(current_user.user_id), deleted=False).all()
+        drafts_edit = EditLeadDraft.query.filter_by(user_id=str(current_user.user_id), deleted=False).all()
         
         # Format results
         results = []
-        for draft in drafts:
+        for draft in drafts_edit:
             lead = Lead.query.filter_by(lead_id=draft.lead_id, deleted=False).first()
             if lead:
                 result = draft.to_dict()
@@ -78,12 +78,12 @@ def get_user_drafts():
         
         return jsonify({
             "total": len(results),
-            "drafts": results
+            "drafts_edit": results
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@drafts_bp.route('/api/lead-drafts/<string:draft_id>', methods=['GET'])
+@drafts_edit_bp.route('/api/lead-drafts/<string:draft_id>', methods=['GET'])
 @login_required
 def get_draft(draft_id):
     """Get a specific draft"""
@@ -118,7 +118,7 @@ def get_draft(draft_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-@drafts_bp.route('/api/lead-drafts/<string:draft_id>', methods=['PUT'])
+@drafts_edit_bp.route('/api/lead-drafts/<string:draft_id>', methods=['PUT'])
 @login_required
 def update_draft(draft_id):
     """Update a draft"""
@@ -170,7 +170,7 @@ def update_draft(draft_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-@drafts_bp.route('/api/lead-drafts/<string:draft_id>', methods=['DELETE'])
+@drafts_edit_bp.route('/api/lead-drafts/<string:draft_id>', methods=['DELETE'])
 @login_required
 def delete_draft(draft_id):
     """Soft delete a draft"""

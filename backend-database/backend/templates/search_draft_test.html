@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Lead Draft API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            padding: 40px;
+        }
+        .container {
+            background: #fff;
+            border-radius: 8px;
+            padding: 32px;
+            max-width: 600px;
+            margin: auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .response {
+            margin-top: 24px;
+            padding: 16px;
+            border-radius: 4px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+        .response pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: monospace;
+            font-size: 13px;
+            color: #334155;
+        }
+        .error {
+            color: #dc2626;
+            background: #fee2e2;
+            border-color: #fecaca;
+        }
+        .success {
+            color: #059669;
+            background: #d1fae5;
+            border-color: #a7f3d0;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: #64748b;
+        }
+        .tab.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Lead Draft API</h1>
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('create')">Create Draft</div>
+            <div class="tab" onclick="showTab('getall')">Get All Drafts</div>
+            <div class="tab" onclick="showTab('getbyid')">Get Draft by ID</div>
+            <div class="tab" onclick="showTab('searchdraft')">Search Draft (POST/GET)</div>
+        </div>
+
+        <!-- Create Draft Form -->
+        <div id="createTab" class="tab-content active">
+            <div class="form-group">
+                <label for="lead_id">Lead ID</label>
+                <input type="text" id="lead_id" placeholder="Enter lead_id (required)">
+            </div>
+            <div class="form-group">
+                <label for="draft_data">Draft Data (JSON)</label>
+                <textarea id="draft_data" placeholder='{"field1": "value1", "field2": 123}'></textarea>
+            </div>
+            <div class="form-group">
+                <label for="change_summary">Change Summary</label>
+                <input type="text" id="change_summary" placeholder="Describe the changes (optional)">
+            </div>
+            <button onclick="createLeadDraft()">Create Lead Draft</button>
+            <div id="createResponse" class="response"></div>
+        </div>
+
+        <!-- Get All Drafts -->
+        <div id="getallTab" class="tab-content">
+            <button onclick="getAllDrafts()">Get All My Drafts</button>
+            <div id="getAllResponse" class="response"></div>
+        </div>
+
+        <!-- Get Draft by ID -->
+        <div id="getbyidTab" class="tab-content">
+            <div class="form-group">
+                <label for="draft_id">Draft ID</label>
+                <input type="text" id="draft_id" placeholder="Enter draft_id">
+            </div>
+            <button onclick="getDraftById()">Get Draft by ID</button>
+            <div id="getByIdResponse" class="response"></div>
+        </div>
+
+        <!-- Search Draft (POST/GET) -->
+        <div id="searchdraftTab" class="tab-content">
+            <h3>POST Search Draft</h3>
+            <div class="form-group">
+                <label for="search_draft_data">Draft Data (JSON)</label>
+                <textarea id="search_draft_data" placeholder='{"industry": "Technology", "location": "Jakarta"}'></textarea>
+            </div>
+            <div class="form-group">
+                <label for="search_change_summary">Change Summary</label>
+                <input type="text" id="search_change_summary" placeholder="Describe the search (optional)">
+            </div>
+            <button onclick="postSearchDraft()">POST Search Draft</button>
+            <div id="postSearchDraftResponse" class="response"></div>
+            <hr>
+            <h3>GET Search Draft</h3>
+            <button onclick="getSearchDraft()">GET Search Draft</button>
+            <div id="getSearchDraftResponse" class="response"></div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            document.querySelector(`.tab[onclick=\"showTab('${tabName}')\"]`).classList.add('active');
+        }
+
+        async function createLeadDraft() {
+            const responseDiv = document.getElementById('createResponse');
+            responseDiv.className = 'response';
+            responseDiv.innerHTML = 'Loading...';
+            try {
+                const lead_id = document.getElementById('lead_id').value.trim();
+                const draft_data_raw = document.getElementById('draft_data').value.trim();
+                const change_summary = document.getElementById('change_summary').value.trim();
+                if (!lead_id || !draft_data_raw) {
+                    throw new Error('lead_id and draft_data are required');
+                }
+                let draft_data;
+                try {
+                    draft_data = JSON.parse(draft_data_raw);
+                } catch (e) {
+                    throw new Error('draft_data must be valid JSON');
+                }
+                const data = {
+                    lead_id,
+                    draft_data,
+                    change_summary: change_summary || undefined
+                };
+                const response = await fetch('/api/lead-drafts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = `<pre>Error: ${result.error || 'Unknown error'}</pre>`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+
+        async function getAllDrafts() {
+            const responseDiv = document.getElementById('getAllResponse');
+            responseDiv.className = 'response';
+            responseDiv.innerHTML = 'Loading...';
+            try {
+                const response = await fetch('/api/lead-drafts', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = `<pre>Error: ${result.error || 'Unknown error'}</pre>`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+
+        async function getDraftById() {
+            const responseDiv = document.getElementById('getByIdResponse');
+            responseDiv.className = 'response';
+            responseDiv.innerHTML = 'Loading...';
+            const draft_id = document.getElementById('draft_id').value.trim();
+            if (!draft_id) {
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = '<pre>Error: draft_id is required</pre>';
+                return;
+            }
+            try {
+                const response = await fetch(`/api/lead-drafts/${encodeURIComponent(draft_id)}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = `<pre>Error: ${result.error || 'Unknown error'}</pre>`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+
+        // --- Search Draft (POST/GET) ---
+        async function postSearchDraft() {
+            const responseDiv = document.getElementById('postSearchDraftResponse');
+            responseDiv.className = 'response';
+            responseDiv.innerHTML = 'Loading...';
+            try {
+                const draft_data_raw = document.getElementById('search_draft_data').value.trim();
+                const change_summary = document.getElementById('search_change_summary').value.trim();
+                if (!draft_data_raw) {
+                    throw new Error('draft_data is required');
+                }
+                let draft_data;
+                try {
+                    draft_data = JSON.parse(draft_data_raw);
+                } catch (e) {
+                    throw new Error('draft_data must be valid JSON');
+                }
+                const data = {
+                    draft_data,
+                    change_summary: change_summary || undefined
+                };
+                const response = await fetch('/api/lead-drafts/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = `<pre>Error: ${result.error || 'Unknown error'}</pre>`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+
+        async function getSearchDraft() {
+            const responseDiv = document.getElementById('getSearchDraftResponse');
+            responseDiv.className = 'response';
+            responseDiv.innerHTML = 'Loading...';
+            try {
+                const response = await fetch('/api/lead-drafts/search', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = `<pre>Error: ${result.error || 'Unknown error'}</pre>`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html> 
