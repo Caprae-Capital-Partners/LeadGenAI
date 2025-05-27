@@ -88,6 +88,12 @@
     top: 0;
     z-index: 2;
 }
+.action-bar {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
 </style>
 <div class="container-fluid">
     <div class="row mb-4">
@@ -102,7 +108,7 @@
         <div class="col">
             <div class="card bg-dark text-white">
                 <div class="card-body">
-                    <form id="searchForm" class="row g-3">
+                    <form id="searchForm" class="row g-3" style="background: #181c24;"></form>
                         <div class="col-md-3">
                             <label for="searchType" class="form-label">Search Type</label>
                             <select class="form-select bg-dark text-white" id="searchType">
@@ -137,8 +143,11 @@
     <!-- Results Section -->
     <div class="row">
         <div class="col">
-            <div class="d-flex justify-content-end mb-2">
-                <button id="exportCsvBtn" class="btn btn-success"><i class="bi bi-download"></i> Export CSV</button>
+            <div class="d-flex justify-content-end mb-2 action-bar">
+                <button id="viewSelectedBtn" class="btn btn-primary" disabled><i class="bi bi-eye"></i> View</button>
+                <button id="editSelectedBtn" class="btn btn-warning" disabled><i class="bi bi-pencil"></i> Edit</button>
+                <button id="deleteSelectedBtn" class="btn btn-danger" disabled><i class="bi bi-trash"></i> Delete</button>
+                <button id="exportCsvBtn" class="btn btn-success ms-2"><i class="bi bi-download"></i> Export CSV</button>
             </div>
             <div id="searchResults" class="table-responsive" style="overflow-x:auto;">
                 <!-- Results will be loaded here -->
@@ -208,32 +217,29 @@
 {% block scripts %}
 <script>
 let lastDisplayedDrafts = [];
+let selectedDraftIds = [];
+
+function getSelectedDrafts() {
+    return lastDisplayedDrafts.filter(d => selectedDraftIds.includes(d.draft_id));
+}
 
 function convertDraftsToCSV(drafts) {
     if (!drafts || drafts.length === 0) return '';
-    // Define columns you want to export
     const columns = [
-        'draft_id', 'lead_id', 'version', 'change_summary', 'created_at', 'updated_at',
-        'company', 'owner_email', 'industry', 'city', 'status'
+        'Company', 'Email', 'Industry', 'Status', 'City', 'State', 'Business Type', 'Target Market', 'Revenue', 'Employees', 'Founded Year', 'Credit Rating', 'Owner Linkedin', 'Company Phone', 'Street', 'Website', 'Source', 'Created At', 'Updated At'
     ];
-    // Header
     let csv = columns.join(',') + '\n';
-    // Rows
     drafts.forEach(draft => {
+        const d = draft.draft_data;
         const row = [
-            draft.draft_id,
-            draft.lead_id,
-            draft.version,
-            '"' + (draft.change_summary || '').replace(/"/g, '""') + '"',
-            draft.created_at,
-            draft.updated_at,
-            '"' + (draft.draft_data.company || '').replace(/"/g, '""') + '"',
-            draft.draft_data.owner_email || '',
-            draft.draft_data.industry || '',
-            draft.draft_data.city || '',
-            draft.draft_data.status || ''
+            d.company, d.owner_email, d.industry, d.status, d.city, d.state, d.business_type, d.target_market, d.revenue, d.employees, d.founded_year, d.credit_rating, d.owner_linkedin, d.company_phone, d.street, d.website, d.source,
+            draft.created_at, draft.updated_at
         ];
-        csv += row.map(val => val === undefined ? '' : val).join(',') + '\n';
+        csv += row.map(val => {
+            if (val === undefined || val === null) return '';
+            const s = String(val).replace(/"/g, '""');
+            return s.includes(',') ? '"' + s + '"' : s;
+        }).join(',') + '\n';
     });
     return csv;
 }
@@ -280,6 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const tableHeader = `
             <thead>
                 <tr class="align-middle">
+                    <th><input type="checkbox" id="selectAllDrafts"></th>
                     <th>Company</th>
                     <th>Email</th>
                     <th>Industry</th>
@@ -299,13 +306,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     <th>Source</th>
                     <th>Created At</th>
                     <th>Updated At</th>
-                    <th class="text-center">Actions</th>
                 </tr>
             </thead>
         `;
         function rowHtml(draft) {
             return `
-                <tr class="align-middle">
+                <tr class="align-middle" data-draft-id="${draft.draft_id}">
+                    <td><input type="checkbox" class="select-draft" data-draft-id="${draft.draft_id}"></td>
                     <td>${draft.draft_data.company || '-'}</td>
                     <td>${draft.draft_data.owner_email || '-'}</td>
                     <td>${draft.draft_data.industry || '-'}</td>
@@ -325,13 +332,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${draft.draft_data.source || '-'}</td>
                     <td>${new Date(draft.created_at).toLocaleString()}</td>
                     <td>${new Date(draft.updated_at).toLocaleString()}</td>
-                    <td class="text-center">
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-primary view-draft me-1" data-draft-id="${draft.draft_id}" title="View"><i class="bi bi-eye"></i></button>
-                            <button class="btn btn-sm btn-warning edit-draft me-1" data-draft-id="${draft.draft_id}" title="Edit"><i class="bi bi-pencil"></i></button>
-                            <button class="btn btn-sm btn-danger delete-draft" data-draft-id="${draft.draft_id}" title="Delete"><i class="bi bi-trash"></i></button>
-                        </div>
-                    </td>
                 </tr>
             `;
         }
@@ -386,6 +386,37 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         lastDisplayedDrafts = draftsToExport;
+        // Checkbox logic
+        selectedDraftIds = [];
+        setTimeout(() => {
+            const selectAll = document.getElementById('selectAllDrafts');
+            const checkboxes = document.querySelectorAll('.select-draft');
+            selectAll && selectAll.addEventListener('change', function() {
+                checkboxes.forEach(cb => {
+                    cb.checked = selectAll.checked;
+                    if (selectAll.checked && !selectedDraftIds.includes(cb.dataset.draftId)) {
+                        selectedDraftIds.push(cb.dataset.draftId);
+                    } else if (!selectAll.checked) {
+                        selectedDraftIds = [];
+                    }
+                });
+                updateActionButtons();
+            });
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', function() {
+                    if (cb.checked) {
+                        if (!selectedDraftIds.includes(cb.dataset.draftId)) selectedDraftIds.push(cb.dataset.draftId);
+                    } else {
+                        selectedDraftIds = selectedDraftIds.filter(id => id !== cb.dataset.draftId);
+                    }
+                    // Update select all state
+                    if (selectAll) {
+                        selectAll.checked = checkboxes.length && Array.from(checkboxes).every(c => c.checked);
+                    }
+                    updateActionButtons();
+                });
+            });
+        }, 100);
 
         // Add event listeners for view buttons
         document.querySelectorAll('.view-draft').forEach(button => {
@@ -537,12 +568,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const viewSelectedBtn = document.getElementById('viewSelectedBtn');
+    const editSelectedBtn = document.getElementById('editSelectedBtn');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+
     exportCsvBtn.addEventListener('click', function() {
-        if (!lastDisplayedDrafts || lastDisplayedDrafts.length === 0) {
-            alert('No drafts to export!');
+        const draftsToExport = getSelectedDrafts();
+        if (!draftsToExport.length) {
+            alert('No drafts selected!');
             return;
         }
-        const csv = convertDraftsToCSV(lastDisplayedDrafts);
+        const csv = convertDraftsToCSV(draftsToExport);
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -553,6 +589,40 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     });
+
+    viewSelectedBtn.addEventListener('click', function() {
+        if (selectedDraftIds.length !== 1) return;
+        const draftId = selectedDraftIds[0];
+        document.querySelector(`.view-draft[data-draft-id="${draftId}"]`).click();
+    });
+    editSelectedBtn.addEventListener('click', function() {
+        if (selectedDraftIds.length !== 1) return;
+        const draftId = selectedDraftIds[0];
+        document.querySelector(`.edit-draft[data-draft-id="${draftId}"]`).click();
+    });
+    deleteSelectedBtn.addEventListener('click', function() {
+        if (!selectedDraftIds.length) return;
+        if (!confirm('Are you sure you want to delete the selected draft(s)?')) return;
+        selectedDraftIds.forEach(draftId => {
+            fetch(`/api/leads/drafts/${draftId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(() => {
+                // Remove row from table
+                document.querySelector(`tr[data-draft-id="${draftId}"]`)?.remove();
+            });
+        });
+        selectedDraftIds = [];
+        updateActionButtons();
+    });
+
+    function updateActionButtons() {
+        viewSelectedBtn.disabled = selectedDraftIds.length !== 1;
+        editSelectedBtn.disabled = selectedDraftIds.length !== 1;
+        deleteSelectedBtn.disabled = selectedDraftIds.length === 0;
+    }
 });
 </script>
 {% endblock %} 

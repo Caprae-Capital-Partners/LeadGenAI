@@ -1338,6 +1338,7 @@ def get_search_session_drafts(search_session_id):
         "drafts": [draft.to_dict() for draft in drafts]
     })
 
+# Drafts API
 @lead_bp.route('/api/leads/search-drafts', methods=['GET'])
 @login_required
 def get_search_drafts():
