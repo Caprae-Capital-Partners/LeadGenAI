@@ -23,14 +23,13 @@ import {
 } from "@/components/ui/pagination"
 import axios from "axios"
 
-export function ScraperResults({ data, industry, location, tier }: { data: string | any[], industry: string, location: string, tier: string }) {
+export function ScraperResults({ data, industry, location }: { data: string | any[], industry: string, location: string }) {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [leads, setLeads] = useState<any[]>([])
   const [exportFormat, setExportFormat] = useState("csv")
   const { setLeads: setGlobalLeads } = useLeads()
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([])
-  // const [user, setUser] = useState<User | null>(JSON.parse(sessionStorage.getItem("user") || "null"));
 
   // Updation state
   const [updatedLeads, setUpdatedLeads] = useState<{ id: number }[]>([])
@@ -567,7 +566,7 @@ export function ScraperResults({ data, industry, location, tier }: { data: strin
                           .split(",")
                           .map((phone: string, i: number) => (
                             <div key={`${result.id}-phone-${i}`} className="break-words">
-                              {tier !== 'free' ? normalizeDisplayValue(phone.trim()): '************'}
+                              {normalizeDisplayValue(phone.trim())}
                             </div>
                           ))}
                       </TableCell>

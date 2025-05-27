@@ -13,10 +13,8 @@ import { useRouter } from "next/navigation";
 
 
 const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/scrape-stream`;
-// const SCRAPER_API = "127.0.0.1:8000/api/scrape-stream";
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/industries`;
 const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/lead_scrape`;
-
 
 // Define interfaces for type safety
 interface LeadData {
@@ -61,7 +59,6 @@ export function Scraper() {
   const [showResults, setShowResults] = useState(false)
   const [needMoreLeads, setNeedMoreLeads] = useState(false)
   const [scrapingSource, setScrapingSource] = useState<'database' | 'scraper'>('database')
-  const [userdetails, setUserDetails] = useState<{ name: string; email: string; tier:string } | null>(JSON.parse(sessionStorage.getItem("user") || "null"));
 
   // Industry dropdown states
   const [industries, setIndustries] = useState<string[]>([]); // Full list from API
@@ -219,7 +216,7 @@ export function Scraper() {
     
     // Create EventSource connection with explicit parameters
     const url = `${SCRAPER_API}?${queryParams.toString()}`;
-    console.log("Connecting to stream URL:", url);
+    // console.log("Connecting to stream URL:", url);
     
     const eventSource = new EventSource(url);
 
@@ -232,7 +229,7 @@ export function Scraper() {
 
     // Track connection state
     eventSource.onopen = () => {
-      console.log("EventSource connection opened successfully");
+      // console.log("EventSource connection opened successfully");
     };
 
     eventSource.addEventListener("init", (event) => {
@@ -251,7 +248,7 @@ export function Scraper() {
         
         // Check if we've already processed this batch
         if (parsed.batch && receivedBatchIds.has(parsed.batch)) {
-          console.log(`Skipping duplicate batch ${parsed.batch}`);
+          // console.log(`Skipping duplicate batch ${parsed.batch}`);
           return;
         }
         
@@ -265,8 +262,8 @@ export function Scraper() {
         const newItems = parsed.new_items || [];
         totalProcessedItems += newItems.length;
         
-        console.log(`Batch ${parsed.batch} received: ${newItems.length} new items, total batched: ${totalProcessedItems}`);
-        console.log("Sample item:", newItems.length > 0 ? newItems[0] : "No items");
+        // console.log(`Batch ${parsed.batch} received: ${newItems.length} new items, total batched: ${totalProcessedItems}`);
+        // console.log("Sample item:", newItems.length > 0 ? newItems[0] : "No items");
         
         if (!Array.isArray(newItems)) {
           console.warn("Expected new_items to be an array, got:", typeof newItems);
@@ -286,7 +283,7 @@ export function Scraper() {
         // Add new items to results, avoiding duplicates
         setScrapedResults((prev) => {
           const updatedResults = addNewLeads(prev, formattedItems);
-          console.log(`Current lead count: ${updatedResults.length}`);
+          // console.log(`Current lead count: ${updatedResults.length}`);
           
           // NEW: Check if we've reached the limit
           if (updatedResults.length >= 500) {
@@ -377,7 +374,9 @@ export function Scraper() {
       const response = await axios.post(
         FETCH_DB_API,
         { industry, location },
-        { signal: controller.signal }
+        { signal: controller.signal, 
+          withCredentials: true
+        }
       )
 
       const data = response.data
@@ -584,7 +583,6 @@ export function Scraper() {
             data={scrapedResults} 
             industry={industry}
             location={location}
-            tier={userdetails?.tier}
           />
         </>
       )}

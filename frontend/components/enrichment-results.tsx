@@ -468,18 +468,27 @@ const parseRevenue = (revenueStr: string): number | null => {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include", // ✅ Needed for session-based routes
             body: JSON.stringify(payload),
           }
         );
 
-        const data = await res.json();
-        console.log("✅ Server response:", data);
+        const text = await res.text(); // Read response as raw text
+        console.log("📥 Raw response text:", text);
 
-        if (!res.ok || !data.success) {
-          console.error("❌ Failed to save:", leadId, data);
-          alert(`Failed to save company with ID: ${leadId}`);
-          continue;
+        try {
+          const data = JSON.parse(text); // Attempt to parse as JSON
+          console.log("✅ Parsed JSON response:", data);
+
+          if (!res.ok || !data.success) {
+            console.error("❌ Failed to save:", leadId, data);
+            alert(`Failed to save company with ID: ${leadId}`);
+          }
+        } catch (e) {
+          console.error("❌ Failed to parse JSON. Response was likely HTML.");
+          alert("Server returned an unexpected response. Check console.");
         }
+
       } catch (err) {
         console.error("❌ Error saving company:", err);
         alert(`Error saving a company. See console for details.`);
@@ -487,7 +496,7 @@ const parseRevenue = (revenueStr: string): number | null => {
     }
 
     alert("✅ Done saving selected companies.");
-  };
+  }
   
   
   
