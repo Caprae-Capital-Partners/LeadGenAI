@@ -19,8 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {Checkbox} from "@/components/ui/checkbox";
-import {Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import {
   Search,
   Download,
@@ -47,7 +47,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-import { redirect } from 'next/navigation';
+import { redirect } from "next/navigation";
 
 // export default function Home() {
 //   redirect('/auth');
@@ -82,7 +82,7 @@ export default function Home() {
     setIsEditing(false); // Exit edit mode
     console.log("Changes discarded.");
   };
-    
+
   const [showFilters, setShowFilters] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const clearAllFilters = () => {
@@ -112,8 +112,8 @@ export default function Home() {
     return newObj;
   };
 
-  // 
-  
+  //
+
   const [scrapingHistory, setScrapingHistory] = useState([]);
 
   const handleExportCSV = () => {
@@ -159,7 +159,6 @@ export default function Home() {
     link.click();
     document.body.removeChild(link);
   };
-  
 
   const [editedRows, setEditedRows] = useState(scrapingHistory); // duplicate of original data
   // Example pagination state
@@ -171,32 +170,32 @@ export default function Home() {
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
   const indexOfLastItem = currentPage * itemsPerPage;
   const [selectedCompanies, setSelectedCompanies] = useState([]);
- 
+
   const handleSelectAll = () => {
     const visibleIds = scrapingHistory
       .slice(indexOfFirstItem, indexOfLastItem)
       .map((entry) => entry.id);
-  
+
     if (selectAll) {
       setSelectedCompanies([]);
     } else {
       setSelectedCompanies(visibleIds);
     }
-  
+
     setSelectAll(!selectAll);
   };
-  
+
   const handleSelectCompany = (id) => {
     const updatedSelection = selectedCompanies.includes(id)
       ? selectedCompanies.filter((cid) => cid !== id)
       : [...selectedCompanies, id];
-  
+
     setSelectedCompanies(updatedSelection);
-  
+
     const visibleIds = scrapingHistory
       .slice(indexOfFirstItem, indexOfLastItem)
       .map((entry) => entry.id);
-  
+
     setSelectAll(visibleIds.every((id) => updatedSelection.includes(id)));
   };
 
@@ -226,7 +225,6 @@ export default function Home() {
 
         // const leadsRes = await fetch("http://localhost:8000/api/lead-access", {
         const leadsRes = await fetch(
-
           "https://data.capraeleadseekers.site/api/lead-access",
 
           {
@@ -235,14 +233,14 @@ export default function Home() {
           }
         );
 
-        if (!draftsRes.ok) {
-          console.warn("⚠️ Could not fetch drafts, status:", draftsRes.status);
+        if (!leadsRes.ok) {
+          console.warn("⚠️ Could not fetch drafts, status:", leadsRes.status);
           return;
         }
 
-        const data = await draftsRes.json();
+        const data = await leadsRes.json();
 
-        const parsed = data.map((entry) => ({
+        const parsed = (data.access_list || []).map((entry) => ({
           id: entry.lead_id || entry.id,
           lead_id: entry.lead_id || entry.id,
           company: entry.company || "N/A",
@@ -283,19 +281,6 @@ export default function Home() {
 
     verifyAndFetchLeads();
   }, []);
-
-  
-  
-  
-  
-  
-
-
-
-
- 
-
-
 
   return isCheckingAuth ? (
     <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
