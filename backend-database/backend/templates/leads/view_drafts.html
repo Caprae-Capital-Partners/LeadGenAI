@@ -54,7 +54,7 @@
             <div class="d-flex justify-content-end mb-2">
                 <button id="exportCsvBtn" class="btn btn-success"><i class="bi bi-download"></i> Export CSV</button>
             </div>
-            <div id="searchResults">
+            <div id="searchResults" class="table-responsive" style="overflow-x:auto;">
                 <!-- Results will be loaded here -->
             </div>
         </div>
@@ -191,74 +191,75 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        const tableHeader = `
+            <thead class="sticky-top" style="background: #181c24; z-index: 2;">
+                <tr class="align-middle">
+                    <th>Company</th>
+                    <th>Email</th>
+                    <th>Industry</th>
+                    <th>Status</th>
+                    <th>City</th>
+                    <th>State</th>
+                    <th>Business Type</th>
+                    <th>Target Market</th>
+                    <th>Revenue</th>
+                    <th>Employees</th>
+                    <th>Founded Year</th>
+                    <th>Credit Rating</th>
+                    <th>Owner Linkedin</th>
+                    <th>Company Phone</th>
+                    <th>Street</th>
+                    <th>Website</th>
+                    <th>Source</th>
+                    <th>Created At</th>
+                    <th>Updated At</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+        `;
+        function rowHtml(draft) {
+            return `
+                <tr class="align-middle">
+                    <td>${draft.draft_data.company || '-'}</td>
+                    <td>${draft.draft_data.owner_email || '-'}</td>
+                    <td>${draft.draft_data.industry || '-'}</td>
+                    <td><span class="badge bg-secondary">${draft.draft_data.status || '-'}</span></td>
+                    <td>${draft.draft_data.city || '-'}</td>
+                    <td>${draft.draft_data.state || '-'}</td>
+                    <td>${draft.draft_data.business_type ? `<span title="${draft.draft_data.business_type}">${draft.draft_data.business_type.length > 20 ? draft.draft_data.business_type.slice(0, 20) + '…' : draft.draft_data.business_type}</span>` : '-'}</td>
+                    <td>${draft.draft_data.target_market || '-'}</td>
+                    <td>${draft.draft_data.revenue || '-'}</td>
+                    <td>${draft.draft_data.employees || '-'}</td>
+                    <td>${draft.draft_data.founded_year || '-'}</td>
+                    <td>${draft.draft_data.credit_rating || '-'}</td>
+                    <td>${draft.draft_data.owner_linkedin ? `<a href="${draft.draft_data.owner_linkedin}" class="text-info text-decoration-underline" target="_blank">Link</a>` : '-'}</td>
+                    <td>${draft.draft_data.company_phone || '-'}</td>
+                    <td>${draft.draft_data.street || '-'}</td>
+                    <td>${draft.draft_data.website ? `<a href="${draft.draft_data.website}" class="text-info text-decoration-underline" target="_blank">${draft.draft_data.website.length > 20 ? draft.draft_data.website.slice(0, 20) + '…' : draft.draft_data.website}</a>` : '-'}</td>
+                    <td>${draft.draft_data.source || '-'}</td>
+                    <td>${new Date(draft.created_at).toLocaleString()}</td>
+                    <td>${new Date(draft.updated_at).toLocaleString()}</td>
+                    <td class="text-center">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-primary view-draft me-1" data-draft-id="${draft.draft_id}" title="View"><i class="bi bi-eye"></i></button>
+                            <button class="btn btn-sm btn-warning edit-draft me-1" data-draft-id="${draft.draft_id}" title="Edit"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-danger delete-draft" data-draft-id="${draft.draft_id}" title="Delete"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
         if (searchType.value === 'all') {
             draftsToExport = data;
-            // Display all drafts in a table
             const table = document.createElement('div');
-            table.className = 'card bg-dark text-white';
+            table.className = 'card bg-dark text-white shadow';
             table.innerHTML = `
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-dark table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Company</th>
-                                    <th>Email</th>
-                                    <th>Industry</th>
-                                    <th>Status</th>
-                                    <th>City</th>
-                                    <th>State</th>
-                                    <th>Business Type</th>
-                                    <th>Target Market</th>
-                                    <th>Revenue</th>
-                                    <th>Employees</th>
-                                    <th>Founded Year</th>
-                                    <th>Credit Rating</th>
-                                    <th>Owner Linkedin</th>
-                                    <th>Company Phone</th>
-                                    <th>Street</th>
-                                    <th>Website</th>
-                                    <th>Source</th>
-                                    <th>Created At</th>
-                                    <th>Updated At</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
+                        <table class="table table-dark table-striped table-sm align-middle mb-0" style="min-width: 1200px;">
+                            ${tableHeader}
                             <tbody>
-                                ${data.map(draft => `
-                                    <tr>
-                                        <td>${draft.draft_data.company || '-'}</td>
-                                        <td>${draft.draft_data.owner_email || '-'}</td>
-                                        <td>${draft.draft_data.industry || '-'}</td>
-                                        <td>${draft.draft_data.status || '-'}</td>
-                                        <td>${draft.draft_data.city || '-'}</td>
-                                        <td>${draft.draft_data.state || '-'}</td>
-                                        <td>${draft.draft_data.business_type || '-'}</td>
-                                        <td>${draft.draft_data.target_market || '-'}</td>
-                                        <td>${draft.draft_data.revenue || '-'}</td>
-                                        <td>${draft.draft_data.employees || '-'}</td>
-                                        <td>${draft.draft_data.founded_year || '-'}</td>
-                                        <td>${draft.draft_data.credit_rating || '-'}</td>
-                                        <td>${draft.draft_data.owner_linkedin ? `<a href="${draft.draft_data.owner_linkedin}" target="_blank">Link</a>` : '-'}</td>
-                                        <td>${draft.draft_data.company_phone || '-'}</td>
-                                        <td>${draft.draft_data.street || '-'}</td>
-                                        <td>${draft.draft_data.website ? `<a href="${draft.draft_data.website}" target="_blank">${draft.draft_data.website}</a>` : '-'}</td>
-                                        <td>${draft.draft_data.source || '-'}</td>
-                                        <td>${new Date(draft.created_at).toLocaleString()}</td>
-                                        <td>${new Date(draft.updated_at).toLocaleString()}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-primary view-draft" data-draft-id="${draft.draft_id}">
-                                                <i class="bi bi-eye"></i> View
-                                            </button>
-                                            <button class="btn btn-sm btn-warning edit-draft" data-draft-id="${draft.draft_id}">
-                                                <i class="bi bi-pencil"></i> Edit
-                                            </button>
-                                            <button class="btn btn-sm btn-danger delete-draft" data-draft-id="${draft.draft_id}">
-                                                <i class="bi bi-trash"></i> Delete
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
+                                ${data.map(rowHtml).join('')}
                             </tbody>
                         </table>
                     </div>
@@ -266,86 +267,30 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             searchResults.appendChild(table);
         } else {
-            // Display search sessions
             draftsToExport = [];
             data.sessions.forEach(session => {
                 session.drafts.forEach(draft => draftsToExport.push(draft));
             });
-            // Display search sessions
             data.sessions.forEach(session => {
                 const sessionCard = document.createElement('div');
-                sessionCard.className = 'card bg-dark text-white mb-4';
+                sessionCard.className = 'card bg-dark text-white mb-4 shadow';
                 sessionCard.innerHTML = `
-                    <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background: #181c24;">
                         <div>
                             <h5 class="mb-0">Search Session: ${session.search_session_id}</h5>
                             <small class="text-muted">
-                                Industry: ${session.search_criteria.industry || 'Any'} | 
-                                Location: ${session.search_criteria.location || 'Any'} | 
+                                Industry: ${session.search_criteria.industry || 'Any'} |
+                                Location: ${session.search_criteria.location || 'Any'} |
                                 Date: ${new Date(session.created_at).toLocaleString()}
                             </small>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-dark table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Company</th>
-                                        <th>Email</th>
-                                        <th>Industry</th>
-                                        <th>Status</th>
-                                        <th>City</th>
-                                        <th>State</th>
-                                        <th>Business Type</th>
-                                        <th>Target Market</th>
-                                        <th>Revenue</th>
-                                        <th>Employees</th>
-                                        <th>Founded Year</th>
-                                        <th>Credit Rating</th>
-                                        <th>Owner Linkedin</th>
-                                        <th>Company Phone</th>
-                                        <th>Street</th>
-                                        <th>Website</th>
-                                        <th>Source</th>
-                                        <th>Created At</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
+                            <table class="table table-dark table-striped table-sm align-middle mb-0" style="min-width: 1200px;">
+                                ${tableHeader}
                                 <tbody>
-                                    ${session.drafts.map(draft => `
-                                        <tr>
-                                            <td>${draft.draft_data.company || '-'}</td>
-                                            <td>${draft.draft_data.owner_email || '-'}</td>
-                                            <td>${draft.draft_data.industry || '-'}</td>
-                                            <td>${draft.draft_data.status || '-'}</td>
-                                            <td>${draft.draft_data.city || '-'}</td>
-                                            <td>${draft.draft_data.state || '-'}</td>
-                                            <td>${draft.draft_data.business_type || '-'}</td>
-                                            <td>${draft.draft_data.target_market || '-'}</td>
-                                            <td>${draft.draft_data.revenue || '-'}</td>
-                                            <td>${draft.draft_data.employees || '-'}</td>
-                                            <td>${draft.draft_data.founded_year || '-'}</td>
-                                            <td>${draft.draft_data.credit_rating || '-'}</td>
-                                            <td>${draft.draft_data.owner_linkedin ? `<a href="${draft.draft_data.owner_linkedin}" target="_blank">Link</a>` : '-'}</td>
-                                            <td>${draft.draft_data.company_phone || '-'}</td>
-                                            <td>${draft.draft_data.street || '-'}</td>
-                                            <td>${draft.draft_data.website ? `<a href="${draft.draft_data.website}" target="_blank">${draft.draft_data.website}</a>` : '-'}</td>
-                                            <td>${draft.draft_data.source || '-'}</td>
-                                            <td>${new Date(draft.created_at).toLocaleString()}</td>
-                                            <td>
-                                                <button class="btn btn-sm btn-primary view-draft" data-draft-id="${draft.draft_id}">
-                                                    <i class="bi bi-eye"></i> View
-                                                </button>
-                                                <button class="btn btn-sm btn-warning edit-draft" data-draft-id="${draft.draft_id}">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </button>
-                                                <button class="btn btn-sm btn-danger delete-draft" data-draft-id="${draft.draft_id}">
-                                                    <i class="bi bi-trash"></i> Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
+                                    ${session.drafts.map(rowHtml).join('')}
                                 </tbody>
                             </table>
                         </div>
