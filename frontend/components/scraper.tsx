@@ -75,6 +75,7 @@ export function Scraper() {
   const seenCompaniesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+<<<<<<< Updated upstream
     
     const verifyLogin = async () => {
       try {
@@ -95,6 +96,8 @@ export function Scraper() {
     };
 
     verifyLogin();
+=======
+>>>>>>> Stashed changes
 
     const fetchIndustries = async () => {
       try {

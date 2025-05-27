@@ -395,6 +395,7 @@ const parseRevenue = (revenueStr: string): number | null => {
     router.push("?tab=data-enhancement")
     window.location.reload()
   }
+  
   const handleSaveEditedCompanies = async () => {
     try {
       const payload = editableCompanies.map(c => ({
@@ -432,7 +433,90 @@ const parseRevenue = (revenueStr: string): number | null => {
       console.error("❌ Failed to upload edited data", err)
       alert("Error saving data. See console for details.")
     }
+<<<<<<< Updated upstream
   }
+=======
+
+    const companiesToSave = editableCompanies.filter((c) =>
+      selectedCompanies.includes(c.id)
+    );
+
+    if (companiesToSave.length === 0) {
+      alert("Please select at least one company to save.");
+      return;
+    }
+
+    const now = new Date();
+    const isoTimestamp = now.toISOString();
+    const formattedTimestamp = isoTimestamp.slice(0, 16).replace("T", " ");
+
+    const payload = companiesToSave.map((c) => ({
+      search_criteria: {
+        industry: c.industry,
+        location: c.city,
+        timestamp: isoTimestamp,
+      },
+      lead_id: c.lead_id || c.id,
+      company: c.company,
+      owner_email: c.ownerEmail,
+      company_phone: c.companyPhone,
+      street: c.street,
+      city: c.city,
+      state: c.state,
+      website: c.website,
+      industry: c.industry,
+      revenue:
+        typeof c.revenue === "string"
+          ? parseFloat(c.revenue.replace(/[^0-9.]/g, ""))
+          : c.revenue,
+      business_type: c.productCategory || "",
+      target_market: c.businessType || "",
+      employees:
+        typeof c.employees === "number"
+          ? c.employees
+          : parseInt(c.employees as any) || 0,
+      founded_year: parseInt(c.yearFounded) || 0,
+      credit_rating: c.bbbRating,
+      owner_linkedin: c.ownerLinkedin,
+      source: c.source,
+      status: "New",
+      created_at: formattedTimestamp,
+      updated_at: formattedTimestamp,
+    }));
+
+    try {
+      const res = await fetch("https://data.capraeleadseekers.site/api/leads/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload), // <-- This is now a flat array
+      });
+
+      const text = await res.text();
+      console.log("📥 Raw response:", text);
+
+      try {
+        const data = JSON.parse(text);
+        if (!res.ok || data.error) {
+          console.error("❌ Error saving:", data);
+          alert("Failed to save drafts.");
+        } else {
+          alert("✅ Drafts saved successfully!");
+        }
+      } catch (err) {
+        console.error("❌ Response not JSON:", text);
+        alert("Server returned non-JSON response.");
+      }
+    } catch (err) {
+      console.error("❌ Network or server error:", err);
+      alert("Error saving drafts. See console for details.");
+    }
+  };
+  
+  
+  
+  
+>>>>>>> Stashed changes
   
 
   return (

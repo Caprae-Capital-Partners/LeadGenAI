@@ -204,10 +204,11 @@ export default function Home() {
   //   indexOfFirstItem,
   //   indexOfLastItem
   // );
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
   useEffect(() => {
     const verifyAndFetchLeads = async () => {
       try {
-        // const authRes = await fetch("http://localhost:8000/api/ping-auth", {
         const authRes = await fetch(
           "https://app.saasquatchleads.com/api/ping-auth",
           {
@@ -221,76 +222,89 @@ export default function Home() {
           return;
         }
 
+<<<<<<< Updated upstream
         console.log("✅ Logged in");
 
         // const leadsRes = await fetch("http://localhost:8000/api/lead-access", {
         const leadsRes = await fetch(
           "https://app.saasquatchleads.com//api/lead-access",
+=======
+        const draftsRes = await fetch(
+          "https://data.capraeleadseekers.site/api/leads/drafts",
+>>>>>>> Stashed changes
           {
             method: "GET",
             credentials: "include",
           }
         );
 
-        if (!leadsRes.ok) {
-          console.warn("⚠️ Could not fetch leads, status:", leadsRes.status);
+        if (!draftsRes.ok) {
+          console.warn("⚠️ Could not fetch drafts, status:", draftsRes.status);
           return;
         }
 
-        const data = await leadsRes.json();
-        const accessList = data.access_list || [];
+        const data = await draftsRes.json();
 
-        const parsed = accessList.map((entry) => ({
-          id: entry.lead?.lead_id || entry.lead_id || entry.id,
-          company: entry.lead?.company || "N/A",
-          // Add any fields you're storing, fallback to "" if missing
-          website: "",
-          industry: "",
-          productCategory: "",
-          businessType: "",
-          employees: "",
-          revenue: "",
-          yearFounded: "",
-          bbbRating: "",
-          street: "",
-          city: "",
-          state: "",
-          companyPhone: "",
-          companyLinkedin: "",
-          ownerFirstName: "",
-          ownerLastName: "",
-          ownerTitle: "",
-          ownerLinkedin: "",
-          ownerPhoneNumber: "",
-          ownerEmail: "",
-          source: "",
-          created: "",
-          updated: "",
+        const parsed = data.map((entry) => ({
+          id: entry.lead_id || entry.id,
+          lead_id: entry.lead_id || entry.id,
+          company: entry.company || "N/A",
+          website: entry.website || "",
+          industry: entry.industry || "",
+          productCategory: entry.product_category || "",
+          businessType: entry.business_type || "",
+          employees: entry.employees || "",
+          revenue: entry.revenue || "",
+          yearFounded: entry.year_founded?.toString() || "",
+          bbbRating: entry.bbb_rating || "",
+          street: entry.street || "",
+          city: entry.city || "",
+          state: entry.state || "",
+          companyPhone: entry.company_phone || "",
+          companyLinkedin: entry.company_linkedin || "",
+          ownerFirstName: entry.owner_first_name || "",
+          ownerLastName: entry.owner_last_name || "",
+          ownerTitle: entry.owner_title || "",
+          ownerLinkedin: entry.owner_linkedin || "",
+          ownerPhoneNumber: entry.owner_phone_number || "",
+          ownerEmail: entry.owner_email || "",
+          source: entry.source || "",
+          created: entry.created || "",
+          updated: entry.updated || "",
+          sourceType: "database",
         }));
 
         setScrapingHistory(parsed);
         setEditedRows(parsed);
       } catch (error) {
-        console.error("🚨 Error verifying auth or fetching leads:", error);
+        console.error("🚨 Error verifying auth or fetching drafts:", error);
         router.push("/auth");
+      } finally {
+        setIsCheckingAuth(false); // ✅ Hide loading
       }
     };
 
     verifyAndFetchLeads();
   }, []);
+
   
   
   
   
+  
 
 
 
 
+ 
 
 
 
-
-  return (
+  return isCheckingAuth ? (
+    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-yellow-400"></div>
+    </div>
+  ) : (
     <>
       <Header />
       <main className="px-20 py-16 space-y-10">

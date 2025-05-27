@@ -62,27 +62,6 @@ export function DataEnhancement() {
  
 
   useEffect(() => {
-    
-
-    const verifyLogin = async () => {
-      try {
-        const res = await fetch("https://data.capraeleadseekers.site/api/ping-auth", {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (!res.ok) {
-          router.push("/auth");
-        } else {
-          console.log("✅ Authenticated user");
-        }
-      } catch (error) {
-        console.error("❌ Error verifying login:", error);
-        router.push("/auth");
-      }
-    };
-
-    verifyLogin();
 
     // Cleanup: clear progress simulation
     return () => {
