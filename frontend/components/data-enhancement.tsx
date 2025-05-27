@@ -553,9 +553,9 @@ export function DataEnhancement() {
       for (const company of toScrape) {
         try {
           if (!company.lead_id) {
-            console.warn("⚠️ Skipping company due to missing lead_id:", company.company);
-            continue;
+            console.log("ℹ️ No lead_id present, letting backend assign one:", company.company);
           }
+          const lead_id = company.lead_id || "";
 
           const headers = { headers: { "Content-Type": "application/json" } };
 
@@ -590,21 +590,15 @@ export function DataEnhancement() {
 
           const validLead = {
             user_id,
-            lead_id: company.lead_id,
+            lead_id, // ← will be empty if not present
             company: normalizeValue(entry.company),
             website: normalizeValue(entry.website),
             industry: normalizeValue(entry.industry),
             product_category: normalizeValue(entry.productCategory),
             business_type: normalizeValue(entry.businessType),
-            employees:
-              typeof entry.employees === "number"
-                ? entry.employees
-                : parseInt(entry.employees) || 0,
+            employees: typeof entry.employees === "number" ? entry.employees : parseInt(entry.employees) || 0,
             revenue: normalizeValue(entry.revenue),
-            year_founded:
-              typeof entry.yearFounded === "number"
-                ? entry.yearFounded
-                : parseInt(entry.yearFounded) || 0,
+            year_founded: typeof entry.yearFounded === "number" ? entry.yearFounded : parseInt(entry.yearFounded) || 0,
             bbb_rating: normalizeValue(entry.bbbRating),
             street: normalizeValue(entry.street),
             city: normalizeValue(entry.city),
