@@ -344,12 +344,12 @@ export default function Home() {
             {
               label: "Total Leads Scraped",
               value: scrapingHistory.length.toLocaleString(),
-              change: "+0%", // You can compute delta later
+              change: "+0%", // Optionally compute later
               comparison: "total enriched leads",
             },
             {
               label: "Token Usage",
-              value: `${scrapingHistory.length * 1} / 100`, // assuming 1 token per lead
+              value: `${scrapingHistory.length * 1} / 100`,
               change: `${((scrapingHistory.length / 100) * 100).toFixed(0)}%`,
               comparison: "used this month",
             },
@@ -359,7 +359,11 @@ export default function Home() {
                 userTier.charAt(0).toUpperCase() + userTier.slice(1)
               } Plan`,
               change: "Active",
-              comparison: "until 2025-12-31", // customize if dynamic
+              comparison: "until 2025-12-31",
+              action: {
+                label: "Upgrade",
+                link: "/subscription",
+              },
             },
           ].map((stat, index) => (
             <Card
@@ -377,6 +381,16 @@ export default function Home() {
               <CardContent className="pt-0 text-sm text-blue-600">
                 <span>{stat.change}</span>{" "}
                 <span className="text-muted-foreground">{stat.comparison}</span>
+                {/* Show "Upgrade" button only if this stat has an action */}
+                {stat.action && (
+                  <div className="mt-3">
+                    <a href={stat.action.link}>
+                      <Button size="sm" variant="outline">
+                        {stat.action.label}
+                      </Button>
+                    </a>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

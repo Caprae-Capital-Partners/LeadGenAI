@@ -81,20 +81,46 @@ const plans = [
 ];
 
 export default function SubscriptionPage() {
-    const handleSelectPlan = (planId: string) => {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = "http://localhost:5000/create-checkout-session"; // adjust as needed
+    const handleSelectPlan = async (planId: string) => {
+        if (planId === "free") {
+            window.location.href = "https://app.saasquatchleads.com/";
+            return;
+        }
 
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = "plan_type";
-        input.value = planId;
+        try {
+            const res = await fetch("https://data.capraeleadseekers.site/create-checkout-session", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded", // Flask expects form-encoded by default
+                },
+                credentials: "include", // to include session cookie
+                body: new URLSearchParams({ plan_type: planId }).toString(),
+            });
 
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
+            const contentType = res.headers.get("content-type");
+            if (res.redirected) {
+                window.location.href = res.url; // this works if backend redirects
+                return;
+            }
+
+            if (contentType?.includes("application/json")) {
+                const data = await res.json();
+                if (res.ok && data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert(data.error || "Failed to create checkout session");
+                }
+            } else {
+                const html = await res.text();
+                console.error("Unexpected response:", html);
+                alert("Unexpected server response. Check console.");
+            }
+        } catch (err) {
+            console.error("Error creating checkout session:", err);
+            alert("Could not initiate payment. Try again later.");
+        }
     };
+      
       
     
     useEffect(() => {
@@ -141,8 +167,12 @@ export default function SubscriptionPage() {
                             </div>
                             {plan.link ? (
                                 <a href={plan.link} target="_blank" rel="noopener noreferrer">
-                                    <Button variant={plan.style as any} className="w-full">
-                                        Contact Us
+                                    <Button
+                                        variant={plan.style as any}
+                                        className="w-full"
+                                        onClick={() => handleSelectPlan(plan.id)}
+                                    >
+                                        {plan.id === "free" ? "Continue with Free" : `Choose ${plan.name}`}
                                     </Button>
                                 </a>
                             ) : (
