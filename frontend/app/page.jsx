@@ -2,6 +2,21 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 // import { useEffect, useState } from "react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartTooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LineChart,
+  Line,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 import { Header } from "@/components/header";
 import {
@@ -203,6 +218,37 @@ export default function Home() {
   //   indexOfFirstItem,
   //   indexOfLastItem
   // );
+
+  // Pie Chart: Industry Distribution
+  const industryData = Object.entries(
+    scrapingHistory.reduce((acc, curr) => {
+      const industry = curr.industry || "Unknown";
+      acc[industry] = (acc[industry] || 0) + 1;
+      return acc;
+    }, {})
+  ).map(([name, value]) => ({ name, value }));
+
+  // Bar Chart: Companies per City
+  const cityData = Object.entries(
+    scrapingHistory.reduce((acc, curr) => {
+      const city = curr.city || "Unknown";
+      acc[city] = (acc[city] || 0) + 1;
+      return acc;
+    }, {})
+  ).map(([name, count]) => ({ name, count }));
+
+  // Line Chart: Weekly Enrichment Trends
+  const dateCounts = scrapingHistory.reduce((acc, curr) => {
+    const rawDate = curr.created || curr.updated || new Date().toISOString();
+    const date = new Date(rawDate).toISOString().split("T")[0];
+    acc[date] = (acc[date] || 0) + 1;
+    return acc;
+  }, {});
+
+  const trendData = Object.entries(dateCounts)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, count]) => ({ date, count }));
+
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
@@ -223,47 +269,45 @@ export default function Home() {
 
         console.log("✅ Logged in");
 
-        // const leadsRes = await fetch("http://localhost:8000/api/lead-access", {
-        const leadsRes = await fetch(
-          "https://data.capraeleadseekers.site/api/lead-access",
-
+        const draftsRes = await fetch(
+          "https://data.capraeleadseekers.site/api/leads/drafts",
           {
             method: "GET",
             credentials: "include",
           }
         );
 
-        if (!leadsRes.ok) {
-          console.warn("⚠️ Could not fetch drafts, status:", leadsRes.status);
+        if (!draftsRes.ok) {
+          console.warn("⚠️ Could not fetch drafts, status:", draftsRes.status);
           return;
         }
 
-        const data = await leadsRes.json();
+        const data = await draftsRes.json();
 
-        const parsed = (data.access_list || []).map((entry) => ({
+        const parsed = (data || []).map((entry) => ({
           id: entry.lead_id || entry.id,
           lead_id: entry.lead_id || entry.id,
-          company: entry.company || "N/A",
-          website: entry.website || "",
-          industry: entry.industry || "",
-          productCategory: entry.product_category || "",
-          businessType: entry.business_type || "",
-          employees: entry.employees || "",
-          revenue: entry.revenue || "",
-          yearFounded: entry.year_founded?.toString() || "",
-          bbbRating: entry.bbb_rating || "",
-          street: entry.street || "",
-          city: entry.city || "",
-          state: entry.state || "",
-          companyPhone: entry.company_phone || "",
-          companyLinkedin: entry.company_linkedin || "",
-          ownerFirstName: entry.owner_first_name || "",
-          ownerLastName: entry.owner_last_name || "",
-          ownerTitle: entry.owner_title || "",
-          ownerLinkedin: entry.owner_linkedin || "",
-          ownerPhoneNumber: entry.owner_phone_number || "",
-          ownerEmail: entry.owner_email || "",
-          source: entry.source || "",
+          company: entry.draft_data?.company || "N/A",
+          website: entry.draft_data?.website || "",
+          industry: entry.draft_data?.industry || "",
+          productCategory: entry.draft_data?.product_category || "",
+          businessType: entry.draft_data?.business_type || "",
+          employees: entry.draft_data?.employees || "",
+          revenue: entry.draft_data?.revenue || "",
+          yearFounded: entry.draft_data?.year_founded?.toString() || "",
+          bbbRating: entry.draft_data?.bbb_rating || "",
+          street: entry.draft_data?.street || "",
+          city: entry.draft_data?.city || "",
+          state: entry.draft_data?.state || "",
+          companyPhone: entry.draft_data?.company_phone || "",
+          companyLinkedin: entry.draft_data?.company_linkedin || "",
+          ownerFirstName: entry.draft_data?.owner_first_name || "",
+          ownerLastName: entry.draft_data?.owner_last_name || "",
+          ownerTitle: entry.draft_data?.owner_title || "",
+          ownerLinkedin: entry.draft_data?.owner_linkedin || "",
+          ownerPhoneNumber: entry.draft_data?.owner_phone_number || "",
+          ownerEmail: entry.draft_data?.owner_email || "",
+          source: entry.draft_data?.source || "",
           created: entry.created || "",
           updated: entry.updated || "",
           sourceType: "database",
@@ -275,7 +319,7 @@ export default function Home() {
         console.error("🚨 Error verifying auth or fetching drafts:", error);
         router.push("/auth");
       } finally {
-        setIsCheckingAuth(false); // ✅ Hide loading
+        setIsCheckingAuth(false);
       }
     };
 
@@ -299,23 +343,23 @@ export default function Home() {
           {[
             {
               label: "Total Leads Scraped",
-              value: scrapingHistory.length.toLocaleString(), // 👈 from state
-              change: "+0%", // Optionally compute later
-              comparison: "vs last month",
+              value: scrapingHistory.length.toLocaleString(),
+              change: "+0%", // You can compute delta later
+              comparison: "total enriched leads",
             },
             {
               label: "Token Usage",
-              value: "12 / 100",
-              change: "12%",
+              value: `${scrapingHistory.length * 1} / 100`, // assuming 1 token per lead
+              change: `${((scrapingHistory.length / 100) * 100).toFixed(0)}%`,
               comparison: "used this month",
             },
             {
               label: "Subscription",
               value: `${
                 userTier.charAt(0).toUpperCase() + userTier.slice(1)
-              } Plan`, // Capitalize
+              } Plan`,
               change: "Active",
-              comparison: "until 2025-12-31", // You can replace this if you store expiry
+              comparison: "until 2025-12-31", // customize if dynamic
             },
           ].map((stat, index) => (
             <Card
@@ -338,28 +382,64 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Analytics Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="p-6 rounded-2xl shadow-sm hover:shadow-[0_4px_20px_0_rgba(122,194,164,0.5)] hover:scale-[1.02] transition-transform">
-            <img
-              src="/images/pie_chart.png"
-              alt="Industry Share Pie Chart"
-              className="w-full object-contain"
-            />
+          {/* Pie Chart */}
+          <Card className="p-6 rounded-2xl shadow-sm">
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={industryData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                >
+                  {industryData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={`hsl(${(index * 60) % 360}, 70%, 50%)`}
+                    />
+                  ))}
+                </Pie>
+                <RechartTooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <p className="text-center mt-2 text-sm text-muted-foreground">
+              Industry Distribution
+            </p>
           </Card>
-          <Card className="p-6 rounded-2xl shadow-sm hover:shadow-[0_4px_20px_0_rgba(122,194,164,0.5)] hover:scale-[1.02] transition-transform">
-            <img
-              src="/images/bar_chart.png"
-              alt="Leads per Industry Bar Chart"
-              className="w-full object-contain"
-            />
+
+          {/* Bar Chart */}
+          <Card className="p-6 rounded-2xl shadow-sm">
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={cityData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <RechartTooltip />
+                <Bar dataKey="count" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+            <p className="text-center mt-2 text-sm text-muted-foreground">
+              Companies by City
+            </p>
           </Card>
-          <Card className="p-6 rounded-2xl shadow-sm hover:shadow-[0_4px_20px_0_rgba(122,194,164,0.5)] hover:scale-[1.02] transition-transform">
-            <img
-              src="/images/line_chart.png"
-              alt="Weekly Growth Trend Line Chart"
-              className="w-full object-contain"
-            />
+
+          {/* Line Chart */}
+          <Card className="p-6 rounded-2xl shadow-sm">
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={trendData}>
+                <XAxis dataKey="date" />
+                <YAxis />
+                <RechartTooltip />
+                <Legend />
+                <Line type="monotone" dataKey="count" stroke="#8884d8" />
+              </LineChart>
+            </ResponsiveContainer>
+            <p className="text-center mt-2 text-sm text-muted-foreground">
+              Weekly Growth Trend
+            </p>
           </Card>
         </div>
 
@@ -534,22 +614,36 @@ export default function Home() {
                       "source",
                       "created",
                       "updated",
-                    ].map((field) => (
-                      <TableCell key={field} className="px-6 py-2">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
-                            value={row[field] ?? ""}
-                            onChange={(e) =>
-                              handleFieldChange(i, field, e.target.value)
-                            }
-                          />
-                        ) : (
-                          row[field]
-                        )}
-                      </TableCell>
-                    ))}
+                    ].map((field) => {
+                      const rawValue = row[field];
+                      const displayValue =
+                        rawValue === null ||
+                        rawValue === undefined ||
+                        rawValue === ""
+                          ? "N/A"
+                          : rawValue;
+
+                      return (
+                        <TableCell
+                          key={field}
+                          className="px-6 py-2 max-w-[240px] truncate"
+                          title={displayValue}
+                        >
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
+                              value={rawValue ?? ""}
+                              onChange={(e) =>
+                                handleFieldChange(i, field, e.target.value)
+                              }
+                            />
+                          ) : (
+                            displayValue
+                          )}
+                        </TableCell>
+                      );
+                    })}
 
                     <TableCell className="px-6 py-2">
                       {!isEditing ? (
