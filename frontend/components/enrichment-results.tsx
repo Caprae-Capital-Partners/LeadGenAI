@@ -413,6 +413,9 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
       return;
     }
 
+    // Make sure selectedCompanies list is correct
+    console.log("🧾 Selected company IDs:", selectedCompanies);
+
     const companiesToSave = editableCompanies.filter((c) =>
       selectedCompanies.includes(c.id)
     );
@@ -422,72 +425,79 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
       return;
     }
 
-    const now = new Date();
-    const isoTimestamp = now.toISOString();
-    const formattedTimestamp = isoTimestamp.slice(0, 16).replace("T", " ");
+    console.log(`💾 Attempting to save ${companiesToSave.length} companies`);
 
-    const payload = companiesToSave.map((c) => ({
-      search_criteria: {
-        industry: c.industry,
-        location: c.city,
-        timestamp: isoTimestamp,
-      },
-      lead_id: c.lead_id || c.id,
-      company: c.company,
-      owner_email: c.ownerEmail,
-      company_phone: c.companyPhone,
-      street: c.street,
-      city: c.city,
-      state: c.state,
-      website: c.website,
-      industry: c.industry,
-      revenue:
-        typeof c.revenue === "string"
-          ? parseFloat(c.revenue.replace(/[^0-9.]/g, ""))
-          : c.revenue,
-      business_type: c.productCategory || "",
-      target_market: c.businessType || "",
-      employees:
-        typeof c.employees === "number"
-          ? c.employees
-          : parseInt(c.employees as any) || 0,
-      founded_year: parseInt(c.yearFounded) || 0,
-      credit_rating: c.bbbRating,
-      owner_linkedin: c.ownerLinkedin,
-      source: c.source,
-      status: "New",
-      created_at: formattedTimestamp,
-      updated_at: formattedTimestamp,
-    }));
-
-    try {
-      const res = await fetch("https://data.capraeleadseekers.site/api/leads/drafts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload), // <-- This is now a flat array
-      });
-
-      const text = await res.text();
-      console.log("📥 Raw response:", text);
-
+    for (const [index, c] of companiesToSave.entries()) {
       try {
-        const data = JSON.parse(text);
-        if (!res.ok || data.error) {
-          console.error("❌ Error saving:", data);
-          alert("Failed to save drafts.");
-        } else {
-          alert("✅ Drafts saved successfully!");
+        const leadId = c.lead_id || c.id;
+
+        const payload = {
+          user_id,
+          company: c.company,
+          website: c.website,
+          industry: c.industry,
+          product_category: c.productCategory,
+          business_type: c.businessType,
+          employees:
+            typeof c.employees === "number"
+              ? c.employees
+              : parseInt(c.employees as any) || 0,
+          revenue:
+            typeof c.revenue === "string"
+              ? parseFloat(c.revenue.replace(/[^0-9.]/g, ""))
+              : c.revenue,
+          year_founded: parseInt(c.yearFounded) || 0,
+          bbb_rating: c.bbbRating,
+          street: c.street,
+          city: c.city,
+          state: c.state,
+          company_phone: c.companyPhone,
+          company_linkedin: c.companyLinkedin,
+          owner_first_name: c.ownerFirstName,
+          owner_last_name: c.ownerLastName,
+          owner_title: c.ownerTitle,
+          owner_linkedin: c.ownerLinkedin,
+          owner_phone_number: c.ownerPhoneNumber,
+          owner_email: c.ownerEmail,
+          source: c.source,
+        };
+
+        console.log(`📤 Sending (${index + 1}/${companiesToSave.length}):`, leadId, payload);
+
+        const res = await fetch(
+          `https://data.capraeleadseekers.site/leads/${leadId}/edit`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include", // ✅ Needed for session-based routes
+            body: JSON.stringify(payload),
+          }
+        );
+
+        const text = await res.text(); // Read response as raw text
+        console.log("📥 Raw response text:", text);
+
+        try {
+          const data = JSON.parse(text); // Attempt to parse as JSON
+          console.log("✅ Parsed JSON response:", data);
+
+          if (!res.ok || !data.success) {
+            console.error("❌ Failed to save:", leadId, data);
+            alert(`Failed to save company with ID: ${leadId}`);
+          }
+        } catch (e) {
+          console.error("❌ Failed to parse JSON. Response was likely HTML.");
+          alert("Server returned an unexpected response. Check console.");
         }
+
       } catch (err) {
-        console.error("❌ Response not JSON:", text);
-        alert("Server returned non-JSON response.");
+        console.error("❌ Error saving company:", err);
+        alert(`Error saving a company. See console for details.`);
       }
-    } catch (err) {
-      console.error("❌ Network or server error:", err);
-      alert("Error saving drafts. See console for details.");
     }
-  };
+
+    alert("✅ Done saving selected companies.");
+  }
 
 
 
