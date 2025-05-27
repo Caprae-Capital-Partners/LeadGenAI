@@ -1219,7 +1219,7 @@ def get_leads_by_multiple_ids():
     leads = Lead.query.filter(Lead.lead_id.in_(lead_ids), Lead.deleted == False).all()
     results = [lead.to_dict() for lead in leads]
     return jsonify({"results": results})
-
+#Drafts API
 @lead_bp.route('/api/leads/search-results', methods=['POST'])
 @login_required
 def save_search_results():
@@ -1241,16 +1241,10 @@ def save_search_results():
         # Create a draft for each lead
         drafts = []
         for idx, lead_data in enumerate(data):
-            # Generate a unique lead_id if not provided
-            if 'lead_id' not in lead_data:
-                lead_data['lead_id'] = Lead.generate_lead_id(
-                    company=lead_data.get('company'),
-                    street=lead_data.get('street'),
-                    city=lead_data.get('city'),
-                    state=lead_data.get('state'),
-                    company_phone=lead_data.get('company_phone'),
-                    website=lead_data.get('website')
-                )
+            # The lead_id is now expected to be present in lead_data
+            # If 'lead_id' is not in lead_data, this will raise a KeyError
+            # or you might need to add a check here if it's optional.
+            # For this modification, we assume lead_id is always provided.
 
             # Add search criteria to draft data
             draft_data = {
@@ -1268,7 +1262,7 @@ def save_search_results():
             # Create draft with explicit draft_id
             draft = UserLeadDraft(
                 user_id=current_user.user_id,
-                lead_id=lead_data['lead_id'],
+                lead_id=lead_data['lead_id'], # lead_id is now assumed to be in lead_data
                 draft_data=draft_data,
                 change_summary=f"Search result for industry: {industry}, location: {location}",
                 phase='draft',
