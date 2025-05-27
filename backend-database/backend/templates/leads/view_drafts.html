@@ -51,6 +51,9 @@
     <!-- Results Section -->
     <div class="row">
         <div class="col">
+            <div class="d-flex justify-content-end mb-2">
+                <button id="exportCsvBtn" class="btn btn-success"><i class="bi bi-download"></i> Export CSV</button>
+            </div>
             <div id="searchResults">
                 <!-- Results will be loaded here -->
             </div>
@@ -72,10 +75,83 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Draft Modal -->
+<div class="modal fade" id="editDraftModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Draft</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editDraftForm">
+                    <input type="hidden" id="editDraftId">
+                    <div class="mb-3">
+                        <label for="editCompany" class="form-label">Company</label>
+                        <input type="text" class="form-control" id="editCompany" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editOwnerEmail" class="form-label">Owner Email</label>
+                        <input type="email" class="form-control" id="editOwnerEmail">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editIndustry" class="form-label">Industry</label>
+                        <input type="text" class="form-control" id="editIndustry">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editLocation" class="form-label">Location</label>
+                        <input type="text" class="form-control" id="editLocation">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editStatus" class="form-label">Status</label>
+                        <input type="text" class="form-control" id="editStatus">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editChangeSummary" class="form-label">Change Summary</label>
+                        <input type="text" class="form-control" id="editChangeSummary">
+                    </div>
+                    <button type="submit" class="btn btn-success">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+let lastDisplayedDrafts = [];
+
+function convertDraftsToCSV(drafts) {
+    if (!drafts || drafts.length === 0) return '';
+    // Define columns you want to export
+    const columns = [
+        'draft_id', 'lead_id', 'version', 'change_summary', 'created_at', 'updated_at',
+        'company', 'owner_email', 'industry', 'city', 'status'
+    ];
+    // Header
+    let csv = columns.join(',') + '\n';
+    // Rows
+    drafts.forEach(draft => {
+        const row = [
+            draft.draft_id,
+            draft.lead_id,
+            draft.version,
+            '"' + (draft.change_summary || '').replace(/"/g, '""') + '"',
+            draft.created_at,
+            draft.updated_at,
+            '"' + (draft.draft_data.company || '').replace(/"/g, '""') + '"',
+            draft.draft_data.owner_email || '',
+            draft.draft_data.industry || '',
+            draft.draft_data.city || '',
+            draft.draft_data.status || ''
+        ];
+        csv += row.map(val => val === undefined ? '' : val).join(',') + '\n';
+    });
+    return csv;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const searchForm = document.getElementById('searchForm');
     const searchType = document.getElementById('searchType');
@@ -104,6 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to display search results
     function displayResults(data) {
         searchResults.innerHTML = '';
+        let draftsToExport = [];
         
         if (!data || (data.sessions && data.sessions.length === 0) || (Array.isArray(data) && data.length === 0)) {
             searchResults.innerHTML = `
@@ -115,6 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (searchType.value === 'all') {
+            draftsToExport = data;
             // Display all drafts in a table
             const table = document.createElement('div');
             table.className = 'card bg-dark text-white';
@@ -146,6 +224,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                             <button class="btn btn-sm btn-primary view-draft" data-draft-id="${draft.draft_id}">
                                                 <i class="bi bi-eye"></i> View
                                             </button>
+                                            <button class="btn btn-sm btn-warning edit-draft" data-draft-id="${draft.draft_id}">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </button>
                                             <button class="btn btn-sm btn-danger delete-draft" data-draft-id="${draft.draft_id}">
                                                 <i class="bi bi-trash"></i> Delete
                                             </button>
@@ -159,6 +240,11 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             searchResults.appendChild(table);
         } else {
+            // Display search sessions
+            draftsToExport = [];
+            data.sessions.forEach(session => {
+                session.drafts.forEach(draft => draftsToExport.push(draft));
+            });
             // Display search sessions
             data.sessions.forEach(session => {
                 const sessionCard = document.createElement('div');
@@ -199,6 +285,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 <button class="btn btn-sm btn-primary view-draft" data-draft-id="${draft.draft_id}">
                                                     <i class="bi bi-eye"></i> View
                                                 </button>
+                                                <button class="btn btn-sm btn-warning edit-draft" data-draft-id="${draft.draft_id}">
+                                                    <i class="bi bi-pencil"></i> Edit
+                                                </button>
                                                 <button class="btn btn-sm btn-danger delete-draft" data-draft-id="${draft.draft_id}">
                                                     <i class="bi bi-trash"></i> Delete
                                                 </button>
@@ -213,6 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 searchResults.appendChild(sessionCard);
             });
         }
+        lastDisplayedDrafts = draftsToExport;
 
         // Add event listeners for view buttons
         document.querySelectorAll('.view-draft').forEach(button => {
@@ -226,6 +316,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('draftData').textContent = 
                         JSON.stringify(draft.draft_data, null, 2);
                     new bootstrap.Modal(document.getElementById('viewDraftModal')).show();
+                });
+            });
+        });
+
+        // Add event listeners for edit buttons
+        document.querySelectorAll('.edit-draft').forEach(button => {
+            button.addEventListener('click', function() {
+                const draftId = this.dataset.draftId;
+                fetch(`/api/leads/drafts/${draftId}`, {
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(draft => {
+                    // Populate form fields
+                    document.getElementById('editDraftId').value = draft.draft_id;
+                    document.getElementById('editCompany').value = draft.draft_data.company || '';
+                    document.getElementById('editOwnerEmail').value = draft.draft_data.owner_email || '';
+                    document.getElementById('editIndustry').value = draft.draft_data.industry || '';
+                    document.getElementById('editLocation').value = draft.draft_data.city || '';
+                    document.getElementById('editStatus').value = draft.draft_data.status || '';
+                    document.getElementById('editChangeSummary').value = draft.change_summary || '';
+                    new bootstrap.Modal(document.getElementById('editDraftModal')).show();
                 });
             });
         });
@@ -288,6 +400,50 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Handle edit draft form submission
+    document.getElementById('editDraftForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const draftId = document.getElementById('editDraftId').value;
+        const company = document.getElementById('editCompany').value;
+        const owner_email = document.getElementById('editOwnerEmail').value;
+        const industry = document.getElementById('editIndustry').value;
+        const city = document.getElementById('editLocation').value;
+        const status = document.getElementById('editStatus').value;
+        const change_summary = document.getElementById('editChangeSummary').value;
+
+        // Fetch the current draft data to preserve other fields
+        fetch(`/api/leads/drafts/${draftId}`, { credentials: 'include' })
+        .then(response => response.json())
+        .then(draft => {
+            const draft_data = draft.draft_data;
+            draft_data.company = company;
+            draft_data.owner_email = owner_email;
+            draft_data.industry = industry;
+            draft_data.city = city;
+            draft_data.status = status;
+            fetch(`/api/leads/drafts/${draftId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    draft_data: draft_data,
+                    change_summary: change_summary
+                })
+            })
+            .then(response => response.json())
+            .then(() => {
+                // Close modal and refresh drafts
+                bootstrap.Modal.getInstance(document.getElementById('editDraftModal')).hide();
+                // Reload all drafts
+                fetch('/api/leads/drafts', { credentials: 'include' })
+                .then(response => response.json())
+                .then(data => {
+                    displayResults(data);
+                });
+            });
+        });
+    });
+
     // Load all drafts on page load
     fetch('/api/leads/drafts', {
         credentials: 'include'
@@ -295,6 +451,24 @@ document.addEventListener('DOMContentLoaded', function() {
     .then(response => response.json())
     .then(data => {
         displayResults(data);
+    });
+
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    exportCsvBtn.addEventListener('click', function() {
+        if (!lastDisplayedDrafts || lastDisplayedDrafts.length === 0) {
+            alert('No drafts to export!');
+            return;
+        }
+        const csv = convertDraftsToCSV(lastDisplayedDrafts);
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'lead_drafts.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     });
 });
 </script>
