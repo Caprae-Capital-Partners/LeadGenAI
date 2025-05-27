@@ -202,10 +202,23 @@ document.addEventListener('DOMContentLoaded', function() {
                         <table class="table table-dark table-hover">
                             <thead>
                                 <tr>
-                                    <th>Draft ID</th>
-                                    <th>Lead ID</th>
-                                    <th>Version</th>
-                                    <th>Change Summary</th>
+                                    <th>Company</th>
+                                    <th>Email</th>
+                                    <th>Industry</th>
+                                    <th>Status</th>
+                                    <th>City</th>
+                                    <th>State</th>
+                                    <th>Business Type</th>
+                                    <th>Target Market</th>
+                                    <th>Revenue</th>
+                                    <th>Employees</th>
+                                    <th>Founded Year</th>
+                                    <th>Credit Rating</th>
+                                    <th>Owner Linkedin</th>
+                                    <th>Company Phone</th>
+                                    <th>Street</th>
+                                    <th>Website</th>
+                                    <th>Source</th>
                                     <th>Created At</th>
                                     <th>Updated At</th>
                                     <th>Actions</th>
@@ -214,10 +227,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             <tbody>
                                 ${data.map(draft => `
                                     <tr>
-                                        <td>${draft.draft_id}</td>
-                                        <td>${draft.lead_id}</td>
-                                        <td>${draft.version}</td>
-                                        <td>${draft.change_summary || '-'}</td>
+                                        <td>${draft.draft_data.company || '-'}</td>
+                                        <td>${draft.draft_data.owner_email || '-'}</td>
+                                        <td>${draft.draft_data.industry || '-'}</td>
+                                        <td>${draft.draft_data.status || '-'}</td>
+                                        <td>${draft.draft_data.city || '-'}</td>
+                                        <td>${draft.draft_data.state || '-'}</td>
+                                        <td>${draft.draft_data.business_type || '-'}</td>
+                                        <td>${draft.draft_data.target_market || '-'}</td>
+                                        <td>${draft.draft_data.revenue || '-'}</td>
+                                        <td>${draft.draft_data.employees || '-'}</td>
+                                        <td>${draft.draft_data.founded_year || '-'}</td>
+                                        <td>${draft.draft_data.credit_rating || '-'}</td>
+                                        <td>${draft.draft_data.owner_linkedin ? `<a href="${draft.draft_data.owner_linkedin}" target="_blank">Link</a>` : '-'}</td>
+                                        <td>${draft.draft_data.company_phone || '-'}</td>
+                                        <td>${draft.draft_data.street || '-'}</td>
+                                        <td>${draft.draft_data.website ? `<a href="${draft.draft_data.website}" target="_blank">${draft.draft_data.website}</a>` : '-'}</td>
+                                        <td>${draft.draft_data.source || '-'}</td>
                                         <td>${new Date(draft.created_at).toLocaleString()}</td>
                                         <td>${new Date(draft.updated_at).toLocaleString()}</td>
                                         <td>
@@ -265,10 +291,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             <table class="table table-dark table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Draft ID</th>
-                                        <th>Lead ID</th>
-                                        <th>Version</th>
-                                        <th>Change Summary</th>
+                                        <th>Company</th>
+                                        <th>Email</th>
+                                        <th>Industry</th>
+                                        <th>Status</th>
+                                        <th>City</th>
+                                        <th>State</th>
+                                        <th>Business Type</th>
+                                        <th>Target Market</th>
+                                        <th>Revenue</th>
+                                        <th>Employees</th>
+                                        <th>Founded Year</th>
+                                        <th>Credit Rating</th>
+                                        <th>Owner Linkedin</th>
+                                        <th>Company Phone</th>
+                                        <th>Street</th>
+                                        <th>Website</th>
+                                        <th>Source</th>
                                         <th>Created At</th>
                                         <th>Actions</th>
                                     </tr>
@@ -276,10 +315,23 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <tbody>
                                     ${session.drafts.map(draft => `
                                         <tr>
-                                            <td>${draft.draft_id}</td>
-                                            <td>${draft.lead_id}</td>
-                                            <td>${draft.version}</td>
-                                            <td>${draft.change_summary || '-'}</td>
+                                            <td>${draft.draft_data.company || '-'}</td>
+                                            <td>${draft.draft_data.owner_email || '-'}</td>
+                                            <td>${draft.draft_data.industry || '-'}</td>
+                                            <td>${draft.draft_data.status || '-'}</td>
+                                            <td>${draft.draft_data.city || '-'}</td>
+                                            <td>${draft.draft_data.state || '-'}</td>
+                                            <td>${draft.draft_data.business_type || '-'}</td>
+                                            <td>${draft.draft_data.target_market || '-'}</td>
+                                            <td>${draft.draft_data.revenue || '-'}</td>
+                                            <td>${draft.draft_data.employees || '-'}</td>
+                                            <td>${draft.draft_data.founded_year || '-'}</td>
+                                            <td>${draft.draft_data.credit_rating || '-'}</td>
+                                            <td>${draft.draft_data.owner_linkedin ? `<a href="${draft.draft_data.owner_linkedin}" target="_blank">Link</a>` : '-'}</td>
+                                            <td>${draft.draft_data.company_phone || '-'}</td>
+                                            <td>${draft.draft_data.street || '-'}</td>
+                                            <td>${draft.draft_data.website ? `<a href="${draft.draft_data.website}" target="_blank">${draft.draft_data.website}</a>` : '-'}</td>
+                                            <td>${draft.draft_data.source || '-'}</td>
                                             <td>${new Date(draft.created_at).toLocaleString()}</td>
                                             <td>
                                                 <button class="btn btn-sm btn-primary view-draft" data-draft-id="${draft.draft_id}">
