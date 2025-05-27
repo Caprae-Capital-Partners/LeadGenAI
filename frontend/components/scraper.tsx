@@ -75,7 +75,6 @@ export function Scraper() {
   const seenCompaniesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    
     const verifyLogin = async () => {
       try {
         const res = await fetch("https://data.capraeleadseekers.site/api/ping-auth", {
@@ -96,12 +95,29 @@ export function Scraper() {
 
     verifyLogin();
 
+    const cacheKey = "industries"
+    const cachedIndustries = localStorage.getItem(cacheKey);
+    const CACHE_DURATION = 604800000
+    if (cachedIndustries) {
+      try {
+        const {data, timestamp} = JSON.parse(cachedIndustries)
+        if (Array.isArray(data) && Date.now() - timestamp < CACHE_DURATION) {
+          setIndustries(data)
+          return;
+        }
+      } catch {}
+    }
+
     const fetchIndustries = async () => {
       try {
         const response = await fetch(FETCH_INDUSTRIES_API);
         const data = await response.json();
-        if (data && data.industries) {
+        if (data && Array.isArray(data.industries)) {
           setIndustries(data.industries);
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({ data: data.industries, timestamp: Date.now()})
+          );
         } else {
           console.error("Invalid API response format:", data);
         }
@@ -200,7 +216,7 @@ export function Scraper() {
     
     // Create EventSource connection with explicit parameters
     const url = `${SCRAPER_API}?${queryParams.toString()}`;
-    console.log("Connecting to stream URL:", url);
+    // console.log("Connecting to stream URL:", url);
     
     const eventSource = new EventSource(url);
 
@@ -213,7 +229,7 @@ export function Scraper() {
 
     // Track connection state
     eventSource.onopen = () => {
-      console.log("EventSource connection opened successfully");
+      // console.log("EventSource connection opened successfully");
     };
 
     eventSource.addEventListener("init", (event) => {
@@ -232,7 +248,7 @@ export function Scraper() {
         
         // Check if we've already processed this batch
         if (parsed.batch && receivedBatchIds.has(parsed.batch)) {
-          console.log(`Skipping duplicate batch ${parsed.batch}`);
+          // console.log(`Skipping duplicate batch ${parsed.batch}`);
           return;
         }
         
@@ -246,8 +262,8 @@ export function Scraper() {
         const newItems = parsed.new_items || [];
         totalProcessedItems += newItems.length;
         
-        console.log(`Batch ${parsed.batch} received: ${newItems.length} new items, total batched: ${totalProcessedItems}`);
-        console.log("Sample item:", newItems.length > 0 ? newItems[0] : "No items");
+        // console.log(`Batch ${parsed.batch} received: ${newItems.length} new items, total batched: ${totalProcessedItems}`);
+        // console.log("Sample item:", newItems.length > 0 ? newItems[0] : "No items");
         
         if (!Array.isArray(newItems)) {
           console.warn("Expected new_items to be an array, got:", typeof newItems);
@@ -267,7 +283,17 @@ export function Scraper() {
         // Add new items to results, avoiding duplicates
         setScrapedResults((prev) => {
           const updatedResults = addNewLeads(prev, formattedItems);
-          console.log(`Current lead count: ${updatedResults.length}`);
+          // console.log(`Current lead count: ${updatedResults.length}`);
+          
+          // NEW: Check if we've reached the limit
+          if (updatedResults.length >= 500) {
+            console.log("Reached 500 leads limit, stopping scraper");
+            eventSource.close();
+            setIsScrapingActive(false);
+            setProgress(100);
+            return updatedResults.slice(0, 500); // Ensure exactly 500
+          }
+          
           return updatedResults;
         });
         
