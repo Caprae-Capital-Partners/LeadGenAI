@@ -510,10 +510,10 @@ export function DataEnhancement() {
         setDbEnrichedCompanies(tealRows);
         setShowResults(true);
 
-        // re‐upload them if needed
         const payload = dbLeads
           .filter(l => !!l.lead_id)
           .map(l => ({ ...l, user_id }));
+
         if (payload.length) {
           try {
             await axios.post(
@@ -521,8 +521,25 @@ export function DataEnhancement() {
               JSON.stringify(payload),
               { headers: { "Content-Type": "application/json" } }
             );
+
+            // 🔁 Call /leads/drafts here too
+            for (const lead of payload) {
+              await axios.post(
+                `${DATABASE_URL}/leads/drafts`,
+                {
+                  lead_id: lead.lead_id,
+                  draft_data: lead,
+                  change_summary: "Restored from DB"
+                },
+                {
+                  headers: { "Content-Type": "application/json" },
+                  withCredentials: true
+                }
+              );
+            }
+
           } catch (err) {
-            console.error("Failed to re-upload DB leads:", err);
+            console.error("❌ Upload or draft creation for DB leads failed:", err);
           }
         }
       }
@@ -535,53 +552,45 @@ export function DataEnhancement() {
       // loop through them one by one
       for (const company of toScrape) {
         try {
+          if (!company.lead_id) {
+            console.warn("⚠️ Skipping company due to missing lead_id:", company.company);
+            continue;
+          }
+
           const headers = { headers: { "Content-Type": "application/json" } };
 
           // 1) growjo
-          const growjo = (await axios.post(
-            `${BACKEND_URL}/scrape-growjo-single`,
-            { company: company.company },
-            headers
-          )).data;
+          const growjo = (
+            await axios.post(
+              `${BACKEND_URL}/scrape-growjo-single`,
+              { company: company.company },
+              headers
+            )
+          ).data;
 
           // 2) apollo + person
-          const domain = normalizeWebsite(
-            growjo.company_website || company.website
-          );
+          const domain = normalizeWebsite(growjo.company_website || company.website);
           const [apolloRes, personRes] = await Promise.all([
-            axios.post(
-              `${BACKEND_URL}/apollo-scrape-single`,
-              { domain },
-              headers
-            ),
-            axios.post(
-              `${BACKEND_URL}/find-best-person-single`,
-              { domain },
-              headers
-            ),
+            axios.post(`${BACKEND_URL}/apollo-scrape-single`, { domain }, headers),
+            axios.post(`${BACKEND_URL}/find-best-person-single`, { domain }, headers),
           ]);
           const apollo = apolloRes.data || {};
           const person = personRes.data || {};
 
           // build one enriched record
-          const entry = buildEnrichedCompany(
-            company,
-            growjo,
-            apollo,
-            person
-          );
+          const entry = buildEnrichedCompany(company, growjo, apollo, person);
+
           const normalizeValue = (v: any) => {
             const s = (v ?? "").toString().trim().toLowerCase();
             const isBad =
-              ["", "na", "n/a", "none", "not", "found", "not found"].includes(
-                s
-              ) || (/^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*"));
+              ["", "na", "n/a", "none", "not", "found", "not found"].includes(s) ||
+              (/^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*"));
             return isBad ? "N/A" : v.toString().trim();
           };
 
           const validLead = {
             user_id,
-            lead_id: company.lead_id || "",
+            lead_id: company.lead_id,
             company: normalizeValue(entry.company),
             website: normalizeValue(entry.website),
             industry: normalizeValue(entry.industry),
@@ -611,30 +620,57 @@ export function DataEnhancement() {
             source: normalizeValue(entry.source),
           };
 
-          // upload immediately
-          await axios.post(
-            `${DATABASE_URL}/upload_leads`,
-            JSON.stringify([validLead]),
-            { headers: { "Content-Type": "application/json" } }
-          );
+          // ⬆ Upload to main DB
+          try {
+            await axios.post(
+              `${DATABASE_URL}/upload_leads`,
+              JSON.stringify([validLead]),
+              { headers: { "Content-Type": "application/json" } }
+            );
+            console.log("✅ Uploaded lead:", validLead.company);
+          } catch (uploadErr) {
+            console.error("❌ Failed to upload lead:", validLead, uploadErr);
+          }
 
-          // map it with scraped flag
+          // ⬆ Create a draft right after uploading
+          try {
+            const draftRes = await axios.post(
+              `${DATABASE_URL}/leads/drafts`,
+              {
+                lead_id: validLead.lead_id,
+                draft_data: validLead,
+                change_summary: "Initial enrichment draft",
+              },
+              {
+                headers: { "Content-Type": "application/json" },
+                withCredentials: true,
+              }
+            );
+            console.log("✅ Draft created:", draftRes.data);
+          } catch (draftErr: any) {
+            console.error(
+              "❌ Failed to create draft:",
+              draftErr.response?.data || draftErr.message
+            );
+          }
+
+          // ⬇ Show on screen
           const yellowRow = toCamelCase({
             ...validLead,
             source_type: "scraped",
           });
-          setScrapedEnrichedCompanies(prev => {
+
+          setScrapedEnrichedCompanies((prev) => {
             const next = [...prev, yellowRow];
-            // setEnrichedCompanies(next);
             return next;
           });
 
-          // small delay so React can paint
-          await new Promise(r => setTimeout(r, 150));
+          await new Promise((r) => setTimeout(r, 150));
         } catch (err) {
-          console.error(`Failed scraping ${company.company}`, err);
+          console.error(`❌ Failed enriching ${company.company}`, err);
         }
       }
+      
 
       // if this *was* a force-scrape run, hide the old DB rows
       if (forceScrape) {

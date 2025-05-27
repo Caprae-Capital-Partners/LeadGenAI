@@ -413,7 +413,6 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
       return;
     }
 
-    // Make sure selectedCompanies list is correct
     console.log("🧾 Selected company IDs:", selectedCompanies);
 
     const companiesToSave = editableCompanies.filter((c) =>
@@ -469,22 +468,40 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            credentials: "include", // ✅ Needed for session-based routes
+            credentials: "include",
             body: JSON.stringify(payload),
           }
         );
 
-        const text = await res.text(); // Read response as raw text
+        const text = await res.text();
         console.log("📥 Raw response text:", text);
 
         try {
-          const data = JSON.parse(text); // Attempt to parse as JSON
+          const data = JSON.parse(text);
           console.log("✅ Parsed JSON response:", data);
 
           if (!res.ok || !data.success) {
             console.error("❌ Failed to save:", leadId, data);
             alert(`Failed to save company with ID: ${leadId}`);
+            continue; // Skip draft creation
           }
+
+          // ✅ Create draft after successful edit
+          await fetch(
+            `https://data.capraeleadseekers.site/api/leads/drafts`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                lead_id: leadId,
+                draft_data: payload,
+                change_summary: "User edited company info",
+              }),
+            }
+          );
+
+          console.log(`📝 Draft created for: ${leadId}`);
         } catch (e) {
           console.error("❌ Failed to parse JSON. Response was likely HTML.");
           alert("Server returned an unexpected response. Check console.");
@@ -497,7 +514,8 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     }
 
     alert("✅ Done saving selected companies.");
-  }
+  };
+  
 
 
 
