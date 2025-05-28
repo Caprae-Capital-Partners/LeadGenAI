@@ -13,7 +13,7 @@ export default function AuthPage() {
     const [formData, setFormData] = useState({
         username: "",
         email: "",
-        company: "",
+        linkedin: "",
         password: "",
         confirmPassword: "",
         gdpr: false,
@@ -31,13 +31,29 @@ export default function AuthPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (isSignup) {
+            if (!formData.username.trim()) {
+                alert("Username is required.");
+                return;
+            }
+            if (!formData.email.trim()) {
+                alert("Email is required.");
+                return;
+            }
+            if (formData.password !== formData.confirmPassword) {
+                alert("Passwords do not match.");
+                return;
+            }
+        }
+
         const endpoint = isSignup ? "/auth/register" : "/auth/login";
 
         const payload = isSignup
             ? {
                 username: formData.username,
                 email: formData.email,
-                company: formData.company,
+                linkedin: formData.linkedin,
                 password: formData.password,
                 confirm_password: formData.confirmPassword,
                 gdpr_accept: formData.gdpr,
@@ -51,14 +67,13 @@ export default function AuthPage() {
             const res = await fetch(`${DATABASE_URL}${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include", // ⬅️ Important for session cookie
+                credentials: "include",
                 body: JSON.stringify(payload),
             });
 
             const result = await res.json();
             if (!res.ok) throw new Error(result.message || "Something went wrong");
 
-            // ✅ Store user info in sessionStorage
             if (result.user) {
                 sessionStorage.setItem("user", JSON.stringify(result.user));
             }
@@ -66,7 +81,6 @@ export default function AuthPage() {
             if (isSignup) {
                 router.push("/subscription");
             } else {
-                // Determine environment
                 if (window.location.hostname === "localhost") {
                     router.push("/");
                 } else {
@@ -77,9 +91,6 @@ export default function AuthPage() {
             alert(err.message);
         }
     };
-    
-      
-
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
@@ -107,16 +118,18 @@ export default function AuthPage() {
 
                 <div className="p-6 space-y-4">
                     <form className="space-y-4" onSubmit={handleSubmit}>
-                        <div>
-                            <Label htmlFor="username">Username</Label>
-                            <Input
-                                id="username"
-                                placeholder="Username"
-                                required
-                                value={formData.username}
-                                onChange={handleChange}
-                            />
-                        </div>
+                        {isSignup && (
+                            <div>
+                                <Label htmlFor="username">Username</Label>
+                                <Input
+                                    id="username"
+                                    placeholder="Username"
+                                    required
+                                    value={formData.username}
+                                    onChange={handleChange}
+                                />
+                            </div>
+                        )}
 
                         <div>
                             <Label htmlFor="email">Email</Label>
@@ -132,11 +145,12 @@ export default function AuthPage() {
 
                         {isSignup && (
                             <div>
-                                <Label htmlFor="company">Company</Label>
+                                <Label htmlFor="linkedin">LinkedIn Profile (Optional)</Label>
                                 <Input
-                                    id="company"
-                                    placeholder="Company (optional)"
-                                    value={formData.company}
+                                    id="linkedin"
+                                    type="url"
+                                    placeholder="https://linkedin.com/in/your-profile"
+                                    value={formData.linkedin}
                                     onChange={handleChange}
                                 />
                             </div>
@@ -200,5 +214,4 @@ export default function AuthPage() {
             </div>
         </div>
     );
-      
 }
