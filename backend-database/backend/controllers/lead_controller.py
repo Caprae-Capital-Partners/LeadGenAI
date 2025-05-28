@@ -530,8 +530,6 @@ class LeadController:
         for lead in leads:
             lead_dict = {}
             # Check user tier
-            logging.debug(f"[DEBUG] current_user.tier exists: {hasattr(current_user, 'tier')}, tier: {getattr(current_user, 'tier', None)}, role: {getattr(current_user, 'role', None)}, username: {getattr(current_user, 'username', None)}")
-            logging.debug(f"[DEBUG] Is Free: {getattr(current_user, 'tier', None) == 'free'}, Is User: {getattr(current_user, 'tier', None) == 'user'}")
 
             if current_user and hasattr(current_user, 'tier') and current_user.tier == 'free':
                 # Filter and mask for Free plan

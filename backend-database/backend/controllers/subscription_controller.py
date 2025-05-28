@@ -34,9 +34,9 @@ class SubscriptionController:
                 payment_method_types=['card']
             )
             current_app.logger.info(f"[Subscription] Stripe session created successfully for user {user.user_id}, plan {plan_type}")
-            # user.tier = plan_type
-            # db.session.commit()
-            # current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier}")
+            user.tier = plan_type
+            db.session.commit()
+            current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier} In db.")
             return {'sessionId': checkout_session.id}, 200
         except Exception as e:
             import traceback
@@ -178,4 +178,26 @@ class SubscriptionController:
             'user': user_data,
             'subscription': subscription_data,
             'plan': plan_data
+        }, 200
+
+    @staticmethod
+    def payment_success_handler(user):
+        """
+        Handle payment success logic and return a JSON response with a redirect URL.
+        """
+        # You can add any additional logic here if needed (e.g., logging, updating user, etc.)
+        return {
+            'message': 'Your subscription has been activated successfully!',
+            'redirect_url': 'https://app.saasquatchleads.com/'
+        }, 200
+
+    @staticmethod
+    def payment_cancel_handler(user):
+        """
+        Handle payment cancel logic and return a JSON response with a redirect URL.
+        """
+        # You can add any additional logic here if needed (e.g., logging, updating user, etc.)
+        return {
+            'message': 'Payment cancelled. You can choose a plan when you are ready.',
+            'redirect_url': 'https://app.saasquatchleads.com/subscription'
         }, 200
