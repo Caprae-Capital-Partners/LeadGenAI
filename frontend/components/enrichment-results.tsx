@@ -33,6 +33,7 @@ interface EnrichmentResultsProps {
 export interface EnrichedCompany {
   id: string
   lead_id?: string;
+  draft_id?: string; 
   company: string
   website: string
   industry: string
@@ -413,6 +414,8 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
       return;
     }
 
+    const draftMap = JSON.parse(sessionStorage.getItem("leadToDraftMap") || "{}");
+
     console.log("🧾 Selected company IDs:", selectedCompanies);
 
     const companiesToSave = editableCompanies.filter((c) =>
@@ -428,45 +431,55 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
 
     for (const [index, c] of companiesToSave.entries()) {
       try {
-        const leadId = c.lead_id || c.id;
+        const lead_id = c.lead_id || c.id;
+        const draftId = draftMap[lead_id]?.draft_id;
+
+        if (!draftId) {
+          console.warn(`⚠️ No draft_id found for lead_id: ${lead_id}, company: ${c.company}`);
+          alert(`Missing draft ID for "${c.company}". Please try re-enriching.`);
+          continue;
+        }
 
         const payload = {
-          user_id,
-          company: c.company,
-          website: c.website,
-          industry: c.industry,
-          product_category: c.productCategory,
-          business_type: c.businessType,
-          employees:
-            typeof c.employees === "number"
-              ? c.employees
-              : parseInt(c.employees as any) || 0,
-          revenue:
-            typeof c.revenue === "string"
-              ? parseFloat(c.revenue.replace(/[^0-9.]/g, ""))
-              : c.revenue,
-          year_founded: parseInt(c.yearFounded) || 0,
-          bbb_rating: c.bbbRating,
-          street: c.street,
-          city: c.city,
-          state: c.state,
-          company_phone: c.companyPhone,
-          company_linkedin: c.companyLinkedin,
-          owner_first_name: c.ownerFirstName,
-          owner_last_name: c.ownerLastName,
-          owner_title: c.ownerTitle,
-          owner_linkedin: c.ownerLinkedin,
-          owner_phone_number: c.ownerPhoneNumber,
-          owner_email: c.ownerEmail,
-          source: c.source,
+          draft_data: {
+            user_id,
+            company: c.company,
+            website: c.website,
+            industry: c.industry,
+            product_category: c.productCategory,
+            business_type: c.businessType,
+            employees:
+              typeof c.employees === "number"
+                ? c.employees
+                : parseInt(c.employees as any) || 0,
+            revenue:
+              typeof c.revenue === "string"
+                ? parseFloat(c.revenue.replace(/[^0-9.]/g, ""))
+                : c.revenue,
+            year_founded: parseInt(c.yearFounded) || 0,
+            bbb_rating: c.bbbRating,
+            street: c.street,
+            city: c.city,
+            state: c.state,
+            company_phone: c.companyPhone,
+            company_linkedin: c.companyLinkedin,
+            owner_first_name: c.ownerFirstName,
+            owner_last_name: c.ownerLastName,
+            owner_title: c.ownerTitle,
+            owner_linkedin: c.ownerLinkedin,
+            owner_phone_number: c.ownerPhoneNumber,
+            owner_email: c.ownerEmail,
+            source: c.source,
+          },
+          change_summary: "User edited company info",
         };
 
-        console.log(`📤 Sending (${index + 1}/${companiesToSave.length}):`, leadId, payload);
+        console.log(`📤 Sending (${index + 1}/${companiesToSave.length}):`, draftId, payload);
 
         const res = await fetch(
-          `https://data.capraeleadseekers.site/leads/${leadId}/edit`,
+          `https://data.capraeleadseekers.site/api/leads/drafts/${draftId}`,
           {
-            method: "POST",
+            method: "PUT",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify(payload),
@@ -480,41 +493,26 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
           const data = JSON.parse(text);
           console.log("✅ Parsed JSON response:", data);
 
-          if (!res.ok || !data.success) {
-            console.error("❌ Failed to save:", leadId, data);
-            alert(`Failed to save company with ID: ${leadId}`);
-            continue; // Skip draft creation
+          if (!res.ok || data.error) {
+            console.error("❌ Failed to update draft:", draftId, data);
+            alert(`Failed to update draft with ID: ${draftId}`);
+          } else {
+            console.log(`📝 Draft updated for: ${draftId}`);
           }
-
-          // ✅ Create draft after successful edit
-          await fetch(
-            `https://data.capraeleadseekers.site/api/leads/drafts`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({
-                lead_id: leadId,
-                draft_data: payload,
-                change_summary: "User edited company info",
-              }),
-            }
-          );
-
-          console.log(`📝 Draft created for: ${leadId}`);
         } catch (e) {
           console.error("❌ Failed to parse JSON. Response was likely HTML.");
           alert("Server returned an unexpected response. Check console.");
         }
-
       } catch (err) {
-        console.error("❌ Error saving company:", err);
-        alert(`Error saving a company. See console for details.`);
+        console.error("❌ Error updating draft:", err);
+        alert(`Error updating a draft. See console for details.`);
       }
     }
 
     alert("✅ Done saving selected companies.");
   };
+  
+  
   
 
 

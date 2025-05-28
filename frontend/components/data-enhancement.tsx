@@ -66,6 +66,8 @@ export function DataEnhancement() {
   const handleBack = () => {
     sessionStorage.removeItem("leads");
     sessionStorage.removeItem("enrichedResults");
+    sessionStorage.removeItem("subscriptionInfo");
+    sessionStorage.removeItem("leadToDraftMap");
     router.push("/scraper"); // 🔁 adjust the path if needed
   };
 
@@ -468,6 +470,8 @@ export function DataEnhancement() {
   const [dbOnlyMode, setDbOnlyMode] = useState(true);
   const [fromDatabaseLeads, setFromDatabaseLeads] = useState<string[]>([]); // lowercase names
   const { enrichedCompanies, setEnrichedCompanies } = useEnrichment();
+  const [leadToDraftMap, setLeadToDraftMap] = useState<Record<string, { draft_id: string, company: string }>>({});
+  const draftMap: Record<string, { draft_id: string; company: string }> = {};
 
   const handleStartEnrichment = async (
     forceScrape = false,
@@ -478,36 +482,66 @@ export function DataEnhancement() {
     setLoading(true);
 
     if (!forceScrape) {
-      // clear prior results
       setDbEnrichedCompanies([]);
       setScrapedEnrichedCompanies([]);
     }
 
     try {
-      // pick which leads to enrich
       const selected = overrideCompanies ?? normalizedLeads.filter(c =>
         selectedCompanies.includes(c.id)
       );
       const lead_ids = selected.map(c => c.lead_id).filter(Boolean);
       const queryString = lead_ids.join(",");
 
+      // ✅ Step 1: Check credits
+      try {
+        const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+          withCredentials: true
+        });
+
+        const availableCredits = subscriptionInfo?.subscription?.credits_remaining ?? 0;
+        const requiredCredits = selected.length;
+
+        if (availableCredits < requiredCredits) {
+          alert("❌ You don't have enough credits to enrich these companies. Please upgrade or deselect some leads.");
+          setLoading(false);
+          return;
+        }
+      } catch (checkErr) {
+        console.error("❌ Failed to verify subscription:", checkErr);
+        alert("Failed to verify your subscription. Please try again later.");
+        setLoading(false);
+        return;
+      }
+
       let existingNames = new Set<string>();
       let dbLeads: any[] = [];
 
-      // fetch any already‐in‐DB
       if (queryString) {
         const { data: dbRes } = await axios.get(
           `${DATABASE_URL}/leads/multiple?lead_ids=${queryString}`,
           { headers: { "Content-Type": "application/json" } }
         );
         dbLeads = dbRes.results || [];
-        existingNames = new Set(
-          dbLeads.map((l: any) => l.company?.toLowerCase())
-        );
+        existingNames = new Set(dbLeads.map((l: any) => l.company?.toLowerCase()));
         setFromDatabaseLeads(Array.from(existingNames));
       }
 
-      // if this is a fresh-run (not force) then immediately show the DB hits
+      // ✅ Step 2: Deduct credits for ALL selected leads
+      for (const lead of selected) {
+        const lead_id = lead.lead_id;
+        if (!lead_id) continue;
+        try {
+          await axios.post(`${DATABASE_URL}/user/deduct_credit/${lead_id}`, {}, {
+            withCredentials: true
+          });
+        } catch (deductErr) {
+          console.error(`❌ Credit deduction failed for lead ${lead_id}`, deductErr);
+          continue;
+        }
+      }
+
+      // ✅ Step 3: Show DB leads (if not force or override)
       if (!forceScrape && !overrideCompanies) {
         const tealRows = dbLeads.map(lead =>
           toCamelCase({ ...lead, source_type: "database" })
@@ -527,44 +561,51 @@ export function DataEnhancement() {
               { headers: { "Content-Type": "application/json" } }
             );
 
-            // 🔁 Call /leads/drafts here too
             for (const lead of payload) {
-              await axios.post(
-                `${DATABASE_URL}/leads/drafts`,
-                {
-                  lead_id: lead.lead_id,
-                  draft_data: lead,
-                  change_summary: "Restored from DB"
-                },
-                {
-                  headers: { "Content-Type": "application/json" },
-                  withCredentials: true
-                }
-              );
-            }
+              try {
+                const res = await axios.post(
+                  `${DATABASE_URL}/leads/drafts`,
+                  {
+                    lead_id: lead.lead_id,
+                    draft_data: lead,
+                    change_summary: "Restored from DB"
+                  },
+                  {
+                    headers: { "Content-Type": "application/json" },
+                    withCredentials: true
+                  }
+                );
 
+                const draft_id = res.data?.draft_id;
+                if (draft_id) {
+                  draftMap[lead.lead_id] = {
+                    draft_id,
+                    company: lead.company,
+                  };                  
+                }
+
+              } catch (err) {
+                console.error("❌ Failed to create draft:", err);
+              }
+            }
+            
           } catch (err) {
             console.error("❌ Upload or draft creation for DB leads failed:", err);
           }
         }
       }
 
-      // determine which ones still need scraping
+      // ✅ Step 4: Proceed with scraping only for those not in DB
       const toScrape = forceScrape
         ? selected
         : selected.filter(c => !existingNames.has(c.company.toLowerCase()));
 
-      // loop through them one by one
       for (const company of toScrape) {
         try {
-          if (!company.lead_id) {
-            console.log("ℹ️ No lead_id present, letting backend assign one:", company.company);
-          }
           const lead_id = company.lead_id || "";
 
           const headers = { headers: { "Content-Type": "application/json" } };
 
-          // 1) growjo
           const growjo = (
             await axios.post(
               `${BACKEND_URL}/scrape-growjo-single`,
@@ -573,7 +614,6 @@ export function DataEnhancement() {
             )
           ).data;
 
-          // 2) apollo + person
           const domain = normalizeWebsite(growjo.company_website || company.website);
           const [apolloRes, personRes] = await Promise.all([
             axios.post(`${BACKEND_URL}/apollo-scrape-single`, { domain }, headers),
@@ -582,7 +622,6 @@ export function DataEnhancement() {
           const apollo = apolloRes.data || {};
           const person = personRes.data || {};
 
-          // build one enriched record
           const entry = buildEnrichedCompany(company, growjo, apollo, person);
 
           const normalizeValue = (v: any) => {
@@ -595,7 +634,7 @@ export function DataEnhancement() {
 
           const validLead = {
             user_id,
-            lead_id, // ← will be empty if not present
+            lead_id,
             company: normalizeValue(entry.company),
             website: normalizeValue(entry.website),
             industry: normalizeValue(entry.industry),
@@ -619,21 +658,18 @@ export function DataEnhancement() {
             source: normalizeValue(entry.source),
           };
 
-          // ⬆ Upload to main DB
           try {
             await axios.post(
               `${DATABASE_URL}/upload_leads`,
               JSON.stringify([validLead]),
               { headers: { "Content-Type": "application/json" } }
             );
-            console.log("✅ Uploaded lead:", validLead.company);
           } catch (uploadErr) {
             console.error("❌ Failed to upload lead:", validLead, uploadErr);
           }
 
-          // ⬆ Create a draft right after uploading
           try {
-            const draftRes = await axios.post(
+            const res = await axios.post(
               `${DATABASE_URL}/leads/drafts`,
               {
                 lead_id: validLead.lead_id,
@@ -645,37 +681,38 @@ export function DataEnhancement() {
                 withCredentials: true,
               }
             );
-            console.log("✅ Draft created:", draftRes.data);
+
+            const draft_id = res.data?.draft_id;
+            if (draft_id) {
+              draftMap[validLead.lead_id] = {
+                draft_id,
+                company: validLead.company,
+              };              
+            }
+
           } catch (draftErr: any) {
-            console.error(
-              "❌ Failed to create draft:",
-              draftErr.response?.data || draftErr.message
-            );
+            console.error("❌ Failed to create draft:", draftErr.response?.data || draftErr.message);
           }
 
-          // ⬇ Show on screen
           const yellowRow = toCamelCase({
             ...validLead,
             source_type: "scraped",
           });
 
-          setScrapedEnrichedCompanies((prev) => {
-            const next = [...prev, yellowRow];
-            return next;
-          });
-
+          setScrapedEnrichedCompanies((prev) => [...prev, yellowRow]);
           await new Promise((r) => setTimeout(r, 150));
         } catch (err) {
           console.error(`❌ Failed enriching ${company.company}`, err);
         }
       }
-      
 
-      // if this *was* a force-scrape run, hide the old DB rows
       if (forceScrape) {
         setDbEnrichedCompanies([]);
       }
-
+      if (Object.keys(draftMap).length > 0) {
+        sessionStorage.setItem("leadToDraftMap", JSON.stringify(draftMap));
+      }
+      
       setShowResults(true);
     } catch (err) {
       console.error("Enrichment failed:", err);
@@ -685,6 +722,8 @@ export function DataEnhancement() {
       setLoading(false);
     }
   };
+  
+  
 
 
 
@@ -1117,7 +1156,9 @@ export function DataEnhancement() {
           onClick={() => {
             sessionStorage.removeItem("leads");
             sessionStorage.removeItem("enrichedResults");
-            router.push("/dashboard");
+            sessionStorage.removeItem("subscriptionInfo");
+            sessionStorage.removeItem("leadToDraftMap");
+            router.push("/");
           }}
         >
           Finish and Go Back to Home
