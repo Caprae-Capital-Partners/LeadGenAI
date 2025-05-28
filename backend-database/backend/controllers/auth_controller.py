@@ -37,7 +37,7 @@ class AuthController:
 
             # Fetch the 'Free' plan
             free_plan = Plan.query.filter_by(plan_name='Free').first()
-            print(f"free plan ",free_plan)
+            logging.info(f"free plan {free_plan}")
             if free_plan:
                 # Calculate expiration date (30 days from start timestamp)
                 tier_start = datetime.utcnow()

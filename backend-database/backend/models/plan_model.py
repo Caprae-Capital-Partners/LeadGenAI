@@ -10,6 +10,7 @@ class Plan(db.Model):
     monthly_price = db.Column(db.Numeric(10, 2), nullable=False, default=0.00)
     annual_price = db.Column(db.Numeric(10, 2), nullable=True)
     monthly_lead_quota = db.Column(db.Integer, nullable=True)
+    annual_lead_quota = db.Column(db.Integer, nullable=True)
     cost_per_lead = db.Column(db.Numeric(10, 3), nullable=True)
     has_ai_features = db.Column(db.Boolean, nullable=False, default=False)
     initial_credits = db.Column(db.Integer, nullable=False, default=10)

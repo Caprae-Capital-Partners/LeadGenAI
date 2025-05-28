@@ -2,13 +2,14 @@ from flask import Blueprint, request, redirect, render_template, flash, url_for,
 from controllers.lead_controller import LeadController
 from controllers.upload_controller import UploadController
 from controllers.export_controller import ExportController
+from models.user_subscription_model import UserSubscription
 from models.lead_model import db, Lead
 from flask_login import login_required, current_user
 from utils.decorators import role_required, credit_required, filter_lead_data_by_plan
 import csv
 from io import StringIO, BytesIO
 import logging
-import datetime
+from datetime import datetime, timezone
 import pandas as pd
 import io
 from werkzeug.exceptions import NotFound
@@ -16,7 +17,11 @@ from sqlalchemy import or_, and_
 import requests
 from models.user_model import User
 from models.audit_log_model import LeadAuditLog
+from models.edit_lead_drafts_model import EditLeadDraft
 from models.user_lead_drafts_model import UserLeadDraft
+import uuid
+from sqlalchemy import Integer
+
 
 # Create blueprint
 lead_bp = Blueprint('lead', __name__)
@@ -879,18 +884,45 @@ def permanent_delete_lead(lead_id):
         return jsonify({'success': False, 'message': f'Error permanently deleting lead: {str(e)}'}), 500
 
 
-@lead_bp.route('/api/lead_scrape', methods=['POST'])
-@login_required # Ensure user is logged in
+@lead_bp.route('/api/user/deduct_credit', methods=['POST'])
+@login_required
 @credit_required(cost=1)
-@filter_lead_data_by_plan()
+def api_deduct_credit():
+    """API endpoint to deduct 1 credit from the current user's account."""
+    # If we reach this point, the credit_required decorator has already
+    # checked the subscription, credits, and successfully deducted 1 credit.
+    # So, we just need to return a success response.
+    return jsonify({
+        "status": "success",
+        "message": "1 credit deducted successfully.",
+    }), 200
+
+
+@lead_bp.route('/api/lead_scrape', methods=['POST'])
+@login_required
 def api_search_leads():
     data = request.get_json()
     # logging.debug(f"[IN] /api/search_leads data: {data}")
     industry = data.get("industry", "")
     location = data.get("location", "")
-    results = LeadController.search_leads_by_industry_location(industry, location)
+    results = LeadController.search_leads_by_industry_location(industry, location, current_user)
+    # logging.debug(f"[OUT] /api/search_leads results: {results}")
+    return jsonify(results)
+
+@lead_bp.route('/api/lead_scrape_old', methods=['POST'])
+@login_required # Ensure user is logged in
+# @credit_required(cost=1)
+@filter_lead_data_by_plan()
+def api_search_leads_old():
+    data = request.get_json()
+    # logging.debug(f"[IN] /api/search_leads data: {data}")
+    industry = data.get("industry", "")
+    location = data.get("location", "")
+    results = LeadController.search_leads_by_industry_location_old(industry, location)
     # logging.debug(f"[OUT] /api/search_leads results: {results}")
     return results
+
+
 
 @lead_bp.route('/api/industries', methods=['GET'])
 # #@login_required
@@ -1046,10 +1078,10 @@ def leads_summary():
 def view_edited_leads():
     """View all edited leads (pending drafts)"""
     from models.user_model import User
-    from models.user_lead_drafts_model import UserLeadDraft
+    from models.edit_lead_drafts_model import EditLeadDraft
     from models.lead_model import Lead
     # Only show drafts that are not deleted and in draft/review phase
-    drafts = UserLeadDraft.query.filter_by(is_deleted=False).filter(UserLeadDraft.phase.in_(['draft', 'review'])).order_by(UserLeadDraft.updated_at.desc()).all()
+    drafts = EditLeadDraft.query.filter_by(is_deleted=False).filter(EditLeadDraft.phase.in_(['draft', 'review'])).order_by(EditLeadDraft.updated_at.desc()).all()
     rows = []
     for draft in drafts:
         original = Lead.query.filter_by(lead_id=draft.lead_id).first()
@@ -1061,16 +1093,34 @@ def view_edited_leads():
 #@login_required
 @role_required('admin', 'developer', 'user')
 def edit_lead_api(lead_id):
-    """Edit lead - Admin, Developer, User. Save to UserLeadDraft, not to Lead."""
+    """Edit lead - Admin, Developer, User. Save to EditLeadDraft, not to Lead."""
     from datetime import datetime
-    from models.user_lead_drafts_model import UserLeadDraft
+    from models.edit_lead_drafts_model import EditLeadDraft
     lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first_or_404()
     if request.is_json:
         data = request.get_json()
     else:
         data = request.form
     try:
-        user_id = getattr(current_user, 'id', None) or getattr(current_user, 'user_id', None)
+        user_id = (
+            getattr(current_user, 'id', None) or
+            getattr(current_user, 'user_id', None) or
+            data.get('user_id')
+        )
+        if not user_id:
+            if request.is_json or request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'message': 'Missing user_id'}), 400
+            else:
+                flash('Missing user_id', 'danger')
+                return redirect(url_for('lead.view_leads'))
+        try:
+            user_id = uuid.UUID(str(user_id))
+        except (ValueError, TypeError):
+            if request.is_json or request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'message': 'Invalid user_id format'}), 400
+            else:
+                flash('Invalid user_id format', 'danger')
+                return redirect(url_for('lead.view_leads'))
         data = dict(data)
         if 'revenue' in data and data['revenue']:
             revenue_str = str(data['revenue']).replace(',', '.')
@@ -1078,22 +1128,22 @@ def edit_lead_api(lead_id):
                 data['revenue'] = float(revenue_str)
             except ValueError:
                 data['revenue'] = None
-        draft = UserLeadDraft.query.filter_by(lead_id=lead_id, user_id=user_id, is_deleted=False).first()
+        draft = EditLeadDraft.query.filter_by(lead_id=lead_id, user_id=user_id, is_deleted=False).first()
         if not draft:
-            draft = UserLeadDraft(
+            draft = EditLeadDraft(
                 lead_id=lead_id,
                 user_id=user_id,
                 draft_data=data,
                 phase='draft'
             )
-            draft.updated_at = datetime.utcnow()
+            draft.updated_at = datetime.now(timezone.utc)
             db.session.add(draft)
         else:
             draft.draft_data = data
-            draft.updated_at = datetime.utcnow()
+            draft.updated_at = datetime.now(timezone.utc)
             draft.phase = 'draft'
         db.session.commit()
-        if request.is_json:
+        if request.is_json or request.headers.get('Accept') == 'application/json':
             return jsonify({'success': True, 'message': 'Draft saved successfully'})
         else:
             flash('Draft saved successfully', 'success')
@@ -1102,7 +1152,7 @@ def edit_lead_api(lead_id):
         db.session.rollback()
         import traceback
         print(traceback.format_exc())
-        if request.is_json:
+        if request.is_json or request.headers.get('Accept') == 'application/json':
             return jsonify({'success': False, 'message': str(e)}), 500
         else:
             flash(f'Error saving draft: {str(e)}', 'danger')
@@ -1113,9 +1163,9 @@ def edit_lead_api(lead_id):
 @role_required('admin', 'developer')
 def apply_edited_lead(lead_id):
     """Apply changes: finalize the edit, salin data dari draft ke Lead, hapus draft."""
-    from models.user_lead_drafts_model import UserLeadDraft
+    from models.edit_lead_drafts_model import EditLeadDraft
     from models.lead_model import Lead
-    draft = UserLeadDraft.query.filter_by(lead_id=lead_id, is_deleted=False).first()
+    draft = EditLeadDraft.query.filter_by(lead_id=lead_id, is_deleted=False).first()
     lead = Lead.query.filter_by(lead_id=lead_id).first()
     if not draft or not lead:
         return jsonify({'success': False, 'message': 'Draft or lead not found.'}), 404
@@ -1139,11 +1189,11 @@ def apply_edited_lead(lead_id):
 @role_required('admin', 'developer')
 def delete_draft_api():
     """Permanently delete a draft by lead_id (API)."""
-    from models.user_lead_drafts_model import UserLeadDraft
+    from models.edit_lead_drafts_model import EditLeadDraft
     data = request.get_json() or {}
     lead_id = data.get('lead_id')
     print('DEBUG: lead_id param:', lead_id)
-    draft = UserLeadDraft.query.filter_by(lead_id=lead_id).first()
+    draft = EditLeadDraft.query.filter_by(lead_id=lead_id).first()
     print('DEBUG: draft found:', draft)
     if not draft:
         return jsonify({'success': False, 'message': 'Draft not found.'}), 404
@@ -1170,3 +1220,282 @@ def get_leads_by_multiple_ids():
     leads = Lead.query.filter(Lead.lead_id.in_(lead_ids), Lead.deleted == False).all()
     results = [lead.to_dict() for lead in leads]
     return jsonify({"results": results})
+#Drafts API
+@lead_bp.route('/api/leads/search-results', methods=['POST'])
+# @login_required
+def save_search_results():
+    """Save search results with search criteria as drafts"""
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, list):
+            return jsonify({"error": "Request body must be a list of leads with search criteria"}), 400
+
+        # Extract search criteria from the first lead (they should all have the same criteria)
+        search_criteria = data[0].get('search_criteria', {}) if data else {}
+        industry = search_criteria.get('industry', '')
+        location = search_criteria.get('location', '')
+        timestamp = search_criteria.get('timestamp')
+
+        # Generate a unique search session ID for this batch of drafts
+        search_session_id = str(uuid.uuid4())
+
+        # Create a draft for each lead
+        drafts = []
+        for idx, lead_data in enumerate(data):
+            # The lead_id is now expected to be present in lead_data
+            # If 'lead_id' is not in lead_data, this will raise a KeyError
+            # or you might need to add a check here if it's optional.
+            # For this modification, we assume lead_id is always provided.
+
+            # Add search criteria to draft data
+            draft_data = {
+                **lead_data,
+                'search_criteria': {
+                    'industry': industry,
+                    'location': location,
+                    'timestamp': timestamp,
+                    'source': 'enhancement_page',
+                    'search_session_id': search_session_id,
+                    'search_index': idx
+                }
+            }
+
+            # Create draft with explicit draft_id
+            draft = UserLeadDraft(
+                user_id=current_user.user_id,
+                lead_id=lead_data['lead_id'], # lead_id is now assumed to be in lead_data
+                draft_data=draft_data,
+                change_summary=f"Search result for industry: {industry}, location: {location}",
+                phase='draft',
+                status='pending'
+            )
+            # Ensure draft_id is set (though it should be auto-generated by the model)
+            if not draft.draft_id:
+                draft.draft_id = str(uuid.uuid4())
+
+            db.session.add(draft)
+            drafts.append(draft)
+
+        # Save all drafts
+        db.session.commit()
+
+        return jsonify({
+            "message": f"Saved {len(drafts)} search results as drafts",
+            "search_session_id": search_session_id,
+            "search_criteria": {
+                "industry": industry,
+                "location": location,
+                "timestamp": timestamp
+            },
+            "drafts": [{
+                **draft.to_dict(),
+                'search_index': draft.draft_data.get('search_criteria', {}).get('search_index')
+            } for draft in drafts]
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+
+@lead_bp.route('/api/leads/search-session/<string:search_session_id>', methods=['GET'])
+@login_required
+def get_search_session_drafts(search_session_id):
+    """Get all drafts from a specific search session"""
+    drafts = UserLeadDraft.query.filter(
+        UserLeadDraft.user_id == current_user.user_id,
+        UserLeadDraft.is_deleted == False,
+        UserLeadDraft.draft_data['search_criteria']['search_session_id'].astext == search_session_id
+    ).order_by(
+        UserLeadDraft.draft_data['search_criteria']['search_index'].astext.cast(Integer)
+    ).all()
+
+    if not drafts:
+        return jsonify({
+            "message": "No drafts found for this search session",
+            "search_session_id": search_session_id,
+            "drafts": []
+        }), 200
+
+    # Extract search criteria from first draft
+    first_draft = drafts[0]
+    search_criteria = first_draft.draft_data.get('search_criteria', {})
+
+    return jsonify({
+        "message": f"Found {len(drafts)} drafts for this search session",
+        "search_session_id": search_session_id,
+        "search_criteria": {
+            "industry": search_criteria.get('industry'),
+            "location": search_criteria.get('location'),
+            "timestamp": search_criteria.get('timestamp')
+        },
+        "drafts": [draft.to_dict() for draft in drafts]
+    })
+
+# Drafts API
+@lead_bp.route('/api/leads/search-drafts', methods=['GET'])
+# @login_required
+def get_search_drafts():
+    """Get drafts by search criteria (industry and/or location)"""
+    industry = request.args.get('industry')
+    location = request.args.get('location')
+
+    if not industry and not location:
+        return jsonify({"error": "At least one of industry or location must be provided"}), 400
+
+    query = UserLeadDraft.query.filter(
+        UserLeadDraft.user_id == current_user.user_id,
+        UserLeadDraft.is_deleted == False
+    )
+
+    if industry:
+        query = query.filter(
+            UserLeadDraft.draft_data['search_criteria']['industry'].astext == industry
+        )
+    if location:
+        query = query.filter(
+            UserLeadDraft.draft_data['search_criteria']['location'].astext == location
+        )
+
+    # Group by search_session_id to get unique search sessions
+    drafts = query.order_by(UserLeadDraft.created_at.desc()).all()
+
+    # Group drafts by search_session_id
+    sessions = {}
+    for draft in drafts:
+        session_id = draft.draft_data.get('search_criteria', {}).get('search_session_id')
+        if session_id:
+            if session_id not in sessions:
+                sessions[session_id] = {
+                    "search_session_id": session_id,
+                    "search_criteria": {
+                        "industry": draft.draft_data['search_criteria'].get('industry'),
+                        "location": draft.draft_data['search_criteria'].get('location'),
+                        "timestamp": draft.draft_data['search_criteria'].get('timestamp')
+                    },
+                    "drafts": [],
+                    "created_at": draft.created_at.isoformat()
+                }
+            sessions[session_id]["drafts"].append(draft.to_dict())
+
+    # Convert to list and sort by created_at
+    sessions_list = list(sessions.values())
+    sessions_list.sort(key=lambda x: x["created_at"], reverse=True)
+
+    return jsonify({
+        "message": f"Found {len(sessions_list)} search sessions",
+        "sessions": sessions_list
+    })
+
+@lead_bp.route('/api/leads/recent-searches', methods=['GET'])
+# @login_required
+def get_recent_search_sessions():
+    """Get recent search sessions with their drafts"""
+    limit = request.args.get('limit', 5, type=int)
+
+    # Get unique search sessions ordered by most recent
+    drafts = UserLeadDraft.query.filter(
+        UserLeadDraft.user_id == current_user.user_id,
+        UserLeadDraft.is_deleted == False
+    ).order_by(
+        UserLeadDraft.created_at.desc()
+    ).all()
+
+    # Group by search_session_id
+    sessions = {}
+    for draft in drafts:
+        session_id = draft.draft_data.get('search_criteria', {}).get('search_session_id')
+        if session_id and session_id not in sessions:
+            sessions[session_id] = {
+                "search_session_id": session_id,
+                "search_criteria": {
+                    "industry": draft.draft_data['search_criteria'].get('industry'),
+                    "location": draft.draft_data['search_criteria'].get('location'),
+                    "timestamp": draft.draft_data['search_criteria'].get('timestamp')
+                },
+                "drafts": [],
+                "created_at": draft.created_at.isoformat()
+            }
+            # Only add drafts if we haven't reached the limit
+            if len(sessions) <= limit:
+                sessions[session_id]["drafts"].append(draft.to_dict())
+
+    # Convert to list and sort by created_at
+    sessions_list = list(sessions.values())
+    sessions_list.sort(key=lambda x: x["created_at"], reverse=True)
+    sessions_list = sessions_list[:limit]
+
+    return jsonify({
+        "message": f"Found {len(sessions_list)} recent search sessions",
+        "sessions": sessions_list
+    })
+
+@lead_bp.route('/api/leads/drafts', methods=['GET'])
+# @login_required
+def get_user_drafts():
+    """Get all drafts for the current user"""
+    drafts = UserLeadDraft.query.filter_by(user_id=current_user.user_id, is_deleted=False).all()
+    return jsonify([d.to_dict() for d in drafts])
+
+@lead_bp.route('/api/leads/drafts/<string:draft_id>', methods=['GET'])
+@login_required 
+def get_draft(draft_id):
+    """Get a specific draft by ID"""
+    draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
+    if not draft:
+        return jsonify({"error": "Draft not found"}), 404
+    return jsonify(draft.to_dict())
+
+@lead_bp.route('/api/leads/drafts/<string:draft_id>', methods=['PUT'])
+# @login_required
+def update_draft(draft_id):
+    """Update a specific draft"""
+    draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
+    if not draft:
+        return jsonify({"error": "Draft not found"}), 404
+    data = request.json
+    if 'draft_data' in data:
+        draft.draft_data = data['draft_data']
+    if 'change_summary' in data:
+        draft.change_summary = data['change_summary']
+    draft.updated_at = datetime.now(timezone.utc)
+    draft.increment_version()
+    db.session.commit()
+    return jsonify(draft.to_dict())
+
+@lead_bp.route('/api/leads/drafts/<string:draft_id>', methods=['DELETE'])
+# @login_required
+def delete_draft(draft_id):
+    """Soft delete a draft"""
+    draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
+    if not draft:
+        return jsonify({"error": "Draft not found"}), 404
+    draft.is_deleted = True
+    db.session.commit()
+    return jsonify({"message": "Draft deleted"})
+
+@lead_bp.route('/api/leads/drafts', methods=['POST'])
+# @login_required
+def create_draft():
+    """Create a new draft"""
+    data = request.json
+    lead_id = data.get('lead_id')
+    draft_data = data.get('draft_data')
+    if not lead_id or not draft_data:
+        return jsonify({"error": "lead_id and draft_data are required"}), 400
+    draft = UserLeadDraft(
+        user_id=current_user.user_id,
+        lead_id=lead_id,
+        draft_data=draft_data,
+        change_summary=data.get('change_summary')
+    )
+    db.session.add(draft)
+    db.session.commit()
+    return jsonify(draft.to_dict()), 201
+
+@lead_bp.route('/drafts')
+# @login_required
+def view_drafts():
+    """Render the drafts view template"""
+    return render_template('leads/view_drafts.html')

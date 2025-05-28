@@ -8,18 +8,17 @@ class SubscriptionController:
     @staticmethod
     def create_checkout_session(user):
         try:
+            current_app.logger.info(f"[Subscription] Incoming create_checkout_session request. User: {getattr(user, 'user_id', None)}, is_authenticated: {getattr(user, 'is_authenticated', None)}")
+            current_app.logger.info(f"[Subscription] Request data: {request.data}")
+            current_app.logger.info(f"[Subscription] Request json: {request.json}")
             plan_type = request.json.get('plan_type')
+            current_app.logger.info(f"[Subscription] Extracted plan_type: {plan_type}")
             price_id = current_app.config['STRIPE_PRICES'].get(plan_type)
-            print("hello-----------------------------------")
-            print("this is -----plan tpye",plan_type)
-
             if not price_id:
-                # Return a more specific error for debugging
+                current_app.logger.error(f"[Subscription] Invalid plan_type provided: {plan_type}. Check STRIPE_PRICES config.")
                 return {'error': f'Invalid plan type provided: {plan_type}. Check STRIPE_PRICES config.'}, 400
 
             stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
-
-            # Use url_for to generate correct success and cancel URLs
             success_url = url_for('auth.payment_success', _external=True)
             cancel_url = url_for('auth.payment_cancel', _external=True)
 
@@ -31,17 +30,17 @@ class SubscriptionController:
                 mode='subscription',
                 success_url=success_url,
                 cancel_url=cancel_url,
-                client_reference_id=str(user.user_id), # Use user.user_id for consistency
+                client_reference_id=str(user.user_id),
                 payment_method_types=['card']
             )
-            print("this is -----after the succes session crete",plan_type)
-            user.tier = plan_type
-            db.session.commit()
-            print(f"payment succes current{user.user_id} tier is  {user.tier}")
+            current_app.logger.info(f"[Subscription] Stripe session created successfully for user {user.user_id}, plan {plan_type}")
+            # user.tier = plan_type
+            # db.session.commit()
+            # current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier}")
             return {'sessionId': checkout_session.id}, 200
         except Exception as e:
-            # Log the error for server-side debugging
-            current_app.logger.error(f"Error creating checkout session: {e}")
+            import traceback
+            current_app.logger.error(f"[Subscription] Error creating checkout session: {e}\n{traceback.format_exc()}")
             return {'error': 'Error creating checkout session. Please try again later.'}, 500
 
     @staticmethod
@@ -130,3 +129,53 @@ class SubscriptionController:
             print(f" changes is commited ")
             current_app.logger.error(f"Error handling successful payment for session {session.id}: {str(e)}")
             db.session.rollback()
+
+
+    @staticmethod
+    def get_current_user_subscription_info(user):
+        """
+        Returns a dictionary with the current user's subscription, plan, and user info (selected fields only).
+        """
+        from models.user_subscription_model import UserSubscription
+        from models.plan_model import Plan
+        from models.user_model import User
+
+        user_id = user.get_id()
+        user_obj = User.query.filter_by(user_id=user_id).first()
+        if not user_obj:
+            return {'error': 'User not found'}, 404
+
+        user_sub = UserSubscription.query.filter_by(user_id=user_id).first()
+        if not user_sub:
+            return {'error': 'User subscription not found'}, 404
+
+        plan = None
+        if user_sub.plan_id:
+            plan = Plan.query.filter_by(plan_id=user_sub.plan_id).first()
+
+        # Only include selected fields
+        user_data = {
+            'user_id': str(user_obj.user_id),
+            'email': user_obj.email
+        }
+        subscription_data = {
+            'credits_remaining': user_sub.credits_remaining,
+            'payment_frequency': user_sub.payment_frequency,
+            'plan_name': user_sub.plan_name,
+            'tier_start_timestamp': user_sub.tier_start_timestamp.isoformat() if user_sub.tier_start_timestamp else None,
+            'plan_expiration_timestamp': user_sub.plan_expiration_timestamp.isoformat() if user_sub.plan_expiration_timestamp else None
+        }
+        plan_data = None
+        if plan:
+            plan_data = {
+                'cost_per_lead': float(plan.cost_per_lead) if plan.cost_per_lead is not None else None,
+                'features_json': plan.features_json,
+                'credit_reset_frequency': plan.credit_reset_frequency,
+                'initial_credits': plan.initial_credits
+            }
+
+        return {
+            'user': user_data,
+            'subscription': subscription_data,
+            'plan': plan_data
+        }, 200

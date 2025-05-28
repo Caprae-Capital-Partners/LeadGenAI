@@ -4,9 +4,9 @@ from models.lead_model import db
 import uuid
 from datetime import datetime
 
-class UserLeadDraft(db.Model):
+class EditLeadDraft(db.Model):
     """User drafts for lead editing"""
-    __tablename__ = 'user_lead_drafts'
+    __tablename__ = 'edit_lead_drafts'
 
     id = db.Column('uuid', String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     draft_id = db.Column('draft_id', String(36), unique=True, default=lambda: str(uuid.uuid4()))

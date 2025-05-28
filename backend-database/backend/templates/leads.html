@@ -230,7 +230,7 @@
                                 {% endfor %}
                             </select>
                         </div> -->
-                        <div class="filter-item">
+                        <!-- <div class="filter-item">
                             <label class="filter-label">Location</label>
                             <select id="locationFilter" class="filter-select" onchange="applyFilters()">
                                 <option value="">All Locations</option>
@@ -238,7 +238,7 @@
                                     <option value="{{ location }}" {% if location == request.args.get('location', '') %}selected{% endif %}>{{ location }}</option>
                                 {% endfor %}
                             </select>
-                        </div>
+                        </div> -->
                         <div class="filter-item">
                             <label class="filter-label">Role/Title</label>
                             <select id="roleFilter" class="filter-select" onchange="applyFilters()">
@@ -546,7 +546,7 @@
                                     </select>
                                 </form>
                                 
-                                {% if current_user.role in ['admin', 'developer'] %}
+                                {% if current_user.role in ['admin', 'developer', 'user'] %}
                                 <a href="{{ url_for('lead.edit_lead', lead_id=lead.lead_id) }}" class="btn btn-edit">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -948,20 +948,68 @@
         }
 
         function applyFilters() {
-            const location = document.getElementById('locationFilter').value;
-            const role = document.getElementById('roleFilter').value;
-            const industry = document.getElementById('industryFilter').value;
+            const location = document.getElementById('locationFilter') ? document.getElementById('locationFilter').value : '';
+            const role = document.getElementById('roleFilter') ? document.getElementById('roleFilter').value : '';
+            const industry = document.getElementById('industryFilter') ? document.getElementById('industryFilter').value : '';
             let params = new URLSearchParams(window.location.search);
 
             if (location) params.set('location', location); else params.delete('location');
             if (role) params.set('role', role); else params.delete('role');
             if (industry) params.set('industry', industry); else params.delete('industry');
 
-            // Reset page to 1 when filter changes
+            // Advanced filter
+            // Hapus semua adv_field/operator/value/logic lama
+            Array.from(params.keys()).forEach(key => {
+                if (key.startsWith('adv_field_') || key.startsWith('adv_operator_') || key.startsWith('adv_value_') || key.startsWith('adv_logic_')) {
+                    params.delete(key);
+                }
+            });
+            const filterRows = document.querySelectorAll('.advanced-filters-container .filter-row');
+            let advIdx = 0;
+            filterRows.forEach((row, idx) => {
+                const field = row.querySelector('.field-select').value;
+                const operator = row.querySelector('.operator-select').value;
+                const value = row.querySelector('.value-input').value;
+                const logic = row.querySelector('.logic-select').value;
+                if (field && operator && value) {
+                    params.set(`adv_field_${advIdx}`, field);
+                    params.set(`adv_operator_${advIdx}`, operator);
+                    params.set(`adv_value_${advIdx}`, value);
+                    params.set(`adv_logic_${advIdx}`, logic);
+                    advIdx++;
+                }
+            });
+            // Reset page to 1
             params.set('page', 1);
-
             window.location.search = params.toString();
         }
+
+        // On page load, isi advanced filter dari query string
+        function getUrlParam(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... existing code ...
+            // Advanced filter: isi ulang dari query string
+            let advIdx = 0;
+            while (true) {
+                const field = getUrlParam(`adv_field_${advIdx}`);
+                const operator = getUrlParam(`adv_operator_${advIdx}`);
+                const value = getUrlParam(`adv_value_${advIdx}`);
+                const logic = getUrlParam(`adv_logic_${advIdx}`);
+                if (!field || !operator || !value) break;
+                if (advIdx > 0) addFilterRow();
+                const rows = document.querySelectorAll('.advanced-filters-container .filter-row');
+                const row = rows[advIdx];
+                row.querySelector('.field-select').value = field;
+                updateOperatorOptions(row.querySelector('.field-select'));
+                row.querySelector('.operator-select').value = operator;
+                row.querySelector('.value-input').value = value;
+                row.querySelector('.logic-select').value = logic;
+                advIdx++;
+            }
+        });
 
         // Remove automatic filter application on input change
         document.addEventListener('DOMContentLoaded', function() {
