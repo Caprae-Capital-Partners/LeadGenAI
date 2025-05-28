@@ -55,6 +55,6 @@ def audit_log():
 
     return render_template('audit_log.html', logs=logs, username=username, column=column, limit=limit)
 
-@main_bp.route('/search_draft_test')
-def search_draft_test():
-    return render_template('search_draft_test.html')
+# @main_bp.route('/search_draft_test')
+# def search_draft_test():
+#     return render_template('search_draft_test.html')

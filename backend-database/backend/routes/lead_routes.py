@@ -9,7 +9,7 @@ from utils.decorators import role_required, credit_required, filter_lead_data_by
 import csv
 from io import StringIO, BytesIO
 import logging
-import datetime
+from datetime import datetime, timezone
 import pandas as pd
 import io
 from werkzeug.exceptions import NotFound
@@ -1136,11 +1136,11 @@ def edit_lead_api(lead_id):
                 draft_data=data,
                 phase='draft'
             )
-            draft.updated_at = datetime.utcnow()
+            draft.updated_at = datetime.now(timezone.utc)
             db.session.add(draft)
         else:
             draft.draft_data = data
-            draft.updated_at = datetime.utcnow()
+            draft.updated_at = datetime.now(timezone.utc)
             draft.phase = 'draft'
         db.session.commit()
         if request.is_json or request.headers.get('Accept') == 'application/json':
@@ -1459,7 +1459,7 @@ def update_draft(draft_id):
         draft.draft_data = data['draft_data']
     if 'change_summary' in data:
         draft.change_summary = data['change_summary']
-    draft.updated_at = datetime.utcnow()
+    draft.updated_at = datetime.now(timezone.utc)
     draft.increment_version()
     db.session.commit()
     return jsonify(draft.to_dict())
