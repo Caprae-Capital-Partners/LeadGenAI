@@ -54,6 +54,12 @@ export function Header() {
             Scraper Tool
           </Link>
           <Link
+            href="/documentation"
+            className="text-white hover:text-yellow-400 transition-colors"
+          >
+            Documentation
+          </Link>
+          <Link
             href="/contact"
             className="text-white hover:text-yellow-400 transition-colors"
           >
