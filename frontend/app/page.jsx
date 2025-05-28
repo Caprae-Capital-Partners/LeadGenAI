@@ -129,6 +129,26 @@ export default function Home() {
 
   //
 
+  const ExpandableCell = ({ text }) => {
+    const [expanded, setExpanded] = useState(false);
+    const isLong = text.length > 100;
+
+    if (!isLong) return <span>{text}</span>;
+
+    return (
+      <div className="whitespace-pre-wrap">
+        <span>{expanded ? text : text.slice(0, 30) + "... "}</span>
+        <button
+          className="text-blue-500 hover:underline text-xs ml-1"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      </div>
+    );
+  };
+  
+
   const [scrapingHistory, setScrapingHistory] = useState([]);
 
   const handleExportCSV = () => {
@@ -326,6 +346,42 @@ export default function Home() {
     verifyAndFetchLeads();
   }, []);
 
+  const [subscriptionInfo, setSubscriptionInfo] = useState(null);
+
+  useEffect(() => {
+    const fetchSubscriptionInfo = async () => {
+      try {
+        const existing = sessionStorage.getItem("subscriptionInfo");
+        if (existing) {
+          setSubscriptionInfo(JSON.parse(existing));
+          return;
+        }
+
+        const res = await fetch(
+          "https://data.capraeleadseekers.site/api/user/subscription_info",
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
+        if (!res.ok) {
+          console.warn("⚠️ Failed to fetch subscription info:", res.status);
+          return;
+        }
+
+        const data = await res.json();
+        sessionStorage.setItem("subscriptionInfo", JSON.stringify(data));
+        setSubscriptionInfo(data);
+      } catch (err) {
+        console.error("Error fetching subscription info:", err);
+      }
+    };
+
+    fetchSubscriptionInfo();
+  }, []);
+  
+
   return isCheckingAuth ? (
     <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
       <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-yellow-400"></div>
@@ -349,17 +405,38 @@ export default function Home() {
             },
             {
               label: "Token Usage",
-              value: `${scrapingHistory.length * 1} / 100`,
-              change: `${((scrapingHistory.length / 100) * 100).toFixed(0)}%`,
+              value:
+                subscriptionInfo?.plan?.initial_credits !== undefined &&
+                subscriptionInfo?.subscription?.credits_remaining !== undefined
+                  ? `${
+                      subscriptionInfo.plan.initial_credits -
+                      subscriptionInfo.subscription.credits_remaining
+                    } / ${subscriptionInfo.plan.initial_credits}`
+                  : "N/A",
+              change:
+                subscriptionInfo?.plan?.initial_credits !== undefined &&
+                subscriptionInfo?.subscription?.credits_remaining !== undefined
+                  ? `${(
+                      ((subscriptionInfo.plan.initial_credits -
+                        subscriptionInfo.subscription.credits_remaining) /
+                        subscriptionInfo.plan.initial_credits) *
+                      100
+                    ).toFixed(0)}%`
+                  : "0%",
               comparison: "used this month",
             },
             {
               label: "Subscription",
-              value: `${
-                userTier.charAt(0).toUpperCase() + userTier.slice(1)
-              } Plan`,
+              value: subscriptionInfo?.subscription?.plan_name
+                ? `${subscriptionInfo.subscription.plan_name} Plan`
+                : "N/A",
               change: "Active",
-              comparison: "until 2025-12-31",
+              comparison: subscriptionInfo?.subscription
+                ?.plan_expiration_timestamp
+                ? `until ${new Date(
+                    subscriptionInfo.subscription.plan_expiration_timestamp
+                  ).toLocaleDateString()}`
+                : "Expiration unknown",
               action: {
                 label: "Upgrade",
                 link: "/subscription",
@@ -637,11 +714,23 @@ export default function Home() {
                           ? "N/A"
                           : rawValue;
 
+                      const isUrl =
+                        typeof rawValue === "string" &&
+                        (rawValue.startsWith("http://") ||
+                          rawValue.startsWith("https://"));
+
+                      const shortened =
+                        isUrl && rawValue.length > 0
+                          ? rawValue
+                              .replace(/^https?:\/\//, "")
+                              .replace(/^www\./, "")
+                              .split("/")[0]
+                          : displayValue;
+
                       return (
                         <TableCell
                           key={field}
-                          className="px-6 py-2 max-w-[240px] truncate"
-                          title={displayValue}
+                          className="px-6 py-2 max-w-[240px] align-top"
                         >
                           {isEditing ? (
                             <input
@@ -652,8 +741,18 @@ export default function Home() {
                                 handleFieldChange(i, field, e.target.value)
                               }
                             />
+                          ) : isUrl ? (
+                            <a
+                              href={rawValue}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 underline hover:text-blue-800 block truncate"
+                              title={rawValue}
+                            >
+                              {shortened}
+                            </a>
                           ) : (
-                            displayValue
+                            <ExpandableCell text={displayValue} />
                           )}
                         </TableCell>
                       );
