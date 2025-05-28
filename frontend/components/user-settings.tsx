@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";   // shadcn/ui
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Linkedin } from "lucide-react"; // Import the LinkedIn icon
 
 export default function SettingsPage() {
     return (
@@ -44,6 +45,18 @@ export default function SettingsPage() {
                             />
                         </div>
                     </div>
+
+                    {/* LinkedIn Profile Input */}
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="linkedin">LinkedIn Profile</Label>
+                        <div className="relative">
+                            
+                            <Input id="Linkedin" placeholder="Your name" defaultValue="https://linkedin.com/in/praveenjuge" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            Add your LinkedIn profile URL to help others connect with you
+                        </p>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -71,12 +84,15 @@ export default function SettingsPage() {
                         </div>
 
                         {/* full-width Save button on a new row */}
-                        <Button className="md:col-span-3 w-full" type="submit">
-                            Save Changes
-                        </Button>
+                        
                     </form>
+                    
                 </CardContent>
+                
             </Card>
+            <Button className="md:col-span-3 w-full" type="submit">
+                Save Changes
+            </Button>
         </div>
     );
 }
