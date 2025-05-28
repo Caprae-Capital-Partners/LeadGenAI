@@ -107,15 +107,15 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     yearFoundedFilter, bbbRatingFilter, streetFilter, cityFilter, stateFilter, sourceFilter]);
 
   const downloadCSV = (data: any[], filename: string) => {
-    const headers = Object.keys(data[0])
+    const headers = Object.keys(data[0]).filter(header => 
+      header !== 'id' && header !== 'lead_id' && header !== 'draft_id'
+    )
     const normalizeCSVValue = (field: string, value: any) => {
       const normalized = normalizeDisplayValue(value)
       return field === "source" && normalized === "N/A"
         ? "Not available in any source"
         : normalized
     }
-
-
 
     const csvRows = [
       headers.join(","),
