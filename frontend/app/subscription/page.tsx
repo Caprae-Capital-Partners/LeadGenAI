@@ -3,6 +3,7 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { loadStripe } from '@stripe/stripe-js';
 
 const plans = [
     {
@@ -91,38 +92,29 @@ export default function SubscriptionPage() {
             const res = await fetch("https://data.capraeleadseekers.site/create-checkout-session", {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/x-www-form-urlencoded", // Flask expects form-encoded by default
+                    "Content-Type": "application/json"
                 },
-                credentials: "include", // to include session cookie
-                body: new URLSearchParams({ plan_type: planId }).toString(),
+                credentials: "include",
+                body: JSON.stringify({ plan_type: planId }),
             });
 
-            const contentType = res.headers.get("content-type");
-            if (res.redirected) {
-                window.location.href = res.url; // this works if backend redirects
-                return;
-            }
-
-            if (contentType?.includes("application/json")) {
-                const data = await res.json();
-                if (res.ok && data.url) {
-                    window.location.href = data.url;
+            const data = await res.json();
+            if (res.ok && data.sessionId) {
+                const stripe = await loadStripe("pk_test_51RNp9cFS9KhotLbMiJM95rAjhuxjTwgjPpRLObOd1ghpwZHwZHOLDIVuxbp4wfXCJBHSLtZhoL99CdaTpOpWAY1L00GcymT5Xj");
+                if (stripe) {
+                    await stripe.redirectToCheckout({ sessionId: data.sessionId });
                 } else {
-                    alert(data.error || "Failed to create checkout session");
+                    alert("Stripe.js failed to load.");
                 }
             } else {
-                const html = await res.text();
-                console.error("Unexpected response:", html);
-                alert("Unexpected server response. Check console.");
+                alert(data.error || "Failed to create checkout session");
             }
         } catch (err) {
             console.error("Error creating checkout session:", err);
             alert("Could not initiate payment. Try again later.");
         }
     };
-      
-      
-    
+
     useEffect(() => {
         const timeout = setTimeout(() => {
             document.querySelectorAll(".success-message").forEach((msg) => {
