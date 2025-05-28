@@ -33,6 +33,7 @@ interface EnrichmentResultsProps {
 export interface EnrichedCompany {
   id: string
   lead_id?: string;
+  draft_id?: string; 
   company: string
   website: string
   industry: string
@@ -93,18 +94,18 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
   const handleDiscardChanges = () => {
     setEditableCompanies([...enrichedCompanies])
   }
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
-  
-  
+
+
   // Reset to first page when search term or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, employeesFilter, revenueFilter, businessTypeFilter, productFilter, 
-      yearFoundedFilter, bbbRatingFilter, streetFilter, cityFilter, stateFilter, sourceFilter]);
-  
+  }, [searchTerm, employeesFilter, revenueFilter, businessTypeFilter, productFilter,
+    yearFoundedFilter, bbbRatingFilter, streetFilter, cityFilter, stateFilter, sourceFilter]);
+
   const downloadCSV = (data: any[], filename: string) => {
     const headers = Object.keys(data[0])
     const normalizeCSVValue = (field: string, value: any) => {
@@ -113,9 +114,9 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
         ? "Not available in any source"
         : normalized
     }
-    
-    
-    
+
+
+
     const csvRows = [
       headers.join(","),
       ...data.map(row =>
@@ -123,7 +124,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
           `"${normalizeCSVValue(field, row[field]).toString().replace(/"/g, '""')}"`
         ).join(",")
       ),
-    ]  
+    ]
     const csvContent = csvRows.join("\n")
     const blob = new Blob([csvContent], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
@@ -133,30 +134,30 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     a.download = filename
     a.click()
     URL.revokeObjectURL(url)
-}
-
-
-const parseRevenue = (revenueStr: string): number | null => {
-  revenueStr = revenueStr.toLowerCase().trim().replace(/[$,]/g, "")
-  let multiplier = 1
-
-  if (revenueStr.endsWith("k")) {
-    multiplier = 1_000
-    revenueStr = revenueStr.slice(0, -1)
-  } else if (revenueStr.endsWith("m")) {
-    multiplier = 1_000_000
-    revenueStr = revenueStr.slice(0, -1)
-  } else if (revenueStr.endsWith("b")) {
-    multiplier = 1_000_000_000
-    revenueStr = revenueStr.slice(0, -1)
-  } else {
-    // If there's no suffix, treat as-is (e.g. user inputs "50000")
-    multiplier = 1
   }
 
-  const value = parseFloat(revenueStr)
-  return isNaN(value) ? null : value * multiplier
-}
+
+  const parseRevenue = (revenueStr: string): number | null => {
+    revenueStr = revenueStr.toLowerCase().trim().replace(/[$,]/g, "")
+    let multiplier = 1
+
+    if (revenueStr.endsWith("k")) {
+      multiplier = 1_000
+      revenueStr = revenueStr.slice(0, -1)
+    } else if (revenueStr.endsWith("m")) {
+      multiplier = 1_000_000
+      revenueStr = revenueStr.slice(0, -1)
+    } else if (revenueStr.endsWith("b")) {
+      multiplier = 1_000_000_000
+      revenueStr = revenueStr.slice(0, -1)
+    } else {
+      // If there's no suffix, treat as-is (e.g. user inputs "50000")
+      multiplier = 1
+    }
+
+    const value = parseFloat(revenueStr)
+    return isNaN(value) ? null : value * multiplier
+  }
 
 
 
@@ -216,7 +217,7 @@ const parseRevenue = (revenueStr: string): number | null => {
           const val = typeof company.revenue === "string"
             ? parseRevenue(company.revenue)
             : company.revenue ?? 0
-    
+
           if (val === null) return false
           if (operation === "exact") return val === value
           if (operation === "less than") return val < value
@@ -228,7 +229,7 @@ const parseRevenue = (revenueStr: string): number | null => {
         })
       }
     }
-    
+
 
     if (businessTypeFilter) {
       filtered = filtered.filter((c) => c.businessType.toLowerCase().includes(businessTypeFilter.toLowerCase()))
@@ -278,7 +279,7 @@ const parseRevenue = (revenueStr: string): number | null => {
     setEditableCompanies(filtered)
 
     setFilteredCompanies(filtered)
-    
+
     // Initialize all companies as selected if selectAll is true
     if (selectAll) {
       setSelectedCompanies(filtered.map(c => c.id))
@@ -290,11 +291,11 @@ const parseRevenue = (revenueStr: string): number | null => {
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentItems = editableCompanies.slice(indexOfFirstItem, indexOfLastItem)
-
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
-    
+
     if (totalPages <= 7) {
       // Show all pages if there are 7 or fewer
       for (let i = 1; i <= totalPages; i++) {
@@ -303,36 +304,36 @@ const parseRevenue = (revenueStr: string): number | null => {
     } else {
       // Always show first and last page, with ellipsis for hidden pages
       pageNumbers.push(1);
-      
+
       // Determine range to show around current page
       let startPage = Math.max(2, currentPage - 2);
       let endPage = Math.min(totalPages - 1, currentPage + 2);
-      
+
       // Adjust if we're near the beginning or end
       if (currentPage <= 4) {
         endPage = 5;
       } else if (currentPage >= totalPages - 3) {
         startPage = totalPages - 4;
       }
-      
+
       // Add ellipsis if needed
       if (startPage > 2) {
         pageNumbers.push('ellipsis');
       }
-      
+
       // Add middle pages
       for (let i = startPage; i <= endPage; i++) {
         pageNumbers.push(i);
       }
-      
+
       // Add ellipsis if needed
       if (endPage < totalPages - 1) {
         pageNumbers.push('ellipsis');
       }
-      
+
       pageNumbers.push(totalPages);
     }
-    
+
     return pageNumbers;
   };
 
@@ -370,24 +371,24 @@ const parseRevenue = (revenueStr: string): number | null => {
     ) {
       return "N/A"
     }
-    
+
     return value
   }
-  
+
 
   // Function to clean URLs for display (remove http://, https://, www. and anything after the TLD)
   const cleanUrlForDisplay = (url: string): string => {
     if (!url || url === "N/A" || url === "NA") return url;
-    
+
     // First remove http://, https://, and www.
     let cleanUrl = url.toString().replace(/^(https?:\/\/)?(www\.)?/i, "");
-    
+
     // Then truncate everything after the domain (matches common TLDs)
     const domainMatch = cleanUrl.match(/^([^\/\?#]+\.(com|org|net|io|ai|co|gov|edu|app|dev|me|info|biz|us|uk|ca|au|de|fr|jp|ru|br|in|cn|nl|se)).*$/i);
     if (domainMatch) {
       return domainMatch[1];
     }
-    
+
     // If no common TLD found, just truncate at the first slash, question mark or hash
     return cleanUrl.split(/[\/\?#]/)[0];
   }
@@ -403,6 +404,7 @@ const parseRevenue = (revenueStr: string): number | null => {
     router.push("?tab=data-enhancement")
     window.location.reload()
   }
+
   const handleSaveEditedCompanies = async () => {
     const user = JSON.parse(sessionStorage.getItem("user") || "{}");
     const user_id = user.id || user.user_id || user._id;
@@ -412,7 +414,8 @@ const parseRevenue = (revenueStr: string): number | null => {
       return;
     }
 
-    // Make sure selectedCompanies list is correct
+    const draftMap = JSON.parse(sessionStorage.getItem("leadToDraftMap") || "{}");
+
     console.log("🧾 Selected company IDs:", selectedCompanies);
 
     const companiesToSave = editableCompanies.filter((c) =>
@@ -428,81 +431,99 @@ const parseRevenue = (revenueStr: string): number | null => {
 
     for (const [index, c] of companiesToSave.entries()) {
       try {
-        const leadId = c.lead_id || c.id || "";
+        const lead_id = c.lead_id || c.id;
+        const draftId = draftMap[lead_id]?.draft_id;
+
+        if (!draftId) {
+          console.warn(`⚠️ No draft_id found for lead_id: ${lead_id}, company: ${c.company}`);
+          alert(`Missing draft ID for "${c.company}". Please try re-enriching.`);
+          continue;
+        }
 
         const payload = {
-          user_id,
-          company: c.company,
-          website: c.website,
-          industry: c.industry,
-          product_category: c.productCategory,
-          business_type: c.businessType,
-          employees:
-            typeof c.employees === "number"
-              ? c.employees
-              : parseInt(c.employees as any) || 0,
-          revenue:
-            typeof c.revenue === "string"
-              ? parseFloat(c.revenue.replace(/[^0-9.]/g, ""))
-              : c.revenue,
-          year_founded: parseInt(c.yearFounded) || 0,
-          bbb_rating: c.bbbRating,
-          street: c.street,
-          city: c.city,
-          state: c.state,
-          company_phone: c.companyPhone,
-          company_linkedin: c.companyLinkedin,
-          owner_first_name: c.ownerFirstName,
-          owner_last_name: c.ownerLastName,
-          owner_title: c.ownerTitle,
-          owner_linkedin: c.ownerLinkedin,
-          owner_phone_number: c.ownerPhoneNumber,
-          owner_email: c.ownerEmail,
-          source: c.source,
+          draft_data: {
+            user_id,
+            company: c.company,
+            website: c.website,
+            industry: c.industry,
+            product_category: c.productCategory,
+            business_type: c.businessType,
+            employees:
+              typeof c.employees === "number"
+                ? c.employees
+                : parseInt(c.employees as any) || 0,
+            revenue:
+              typeof c.revenue === "string"
+                ? parseFloat(c.revenue.replace(/[^0-9.]/g, ""))
+                : c.revenue,
+            year_founded: parseInt(c.yearFounded) || 0,
+            bbb_rating: c.bbbRating,
+            street: c.street,
+            city: c.city,
+            state: c.state,
+            company_phone: c.companyPhone,
+            company_linkedin: c.companyLinkedin,
+            owner_first_name: c.ownerFirstName,
+            owner_last_name: c.ownerLastName,
+            owner_title: c.ownerTitle,
+            owner_linkedin: c.ownerLinkedin,
+            owner_phone_number: c.ownerPhoneNumber,
+            owner_email: c.ownerEmail,
+            source: c.source,
+          },
+          change_summary: "User edited company info",
         };
 
-        console.log(`📤 Sending (${index + 1}/${companiesToSave.length}):`, leadId, payload);
+        console.log(`📤 Sending (${index + 1}/${companiesToSave.length}):`, draftId, payload);
 
         const res = await fetch(
-          `https://data.capraeleadseekers.site/leads/${leadId}/edit`,
+          `https://data.capraeleadseekers.site/api/leads/drafts/${draftId}`,
           {
-            method: "POST",
+            method: "PUT",
             headers: { "Content-Type": "application/json" },
-            credentials: "include", // ✅ Needed for session-based routes
+            credentials: "include",
             body: JSON.stringify(payload),
           }
         );
 
-        const text = await res.text(); // Read response as raw text
+        const text = await res.text();
         console.log("📥 Raw response text:", text);
 
         try {
-          const data = JSON.parse(text); // Attempt to parse as JSON
+          const data = JSON.parse(text);
           console.log("✅ Parsed JSON response:", data);
 
-          if (!res.ok || !data.success) {
-            console.error("❌ Failed to save:", leadId, data);
-            alert(`Failed to save company with ID: ${leadId}`);
+          if (!res.ok || data.error) {
+            console.error("❌ Failed to update draft:", draftId, data);
+            alert(`Failed to update draft with ID: ${draftId}`);
+          } else {
+            console.log(`📝 Draft updated for: ${draftId}`);
           }
         } catch (e) {
           console.error("❌ Failed to parse JSON. Response was likely HTML.");
           alert("Server returned an unexpected response. Check console.");
         }
-
       } catch (err) {
-        console.error("❌ Error saving company:", err);
-        alert(`Error saving a company. See console for details.`);
+        console.error("❌ Error updating draft:", err);
+        alert(`Error updating a draft. See console for details.`);
       }
     }
 
     alert("✅ Done saving selected companies.");
-  }
+  };
   
   
   
-  
-  
-  
+
+
+
+
+
+
+
+
+
+
 
   return (
     <div className="space-y-6">
@@ -621,14 +642,14 @@ const parseRevenue = (revenueStr: string): number | null => {
                 </Button>
               </div>
             )}
-            
+
             {/* Pagination controls */}
             {filteredCompanies.length > 0 && (
               <div className="mb-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
                   Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCompanies.length)} of {filteredCompanies.length} results
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   <Select value={itemsPerPage.toString()} onValueChange={(value) => {
                     setItemsPerPage(Number(value));
@@ -643,17 +664,17 @@ const parseRevenue = (revenueStr: string): number | null => {
                       <SelectItem value="100">100 per page</SelectItem>
                     </SelectContent>
                   </Select>
-                  
+
                   <Pagination>
                     <PaginationContent>
                       <PaginationItem>
-                        <PaginationPrevious 
+                        <PaginationPrevious
                           onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                           aria-disabled={currentPage === 1}
                           className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                         />
                       </PaginationItem>
-                      
+
                       {getPageNumbers().map((page, index) => (
                         <PaginationItem key={index}>
                           {page === 'ellipsis' ? (
@@ -668,9 +689,9 @@ const parseRevenue = (revenueStr: string): number | null => {
                           )}
                         </PaginationItem>
                       ))}
-                      
+
                       <PaginationItem>
-                        <PaginationNext 
+                        <PaginationNext
                           onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                           aria-disabled={currentPage === totalPages}
                           className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
@@ -681,42 +702,51 @@ const parseRevenue = (revenueStr: string): number | null => {
                 </div>
               </div>
             )}
-            
+
             <div className="w-full overflow-x-auto rounded-md border">
               <div className="w-full overflow-x-auto rounded-md border">
-                <Table className="w-full table-fixed">
-                <TableHeader>
+                <Table className="w-full overflow-x-auto">
+                  <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12 px-2">
+                      <TableHead className="px-6 py-2 w-12">
                         <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
                       </TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Company</TableHead>
-                      <TableHead className="text-xs break-words max-w-[180px] px-2 py-1">Website</TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Industry</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Product/Service Category</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Business Type (B2B, B2B2C)</TableHead>
-                      <TableHead className="text-xs break-words max-w-[140px] px-2 py-1">Employees Count</TableHead>
-                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">Revenue</TableHead>
-                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">Year Founded</TableHead>
-                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">BBB Rating</TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Street</TableHead>
-                      <TableHead className="text-xs break-words max-w-[140px] px-2 py-1">City</TableHead>
-                      <TableHead className="text-xs break-words max-w-[100px] px-2 py-1">State</TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Company Phone</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Company LinkedIn</TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Owner's First Name</TableHead>
-                      <TableHead className="text-xs break-words max-w-[160px] px-2 py-1">Owner's Last Name</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's Title</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's LinkedIn</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's Phone Number</TableHead>
-                      <TableHead className="text-xs break-words max-w-[200px] px-2 py-1">Owner's Email</TableHead>
-                      <TableHead className="text-xs break-words max-w-[120px] px-2 py-1">Source</TableHead>
+                      {[
+                        "Company",
+                        "Website",
+                        "Industry",
+                        "Product/Service Category",
+                        "Business Type (B2B, B2B2C)",
+                        "Employees Count",
+                        "Revenue",
+                        "Year Founded",
+                        "BBB Rating",
+                        "Street",
+                        "City",
+                        "State",
+                        "Company Phone",
+                        "Company LinkedIn",
+                        "Owner's First Name",
+                        "Owner's Last Name",
+                        "Owner's Title",
+                        "Owner's LinkedIn",
+                        "Owner's Phone Number",
+                        "Owner's Email",
+                        "Source",
+                      ].map((label, i) => (
+                        <TableHead
+                          key={i}
+                          className="text-xs font-semibold text-black px-6 py-2 whitespace-nowrap"
+                        >
+                          {label}
+                        </TableHead>
+                      ))}
                     </TableRow>
+                  </TableHeader>
 
-                </TableHeader>
                   <TableBody>
-                    {currentItems.length > 0
-                      ? currentItems.map((company, i) => (
+                    {currentItems.length > 0 ? (
+                      currentItems.map((company, i) => (
                         <TableRow
                           key={company.id}
                           className={
@@ -728,124 +758,117 @@ const parseRevenue = (revenueStr: string): number | null => {
                                 : "")
                           }
                         >
-                      {/* Select Checkbox */}
-                      <TableCell className="whitespace-nowrap px-2 align-top">
-                        <Checkbox
-                          checked={selectedCompanies.includes(company.id)}
-                          onCheckedChange={() => handleSelectCompany(company.id)}
-                        />
-                      </TableCell>
+                          <TableCell className="px-6 py-2">
+                            <Checkbox
+                              checked={selectedCompanies.includes(company.id)}
+                              onCheckedChange={() => handleSelectCompany(company.id)}
+                            />
+                          </TableCell>
 
-                      {/* Company Name */}
-                      <TableCell className="max-w-[160px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2">
-                        {normalizeDisplayValue(company.company)}
-                      </TableCell>
+                          {[
+                            "company",
+                            "website",
+                            "industry",
+                            "productCategory",
+                            "businessType",
+                            "employees",
+                            "revenue",
+                            "yearFounded",
+                            "bbbRating",
+                            "street",
+                            "city",
+                            "state",
+                            "companyPhone",
+                            "companyLinkedin",
+                            "ownerFirstName",
+                            "ownerLastName",
+                            "ownerTitle",
+                            "ownerLinkedin",
+                            "ownerPhoneNumber",
+                            "ownerEmail",
+                            "source",
+                          ].map((field) => {
+                            const value = company[field as keyof EnrichedCompany] ?? "";
+                            const displayValue = normalizeDisplayValue(value);
 
-                      {/* Website + Link */}
-                      <TableCell className="max-w-[200px] break-all text-sm align-top px-3 py-2">
-                        <div className="flex flex-col gap-1">
-                          <span className="break-all">{cleanUrlForDisplay(company.website)}</span>
-                          {company.website &&
-                            normalizeDisplayValue(company.website) !== "N/A" && (
-                              <a
-                                href={
-                                  company.website.toString().startsWith("http")
-                                    ? company.website
-                                    : `https://${company.website}`
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-500 hover:text-blue-700 break-all"
-                                title="Open website in new tab"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <ExternalLink className="h-4 w-4 inline" />
-                              </a>
-                            )}
-                        </div>
-                      </TableCell>
+                            const isLinkedInField = ["companyLinkedin", "ownerLinkedin"].includes(field);
+                            const isValidLink = typeof value === "string" && value.startsWith("http");
 
-                      {/* Editable Fields */}
-                      {[
-                        "industry",
-                        "productCategory",
-                        "businessType",
-                        "employees",
-                        "revenue",
-                        "yearFounded",
-                        "bbbRating",
-                        "street",
-                        "city",
-                        "state",
-                        "companyPhone",
-                        "companyLinkedin",
-                        "ownerFirstName",
-                        "ownerLastName",
-                        "ownerTitle",
-                        "ownerLinkedin",
-                        "ownerPhoneNumber",
-                        "ownerEmail",
-                      ].map((field) => {
-                        const value = company[field as keyof EnrichedCompany] ?? "";
-                        const displayValue = normalizeDisplayValue(value);
-
-                        const isLinkedInField = field === "companyLinkedin" || field === "ownerLinkedin";
-                        const isValidLink = typeof value === "string" && value.startsWith("http");
-
-                        return (
-                          <TableCell
-                            key={field}
-                            className="max-w-[220px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2"
-                          >
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                className="w-full bg-transparent border-0 focus:border-b focus:outline-none focus:ring-0 text-sm"
-                                value={String(value)}
-                                onChange={(e) =>
-                                  handleFieldChange(company.id, field as keyof EnrichedCompany, e.target.value)
-                                }
-                              />
-                            ) : isLinkedInField && isValidLink ? (
-                              <div className="flex flex-col gap-1">
-                                <span className="break-all text-sm">
-                                  {value.replace("https://", "").replace("www.", "").split("/").slice(0, 3).join("/")}...
-                                </span>
-                                <a
-                                  href={value}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-700"
-                                  onClick={(e) => e.stopPropagation()}
+                            // Toggle logic only for productCategory
+                            if (field === "productCategory") {
+                              const isExpanded = expandedRows.has(i);
+                              return (
+                                <TableCell
+                                  key={field}
+                                  className="px-6 py-2 text-sm align-top max-w-[240px]"
                                 >
-                                  <ExternalLink className="h-4 w-4 inline" />
-                                </a>
-                              </div>
-                            ) : (
-                              displayValue
-                            )}
-                          </TableCell>
-                        );
-                      })}
+                                  <div className={`${isExpanded ? "" : "line-clamp-3"} break-words overflow-hidden`}>
+                                    {displayValue}
+                                  </div>
+                                  {displayValue.length > 100 && (
+                                    <button
+                                      onClick={() => {
+                                        const newSet = new Set(expandedRows);
+                                        isExpanded ? newSet.delete(i) : newSet.add(i);
+                                        setExpandedRows(newSet);
+                                      }}
+                                      className="text-xs text-blue-500 hover:underline mt-1 block"
+                                    >
+                                      {isExpanded ? "Show less" : "Show more"}
+                                    </button>
+                                  )}
+                                </TableCell>
+                              );
+                            }
 
-                      {/* Source */}
-                      <TableCell className="max-w-[160px] break-words whitespace-pre-wrap text-sm align-top px-3 py-2">
-                        {normalizeDisplayValue(company.source) === "N/A"
-                          ? "Not available in any source"
-                          : normalizeDisplayValue(company.source)}
-                      </TableCell>
-                    </TableRow>
-
-                  ))
-                      : (
-                        <TableRow key="no-results">
-                          <TableCell colSpan={22} className="text-center">
-                            No results found.
-                          </TableCell>
+                            return (
+                              <TableCell
+                                key={field}
+                                className="px-6 py-2 text-sm align-top whitespace-nowrap"
+                                title={displayValue}
+                              >
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
+                                    value={String(value)}
+                                    onChange={(e) =>
+                                      handleFieldChange(company.id, field as keyof EnrichedCompany, e.target.value)
+                                    }
+                                  />
+                                ) : isLinkedInField && isValidLink ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="truncate">
+                                      {value.replace("https://", "").replace("www.", "").split("/")[0]}
+                                    </span>
+                                    <a
+                                      href={value}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <ExternalLink className="h-4 w-4 text-blue-500 hover:text-blue-700" />
+                                    </a>
+                                  </div>
+                                ) : (
+                                  displayValue
+                                )}
+                              </TableCell>
+                            );
+                          })}
                         </TableRow>
-                      )}
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={22} className="text-center py-4">
+                          No results found.
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
+
                 </Table>
+
               </div>
             </div>
           </div>

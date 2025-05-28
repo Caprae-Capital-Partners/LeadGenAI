@@ -2,6 +2,21 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 // import { useEffect, useState } from "react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartTooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LineChart,
+  Line,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 import { Header } from "@/components/header";
 import {
@@ -19,8 +34,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {Checkbox} from "@/components/ui/checkbox";
-import {Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import {
   Search,
   Download,
@@ -47,7 +62,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-import { redirect } from 'next/navigation';
+import { redirect } from "next/navigation";
 
 // export default function Home() {
 //   redirect('/auth');
@@ -82,7 +97,7 @@ export default function Home() {
     setIsEditing(false); // Exit edit mode
     console.log("Changes discarded.");
   };
-    
+
   const [showFilters, setShowFilters] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const clearAllFilters = () => {
@@ -112,8 +127,28 @@ export default function Home() {
     return newObj;
   };
 
-  // 
+  //
+
+  const ExpandableCell = ({ text }) => {
+    const [expanded, setExpanded] = useState(false);
+    const isLong = text.length > 100;
+
+    if (!isLong) return <span>{text}</span>;
+
+    return (
+      <div className="whitespace-pre-wrap">
+        <span>{expanded ? text : text.slice(0, 30) + "... "}</span>
+        <button
+          className="text-blue-500 hover:underline text-xs ml-1"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      </div>
+    );
+  };
   
+
   const [scrapingHistory, setScrapingHistory] = useState([]);
 
   const handleExportCSV = () => {
@@ -159,7 +194,6 @@ export default function Home() {
     link.click();
     document.body.removeChild(link);
   };
-  
 
   const [editedRows, setEditedRows] = useState(scrapingHistory); // duplicate of original data
   // Example pagination state
@@ -171,32 +205,32 @@ export default function Home() {
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
   const indexOfLastItem = currentPage * itemsPerPage;
   const [selectedCompanies, setSelectedCompanies] = useState([]);
- 
+
   const handleSelectAll = () => {
     const visibleIds = scrapingHistory
       .slice(indexOfFirstItem, indexOfLastItem)
       .map((entry) => entry.id);
-  
+
     if (selectAll) {
       setSelectedCompanies([]);
     } else {
       setSelectedCompanies(visibleIds);
     }
-  
+
     setSelectAll(!selectAll);
   };
-  
+
   const handleSelectCompany = (id) => {
     const updatedSelection = selectedCompanies.includes(id)
       ? selectedCompanies.filter((cid) => cid !== id)
       : [...selectedCompanies, id];
-  
+
     setSelectedCompanies(updatedSelection);
-  
+
     const visibleIds = scrapingHistory
       .slice(indexOfFirstItem, indexOfLastItem)
       .map((entry) => entry.id);
-  
+
     setSelectAll(visibleIds.every((id) => updatedSelection.includes(id)));
   };
 
@@ -204,10 +238,42 @@ export default function Home() {
   //   indexOfFirstItem,
   //   indexOfLastItem
   // );
+
+  // Pie Chart: Industry Distribution
+  const industryData = Object.entries(
+    scrapingHistory.reduce((acc, curr) => {
+      const industry = curr.industry || "Unknown";
+      acc[industry] = (acc[industry] || 0) + 1;
+      return acc;
+    }, {})
+  ).map(([name, value]) => ({ name, value }));
+
+  // Bar Chart: Companies per City
+  const cityData = Object.entries(
+    scrapingHistory.reduce((acc, curr) => {
+      const city = curr.city || "Unknown";
+      acc[city] = (acc[city] || 0) + 1;
+      return acc;
+    }, {})
+  ).map(([name, count]) => ({ name, count }));
+
+  // Line Chart: Weekly Enrichment Trends
+  const dateCounts = scrapingHistory.reduce((acc, curr) => {
+    const rawDate = curr.created || curr.updated || new Date().toISOString();
+    const date = new Date(rawDate).toISOString().split("T")[0];
+    acc[date] = (acc[date] || 0) + 1;
+    return acc;
+  }, {});
+
+  const trendData = Object.entries(dateCounts)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, count]) => ({ date, count }));
+
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
   useEffect(() => {
     const verifyAndFetchLeads = async () => {
       try {
-        // const authRes = await fetch("http://localhost:8000/api/ping-auth", {
         const authRes = await fetch(
           "https://data.capraeleadseekers.site/api/ping-auth",
           {
@@ -223,74 +289,104 @@ export default function Home() {
 
         console.log("✅ Logged in");
 
-        // const leadsRes = await fetch("http://localhost:8000/api/lead-access", {
-        const leadsRes = await fetch(
-          "https://data.capraeleadseekers.site/api/lead-access",
+        const draftsRes = await fetch(
+          "https://data.capraeleadseekers.site/api/leads/drafts",
           {
             method: "GET",
             credentials: "include",
           }
         );
 
-        if (!leadsRes.ok) {
-          console.warn("⚠️ Could not fetch leads, status:", leadsRes.status);
+        if (!draftsRes.ok) {
+          console.warn("⚠️ Could not fetch drafts, status:", draftsRes.status);
           return;
         }
 
-        const data = await leadsRes.json();
-        const accessList = data.access_list || [];
+        const data = await draftsRes.json();
 
-        const parsed = accessList.map((entry) => ({
-          id: entry.lead?.lead_id || entry.lead_id || entry.id,
-          company: entry.lead?.company || "N/A",
-          // Add any fields you're storing, fallback to "" if missing
-          website: "",
-          industry: "",
-          productCategory: "",
-          businessType: "",
-          employees: "",
-          revenue: "",
-          yearFounded: "",
-          bbbRating: "",
-          street: "",
-          city: "",
-          state: "",
-          companyPhone: "",
-          companyLinkedin: "",
-          ownerFirstName: "",
-          ownerLastName: "",
-          ownerTitle: "",
-          ownerLinkedin: "",
-          ownerPhoneNumber: "",
-          ownerEmail: "",
-          source: "",
-          created: "",
-          updated: "",
+        const parsed = (data || []).map((entry) => ({
+          id: entry.lead_id || entry.id,
+          lead_id: entry.lead_id || entry.id,
+          company: entry.draft_data?.company || "N/A",
+          website: entry.draft_data?.website || "",
+          industry: entry.draft_data?.industry || "",
+          productCategory: entry.draft_data?.product_category || "",
+          businessType: entry.draft_data?.business_type || "",
+          employees: entry.draft_data?.employees || "",
+          revenue: entry.draft_data?.revenue || "",
+          yearFounded: entry.draft_data?.year_founded?.toString() || "",
+          bbbRating: entry.draft_data?.bbb_rating || "",
+          street: entry.draft_data?.street || "",
+          city: entry.draft_data?.city || "",
+          state: entry.draft_data?.state || "",
+          companyPhone: entry.draft_data?.company_phone || "",
+          companyLinkedin: entry.draft_data?.company_linkedin || "",
+          ownerFirstName: entry.draft_data?.owner_first_name || "",
+          ownerLastName: entry.draft_data?.owner_last_name || "",
+          ownerTitle: entry.draft_data?.owner_title || "",
+          ownerLinkedin: entry.draft_data?.owner_linkedin || "",
+          ownerPhoneNumber: entry.draft_data?.owner_phone_number || "",
+          ownerEmail: entry.draft_data?.owner_email || "",
+          source: entry.draft_data?.source || "",
+          created: entry.created || "",
+          updated: entry.updated || "",
+          sourceType: "database",
         }));
 
         setScrapingHistory(parsed);
         setEditedRows(parsed);
       } catch (error) {
-        console.error("🚨 Error verifying auth or fetching leads:", error);
+        console.error("🚨 Error verifying auth or fetching drafts:", error);
         router.push("/auth");
+      } finally {
+        setIsCheckingAuth(false);
       }
     };
 
     verifyAndFetchLeads();
   }, []);
+
+  const [subscriptionInfo, setSubscriptionInfo] = useState(null);
+
+  useEffect(() => {
+    const fetchSubscriptionInfo = async () => {
+      try {
+        const existing = sessionStorage.getItem("subscriptionInfo");
+        if (existing) {
+          setSubscriptionInfo(JSON.parse(existing));
+          return;
+        }
+
+        const res = await fetch(
+          "https://data.capraeleadseekers.site/api/user/subscription_info",
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
+        if (!res.ok) {
+          console.warn("⚠️ Failed to fetch subscription info:", res.status);
+          return;
+        }
+
+        const data = await res.json();
+        sessionStorage.setItem("subscriptionInfo", JSON.stringify(data));
+        setSubscriptionInfo(data);
+      } catch (err) {
+        console.error("Error fetching subscription info:", err);
+      }
+    };
+
+    fetchSubscriptionInfo();
+  }, []);
   
-  
-  
-  
 
-
-
-
-
-
-
-
-  return (
+  return isCheckingAuth ? (
+    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-yellow-400"></div>
+    </div>
+  ) : (
     <>
       <Header />
       <main className="px-20 py-16 space-y-10">
@@ -303,23 +399,48 @@ export default function Home() {
           {[
             {
               label: "Total Leads Scraped",
-              value: scrapingHistory.length.toLocaleString(), // 👈 from state
+              value: scrapingHistory.length.toLocaleString(),
               change: "+0%", // Optionally compute later
-              comparison: "vs last month",
+              comparison: "total enriched leads",
             },
             {
               label: "Token Usage",
-              value: "12 / 100",
-              change: "12%",
+              value:
+                subscriptionInfo?.plan?.initial_credits !== undefined &&
+                subscriptionInfo?.subscription?.credits_remaining !== undefined
+                  ? `${
+                      subscriptionInfo.plan.initial_credits -
+                      subscriptionInfo.subscription.credits_remaining
+                    } / ${subscriptionInfo.plan.initial_credits}`
+                  : "N/A",
+              change:
+                subscriptionInfo?.plan?.initial_credits !== undefined &&
+                subscriptionInfo?.subscription?.credits_remaining !== undefined
+                  ? `${(
+                      ((subscriptionInfo.plan.initial_credits -
+                        subscriptionInfo.subscription.credits_remaining) /
+                        subscriptionInfo.plan.initial_credits) *
+                      100
+                    ).toFixed(0)}%`
+                  : "0%",
               comparison: "used this month",
             },
             {
               label: "Subscription",
-              value: `${
-                userTier.charAt(0).toUpperCase() + userTier.slice(1)
-              } Plan`, // Capitalize
+              value: subscriptionInfo?.subscription?.plan_name
+                ? `${subscriptionInfo.subscription.plan_name} Plan`
+                : "N/A",
               change: "Active",
-              comparison: "until 2025-12-31", // You can replace this if you store expiry
+              comparison: subscriptionInfo?.subscription
+                ?.plan_expiration_timestamp
+                ? `until ${new Date(
+                    subscriptionInfo.subscription.plan_expiration_timestamp
+                  ).toLocaleDateString()}`
+                : "Expiration unknown",
+              action: {
+                label: "Upgrade",
+                link: "/subscription",
+              },
             },
           ].map((stat, index) => (
             <Card
@@ -337,33 +458,79 @@ export default function Home() {
               <CardContent className="pt-0 text-sm text-blue-600">
                 <span>{stat.change}</span>{" "}
                 <span className="text-muted-foreground">{stat.comparison}</span>
+                {/* Show "Upgrade" button only if this stat has an action */}
+                {stat.action && (
+                  <div className="mt-3">
+                    <a href={stat.action.link}>
+                      <Button size="sm" variant="outline">
+                        {stat.action.label}
+                      </Button>
+                    </a>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Analytics Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="p-6 rounded-2xl shadow-sm hover:shadow-[0_4px_20px_0_rgba(122,194,164,0.5)] hover:scale-[1.02] transition-transform">
-            <img
-              src="/images/pie_chart.png"
-              alt="Industry Share Pie Chart"
-              className="w-full object-contain"
-            />
+          {/* Pie Chart */}
+          <Card className="p-6 rounded-2xl shadow-sm">
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={industryData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                >
+                  {industryData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={`hsl(${(index * 60) % 360}, 70%, 50%)`}
+                    />
+                  ))}
+                </Pie>
+                <RechartTooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <p className="text-center mt-2 text-sm text-muted-foreground">
+              Industry Distribution
+            </p>
           </Card>
-          <Card className="p-6 rounded-2xl shadow-sm hover:shadow-[0_4px_20px_0_rgba(122,194,164,0.5)] hover:scale-[1.02] transition-transform">
-            <img
-              src="/images/bar_chart.png"
-              alt="Leads per Industry Bar Chart"
-              className="w-full object-contain"
-            />
+
+          {/* Bar Chart */}
+          <Card className="p-6 rounded-2xl shadow-sm">
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={cityData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <RechartTooltip />
+                <Bar dataKey="count" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+            <p className="text-center mt-2 text-sm text-muted-foreground">
+              Companies by City
+            </p>
           </Card>
-          <Card className="p-6 rounded-2xl shadow-sm hover:shadow-[0_4px_20px_0_rgba(122,194,164,0.5)] hover:scale-[1.02] transition-transform">
-            <img
-              src="/images/line_chart.png"
-              alt="Weekly Growth Trend Line Chart"
-              className="w-full object-contain"
-            />
+
+          {/* Line Chart */}
+          <Card className="p-6 rounded-2xl shadow-sm">
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={trendData}>
+                <XAxis dataKey="date" />
+                <YAxis />
+                <RechartTooltip />
+                <Legend />
+                <Line type="monotone" dataKey="count" stroke="#8884d8" />
+              </LineChart>
+            </ResponsiveContainer>
+            <p className="text-center mt-2 text-sm text-muted-foreground">
+              Weekly Growth Trend
+            </p>
           </Card>
         </div>
 
@@ -538,22 +705,58 @@ export default function Home() {
                       "source",
                       "created",
                       "updated",
-                    ].map((field) => (
-                      <TableCell key={field} className="px-6 py-2">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
-                            value={row[field] ?? ""}
-                            onChange={(e) =>
-                              handleFieldChange(i, field, e.target.value)
-                            }
-                          />
-                        ) : (
-                          row[field]
-                        )}
-                      </TableCell>
-                    ))}
+                    ].map((field) => {
+                      const rawValue = row[field];
+                      const displayValue =
+                        rawValue === null ||
+                        rawValue === undefined ||
+                        rawValue === ""
+                          ? "N/A"
+                          : rawValue;
+
+                      const isUrl =
+                        typeof rawValue === "string" &&
+                        (rawValue.startsWith("http://") ||
+                          rawValue.startsWith("https://"));
+
+                      const shortened =
+                        isUrl && rawValue.length > 0
+                          ? rawValue
+                              .replace(/^https?:\/\//, "")
+                              .replace(/^www\./, "")
+                              .split("/")[0]
+                          : displayValue;
+
+                      return (
+                        <TableCell
+                          key={field}
+                          className="px-6 py-2 max-w-[240px] align-top"
+                        >
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
+                              value={rawValue ?? ""}
+                              onChange={(e) =>
+                                handleFieldChange(i, field, e.target.value)
+                              }
+                            />
+                          ) : isUrl ? (
+                            <a
+                              href={rawValue}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 underline hover:text-blue-800 block truncate"
+                              title={rawValue}
+                            >
+                              {shortened}
+                            </a>
+                          ) : (
+                            <ExpandableCell text={displayValue} />
+                          )}
+                        </TableCell>
+                      );
+                    })}
 
                     <TableCell className="px-6 py-2">
                       {!isEditing ? (

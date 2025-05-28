@@ -37,15 +37,14 @@ export function DataEnhancement() {
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const router = useRouter();
   // Get the original search criteria from URL parameters
   const getSearchCriteria = () => {
     if (typeof window === 'undefined') return { industry: '', location: '' };
-    
+
     const params = new URLSearchParams(window.location.search);
     const industry = params.get('industry') || '';
     const location = params.get('location') || '';
-    
+
     return {
       industry: industry,
       location: location
@@ -61,30 +60,18 @@ export function DataEnhancement() {
   } | null>(null);
 
   // Cleanup function for progress simulation
- 
+
+  const router = useRouter();
+
+  const handleBack = () => {
+    sessionStorage.removeItem("leads");
+    sessionStorage.removeItem("enrichedResults");
+    sessionStorage.removeItem("subscriptionInfo");
+    sessionStorage.removeItem("leadToDraftMap");
+    router.push("/scraper"); // 🔁 adjust the path if needed
+  };
 
   useEffect(() => {
-    
-
-    const verifyLogin = async () => {
-      try {
-        const res = await fetch("https://data.capraeleadseekers.site/api/ping-auth", {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (!res.ok) {
-          router.push("/auth");
-        } else {
-          console.log("✅ Authenticated user");
-        }
-      } catch (error) {
-        console.error("❌ Error verifying login:", error);
-        router.push("/auth");
-      }
-    };
-
-    verifyLogin();
 
     // Cleanup: clear progress simulation
     return () => {
@@ -94,7 +81,7 @@ export function DataEnhancement() {
     };
   }, []);
 
-  
+
 
 
   // Function to stop progress simulation
@@ -167,8 +154,7 @@ export function DataEnhancement() {
       console.error("Failed to restore enriched results:", err);
     }
   }, []);
-  
-  
+
 
   // 3. Persist to sessionStorage on updates
   useEffect(() => {
@@ -186,7 +172,7 @@ export function DataEnhancement() {
     setEnrichedCompanies(combined);
 
   }, [dbEnrichedCompanies, scrapedEnrichedCompanies]);
-  
+
   // const { leads, setLeads } = useLeads(); // from LeadsContext or LeadsProvider
 
   useEffect(() => {
@@ -405,7 +391,7 @@ export function DataEnhancement() {
         ? null
         : val.toString().trim();
     };
-    
+
 
     const preferValue = (g: any, a: any, fallback: any = "") => cleanVal(g) ?? cleanVal(a) ?? fallback
 
@@ -457,7 +443,7 @@ export function DataEnhancement() {
   }
   const toCamelCase = (lead: any): EnrichedCompany => ({
     id: lead.id || `${lead.company}-${Math.random()}`,
-    lead_id: lead.lead_id || "",
+    lead_id: lead.lead_id,
     company: lead.company,
     website: lead.website,
     industry: lead.industry,
@@ -484,6 +470,8 @@ export function DataEnhancement() {
   const [dbOnlyMode, setDbOnlyMode] = useState(true);
   const [fromDatabaseLeads, setFromDatabaseLeads] = useState<string[]>([]); // lowercase names
   const { enrichedCompanies, setEnrichedCompanies } = useEnrichment();
+  const [leadToDraftMap, setLeadToDraftMap] = useState<Record<string, { draft_id: string, company: string }>>({});
+  const draftMap: Record<string, { draft_id: string; company: string }> = {};
 
   const handleStartEnrichment = async (
     forceScrape = false,
@@ -494,36 +482,66 @@ export function DataEnhancement() {
     setLoading(true);
 
     if (!forceScrape) {
-      // clear prior results
       setDbEnrichedCompanies([]);
       setScrapedEnrichedCompanies([]);
     }
 
     try {
-      // pick which leads to enrich
       const selected = overrideCompanies ?? normalizedLeads.filter(c =>
         selectedCompanies.includes(c.id)
       );
-      const lead_ids = selected.map(c => c.lead_id || "").filter(Boolean);
+      const lead_ids = selected.map(c => c.lead_id).filter(Boolean);
       const queryString = lead_ids.join(",");
+
+      // ✅ Step 1: Check credits
+      try {
+        const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+          withCredentials: true
+        });
+
+        const availableCredits = subscriptionInfo?.subscription?.credits_remaining ?? 0;
+        const requiredCredits = selected.length;
+
+        if (availableCredits < requiredCredits) {
+          alert("❌ You don't have enough credits to enrich these companies. Please upgrade or deselect some leads.");
+          setLoading(false);
+          return;
+        }
+      } catch (checkErr) {
+        console.error("❌ Failed to verify subscription:", checkErr);
+        alert("Failed to verify your subscription. Please try again later.");
+        setLoading(false);
+        return;
+      }
 
       let existingNames = new Set<string>();
       let dbLeads: any[] = [];
 
-      // fetch any already‐in‐DB
       if (queryString) {
         const { data: dbRes } = await axios.get(
           `${DATABASE_URL}/leads/multiple?lead_ids=${queryString}`,
           { headers: { "Content-Type": "application/json" } }
         );
         dbLeads = dbRes.results || [];
-        existingNames = new Set(
-          dbLeads.map((l: any) => l.company?.toLowerCase())
-        );
+        existingNames = new Set(dbLeads.map((l: any) => l.company?.toLowerCase()));
         setFromDatabaseLeads(Array.from(existingNames));
       }
 
-      // if this is a fresh-run (not force) then immediately show the DB hits
+      // ✅ Step 2: Deduct credits for ALL selected leads
+      for (const lead of selected) {
+        const lead_id = lead.lead_id;
+        if (!lead_id) continue;
+        try {
+          await axios.post(`${DATABASE_URL}/user/deduct_credit/${lead_id}`, {}, {
+            withCredentials: true
+          });
+        } catch (deductErr) {
+          console.error(`❌ Credit deduction failed for lead ${lead_id}`, deductErr);
+          continue;
+        }
+      }
+
+      // ✅ Step 3: Show DB leads (if not force or override)
       if (!forceScrape && !overrideCompanies) {
         const tealRows = dbLeads.map(lead =>
           toCamelCase({ ...lead, source_type: "database" })
@@ -531,10 +549,10 @@ export function DataEnhancement() {
         setDbEnrichedCompanies(tealRows);
         setShowResults(true);
 
-        // re‐upload them if needed
         const payload = dbLeads
           .filter(l => !!l.lead_id)
           .map(l => ({ ...l, user_id }));
+
         if (payload.length) {
           try {
             await axios.post(
@@ -542,81 +560,89 @@ export function DataEnhancement() {
               JSON.stringify(payload),
               { headers: { "Content-Type": "application/json" } }
             );
+
+            for (const lead of payload) {
+              try {
+                const res = await axios.post(
+                  `${DATABASE_URL}/leads/drafts`,
+                  {
+                    lead_id: lead.lead_id,
+                    draft_data: lead,
+                    change_summary: "Restored from DB"
+                  },
+                  {
+                    headers: { "Content-Type": "application/json" },
+                    withCredentials: true
+                  }
+                );
+
+                const draft_id = res.data?.draft_id;
+                if (draft_id) {
+                  draftMap[lead.lead_id] = {
+                    draft_id,
+                    company: lead.company,
+                  };                  
+                }
+
+              } catch (err) {
+                console.error("❌ Failed to create draft:", err);
+              }
+            }
+            
           } catch (err) {
-            console.error("Failed to re-upload DB leads:", err);
+            console.error("❌ Upload or draft creation for DB leads failed:", err);
           }
         }
       }
 
-      // determine which ones still need scraping
+      // ✅ Step 4: Proceed with scraping only for those not in DB
       const toScrape = forceScrape
         ? selected
         : selected.filter(c => !existingNames.has(c.company.toLowerCase()));
 
-      // loop through them one by one
       for (const company of toScrape) {
         try {
+          const lead_id = company.lead_id || "";
+
           const headers = { headers: { "Content-Type": "application/json" } };
 
-          // 1) growjo
-          const growjo = (await axios.post(
-            `${BACKEND_URL}/scrape-growjo-single`,
-            { company: company.company },
-            headers
-          )).data;
+          const growjo = (
+            await axios.post(
+              `${BACKEND_URL}/scrape-growjo-single`,
+              { company: company.company },
+              headers
+            )
+          ).data;
 
-          // 2) apollo + person
-          const domain = normalizeWebsite(
-            growjo.company_website || company.website
-          );
+          const domain = normalizeWebsite(growjo.company_website || company.website);
           const [apolloRes, personRes] = await Promise.all([
-            axios.post(
-              `${BACKEND_URL}/apollo-scrape-single`,
-              { domain },
-              headers
-            ),
-            axios.post(
-              `${BACKEND_URL}/find-best-person-single`,
-              { domain },
-              headers
-            ),
+            axios.post(`${BACKEND_URL}/apollo-scrape-single`, { domain }, headers),
+            axios.post(`${BACKEND_URL}/find-best-person-single`, { domain }, headers),
           ]);
           const apollo = apolloRes.data || {};
           const person = personRes.data || {};
 
-          // build one enriched record
-          const entry = buildEnrichedCompany(
-            company,
-            growjo,
-            apollo,
-            person
-          );
+          const entry = buildEnrichedCompany(company, growjo, apollo, person);
+
           const normalizeValue = (v: any) => {
             const s = (v ?? "").toString().trim().toLowerCase();
             const isBad =
-              ["", "na", "n/a", "none", "not", "found", "not found"].includes(
-                s
-              ) || (/^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*"));
+              ["", "na", "n/a", "none", "not", "found", "not found"].includes(s) ||
+              (/^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*"));
             return isBad ? "N/A" : v.toString().trim();
           };
 
           const validLead = {
             user_id,
-            lead_id: company.lead_id || "",
+            lead_id,
             company: normalizeValue(entry.company),
             website: normalizeValue(entry.website),
             industry: normalizeValue(entry.industry),
             product_category: normalizeValue(entry.productCategory),
             business_type: normalizeValue(entry.businessType),
-            employees:
-              typeof entry.employees === "number"
-                ? entry.employees
-                : parseInt(entry.employees) || 0,
+            employees: typeof entry.employees === "number" ? entry.employees : parseInt(entry.employees) || 0,
             revenue: normalizeValue(entry.revenue),
-            year_founded:
-              typeof entry.yearFounded === "number"
-                ? entry.yearFounded
-                : parseInt(entry.yearFounded) || 0,
+            year_founded: typeof entry.yearFounded === "number" ? entry.yearFounded : parseInt(entry.yearFounded) || 0,
             bbb_rating: normalizeValue(entry.bbbRating),
             street: normalizeValue(entry.street),
             city: normalizeValue(entry.city),
@@ -632,36 +658,61 @@ export function DataEnhancement() {
             source: normalizeValue(entry.source),
           };
 
-          // upload immediately
-          await axios.post(
-            `${DATABASE_URL}/upload_leads`,
-            JSON.stringify([validLead]),
-            { headers: { "Content-Type": "application/json" } }
-          );
+          try {
+            await axios.post(
+              `${DATABASE_URL}/upload_leads`,
+              JSON.stringify([validLead]),
+              { headers: { "Content-Type": "application/json" } }
+            );
+          } catch (uploadErr) {
+            console.error("❌ Failed to upload lead:", validLead, uploadErr);
+          }
 
-          // map it with scraped flag
+          try {
+            const res = await axios.post(
+              `${DATABASE_URL}/leads/drafts`,
+              {
+                lead_id: validLead.lead_id,
+                draft_data: validLead,
+                change_summary: "Initial enrichment draft",
+              },
+              {
+                headers: { "Content-Type": "application/json" },
+                withCredentials: true,
+              }
+            );
+
+            const draft_id = res.data?.draft_id;
+            if (draft_id) {
+              draftMap[validLead.lead_id] = {
+                draft_id,
+                company: validLead.company,
+              };              
+            }
+
+          } catch (draftErr: any) {
+            console.error("❌ Failed to create draft:", draftErr.response?.data || draftErr.message);
+          }
+
           const yellowRow = toCamelCase({
             ...validLead,
             source_type: "scraped",
           });
-          setScrapedEnrichedCompanies(prev => {
-            const next = [...prev, yellowRow];
-            // setEnrichedCompanies(next);
-            return next;
-          });
 
-          // small delay so React can paint
-          await new Promise(r => setTimeout(r, 150));
+          setScrapedEnrichedCompanies((prev) => [...prev, yellowRow]);
+          await new Promise((r) => setTimeout(r, 150));
         } catch (err) {
-          console.error(`Failed scraping ${company.company}`, err);
+          console.error(`❌ Failed enriching ${company.company}`, err);
         }
       }
 
-      // if this *was* a force-scrape run, hide the old DB rows
       if (forceScrape) {
         setDbEnrichedCompanies([]);
       }
-
+      if (Object.keys(draftMap).length > 0) {
+        sessionStorage.setItem("leadToDraftMap", JSON.stringify(draftMap));
+      }
+      
       setShowResults(true);
     } catch (err) {
       console.error("Enrichment failed:", err);
@@ -672,17 +723,26 @@ export function DataEnhancement() {
     }
   };
   
-
-
-
-
-
   
 
 
 
+
+
+
+
+
+
+
   return (
+    
     <div className="space-y-6">
+      <Button
+        onClick={handleBack}
+        className="text-sm text-blue-600 hover:underline mb-4"
+      >
+        Back
+      </Button>
       <div>
         <h1 className="text-3xl font-bold">Data Enhancement</h1>
         <p className="text-muted-foreground">Enrich company data with additional information</p>
@@ -815,161 +875,161 @@ export function DataEnhancement() {
             <div className="w-full overflow-x-auto rounded-md border">
               <div className="w-full overflow-x-auto rounded-md border">
                 <Table className="w-full table-fixed">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={selectAll}
-                        onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
-                      />
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('company')}
-                    >
-                      <div className="flex items-center">
-                        Company
-                        {sortConfig?.key === 'company' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('industry')}
-                    >
-                      <div className="flex items-center">
-                        Industry
-                        {sortConfig?.key === 'industry' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('street')}
-                    >
-                      <div className="flex items-center">
-                        Street
-                        {sortConfig?.key === 'street' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('city')}
-                    >
-                      <div className="flex items-center">
-                        City
-                        {sortConfig?.key === 'city' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('state')}
-                    >
-                      <div className="flex items-center">
-                        State
-                        {sortConfig?.key === 'state' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('bbb_rating')}
-                    >
-                      <div className="flex items-center">
-                        BBB Rating
-                        {sortConfig?.key === 'bbb_rating' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('business_phone')}
-                    >
-                      <div className="flex items-center">
-                        Company Phone
-                        {sortConfig?.key === 'business_phone' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => requestSort('website')}
-                    >
-                      <div className="flex items-center">
-                        Website
-                        {sortConfig?.key === 'website' && (
-                          <span className="ml-2">
-                            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <>
-                    {currentItems.length > 0 &&
-                      currentItems.map((company) => (
-                        <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedCompanies.includes(company.id)}
-                              onCheckedChange={() => handleSelectCompany(company.id)}
-                              aria-label={`Select ${company.company}`}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{company.company}</TableCell>
-                          <TableCell>{company.industry}</TableCell>
-                          <TableCell>{company.street}</TableCell>
-                          <TableCell>{company.city}</TableCell>
-                          <TableCell>{company.state}</TableCell>
-                          <TableCell>{company.bbb_rating}</TableCell>
-                          <TableCell>{company.business_phone}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {company.website ? cleanUrlForDisplay(company.website) : "N/A"}
-                              {company.website && company.website !== "N/A" && company.website !== "NA" && (
-                                <a
-                                  href={company.website.toString().startsWith("http") ? company.website : `https://${company.website}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-700"
-                                  title="Open website in new tab"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </a>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectAll}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('company')}
+                      >
+                        <div className="flex items-center">
+                          Company
+                          {sortConfig?.key === 'company' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('industry')}
+                      >
+                        <div className="flex items-center">
+                          Industry
+                          {sortConfig?.key === 'industry' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('street')}
+                      >
+                        <div className="flex items-center">
+                          Street
+                          {sortConfig?.key === 'street' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('city')}
+                      >
+                        <div className="flex items-center">
+                          City
+                          {sortConfig?.key === 'city' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('state')}
+                      >
+                        <div className="flex items-center">
+                          State
+                          {sortConfig?.key === 'state' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('bbb_rating')}
+                      >
+                        <div className="flex items-center">
+                          BBB Rating
+                          {sortConfig?.key === 'bbb_rating' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('business_phone')}
+                      >
+                        <div className="flex items-center">
+                          Company Phone
+                          {sortConfig?.key === 'business_phone' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => requestSort('website')}
+                      >
+                        <div className="flex items-center">
+                          Website
+                          {sortConfig?.key === 'website' && (
+                            <span className="ml-2">
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <>
+                      {currentItems.length > 0 &&
+                        currentItems.map((company) => (
+                          <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedCompanies.includes(company.id)}
+                                onCheckedChange={() => handleSelectCompany(company.id)}
+                                aria-label={`Select ${company.company}`}
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium">{company.company}</TableCell>
+                            <TableCell>{company.industry}</TableCell>
+                            <TableCell>{company.street}</TableCell>
+                            <TableCell>{company.city}</TableCell>
+                            <TableCell>{company.state}</TableCell>
+                            <TableCell>{company.bbb_rating}</TableCell>
+                            <TableCell>{company.business_phone}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {company.website ? cleanUrlForDisplay(company.website) : "N/A"}
+                                {company.website && company.website !== "N/A" && company.website !== "NA" && (
+                                  <a
+                                    href={company.website.toString().startsWith("http") ? company.website : `https://${company.website}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:text-blue-700"
+                                    title="Open website in new tab"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </a>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
 
-                    {/* {loading && (
+                      {/* {loading && (
                       <TableRow key="loading-row">
                         <TableCell colSpan={9} className="text-center py-8">
                           <div className="flex justify-center">
@@ -980,16 +1040,16 @@ export function DataEnhancement() {
                       </TableRow>
                     )} */}
 
-                    {!loading && currentItems.length === 0 && (
-                      <TableRow key="no-results">
-                        <TableCell colSpan={9} className="text-center">
-                          No results found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </>
-                </TableBody>
-              </Table>
+                      {!loading && currentItems.length === 0 && (
+                        <TableRow key="no-results">
+                          <TableCell colSpan={9} className="text-center">
+                            No results found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  </TableBody>
+                </Table>
               </div>
             </div>
 
@@ -1005,9 +1065,9 @@ export function DataEnhancement() {
                 )}
                 <Button
                   onClick={() => {
-                       setMergedView(false);
-                       handleStartEnrichment(false);
-                     }}
+                    setMergedView(false);
+                    handleStartEnrichment(false);
+                  }}
                   disabled={selectedCompanies.length === 0 || loading}
                 >
                   {loading ? "Enriching..." : "Start Enrichment"}
@@ -1039,25 +1099,25 @@ export function DataEnhancement() {
               />
 
               {/* … re-enrich button … */}
-                {fromDatabaseLeads.length > 0 && (
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      variant="destructive"
-                      onClick={async () => {
-                        // switch off merged view
-                        setMergedView(false);
-                        // re-select only the DB companies
-                        const toReselect = normalizedLeads.filter(c =>
-                          fromDatabaseLeads.includes(c.company.toLowerCase())
-                        );
-                        setSelectedCompanies(toReselect.map(c => c.id));
-                        await handleStartEnrichment(true, toReselect);
-                      }}
-                    >
-                      Re-enrich those companies
-                    </Button>
-                  </div>
-                )}
+              {fromDatabaseLeads.length > 0 && (
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      // switch off merged view
+                      setMergedView(false);
+                      // re-select only the DB companies
+                      const toReselect = normalizedLeads.filter(c =>
+                        fromDatabaseLeads.includes(c.company.toLowerCase())
+                      );
+                      setSelectedCompanies(toReselect.map(c => c.id));
+                      await handleStartEnrichment(true, toReselect);
+                    }}
+                  >
+                    Re-enrich those companies
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1091,6 +1151,19 @@ export function DataEnhancement() {
           />
         </div>
       )}
-
-        </div>
-      )}
+      <div className="flex justify-end mb-4">
+        <Button
+          onClick={() => {
+            sessionStorage.removeItem("leads");
+            sessionStorage.removeItem("enrichedResults");
+            sessionStorage.removeItem("subscriptionInfo");
+            sessionStorage.removeItem("leadToDraftMap");
+            router.push("/");
+          }}
+        >
+          Finish and Go Back to Home
+        </Button>
+      </div>
+    </div>
+  )
+}

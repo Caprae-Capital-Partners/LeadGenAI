@@ -75,37 +75,19 @@ export function Scraper() {
   const seenCompaniesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const verifyLogin = async () => {
-      try {
-        const res = await fetch("https://data.capraeleadseekers.site/api/ping-auth", {
-          method: "GET",
-          credentials: "include",
-        });
 
-        if (!res.ok) {
-          router.push("/auth");
-        } else {
-          console.log("✅ Authenticated user");
-        }
-      } catch (error) {
-        console.error("❌ Error verifying login:", error);
-        router.push("/auth");
-      }
-    };
-
-    verifyLogin();
 
     const cacheKey = "industries"
     const cachedIndustries = localStorage.getItem(cacheKey);
     const CACHE_DURATION = 604800000
     if (cachedIndustries) {
       try {
-        const {data, timestamp} = JSON.parse(cachedIndustries)
+        const { data, timestamp } = JSON.parse(cachedIndustries)
         if (Array.isArray(data) && Date.now() - timestamp < CACHE_DURATION) {
           setIndustries(data)
           return;
         }
-      } catch {}
+      } catch { }
     }
 
     const fetchIndustries = async () => {
@@ -116,7 +98,7 @@ export function Scraper() {
           setIndustries(data.industries);
           localStorage.setItem(
             cacheKey,
-            JSON.stringify({ data: data.industries, timestamp: Date.now()})
+            JSON.stringify({ data: data.industries, timestamp: Date.now() })
           );
         } else {
           console.error("Invalid API response format:", data);
@@ -161,7 +143,7 @@ export function Scraper() {
   // Add new leads while avoiding duplicates
   const addNewLeads = (existingLeads: FormattedLead[], newLeads: FormattedLead[]): FormattedLead[] => {
     const combinedResults = [...existingLeads];
-    
+
     // Use our ref to track seen companies instead of recreating the set each time
     newLeads.forEach((item: FormattedLead) => {
       const companyLower = item.company.toLowerCase().trim();
@@ -170,7 +152,7 @@ export function Scraper() {
         combinedResults.push(item);
       }
     });
-    
+
     return combinedResults;
   };
 
@@ -178,7 +160,7 @@ export function Scraper() {
     setIsScrapingActive(true);
     setProgress(5);
     setScrapingSource('scraper');
-    
+
     // Don't hide results if we're appending to existing results
     if (scrapedResults.length === 0) {
       setShowResults(true);
@@ -193,7 +175,7 @@ export function Scraper() {
 
     interface Batch {
       batch: number;
-      new_items: LeadItem[]; 
+      new_items: LeadItem[];
       total_scraped: number;
       elapsed_time: number;
       processed_count: number;
@@ -209,15 +191,15 @@ export function Scraper() {
     let receivedBatchIds = new Set<number>(); // Track received batch IDs to prevent duplicates
 
     // Create query parameters
-    const queryParams = new URLSearchParams({ 
-      industry, 
-      location 
+    const queryParams = new URLSearchParams({
+      industry,
+      location
     });
-    
+
     // Create EventSource connection with explicit parameters
     const url = `${SCRAPER_API}?${queryParams.toString()}`;
     // console.log("Connecting to stream URL:", url);
-    
+
     const eventSource = new EventSource(url);
 
     controllerRef.current = {
@@ -245,26 +227,26 @@ export function Scraper() {
     eventSource.addEventListener("batch", (event) => {
       try {
         const parsed = JSON.parse(event.data);
-        
+
         // Check if we've already processed this batch
         if (parsed.batch && receivedBatchIds.has(parsed.batch)) {
           // console.log(`Skipping duplicate batch ${parsed.batch}`);
           return;
         }
-        
+
         // Add batch ID to tracking set
         if (parsed.batch) {
           receivedBatchIds.add(parsed.batch);
         }
-        
+
         allBatches.push(parsed); // Store all batches for debugging
-        
+
         const newItems = parsed.new_items || [];
         totalProcessedItems += newItems.length;
-        
+
         // console.log(`Batch ${parsed.batch} received: ${newItems.length} new items, total batched: ${totalProcessedItems}`);
         // console.log("Sample item:", newItems.length > 0 ? newItems[0] : "No items");
-        
+
         if (!Array.isArray(newItems)) {
           console.warn("Expected new_items to be an array, got:", typeof newItems);
           return;
@@ -274,17 +256,17 @@ export function Scraper() {
           console.log("Received empty batch, skipping processing");
           return;
         }
-        
+
         // Format the new items with proper IDs
-        const formattedItems = newItems.map((item: LeadItem, index: number) => 
+        const formattedItems = newItems.map((item: LeadItem, index: number) =>
           formatLeadData(item, Date.now() + index)
         );
-        
+
         // Add new items to results, avoiding duplicates
         setScrapedResults((prev) => {
           const updatedResults = addNewLeads(prev, formattedItems);
           // console.log(`Current lead count: ${updatedResults.length}`);
-          
+
           // NEW: Check if we've reached the limit
           if (updatedResults.length >= 500) {
             console.log("Reached 500 leads limit, stopping scraper");
@@ -293,10 +275,10 @@ export function Scraper() {
             setProgress(100);
             return updatedResults.slice(0, 500); // Ensure exactly 500
           }
-          
+
           return updatedResults;
         });
-        
+
         // Update progress based on actual data received
         // Calculate progress as a percentage of expected total (100 leads)
         setProgress((prev) => {
@@ -331,7 +313,7 @@ export function Scraper() {
         console.log("Done event received:", data);
         console.log("Total items received across all batches:", totalProcessedItems);
         console.log("All batches summary:", allBatches.map((b: Batch) => b.new_items?.length || 0));
-        
+
         setProgress(100);
         setIsScrapingActive(false);
         setScrapedResults((currentResults) => {
@@ -361,7 +343,7 @@ export function Scraper() {
     setProgress(0)
     setShowResults(false)
     setScrapingSource('database')
-    
+
     // Reset our seen companies set
     seenCompaniesRef.current = new Set();
 
@@ -374,21 +356,22 @@ export function Scraper() {
       const response = await axios.post(
         FETCH_DB_API,
         { industry, location },
-        { signal: controller.signal, 
+        {
+          signal: controller.signal,
           withCredentials: true
         }
       )
 
       const data = response.data
       const formattedData = data.map((item: LeadData, index: number) => formatLeadData(item, index));
-      
+
       // Initialize our seen companies with these results
       formattedData.forEach((item: FormattedLead) => {
         if (item.company.trim()) {
           seenCompaniesRef.current.add(item.company.toLowerCase().trim());
         }
       });
-      
+
       setScrapedResults(formattedData)
       setShowResults(true)
       setNeedMoreLeads(formattedData.length < 100)
@@ -449,7 +432,7 @@ export function Scraper() {
       sessionStorage.setItem("leads", JSON.stringify(scrapedResults));
     }
   }, [scrapedResults]);
-  
+
 
   return (
     <div className="space-y-6">
@@ -458,9 +441,9 @@ export function Scraper() {
           <h2 className="text-3xl font-bold tracking-tight">Company Finder</h2>
           <p className="text-muted-foreground">Find companies by industry and location</p>
         </div>
-        
+
         {showResults && needMoreLeads && !isScrapingActive && (
-          <Button 
+          <Button
             onClick={handleStartScraping}
             className="bg-amber-500 hover:bg-amber-600 text-white"
           >
@@ -579,8 +562,8 @@ export function Scraper() {
               </div>
             </div>
           )}
-          <ScraperResults 
-            data={scrapedResults} 
+          <ScraperResults
+            data={scrapedResults}
             industry={industry}
             location={location}
           />
