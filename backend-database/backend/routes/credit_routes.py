@@ -37,3 +37,29 @@ def get_user_subscription_info():
     """
     data, status = SubscriptionController.get_current_user_subscription_info(current_user)
     return jsonify(data), status
+
+@credit_bp.route('/api/plans/all', methods=['GET'])
+@login_required
+def get_all_plans():
+    """
+    Get all available plans for the Choose Plan page.
+    Returns: List of plans with all relevant details.
+    """
+    from models.plan_model import Plan
+    plans = Plan.query.order_by(Plan.monthly_price.asc().nullsfirst()).all()
+    plan_list = []
+    for plan in plans:
+        plan_list.append({
+            "plan_name": plan.plan_name,
+            "monthly_price": float(plan.monthly_price) if plan.monthly_price is not None else "Custom",
+            "annual_price": float(plan.annual_price) if plan.annual_price is not None else "Custom",
+            "monthly_lead_quota": plan.monthly_lead_quota if plan.monthly_lead_quota is not None else "Custom",
+            "annual_lead_quota": plan.annual_lead_quota if plan.annual_lead_quota is not None else "Custom",
+            "cost_per_lead": float(plan.cost_per_lead) if plan.cost_per_lead is not None else "~",
+            "has_ai_features": plan.has_ai_features,
+            "initial_credits": plan.initial_credits if plan.initial_credits is not None else "Custom",
+            "credit_reset_frequency": plan.credit_reset_frequency,
+            "features": plan.features_json,  # This is already a JSON/dict
+            "description": plan.description
+        })
+    return jsonify({"plans": plan_list}), 200

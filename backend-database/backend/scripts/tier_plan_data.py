@@ -10,108 +10,141 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import create_app
 from models.plan_model import Plan
 from models.lead_model import db  # Assuming db instance is accessible from lead_model
+from sqlalchemy import text
 
-# Define the plan data based on screenshots
 plans_data = [
     {
         "plan_name": "Free",
         "description": "Basic access with limited leads and features",
         "monthly_price": Decimal('0.00'),
         "annual_price": Decimal('0.00'),
-        "monthly_lead_quota": 8, # 100 leads/year / 12 months approx
+        "monthly_lead_quota": 5,  # 60/year
+        "annual_lead_quota": 60,  # 5 * 12
         "cost_per_lead": Decimal('0.000'),
         "has_ai_features": False,
-        "initial_credits": 8, # Assuming initial credits = monthly quota
+        "initial_credits": 5,
         "credit_reset_frequency": "monthly",
-        "features_json": json.dumps(["Phase 1 Scraper", "No contact details"])
+        "features_json": json.dumps([
+            "Phase 1 Scraper Only",
+            "No enrichment, no contact details"
+        ])
     },
     {
         "plan_name": "Bronze",
         "description": "Expanded access with more leads and basic features",
         "monthly_price": Decimal('19.00'),
         "annual_price": Decimal('199.00'),
-        "monthly_lead_quota": 50, # 600 leads/year / 12 months
+        "monthly_lead_quota": 50,  # 600/year
+        "annual_lead_quota": 600,  # 50 * 12
         "cost_per_lead": Decimal('0.333'),
         "has_ai_features": False,
-        "initial_credits": 50, # Assuming initial credits = monthly quota
+        "initial_credits": 50,
         "credit_reset_frequency": "monthly",
-        "features_json": json.dumps(["Basic Filters", "CSV Export"])
+        "features_json": json.dumps([
+            "Basic Filters",
+            "CSV Export"
+        ])
     },
     {
         "plan_name": "Silver",
         "description": "More leads and advanced contact features",
         "monthly_price": Decimal('49.00'),
         "annual_price": Decimal('499.00'),
-        "monthly_lead_quota": 125, # 1500 leads/year / 12 months
+        "monthly_lead_quota": 125,  # 1500/year
+        "annual_lead_quota": 1500,  # 125 * 12
         "cost_per_lead": Decimal('0.333'),
         "has_ai_features": False,
-        "initial_credits": 125, # Assuming initial credits = monthly quota
+        "initial_credits": 125,
         "credit_reset_frequency": "monthly",
-        "features_json": json.dumps(["Phone Numbers", "Advanced Features"])
+        "features_json": json.dumps([
+            "Phone Numbers",
+            "Advanced Features"
+        ])
     },
     {
         "plan_name": "Gold",
         "description": "High volume leads and AI features",
         "monthly_price": Decimal('99.00'),
         "annual_price": Decimal('999.00'),
-        "monthly_lead_quota": 292, # 3500 leads/year / 12 months approx
+        "monthly_lead_quota": 292,  # 3500/year
+        "annual_lead_quota": 3504,  # 292 * 12
         "cost_per_lead": Decimal('0.285'),
         "has_ai_features": True,
-        "initial_credits": 292, # Assuming initial credits = monthly quota
+        "initial_credits": 292,
         "credit_reset_frequency": "monthly",
-        "features_json": json.dumps(["Email Writing AI", "Priority"])
+        "features_json": json.dumps([
+            "Email Writing AI",
+            "Priority Support"
+        ])
     },
-     {
+    {
         "plan_name": "Platinum",
         "description": "Unlimited leads and custom workflows",
         "monthly_price": Decimal('199.00'),
         "annual_price": Decimal('1999.00'),
-        "monthly_lead_quota": None, # Unlimited leads
-        "cost_per_lead": None, # Cost per lead is not applicable for unlimited
+        "monthly_lead_quota": None,  # Unlimited
+        "annual_lead_quota": None,  # Unlimited
+        "cost_per_lead": None,  # Not applicable
         "has_ai_features": True,
-        "initial_credits": None, # Unlimited credits (set to None)
-        "credit_reset_frequency": "monthly", # Still reset frequency for consistency, even if quota is None
-        "features_json": json.dumps(["Custom workflows", "Priority support"])
+        "initial_credits": None,  # Unlimited
+        "credit_reset_frequency": "monthly",
+        "features_json": json.dumps([
+            "Unlimited Credits",
+            "Custom Workflows",
+            "Priority Support"
+        ])
     },
     {
         "plan_name": "Enterprise",
         "description": "Custom pricing and features for large organizations",
-        "monthly_price": None, # Custom pricing
-        "annual_price": None, # Custom pricing
-        "monthly_lead_quota": None, # Custom leads
-        "cost_per_lead": None, # Custom cost
-        "has_ai_features": True, # Assuming AI features for Enterprise as per image footnote
-        "initial_credits": None, # Custom credits (set to None)
+        "monthly_price": None,  # Custom
+        "annual_price": None,  # Custom
+        "monthly_lead_quota": None,  # Custom
+        "annual_lead_quota": None,  # Custom
+        "cost_per_lead": None,  # Custom
+        "has_ai_features": True,
+        "initial_credits": None,  # Custom
         "credit_reset_frequency": "custom",
-        "features_json": json.dumps(["Custom Features"])
+        "features_json": json.dumps([
+            "Custom Credits/Year",
+            "Custom Workflows",
+            "Tailored Features"
+        ])
     }
 ]
 
 def seed_plans():
-    """Seeds the plans table with initial data."""
+    """Updates existing plans and inserts new ones, without deleting or changing plan_id."""
     app = create_app()
     with app.app_context():
-        print("Seeding plans table...")
+        print("Altering plans table to allow NULL for initial_credits...")
+        try:
+            db.session.execute(text('ALTER TABLE plans ALTER COLUMN initial_credits DROP NOT NULL;'))
+            db.session.execute(text('ALTER TABLE plans ALTER COLUMN initial_credits DROP NOT NULL;'))
+            db.session.execute(text('ALTER TABLE plans ALTER COLUMN monthly_price DROP NOT NULL;'))
+            db.session.commit()
+        except Exception as e:
+            print(f"Warning: Could not alter table (maybe already nullable): {e}")
+            db.session.rollback()
+        print("Updating/inserting plans table...")
         for plan_data in plans_data:
-            # Check if plan already exists to avoid duplicates
             existing_plan = Plan.query.filter_by(plan_name=plan_data['plan_name']).first()
             if existing_plan:
-                print(f"Plan '{plan_data['plan_name']}' already exists. Skipping.")
-                continue
-
-            try:
-                # Convert features_json string back to Python object for model instantiation if necessary,
-                # although SQLAlchemy's JSON type often handles strings directly if the DB supports it.
-                # Let's keep it as string as it's already dumped.
+                # Update all fields except plan_id
+                for key, value in plan_data.items():
+                    if key != 'plan_id':
+                        setattr(existing_plan, key, value)
+                print(f"Updated plan: {plan_data['plan_name']}")
+            else:
                 plan = Plan(**plan_data)
                 db.session.add(plan)
-                db.session.commit()
                 print(f"Added plan: {plan_data['plan_name']}")
-            except Exception as e:
-                db.session.rollback()
-                print(f"Error adding plan {plan_data['plan_name']}: {str(e)}")
-
-        print("Plans seeding complete.")
+        try:
+            db.session.commit()
+            print("Plans update/insert complete.")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error saving plans: {str(e)}")
 
 if __name__ == '__main__':
     seed_plans()
