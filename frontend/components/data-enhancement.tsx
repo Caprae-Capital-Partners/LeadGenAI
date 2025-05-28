@@ -66,6 +66,8 @@ export function DataEnhancement() {
   const handleBack = () => {
     sessionStorage.removeItem("leads");
     sessionStorage.removeItem("enrichedResults");
+    sessionStorage.removeItem("subscriptionInfo");
+    sessionStorage.removeItem("leadToDraftMap");
     router.push("/scraper"); // 🔁 adjust the path if needed
   };
 
@@ -468,7 +470,9 @@ export function DataEnhancement() {
   const [dbOnlyMode, setDbOnlyMode] = useState(true);
   const [fromDatabaseLeads, setFromDatabaseLeads] = useState<string[]>([]); // lowercase names
   const { enrichedCompanies, setEnrichedCompanies } = useEnrichment();
-  
+  const [leadToDraftMap, setLeadToDraftMap] = useState<Record<string, { draft_id: string, company: string }>>({});
+  const draftMap: Record<string, { draft_id: string; company: string }> = {};
+
   const handleStartEnrichment = async (
     forceScrape = false,
     overrideCompanies: any[] | null = null
@@ -558,19 +562,33 @@ export function DataEnhancement() {
             );
 
             for (const lead of payload) {
-              await axios.post(
-                `${DATABASE_URL}/leads/drafts`,
-                {
-                  lead_id: lead.lead_id,
-                  draft_data: lead,
-                  change_summary: "Restored from DB"
-                },
-                {
-                  headers: { "Content-Type": "application/json" },
-                  withCredentials: true
+              try {
+                const res = await axios.post(
+                  `${DATABASE_URL}/leads/drafts`,
+                  {
+                    lead_id: lead.lead_id,
+                    draft_data: lead,
+                    change_summary: "Restored from DB"
+                  },
+                  {
+                    headers: { "Content-Type": "application/json" },
+                    withCredentials: true
+                  }
+                );
+
+                const draft_id = res.data?.draft_id;
+                if (draft_id) {
+                  draftMap[lead.lead_id] = {
+                    draft_id,
+                    company: lead.company,
+                  };                  
                 }
-              );
+
+              } catch (err) {
+                console.error("❌ Failed to create draft:", err);
+              }
             }
+            
           } catch (err) {
             console.error("❌ Upload or draft creation for DB leads failed:", err);
           }
@@ -651,7 +669,7 @@ export function DataEnhancement() {
           }
 
           try {
-            await axios.post(
+            const res = await axios.post(
               `${DATABASE_URL}/leads/drafts`,
               {
                 lead_id: validLead.lead_id,
@@ -663,11 +681,17 @@ export function DataEnhancement() {
                 withCredentials: true,
               }
             );
+
+            const draft_id = res.data?.draft_id;
+            if (draft_id) {
+              draftMap[validLead.lead_id] = {
+                draft_id,
+                company: validLead.company,
+              };              
+            }
+
           } catch (draftErr: any) {
-            console.error(
-              "❌ Failed to create draft:",
-              draftErr.response?.data || draftErr.message
-            );
+            console.error("❌ Failed to create draft:", draftErr.response?.data || draftErr.message);
           }
 
           const yellowRow = toCamelCase({
@@ -685,7 +709,10 @@ export function DataEnhancement() {
       if (forceScrape) {
         setDbEnrichedCompanies([]);
       }
-
+      if (Object.keys(draftMap).length > 0) {
+        sessionStorage.setItem("leadToDraftMap", JSON.stringify(draftMap));
+      }
+      
       setShowResults(true);
     } catch (err) {
       console.error("Enrichment failed:", err);
@@ -1129,7 +1156,9 @@ export function DataEnhancement() {
           onClick={() => {
             sessionStorage.removeItem("leads");
             sessionStorage.removeItem("enrichedResults");
-            router.push("/dashboard");
+            sessionStorage.removeItem("subscriptionInfo");
+            sessionStorage.removeItem("leadToDraftMap");
+            router.push("/");
           }}
         >
           Finish and Go Back to Home
