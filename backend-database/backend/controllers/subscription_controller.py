@@ -37,6 +37,19 @@ class SubscriptionController:
             user.tier = plan_type
             db.session.commit()
             current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier} In db.")
+
+            # Update UserSubscription table as well
+            from models.user_subscription_model import UserSubscription
+            from datetime import datetime
+            user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+            if user_sub:
+                user_sub.plan_name = plan_type
+                user_sub.tier_start_timestamp = datetime.utcnow()
+                db.session.commit()
+                current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
+            else:
+                current_app.logger.warning(f"[Subscription] No UserSubscription found for user {user.user_id} when updating plan.")
+
             return {'sessionId': checkout_session.id}, 200
         except Exception as e:
             import traceback
