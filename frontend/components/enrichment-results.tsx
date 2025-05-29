@@ -21,7 +21,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { useEnrichment } from "@/components/EnrichmentProvider"
-
+import Notif  from "@/components/ui/notif"
 
 interface EnrichmentResultsProps {
   enrichedCompanies: EnrichedCompany[]
@@ -64,6 +64,21 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
   loading,
   rowClassName,
 }) => {
+  const [notif, setNotif] = useState({
+    show: false,
+    message: "",
+    type: "success" as "success" | "error" | "info",
+  });
+  const showNotification = (message: string, type: "success" | "error" | "info" = "success") => {
+    setNotif({ show: true, message, type });
+
+    // Automatically hide after X seconds (let Notif handle it visually)
+    // Optional if Notif itself auto-hides — but helpful as backup
+    setTimeout(() => {
+      setNotif(prev => ({ ...prev, show: false }));
+    }, 3500);
+  };
+  
   const [editableCompanies, setEditableCompanies] = useState<EnrichedCompany[]>([])
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -410,20 +425,17 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     const user_id = user.id || user.user_id || user._id;
 
     if (!user_id) {
-      alert("User not found in session. Please re-login.");
+      showNotification("User not found in session. Please re-login.", "error");
       return;
     }
 
     const draftMap = JSON.parse(sessionStorage.getItem("leadToDraftMap") || "{}");
-
-    console.log("🧾 Selected company IDs:", selectedCompanies);
-
     const companiesToSave = editableCompanies.filter((c) =>
       selectedCompanies.includes(c.id)
     );
 
     if (companiesToSave.length === 0) {
-      alert("Please select at least one company to save.");
+      showNotification("Please select at least one company to save.", "info");
       return;
     }
 
@@ -436,7 +448,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
 
         if (!draftId) {
           console.warn(`⚠️ No draft_id found for lead_id: ${lead_id}, company: ${c.company}`);
-          alert(`Missing draft ID for "${c.company}". Please try re-enriching.`);
+          showNotification(`Missing draft ID for "${c.company}". Please re-enrich.`, "error");
           continue;
         }
 
@@ -448,14 +460,8 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
             industry: c.industry,
             product_category: c.productCategory,
             business_type: c.businessType,
-            employees:
-              typeof c.employees === "number"
-                ? c.employees
-                : parseInt(c.employees as any) || 0,
-            revenue:
-              typeof c.revenue === "string"
-                ? parseFloat(c.revenue.replace(/[^0-9.]/g, ""))
-                : c.revenue,
+            employees: typeof c.employees === "number" ? c.employees : parseInt(c.employees as any) || 0,
+            revenue: typeof c.revenue === "string" ? parseFloat(c.revenue.replace(/[^0-9.]/g, "")) : c.revenue,
             year_founded: parseInt(c.yearFounded) || 0,
             bbb_rating: c.bbbRating,
             street: c.street,
@@ -476,41 +482,37 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
 
         console.log(`📤 Sending (${index + 1}/${companiesToSave.length}):`, draftId, payload);
 
-        const res = await fetch(
-          `https://data.capraeleadseekers.site/api/leads/drafts/${draftId}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify(payload),
-          }
-        );
+        const res = await fetch(`https://data.capraeleadseekers.site/api/leads/drafts/${draftId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
 
         const text = await res.text();
         console.log("📥 Raw response text:", text);
 
         try {
           const data = JSON.parse(text);
-          console.log("✅ Parsed JSON response:", data);
-
           if (!res.ok || data.error) {
             console.error("❌ Failed to update draft:", draftId, data);
-            alert(`Failed to update draft with ID: ${draftId}`);
+            showNotification(`Failed to update draft with ID: ${draftId}`, "error");
           } else {
             console.log(`📝 Draft updated for: ${draftId}`);
           }
-        } catch (e) {
+        } catch {
           console.error("❌ Failed to parse JSON. Response was likely HTML.");
-          alert("Server returned an unexpected response. Check console.");
+          showNotification("Server returned an unexpected response.", "error");
         }
       } catch (err) {
         console.error("❌ Error updating draft:", err);
-        alert(`Error updating a draft. See console for details.`);
+        showNotification("Error updating a draft. See console for details.", "error");
       }
     }
 
-    alert("✅ Done saving selected companies.");
+    showNotification("Done saving selected companies.", "success");
   };
+  
   
   
   
@@ -915,6 +917,12 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
               )}
             </div>
           </div>
+          <Notif
+            show={notif.show}
+            message={notif.message}
+            type={notif.type}
+            onClose={() => setNotif(prev => ({ ...prev, show: false }))}
+          />
         </CardContent>
       </Card>
     </div>

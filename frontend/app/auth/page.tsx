@@ -5,15 +5,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import Notif from "@/components/ui/notif";
+
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!;
 
 export default function AuthPage() {
+    const [notif, setNotif] = useState({
+        show: false,
+        message: "",
+        type: "success" as "success" | "error" | "info",
+    });
+
+    const showNotification = (message: string, type: "success" | "error" | "info" = "success") => {
+        setNotif({ show: true, message, type });
+        setTimeout(() => {
+            setNotif(prev => ({ ...prev, show: false }));
+        }, 3500);
+      };
+      
     const [isSignup, setIsSignup] = useState(false);
     const [formData, setFormData] = useState({
         username: "",
         email: "",
-        company: "",
+        linkedin: "",
         password: "",
         confirmPassword: "",
         gdpr: false,
@@ -31,13 +46,29 @@ export default function AuthPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (isSignup) {
+            if (!formData.username.trim()) {
+                alert("Username is required.");
+                return;
+            }
+            if (!formData.email.trim()) {
+                alert("Email is required.");
+                return;
+            }
+            if (formData.password !== formData.confirmPassword) {
+                alert("Passwords do not match.");
+                return;
+            }
+        }
+
         const endpoint = isSignup ? "/auth/register" : "/auth/login";
 
         const payload = isSignup
             ? {
                 username: formData.username,
                 email: formData.email,
-                company: formData.company,
+                linkedin: formData.linkedin,
                 password: formData.password,
                 confirm_password: formData.confirmPassword,
                 gdpr_accept: formData.gdpr,
@@ -51,39 +82,45 @@ export default function AuthPage() {
             const res = await fetch(`${DATABASE_URL}${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include", // ⬅️ Important for session cookie
+                credentials: "include",
                 body: JSON.stringify(payload),
             });
 
             const result = await res.json();
             if (!res.ok) throw new Error(result.message || "Something went wrong");
 
-            // ✅ Store user info in sessionStorage
             if (result.user) {
                 sessionStorage.setItem("user", JSON.stringify(result.user));
-            }
 
-            if (isSignup) {
-                router.push("/subscription");
-            } else {
-                // Determine environment
-                if (window.location.hostname === "localhost") {
-                    router.push("/");
+                if (isSignup) {
+                    showNotification("Account successfully created!");
+                    setTimeout(() => {
+                        router.push("/subscription");
+                    }, 100); // small delay to allow notification to render
                 } else {
-                    window.location.href = "https://app.saasquatchleads.com/";
+                    showNotification("Successfully signed in!");
+                    setTimeout(() => {
+                        if (window.location.hostname === "localhost") {
+                            router.push("/");
+                        } else {
+                            window.location.href = "https://app.saasquatchleads.com/";
+                        }
+                    }, 100); // small delay to allow notification to render
                 }
-            }
+            }              
         } catch (err: any) {
             alert(err.message);
         }
     };
-    
-      
-
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-            <div className="w-full max-w-md bg-card text-card-foreground rounded-xl shadow-md border border-border">
+        <div className="min-h-screen flex items-center justify-center bg-background text-foreground flex-col">
+            <img
+                src="/images/logo_horizontal.png"
+                alt="SaaSquatch Leads Logo"
+                className="w-96 mx-auto mb-6"
+                />
+            <div className="w-full max-w-md bg-card text-card-foreground rounded-xl shadow-md border-8 border-border">
                 <div className="flex">
                     <button
                         className={`w-1/2 py-3 text-sm font-semibold transition-colors ${!isSignup
@@ -107,16 +144,18 @@ export default function AuthPage() {
 
                 <div className="p-6 space-y-4">
                     <form className="space-y-4" onSubmit={handleSubmit}>
-                        <div>
-                            <Label htmlFor="username">Username</Label>
-                            <Input
-                                id="username"
-                                placeholder="Username"
-                                required
-                                value={formData.username}
-                                onChange={handleChange}
-                            />
-                        </div>
+                        {isSignup && (
+                            <div>
+                                <Label htmlFor="username">Username</Label>
+                                <Input
+                                    id="username"
+                                    placeholder="Username"
+                                    required
+                                    value={formData.username}
+                                    onChange={handleChange}
+                                />
+                            </div>
+                        )}
 
                         <div>
                             <Label htmlFor="email">Email</Label>
@@ -132,11 +171,12 @@ export default function AuthPage() {
 
                         {isSignup && (
                             <div>
-                                <Label htmlFor="company">Company</Label>
+                                <Label htmlFor="linkedin">LinkedIn Profile (Optional)</Label>
                                 <Input
-                                    id="company"
-                                    placeholder="Company (optional)"
-                                    value={formData.company}
+                                    id="linkedin"
+                                    type="url"
+                                    placeholder="https://linkedin.com/in/your-profile"
+                                    value={formData.linkedin}
                                     onChange={handleChange}
                                 />
                             </div>
@@ -198,7 +238,12 @@ export default function AuthPage() {
                     </form>
                 </div>
             </div>
+            <Notif
+                show={notif.show}
+                message={notif.message}
+                type={notif.type}
+                onClose={() => setNotif(prev => ({ ...prev, show: false }))}
+            />
         </div>
     );
-      
 }

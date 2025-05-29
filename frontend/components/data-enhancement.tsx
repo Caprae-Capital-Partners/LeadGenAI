@@ -26,11 +26,32 @@ import { useEnrichment } from "@/components/EnrichmentProvider"
 import Loader from "@/components/ui/loader"
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
+import Popup from "@/components/ui/popup";
+import Notif  from "@/components/ui/notif"
+
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 
 export function DataEnhancement() {
+
+  const [notif, setNotif] = useState({
+      show: false,
+      message: "",
+      type: "success" as "success" | "error" | "info",
+    });
+    const showNotification = (message: string, type: "success" | "error" | "info" = "success") => {
+      setNotif({ show: true, message, type });
+  
+      // Automatically hide after X seconds (let Notif handle it visually)
+      // Optional if Notif itself auto-hides — but helpful as backup
+      setTimeout(() => {
+        setNotif(prev => ({ ...prev, show: false }));
+      }, 3500);
+    };
+
+
+  const [showTokenPopup, setShowTokenPopup] = useState(false);
   const [mergedView, setMergedView] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const { leads, setLeads } = useLeads()
@@ -503,7 +524,7 @@ export function DataEnhancement() {
         const requiredCredits = selected.length;
 
         if (availableCredits < requiredCredits) {
-          alert("❌ You don't have enough credits to enrich these companies. Please upgrade or deselect some leads.");
+          setShowTokenPopup(true);
           setLoading(false);
           return;
         }
@@ -560,6 +581,7 @@ export function DataEnhancement() {
               JSON.stringify(payload),
               { headers: { "Content-Type": "application/json" } }
             );
+           
 
             for (const lead of payload) {
               try {
@@ -587,8 +609,7 @@ export function DataEnhancement() {
               } catch (err) {
                 console.error("❌ Failed to create draft:", err);
               }
-            }
-            
+            }            
           } catch (err) {
             console.error("❌ Upload or draft creation for DB leads failed:", err);
           }
@@ -664,6 +685,7 @@ export function DataEnhancement() {
               JSON.stringify([validLead]),
               { headers: { "Content-Type": "application/json" } }
             );
+            showNotification("Data successfully enriched!");
           } catch (uploadErr) {
             console.error("❌ Failed to upload lead:", validLead, uploadErr);
           }
@@ -721,6 +743,7 @@ export function DataEnhancement() {
       stopProgressSimulation(100);
       setLoading(false);
     }
+    showNotification("Data successfully enriched!");
   };
   
   
@@ -1164,6 +1187,26 @@ export function DataEnhancement() {
           Finish and Go Back to Home
         </Button>
       </div>
+      <Popup show={showTokenPopup} onClose={() => setShowTokenPopup(false)}>
+        <h2 className="text-lg font-bold mb-2">Insufficient Credits</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          You don't have enough enrichment tokens to continue. Please upgrade your plan or deselect some companies.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => setShowTokenPopup(false)}>
+            Cancel
+          </Button>
+          <Button onClick={() => router.push("/subscription")}>Upgrade Plan</Button>
+        </div>
+      </Popup>
+
+          <Notif
+            show={notif.show}
+            message={notif.message}
+            type={notif.type}
+            onClose={() => setNotif(prev => ({ ...prev, show: false }))}
+          />
+
     </div>
   )
 }
