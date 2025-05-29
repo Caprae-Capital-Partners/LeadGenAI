@@ -114,8 +114,13 @@ export default function AuthPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-            <div className="w-full max-w-md bg-card text-card-foreground rounded-xl shadow-md border border-border">
+        <div className="min-h-screen flex items-center justify-center bg-background text-foreground flex-col">
+            <img
+                src="/images/logo_horizontal.png"
+                alt="SaaSquatch Leads Logo"
+                className="w-96 mx-auto mb-6"
+                />
+            <div className="w-full max-w-md bg-card text-card-foreground rounded-xl shadow-md border-8 border-border">
                 <div className="flex">
                     <button
                         className={`w-1/2 py-3 text-sm font-semibold transition-colors ${!isSignup
