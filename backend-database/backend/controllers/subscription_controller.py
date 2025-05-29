@@ -20,8 +20,8 @@ class SubscriptionController:
                 return {'error': f'Invalid plan type provided: {plan_type}. Check STRIPE_PRICES config.'}, 400
 
             stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
-            success_url = url_for('auth.payment_success', _external=True)
-            cancel_url = url_for('auth.payment_cancel', _external=True)
+            success_url = "https://app.saasquatchleads.com"
+            cancel_url = "https://app.saasquatchleads.com/subscription"
 
             checkout_session = stripe.checkout.Session.create(
                 line_items=[{
@@ -118,7 +118,7 @@ class SubscriptionController:
                 # Only proceed if we have both user_id and plan_type
                 if user_id and plan_type:
                     from models.user_model import User
-                    user = User.query.get(int(user_id))
+                    user = User.query.get(user_id)
                     if user:
                         user.tier = plan_type
                         # Upsert UserSubscription as in create_checkout_session
@@ -172,7 +172,7 @@ class SubscriptionController:
                 user_id = session.get('client_reference_id')
                 if user_id:
                     from models.user_model import User
-                    user = User.query.get(int(user_id))
+                    user = User.query.get(user_id)
                     if user:
                         user.tier = 'free'
                         db.session.commit()
@@ -200,7 +200,7 @@ class SubscriptionController:
                 current_app.logger.warning("No user_id found in session")
                 return
 
-            user = User.query.get(int(user_id))
+            user = User.query.get(user_id)
             if not user:
                 current_app.logger.warning(f"User {user_id} not found")
                 return
@@ -230,10 +230,10 @@ class SubscriptionController:
             # Update the user's tier instead of subscription_tier
             user.tier = new_tier
             db.session.commit()
-            print(f"Successfully updated user {user_id} to tier {new_tier}")
+            current_app.logger.info(f"Successfully updated user {user_id} to tier {new_tier}")
 
         except Exception as e:
-            print(f" changes is commited ")
+            current_app.logger.info(f" changes not commited error ")
             current_app.logger.error(f"Error handling successful payment for session {session.id}: {str(e)}")
             db.session.rollback()
 
