@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+'''from flask import Flask, jsonify
 from routes.enrich import enrich_bp
 
 app = Flask(__name__)
@@ -17,12 +17,12 @@ app.register_blueprint(enrich_bp, url_prefix="/api")
 
 # Run the app
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5050, debug=True)
+    app.run(host="0.0.0.0", port=5050, debug=True)'''
 
 
 # ------- TESTING LOCAL ------ #
 
-'''
+
 import os
 import sys
 
@@ -55,4 +55,3 @@ app.register_blueprint(enrich_bp, url_prefix="/api")
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5050, debug=True)
-    '''
