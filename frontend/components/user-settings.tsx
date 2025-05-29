@@ -1,5 +1,6 @@
+"use client";
 /* eslint-disable @next/next/no-img-element */
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,22 +9,52 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 type SettingsPageProps = {
     isEditing: boolean;
     setIsEditing: React.Dispatch<React.SetStateAction<boolean>>;
-  };
+};
+
+type User = {
+    created_at: string;
+    email: string;
+    is_active: boolean;
+    role: string;
+    tier: string;
+    user_id: string;
+    username: string;
+    linkedin?: string;
+};
 
 export default function SettingsPage({ isEditing, setIsEditing }: SettingsPageProps) {
+    const [user, setUser] = useState<User | null>(null);
+    const [username, setUsername] = useState("");
+    const [linkedin, setLinkedin] = useState("");
+    const [email, setEmail] = useState("");
+
+
+    useEffect(() => {
+        const sessionUser = sessionStorage.getItem("user");
+        if (sessionUser) {
+            const parsedUser: User = JSON.parse(sessionUser);
+            setUser(parsedUser);
+            setUsername(parsedUser.username);
+            setEmail(parsedUser.email);
+            setLinkedin(parsedUser.linkedin ?? "");
+        }
+    }, []);
+
+    if (!user) return null;
+
     return (
         <div className="mx-auto max-w-4xl space-y-8 px-4 py-10">
             <div>
                 <h1 className="text-4xl font-bold">User Settings</h1>
             </div>
+
             {/* PERSONAL INFORMATION */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <h2 className="text-lg font-semibold">Your Profile</h2>
                     <Button
-                       
                         size="sm"
-                        onClick={() => setIsEditing(prev => !prev)}
+                        onClick={() => setIsEditing((prev: boolean) => !prev)}
                         className="text-sm"
                     >
                         {isEditing ? "Cancel" : "Edit Profile"}
@@ -51,9 +82,9 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
                             <Label htmlFor="name">Name</Label>
                             <Input
                                 id="name"
-                                placeholder="Your name"
-                                defaultValue="Praveen Juge"
+                                value={username}
                                 readOnly={!isEditing}
+                                onChange={(e) => setUsername(e.target.value)}
                                 className={!isEditing ? "border-transparent bg-muted cursor-default" : ""}
                             />
                         </div>
@@ -63,10 +94,10 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="you@example.com"
-                                defaultValue="hello@praveenjuge.com"
-                                readOnly
-                                className="border-transparent bg-muted cursor-default"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                readOnly={!isEditing}
+                                className={!isEditing ? "border-transparent bg-muted cursor-default" : ""}
                             />
                         </div>
                     </div>
@@ -77,7 +108,8 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
                         <Input
                             id="linkedin"
                             placeholder="https://linkedin.com/in/..."
-                            defaultValue="https://linkedin.com/in/praveenjuge"
+                            value={linkedin}
+                            onChange={(e) => setLinkedin(e.target.value)}
                             readOnly={!isEditing}
                             className={!isEditing ? "border-transparent bg-muted cursor-default" : ""}
                         />
