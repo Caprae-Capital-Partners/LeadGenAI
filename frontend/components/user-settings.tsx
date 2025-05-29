@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import Notif from "@/components/ui/notif"; // adjust path if needed
 
 type SettingsPageProps = {
     isEditing: boolean;
@@ -19,7 +20,7 @@ type User = {
     tier: string;
     user_id: string;
     username: string;
-    linkedin?: string;
+    linkedin_url?: string;
 };
 
 export default function SettingsPage({ isEditing, setIsEditing }: SettingsPageProps) {
@@ -27,7 +28,15 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
     const [username, setUsername] = useState("");
     const [linkedin, setLinkedin] = useState("");
     const [email, setEmail] = useState("");
-
+    const [oldPassword, setOldPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [notif, setNotif] = useState<{
+        show: boolean;
+        message: string;
+        type: "success" | "error";
+    }>({ show: false, message: "", type: "success" });
+      
 
     useEffect(() => {
         const sessionUser = sessionStorage.getItem("user");
@@ -36,7 +45,7 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
             setUser(parsedUser);
             setUsername(parsedUser.username);
             setEmail(parsedUser.email);
-            setLinkedin(parsedUser.linkedin ?? "");
+            setLinkedin(parsedUser.linkedin_url ?? "");
         }
     }, []);
 
@@ -131,29 +140,116 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
                         <form className="grid gap-6 md:grid-cols-3">
                             <div className="flex flex-col gap-1.5">
                                 <Label htmlFor="oldPassword">Old Password</Label>
-                                <Input id="oldPassword" type="password" placeholder="Enter your password" />
+                                <Input
+                                    id="oldPassword"
+                                    type="password"
+                                    placeholder="Enter your old password"
+                                    value={oldPassword}
+                                    onChange={(e) => setOldPassword(e.target.value)}
+                                />
                             </div>
 
                             <div className="flex flex-col gap-1.5">
                                 <Label htmlFor="newPassword">New Password</Label>
-                                <Input id="newPassword" type="password" placeholder="Enter your password" />
+                                <Input
+                                    id="newPassword"
+                                    type="password"
+                                    placeholder="Enter new password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                />
                             </div>
 
                             <div className="flex flex-col gap-1.5">
-                                <Label htmlFor="confirmPassword">New Password Again</Label>
-                                <Input id="confirmPassword" type="password" placeholder="Enter your password" />
+                                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                                <Input
+                                    id="confirmPassword"
+                                    type="password"
+                                    placeholder="Re-enter new password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                />
                             </div>
                         </form>
                     </CardContent>
+
                 </Card>
             )}
 
             {/* SAVE BUTTON (Only in edit mode) */}
             {isEditing && (
-                <Button className="md:col-span-3 w-full" type="submit">
+                <Button
+                    className="md:col-span-3 w-full"
+                    type="button"
+                    onClick={async () => {
+                        if (newPassword && newPassword !== confirmPassword) {
+                            setNotif({
+                                show: true,
+                                message: "New passwords do not match.",
+                                type: "error",
+                            });
+                            return;
+                        }
+
+                        const payload: any = {
+                            username,
+                            email,
+                            linkedin_url: linkedin,
+                        };
+
+                        if (newPassword) {
+                            payload.password = newPassword;
+                        }
+
+                        try {
+                            const res = await fetch("https://data.capraeleadseekers.site/api/auth/update_user", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                                credentials: "include",
+                                body: JSON.stringify(payload),
+                            });
+
+                            const data = await res.json();
+
+                            if (res.ok) {
+                                setNotif({
+                                    show: true,
+                                    message: "Profile updated successfully!",
+                                    type: "success",
+                                });
+                                sessionStorage.setItem("user", JSON.stringify(data.user));
+                                setUser(data.user);
+                                setIsEditing(false);
+                            } else {
+                                setNotif({
+                                    show: true,
+                                    message: "Update failed: " + (data.error || "Unknown error"),
+                                    type: "error",
+                                });
+                            }
+                        } catch (error) {
+                            console.error("Update error:", error);
+                            setNotif({
+                                show: true,
+                                message: "An error occurred while updating.",
+                                type: "error",
+                            });
+                        }
+                    }}
+                >
                     Save Changes
                 </Button>
+              
             )}
+            <Notif
+                show={notif.show}
+                message={notif.message}
+                type={notif.type}
+                onClose={() => setNotif((prev) => ({ ...prev, show: false }))}
+            />
         </div>
+        
     );
 }
