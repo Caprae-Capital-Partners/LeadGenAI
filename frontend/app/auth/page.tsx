@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import Notif from "@/components/ui/notif";
-
+import { validateField, validateForm, FormErrors } from "@/lib/formValidation";
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!;
 
@@ -22,8 +22,8 @@ export default function AuthPage() {
         setTimeout(() => {
             setNotif(prev => ({ ...prev, show: false }));
         }, 3500);
-      };
-      
+    };
+
     const [isSignup, setIsSignup] = useState(false);
     const [formData, setFormData] = useState({
         username: "",
@@ -42,28 +42,31 @@ export default function AuthPage() {
         }));
     };
 
-    const router = useRouter();
+    const [formErrors, setFormErrors] = useState<FormErrors>({});
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        const { id, value, type, checked } = e.target;
+        const currentValue = type === "checkbox" ? checked.toString() : value;
+        const error = validateField(id as keyof typeof formData, currentValue, {
+            ...formData,
+            [id]: type === "checkbox" ? checked : value,
+        });
+        setFormErrors(prev => ({ ...prev, [id]: error }));
+    };
 
+    const inputClass = (
+        field: keyof typeof formErrors,
+        base: string = "w-full"
+    ) => `${base} ${formErrors[field] ? "border border-destructive outline-none ring-1 ring-destructive" : ""}`;
+    
+
+    const router = useRouter();
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        if (isSignup) {
-            if (!formData.username.trim()) {
-                alert("Username is required.");
-                return;
-            }
-            if (!formData.email.trim()) {
-                alert("Email is required.");
-                return;
-            }
-            if (formData.password !== formData.confirmPassword) {
-                alert("Passwords do not match.");
-                return;
-            }
-        }
+        const errors = validateForm(formData, isSignup);
+        setFormErrors(errors);
+        if (Object.keys(errors).length > 0) return;
 
         const endpoint = isSignup ? "/auth/register" : "/auth/login";
-
         const payload = isSignup
             ? {
                 username: formData.username,
@@ -91,26 +94,27 @@ export default function AuthPage() {
 
             if (result.user) {
                 sessionStorage.setItem("user", JSON.stringify(result.user));
-
-                if (isSignup) {
-                    showNotification("Account successfully created!");
-                    setTimeout(() => {
-                        router.push("/subscription");
-                    }, 100); // small delay to allow notification to render
-                } else {
-                    showNotification("Successfully signed in!");
-                    setTimeout(() => {
-                        if (window.location.hostname === "localhost") {
-                            router.push("/");
-                        } else {
-                            window.location.href = "https://app.saasquatchleads.com/";
-                        }
-                    }, 100); // small delay to allow notification to render
-                }
-            }              
+                showNotification(isSignup ? "Account successfully created!" : "Successfully signed in!");
+                setTimeout(() => {
+                    router.push(isSignup ? "/subscription" : window.location.hostname === "localhost" ? "/" : "https://app.saasquatchleads.com/");
+                }, 100);
+            }
         } catch (err: any) {
             alert(err.message);
         }
+    };
+
+    const toggleMode = (signup: boolean) => {
+        setIsSignup(signup);
+        setFormData({
+            username: "",
+            email: "",
+            linkedin: "",
+            password: "",
+            confirmPassword: "",
+            gdpr: false,
+        });
+        setFormErrors({});
     };
 
     return (
@@ -119,24 +123,24 @@ export default function AuthPage() {
                 src="/images/logo_horizontal.png"
                 alt="SaaSquatch Leads Logo"
                 className="w-96 mx-auto mb-6"
-                />
+            />
             <div className="w-full max-w-md bg-card text-card-foreground rounded-xl shadow-md border-8 border-border">
                 <div className="flex">
                     <button
                         className={`w-1/2 py-3 text-sm font-semibold transition-colors ${!isSignup
-                                ? "bg-background text-foreground border-b-2 border-primary"
-                                : "bg-muted text-muted-foreground"
+                            ? "bg-background text-foreground border-b-2 border-primary"
+                            : "bg-muted text-muted-foreground"
                             }`}
-                        onClick={() => setIsSignup(false)}
+                        onClick={() => toggleMode(false)}
                     >
                         Sign In
                     </button>
                     <button
                         className={`w-1/2 py-3 text-sm font-semibold transition-colors ${isSignup
-                                ? "bg-background text-foreground border-b-2 border-primary"
-                                : "bg-muted text-muted-foreground"
+                            ? "bg-background text-foreground border-b-2 border-primary"
+                            : "bg-muted text-muted-foreground"
                             }`}
-                        onClick={() => setIsSignup(true)}
+                        onClick={() => toggleMode(true)}
                     >
                         Sign Up
                     </button>
@@ -150,10 +154,14 @@ export default function AuthPage() {
                                 <Input
                                     id="username"
                                     placeholder="Username"
-                                    required
                                     value={formData.username}
                                     onChange={handleChange}
+                                    onBlur={handleBlur}
+                                    className={inputClass("username")}
                                 />
+                                {formErrors.username && (
+                                    <p className="text-sm text-red-500 mt-1">{formErrors.username}</p>
+                                )}
                             </div>
                         )}
 
@@ -163,10 +171,14 @@ export default function AuthPage() {
                                 id="email"
                                 type="email"
                                 placeholder="Email"
-                                required
                                 value={formData.email}
                                 onChange={handleChange}
+                                onBlur={handleBlur}
+                                className={inputClass("email")}
                             />
+                            {formErrors.email && (
+                                <p className="text-sm text-red-500 mt-1">{formErrors.email}</p>
+                            )}
                         </div>
 
                         {isSignup && (
@@ -178,7 +190,12 @@ export default function AuthPage() {
                                     placeholder="https://linkedin.com/in/your-profile"
                                     value={formData.linkedin}
                                     onChange={handleChange}
+                                    onBlur={handleBlur}
+                                    className={inputClass("linkedin")}
                                 />
+                                {formErrors.linkedin && (
+                                    <p className="text-sm text-red-500 mt-1">{formErrors.linkedin}</p>
+                                )}
                             </div>
                         )}
 
@@ -188,10 +205,14 @@ export default function AuthPage() {
                                 id="password"
                                 type="password"
                                 placeholder="Password"
-                                required
                                 value={formData.password}
                                 onChange={handleChange}
+                                onBlur={handleBlur}
+                                className={inputClass("password")}
                             />
+                            {formErrors.password && (
+                                <p className="text-sm text-red-500 mt-1">{formErrors.password}</p>
+                            )}
                         </div>
 
                         {isSignup && (
@@ -201,10 +222,14 @@ export default function AuthPage() {
                                     id="confirmPassword"
                                     type="password"
                                     placeholder="Repeat password"
-                                    required
                                     value={formData.confirmPassword}
                                     onChange={handleChange}
+                                    onBlur={handleBlur}
+                                    className={inputClass("confirmPassword")}
                                 />
+                                {formErrors.confirmPassword && (
+                                    <p className="text-sm text-red-500 mt-1">{formErrors.confirmPassword}</p>
+                                )}
                             </div>
                         )}
 
@@ -213,10 +238,10 @@ export default function AuthPage() {
                                 <input
                                     type="checkbox"
                                     id="gdpr"
-                                    required
                                     checked={formData.gdpr}
                                     onChange={handleChange}
-                                    className="mt-1"
+                                    onBlur={handleBlur}
+                                    className={inputClass("gdpr", "mt-1")}
                                 />
                                 <label htmlFor="gdpr" className="text-muted-foreground">
                                     I accept the{" "}
@@ -230,6 +255,9 @@ export default function AuthPage() {
                                     .
                                 </label>
                             </div>
+                        )}
+                        {formErrors.gdpr && (
+                            <p className="text-sm text-red-500 mt-1">{formErrors.gdpr}</p>
                         )}
 
                         <Button type="submit" className="w-full mt-2">

@@ -532,9 +532,14 @@ export default function Home() {
     fetchSubscriptionInfo();
   }, []);
 
-
-
-
+  const COLORS = [
+    "#1EBE8F", // More vibrant Green-Teal
+    "#129C91", // Cyan shift, more pop
+    "#3BA2D0", // Lighter Cyan-Blue
+    "#E67E22", // Orange
+    "#FFF4A4", // More vibrant Deep Blue
+    "#6175FF", // Strong Violet-Blue
+  ];
 
   return isCheckingAuth ? (
     <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
@@ -642,11 +647,13 @@ export default function Home() {
                   cx="50%"
                   cy="50%"
                   outerRadius={80}
+                  
                 >
                   {industryData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={`hsl(${(index * 60) % 360}, 70%, 50%)`}
+                      // fill={`hsl(${(index * 60) % 360}, 70%, 50%)`}
+                      fill={COLORS[index % COLORS.length]}
                     />
                   ))}
                 </Pie>
