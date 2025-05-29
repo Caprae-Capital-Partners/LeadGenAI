@@ -101,11 +101,15 @@ async def scrape_lead_details(container: Locator) -> Dict[str, str]:
             "Website": "NA"
         }
 
-async def scrape_lead_by_industry(industry: str, location: str, page=None) -> AsyncGenerator[Dict[str, str], None]:
+async def scrape_lead_by_industry(industry: str, location: str, page=None, stop_flag: Dict[str, bool] = None) -> AsyncGenerator[Dict[str, str], None]:
     """Scrape multiple leads by industry and location from Google Maps."""
     internal_browser = False
     manager = PlaywrightManager(headless=True)
     try:
+        if stop_flag and stop_flag["stop"]:
+            # print("GMaps scraper stopped before starting.")
+            return
+        
         if page == None:
             page = await manager.start_browser(stealth_on=False)
             internal_browser = True
@@ -122,6 +126,10 @@ async def scrape_lead_by_industry(industry: str, location: str, page=None) -> As
         scrollable_container = page.locator("div.ecceSd").nth(1)
 
         while True:
+            if stop_flag and stop_flag["stop"]:
+                # print("🛑 Google Maps scraper stopped during scraping.")
+                return           
+            
             # Scroll to the bottom of the container
             await page.evaluate(
             """(container) => {
@@ -159,5 +167,5 @@ async def scrape_lead_by_industry(industry: str, location: str, page=None) -> As
         if internal_browser:
             await manager.stop_browser()
 
-if __name__ == "__main__":
-    print(asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca")))
+# if __name__ == "__main__":
+#     print(asyncio.run(scrape_lead_by_industry("dentists", "san diego, ca")))
