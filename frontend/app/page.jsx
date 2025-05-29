@@ -81,10 +81,13 @@ export default function Home() {
   const [yearFoundedFilter, setYearFoundedFilter] = useState("");
   const [bbbRatingFilter, setBbbRatingFilter] = useState("");
   const [streetFilter, setStreetFilter] = useState("");
+  const [industryFilter, setIndustryFilter] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [stateFilter, setStateFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
+
   const router = useRouter();
   const handleSave = () => {
     // Commit the edits to the main scrapingHistory state
@@ -98,7 +101,6 @@ export default function Home() {
     console.log("Changes discarded.");
   };
 
-  const [showFilters, setShowFilters] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const clearAllFilters = () => {
     setEmployeesFilter("");
@@ -112,6 +114,49 @@ export default function Home() {
     setStateFilter("");
     setSourceFilter("");
   };
+
+
+  const parseRevenue = (revenueInput) => {
+    if (typeof revenueInput === "number") return revenueInput;
+    if (typeof revenueInput !== "string") return null;
+
+    let revenueStr = revenueInput.toLowerCase().trim().replace(/[$,]/g, "");
+    let multiplier = 1;
+
+    if (revenueStr.endsWith("k")) {
+      multiplier = 1_000;
+      revenueStr = revenueStr.slice(0, -1);
+    } else if (revenueStr.endsWith("m")) {
+      multiplier = 1_000_000;
+      revenueStr = revenueStr.slice(0, -1);
+    } else if (revenueStr.endsWith("b")) {
+      multiplier = 1_000_000_000;
+      revenueStr = revenueStr.slice(0, -1);
+    }
+
+    const value = parseFloat(revenueStr);
+    return isNaN(value) ? null : value * multiplier;
+  };
+  
+  
+
+  const parseFilter = (filterStr, isRevenue = false) => {
+    const result = { operation: "exact", value: null | null, upper: null  | null }
+    filterStr = filterStr.toLowerCase().trim()
+    const rangeMatch = filterStr.match(/^(\d+(?:[kmb]?)?)\s*-\s*(\d+(?:[kmb]?)?)$/)
+    if (rangeMatch) {
+      const val1 = isRevenue ? parseRevenue(rangeMatch[1]) : parseInt(rangeMatch[1])
+      const val2 = isRevenue ? parseRevenue(rangeMatch[2]) : parseInt(rangeMatch[2])
+      return { operation: "between", value: val1, upper: val2 }
+    }
+    if (filterStr.startsWith(">=")) result.operation = "greater than or equal", filterStr = filterStr.slice(2)
+    else if (filterStr.startsWith(">")) result.operation = "greater than", filterStr = filterStr.slice(1)
+    else if (filterStr.startsWith("<=")) result.operation = "less than or equal", filterStr = filterStr.slice(2)
+    else if (filterStr.startsWith("<")) result.operation = "less than", filterStr = filterStr.slice(1)
+    result.value = isRevenue ? parseRevenue(filterStr) : parseInt(filterStr)
+    return result
+  }
+
 
   const toCamelCase = (str) =>
     str.replace(/([-_][a-z])/gi, (group) =>
@@ -180,7 +225,7 @@ export default function Home() {
 
     const csvContent = [
       headers.join(","), // Header row
-      ...scrapingHistory.map((row) =>
+      ...currentItems.map((row) =>
         headers.map((h) => `"${row[toCamelCaseKeys(h)] || ""}"`).join(",")
       ),
     ].join("\n");
@@ -200,10 +245,116 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
+  const filteredScrapingHistory = scrapingHistory.filter((entry) => {
+    const matchIndustry = entry.industry
+      ?.toLowerCase()
+      .includes(industryFilter.toLowerCase());
+    const matchCity = entry.city
+      ?.toLowerCase()
+      .includes(cityFilter.toLowerCase());
+    const matchState = entry.state
+      ?.toLowerCase()
+      .includes(stateFilter.toLowerCase());
+    const matchBBB = entry.bbbRating
+      ?.toLowerCase()
+      .includes(bbbRatingFilter.toLowerCase());
+    const matchProduct = entry.productCategory
+      ?.toLowerCase()
+      .includes(productFilter.toLowerCase());
+    const matchBusinessType = entry.businessType
+      ?.toLowerCase()
+      .includes(businessTypeFilter.toLowerCase());
+    const matchSource = entry.source
+      ?.toLowerCase()
+      .includes(sourceFilter.toLowerCase());
+
+    const {
+      operation: revenueOp,
+      value: revenueVal,
+      upper: revenueUpper,
+    } = parseFilter(revenueFilter, true);
+    const rev = parseRevenue(entry.revenue);
+    const matchRevenue =
+      revenueVal === null
+        ? true
+        : revenueOp === "less than"
+        ? rev < revenueVal
+        : revenueOp === "greater than"
+        ? rev > revenueVal
+        : revenueOp === "less than or equal"
+        ? rev <= revenueVal
+        : revenueOp === "greater than or equal"
+        ? rev >= revenueVal
+        : revenueOp === "between"
+        ? rev >= revenueVal && rev <= (revenueUpper ?? revenueVal)
+        : rev === revenueVal;
+
+    const {
+      operation: empOp,
+      value: empVal,
+      upper: empUpper,
+    } = parseFilter(employeesFilter);
+    const emp = parseInt(entry.employees);
+    const matchEmployees = isNaN(empVal)
+      ? true
+      : empOp === "less than"
+      ? emp < empVal
+      : empOp === "greater than"
+      ? emp > empVal
+      : empOp === "less than or equal"
+      ? emp <= empVal
+      : empOp === "greater than or equal"
+      ? emp >= empVal
+      : empOp === "between"
+      ? emp >= empVal && emp <= (empUpper ?? empVal)
+      : emp === empVal;
+
+      const {
+        operation: yearOp,
+        value: yearVal,
+        upper: yearUpper,
+      } = parseFilter(yearFoundedFilter);
+      const year = parseInt(entry.yearFounded);
+      const matchYearFounded = isNaN(yearVal)
+        ? true
+        : yearOp === "less than"
+        ? year < yearVal
+        : yearOp === "greater than"
+        ? year > yearVal
+        : yearOp === "less than or equal"
+        ? year <= yearVal
+        : yearOp === "greater than or equal"
+        ? year >= yearVal
+        : yearOp === "between"
+        ? year >= yearVal && year <= (yearUpper ?? yearVal)
+        : year === yearVal;
+
+        return (
+          matchIndustry &&
+          matchCity &&
+          matchState &&
+          matchBBB &&
+          matchProduct &&
+          matchBusinessType &&
+          matchRevenue &&
+          matchSource &&
+          matchEmployees &&
+          matchYearFounded
+        );
+  });
+  
+  
+
+
   // Derive indexes for slicing the filtered data
-  const totalPages = Math.ceil(scrapingHistory.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredScrapingHistory.length / itemsPerPage);
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
   const indexOfLastItem = currentPage * itemsPerPage;
+  const currentItems = filteredScrapingHistory.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
+
   const [selectedCompanies, setSelectedCompanies] = useState([]);
 
   const handleSelectAll = () => {
@@ -380,7 +531,10 @@ export default function Home() {
 
     fetchSubscriptionInfo();
   }, []);
-  
+
+
+
+
 
   return isCheckingAuth ? (
     <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
@@ -394,14 +548,11 @@ export default function Home() {
           Hi, {user.username || "there"} 👋 Are you ready to scrape?
         </div>
 
-        {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {[
             {
               label: "Total Leads Scraped",
               value: scrapingHistory.length.toLocaleString(),
-              change: "+0%", // Optionally compute later
-              comparison: "total enriched leads",
             },
             {
               label: "Token Usage",
@@ -445,29 +596,35 @@ export default function Home() {
           ].map((stat, index) => (
             <Card
               key={index}
-              className="rounded-2xl border shadow-sm transition duration-200 transform hover:scale-105 hover:shadow-[0_4px_20px_0_rgba(122,194,164,0.5)]"
+              className="relative rounded-2xl border shadow-sm px-6 py-5 flex flex-col justify-between h-48"
             >
-              <CardHeader className="pb-2">
-                <CardDescription className="text-sm text-muted-foreground">
+              <CardHeader className="pb-2 relative">
+                <CardDescription className="text-base text-muted-foreground mb-1">
                   {stat.label}
                 </CardDescription>
-                <CardTitle className="text-2xl font-bold text-foreground">
+                <CardTitle className="text-4xl font-extrabold text-foreground leading-snug">
                   {stat.value}
                 </CardTitle>
+
+                {/* ✅ Top-right Upgrade button */}
+                {stat.label === "Subscription" && stat.action && (
+                  <a
+                    href={stat.action.link}
+                    className="absolute top-0 right-0 mt-3 mr-4"
+                  >
+                    <Button
+                      size="sm"
+                      className="text-sm px-4 py-1.5 font-semibold"
+                    >
+                      {stat.action.label}
+                    </Button>
+                  </a>
+                )}
               </CardHeader>
-              <CardContent className="pt-0 text-sm text-blue-600">
+
+              <CardContent className="pt-0 text-[15px] text-blue-500 font-medium">
                 <span>{stat.change}</span>{" "}
                 <span className="text-muted-foreground">{stat.comparison}</span>
-                {/* Show "Upgrade" button only if this stat has an action */}
-                {stat.action && (
-                  <div className="mt-3">
-                    <a href={stat.action.link}>
-                      <Button size="sm" variant="outline">
-                        {stat.action.label}
-                      </Button>
-                    </a>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}
@@ -566,19 +723,66 @@ export default function Home() {
           </div>
           {showFilters && (
             <div className="flex flex-wrap gap-4 my-4">
-              <Input placeholder="Industry" className="w-[240px]" />
               <Input
-                placeholder="Product/Service Category"
+                placeholder="Industry"
+                value={industryFilter}
+                onChange={(e) => setIndustryFilter(e.target.value)}
                 className="w-[240px]"
               />
-              <Input placeholder="Business Type" className="w-[240px]" />
-              <Input placeholder="Employees Count" className="w-[240px]" />
-              <Input placeholder="Revenue" className="w-[240px]" />
-              <Input placeholder="Year Founded" className="w-[240px]" />
-              <Input placeholder="BBB Rating" className="w-[240px]" />
-              <Input placeholder="City" className="w-[240px]" />
-              <Input placeholder="State" className="w-[240px]" />
-              <Input placeholder="Source" className="w-[240px]" />
+              <Input
+                placeholder="Product/Service Category"
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Business Type"
+                value={businessTypeFilter}
+                onChange={(e) => setBusinessTypeFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Employees Count"
+                value={employeesFilter}
+                onChange={(e) => setEmployeesFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Revenue"
+                value={revenueFilter}
+                onChange={(e) => setRevenueFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Year Founded"
+                value={yearFoundedFilter}
+                onChange={(e) => setYearFoundedFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="BBB Rating"
+                value={bbbRatingFilter}
+                onChange={(e) => setBbbRatingFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="City"
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="State"
+                value={stateFilter}
+                onChange={(e) => setStateFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Source"
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                className="w-[240px]"
+              />
               <Button variant="ghost" size="sm" onClick={clearAllFilters}>
                 <X className="h-4 w-4 mr-1" />
                 Clear All
@@ -672,7 +876,7 @@ export default function Home() {
                 </TableRow>
               </thead>
               <tbody>
-                {scrapingHistory.map((row, i) => (
+                {currentItems.map((row, i) => (
                   <TableRow key={i} className="border-t">
                     <TableCell className="px-6 py-2">
                       <Checkbox

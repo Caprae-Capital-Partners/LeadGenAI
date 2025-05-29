@@ -54,6 +54,12 @@ export function Header() {
             Scraper Tool
           </Link>
           <Link
+            href="/documentation"
+            className="text-white hover:text-yellow-400 transition-colors"
+          >
+            Documentation
+          </Link>
+          <Link
             href="/contact"
             className="text-white hover:text-yellow-400 transition-colors"
           >
@@ -102,11 +108,30 @@ export function Header() {
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-dark-border" />
               <DropdownMenuItem
-                onClick={() => {
-                  sessionStorage.clear(); // ✅ Clear session storage
-                  localStorage.clear(); // ✅ Clear local storage
-                  window.location.href =
-                    "https://data.capraeleadseekers.site/logout";
+                onClick={async () => {
+                  try {
+                    const res = await fetch(
+                      "https://data.capraeleadseekers.site/api/auth/logout",
+                      {
+                        method: "POST",
+                        credentials: "include",
+                      }
+                    );
+
+                    if (res.ok) {
+                      sessionStorage.clear(); // ✅ Clear client-side session
+                      window.location.href =
+                        "https://app.saasquatchleads.com/auth"; // ⬅️ Redirect to login
+                    } else {
+                      const data = await res.json();
+                      alert(
+                        `Logout failed: ${data.message || "Unknown error"}`
+                      );
+                    }
+                  } catch (error) {
+                    console.error("❌ Logout error:", error);
+                    alert("Network error during logout. Try again.");
+                  }
                 }}
                 className="hover:bg-dark-hover focus:bg-dark-hover cursor-pointer"
               >

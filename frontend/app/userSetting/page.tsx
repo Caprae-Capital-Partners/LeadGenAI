@@ -9,6 +9,7 @@ import { Header } from "@/components/header";
 export default function UserSettingsPage() {
     const router = useRouter();
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         const verifyLogin = async () => {
@@ -45,8 +46,9 @@ export default function UserSettingsPage() {
         <>
             <Header />
             <main className="px-20 py-16">
-                <SettingsPage />
+                <SettingsPage isEditing={isEditing} setIsEditing={setIsEditing} />
             </main>
         </>
     );
-}
+    }
+
