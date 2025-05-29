@@ -7,7 +7,7 @@ import logging
 
 class AuthController:
     @staticmethod
-    def register(username, email, password, role='user', company=''):
+    def register(username, email, password, role='user', company='', linkedin_url=''):
         """Register a new user"""
         # Check if username already exists
         if User.query.filter_by(username=username).first():
@@ -24,7 +24,7 @@ class AuthController:
 
         try:
             # Create new user
-            user = User(username=username, email=email, role=role, company=company)
+            user = User(username=username, email=email, role=role, company=company, linkedin_url=linkedin_url)
             user.set_password(password)
 
             # Add to database (commit early to get user_id if autoincremented, or ensure user exists for FK)
@@ -51,7 +51,8 @@ class AuthController:
                     payment_frequency=free_plan.credit_reset_frequency if free_plan.credit_reset_frequency else 'monthly', # Use credit_reset_frequency from Plan
                     credits_remaining=free_plan.initial_credits if free_plan.initial_credits is not None else 0,
                     tier_start_timestamp=tier_start, # Set the start timestamp
-                    plan_expiration_timestamp=tier_expiration # Set the calculated expiration timestamp
+                    plan_expiration_timestamp=tier_expiration, # Set the calculated expiration timestamp
+                    username=user.username
                 )
                 db.session.add(user_subscription)
             else:
