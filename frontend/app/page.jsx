@@ -61,8 +61,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import axios from "axios";
+
+import Notif from "@/components/ui/notif";
 
 import { redirect } from "next/navigation";
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL
 
 // export default function Home() {
 //   redirect('/auth');
@@ -99,6 +103,21 @@ export default function Home() {
     setEditedRows(scrapingHistory); // Reset edits to the original state
     setIsEditing(false); // Exit edit mode
     console.log("Changes discarded.");
+  };
+
+  const [notif, setNotif] = useState({
+    show: false,
+    message: "",
+    type: "success",
+  });
+  const showNotification = (message, type = "success") => {
+    setNotif({ show: true, message, type });
+
+    // Automatically hide after X seconds (let Notif handle it visually)
+    // Optional if Notif itself auto-hides — but helpful as backup
+    setTimeout(() => {
+      setNotif((prev) => ({ ...prev, show: false }));
+    }, 3500);
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -192,7 +211,53 @@ export default function Home() {
       </div>
     );
   };
+
+  const handleExportCSVWithCredits = async () => {
+      try {
+        const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+          withCredentials: true
+        });
   
+        const planName = subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
+        const availableCredits = subscriptionInfo?.subscription?.credits_remaining ?? 0;
+        const requiredCredits = currentItems.length;
+  
+        if (planName === "free") {
+          showNotification("Exporting is not allowed on the Free tier. Please upgrade your plan.", "info");
+          return;
+        }
+  
+        if (availableCredits < requiredCredits) {
+          showNotification("Insufficient credits to export all selected leads. Please upgrade or reduce selection.", "error");
+          return;
+        }
+  
+        handleExportCSV(currentItems, "enriched_results.csv");
+      } catch (checkErr) {
+        console.error("❌ Failed to verify subscription:", checkErr);
+        showNotification("Failed to verify your subscription. Please try again later.", "error");
+      }
+    };
+  
+    const handleToggleFiltersWithCheck = async () => {
+      try {
+        const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+          withCredentials: true,
+        });
+  
+        const planName = subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
+        if (planName === "free") {
+          showNotification("Advanced filters are disabled on the Free tier. Please upgrade your plan.", "info");
+          return;
+        }
+  
+        setShowFilters((prev) => !prev);
+      } catch (err) {
+        console.error("❌ Failed to verify subscription:", err);
+        showNotification("Failed to verify your subscription. Please try again later.", "error");
+      }
+    };
+
 
   const [scrapingHistory, setScrapingHistory] = useState([]);
 
@@ -502,28 +567,11 @@ export default function Home() {
   useEffect(() => {
     const fetchSubscriptionInfo = async () => {
       try {
-        const existing = sessionStorage.getItem("subscriptionInfo");
-        if (existing) {
-          setSubscriptionInfo(JSON.parse(existing));
-          return;
-        }
+        const res = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+          withCredentials: true,
+        });
 
-        const res = await fetch(
-          "https://data.capraeleadseekers.site/api/user/subscription_info",
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (!res.ok) {
-          console.warn("⚠️ Failed to fetch subscription info:", res.status);
-          return;
-        }
-
-        const data = await res.json();
-        sessionStorage.setItem("subscriptionInfo", JSON.stringify(data));
-        setSubscriptionInfo(data);
+        setSubscriptionInfo(res.data);
       } catch (err) {
         console.error("Error fetching subscription info:", err);
       }
@@ -531,6 +579,8 @@ export default function Home() {
 
     fetchSubscriptionInfo();
   }, []);
+
+  
 
   const COLORS = [
     "#1EBE8F", // More vibrant Green-Teal
@@ -647,7 +697,6 @@ export default function Home() {
                   cx="50%"
                   cy="50%"
                   outerRadius={80}
-                  
                 >
                   {industryData.map((entry, index) => (
                     <Cell
@@ -714,14 +763,14 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={() => handleToggleFiltersWithCheck()}
                 className="bg-[#fad945] text-black font-medium px-6 py-2 rounded hover:bg-[#fff1b2] transition"
               >
                 <Filter className="h-4 w-4 mr-2" />
                 {showFilters ? "Hide Filters" : "Show Filters"}
               </Button>
               <button
-                onClick={handleExportCSV}
+                onClick={handleExportCSVWithCredits}
                 className="bg-[#fad945] text-black font-medium px-6 py-2 rounded hover:bg-[#fff1b2] transition"
               >
                 Export CSV
@@ -1128,6 +1177,12 @@ export default function Home() {
               Edit
             </button>
           )}
+          <Notif
+            show={notif.show}
+            message={notif.message}
+            type={notif.type}
+            onClose={() => setNotif((prev) => ({ ...prev, show: false }))}
+          />
         </div>
       </main>
     </>

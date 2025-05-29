@@ -26,12 +26,12 @@ export default function Notif({
         let clearTimer: NodeJS.Timeout;
 
         if (show) {
-            setVisible(false); // Ensure reset
-            showTimer = setTimeout(() => setVisible(true), 10); // 👈 smooth enter
+            setVisible(false); // reset before enter
+            showTimer = setTimeout(() => setVisible(true), 10); // small delay for transition
 
             hideTimer = setTimeout(() => {
-                setVisible(false);
-                clearTimer = setTimeout(onClose, 300); // Smooth exit
+                setVisible(false); // start exit
+                clearTimer = setTimeout(onClose, 300); // give time for animation to complete
             }, duration);
         }
 
@@ -41,8 +41,6 @@ export default function Notif({
             clearTimeout(clearTimer);
         };
     }, [show, duration, onClose]);
-
-    if (!show && !visible) return null;
 
     const baseStyle =
         "fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-lg shadow-lg text-base font-semibold transition-all duration-300 ease-in-out";
@@ -65,3 +63,4 @@ export default function Notif({
         </div>
     );
 }
+

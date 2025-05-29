@@ -22,12 +22,14 @@ import {
 } from "@/components/ui/pagination"
 import { useEnrichment } from "@/components/EnrichmentProvider"
 import Notif  from "@/components/ui/notif"
+import axios from "axios"
 
 interface EnrichmentResultsProps {
   enrichedCompanies: EnrichedCompany[]
   loading?: boolean
   rowClassName?: (company: EnrichedCompany, index: number) => string
 }
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 
 
 export interface EnrichedCompany {
@@ -173,9 +175,6 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     const value = parseFloat(revenueStr)
     return isNaN(value) ? null : value * multiplier
   }
-
-
-
 
   const parseFilter = (filterStr: string, isRevenue = false) => {
     const result = { operation: "exact", value: null as number | null, upper: null as number | null }
@@ -415,6 +414,53 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     if (type === "business") setBusinessTypeFilter("")
   }
 
+  const handleExportCSVWithCredits = async () => {
+    try {
+      const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+        withCredentials: true
+      });
+
+      const planName = subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
+      const availableCredits = subscriptionInfo?.subscription?.credits_remaining ?? 0;
+      const requiredCredits = filteredCompanies.length;
+
+      if (planName === "free") {
+        showNotification("Exporting is not allowed on the Free tier. Please upgrade your plan.", "info");
+        return;
+      }
+
+      if (availableCredits < requiredCredits) {
+        showNotification("Insufficient credits to export all selected leads. Please upgrade or reduce selection.", "error");
+        return;
+      }
+
+      downloadCSV(filteredCompanies, "enriched_results.csv");
+    } catch (checkErr) {
+      console.error("❌ Failed to verify subscription:", checkErr);
+      showNotification("Failed to verify your subscription. Please try again later.", "error");
+    }
+  };
+
+  const handleToggleFiltersWithCheck = async () => {
+    try {
+      const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+        withCredentials: true,
+      });
+
+      const planName = subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
+      if (planName === "free") {
+        showNotification("Advanced filters are disabled on the Free tier. Please upgrade your plan.", "info");
+        return;
+      }
+
+      setShowFilters((prev) => !prev);
+    } catch (err) {
+      console.error("❌ Failed to verify subscription:", err);
+      showNotification("Failed to verify your subscription. Please try again later.", "error");
+    }
+  };
+
+
   const handleBack = () => {
     router.push("?tab=data-enhancement")
     window.location.reload()
@@ -554,7 +600,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-[240px]"
               />
-              <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
+              <Button variant="outline" size="sm" onClick={handleToggleFiltersWithCheck}>
                 <Filter className="h-4 w-4 mr-2" />
                 {showFilters ? "Hide Filters" : "Show Filters"}
               </Button>
@@ -876,7 +922,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
           </div>
           <div className="flex justify-end mt-4">
             <Button
-              onClick={() => downloadCSV(filteredCompanies, "enriched_results.csv")}
+              onClick={handleExportCSVWithCredits}
               disabled={filteredCompanies.length === 0}
               variant="outline"
               size="sm"

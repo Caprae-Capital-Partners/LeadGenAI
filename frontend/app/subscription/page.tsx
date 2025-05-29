@@ -25,6 +25,15 @@ export default function SubscriptionPage() {
     useEffect(() => {
         const fetchPlans = async () => {
             try {
+                // Check if data exists in localStorage
+                const cached = localStorage.getItem("cachedPlans");
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    setPlans(parsed);
+                    return;
+                }
+
+                // If not cached, fetch from API
                 const res = await fetch("https://data.capraeleadseekers.site/api/plans/all", {
                     method: "GET",
                     credentials: "include",
@@ -50,6 +59,8 @@ export default function SubscriptionPage() {
                             : undefined,
                 }));
 
+                // Save to localStorage and state
+                localStorage.setItem("cachedPlans", JSON.stringify(plansWithIds));
                 setPlans(plansWithIds);
             } catch (err) {
                 console.error("❌ Failed to fetch plans:", err);
@@ -58,6 +69,7 @@ export default function SubscriptionPage() {
 
         fetchPlans();
     }, []);
+      
 
     const handleSelectPlan = async (planId: string) => {
         if (planId === "free") {
@@ -228,7 +240,7 @@ export default function SubscriptionPage() {
                 {/* Continue Link */}
                 <div className="text-center">
                     <a href="https://app.saasquatchleads.com/">
-                        <Button> Continue to Dashboard (Free Plan)</Button>
+                        <Button> Continue to Dashboard</Button>
                     </a>
                 </div>
             </div>
