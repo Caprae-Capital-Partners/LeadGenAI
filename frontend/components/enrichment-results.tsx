@@ -22,12 +22,14 @@ import {
 } from "@/components/ui/pagination"
 import { useEnrichment } from "@/components/EnrichmentProvider"
 import Notif  from "@/components/ui/notif"
+import axios from "axios"
 
 interface EnrichmentResultsProps {
   enrichedCompanies: EnrichedCompany[]
   loading?: boolean
   rowClassName?: (company: EnrichedCompany, index: number) => string
 }
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 
 
 export interface EnrichedCompany {
@@ -173,9 +175,6 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     const value = parseFloat(revenueStr)
     return isNaN(value) ? null : value * multiplier
   }
-
-
-
 
   const parseFilter = (filterStr: string, isRevenue = false) => {
     const result = { operation: "exact", value: null as number | null, upper: null as number | null }
@@ -414,6 +413,33 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     if (type === "revenue") setRevenueFilter("")
     if (type === "business") setBusinessTypeFilter("")
   }
+
+  const handleExportCSVWithCredits = async () => {
+    try {
+      const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+        withCredentials: true
+      });
+
+      const planName = subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
+      const availableCredits = subscriptionInfo?.subscription?.credits_remaining ?? 0;
+      const requiredCredits = filteredCompanies.length;
+
+      if (planName === "free") {
+        showNotification("Exporting is not allowed on the Free tier. Please upgrade your plan.", "info");
+        return;
+      }
+
+      if (availableCredits < requiredCredits) {
+        showNotification("Insufficient credits to export all selected leads. Please upgrade or reduce selection.", "error");
+        return;
+      }
+
+      downloadCSV(filteredCompanies, "enriched_results.csv");
+    } catch (checkErr) {
+      console.error("❌ Failed to verify subscription:", checkErr);
+      showNotification("Failed to verify your subscription. Please try again later.", "error");
+    }
+  };
 
   const handleBack = () => {
     router.push("?tab=data-enhancement")
@@ -876,7 +902,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
           </div>
           <div className="flex justify-end mt-4">
             <Button
-              onClick={() => downloadCSV(filteredCompanies, "enriched_results.csv")}
+              onClick={handleExportCSVWithCredits}
               disabled={filteredCompanies.length === 0}
               variant="outline"
               size="sm"
