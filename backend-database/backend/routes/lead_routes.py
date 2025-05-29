@@ -1038,7 +1038,7 @@ def api_delete_multiple_leads():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @lead_bp.route('/api/leads/enrich-multiple', methods=['POST'])
-#@login_required
+@login_required
 def enrich_multiple_leads():
     data = request.get_json()
     leads = data.get('leads', [])
@@ -1074,7 +1074,7 @@ def leads_summary():
     })
 
 @lead_bp.route('/leads/edited', methods=['GET'])
-#@login_required
+@login_required
 def view_edited_leads():
     """View all edited leads (pending drafts)"""
     from models.user_model import User
@@ -1090,7 +1090,7 @@ def view_edited_leads():
     return render_template('edited_leads.html', leads=rows)
 
 @lead_bp.route('/leads/<string:lead_id>/edit', methods=['POST'])
-#@login_required
+@login_required
 @role_required('admin', 'developer', 'user')
 def edit_lead_api(lead_id):
     """Edit lead - Admin, Developer, User. Save to EditLeadDraft, not to Lead."""
@@ -1159,7 +1159,7 @@ def edit_lead_api(lead_id):
             return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/leads/<string:lead_id>/apply', methods=['POST'])
-#@login_required
+@login_required
 @role_required('admin', 'developer')
 def apply_edited_lead(lead_id):
     """Apply changes: finalize the edit, salin data dari draft ke Lead, hapus draft."""
@@ -1185,7 +1185,7 @@ def apply_edited_lead(lead_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @lead_bp.route('/api/draft/delete', methods=['POST'])
-#@login_required
+@login_required
 @role_required('admin', 'developer')
 def delete_draft_api():
     """Permanently delete a draft by lead_id (API)."""
@@ -1208,7 +1208,7 @@ def delete_draft_api():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @lead_bp.route('/api/leads/multiple', methods=['GET'])
-#@login_required
+# @login_required
 def get_leads_by_multiple_ids():
     """Get details of multiple leads by comma-separated IDs in query param 'lead_ids'"""
     lead_ids_param = request.args.get('lead_ids', '')
@@ -1222,7 +1222,7 @@ def get_leads_by_multiple_ids():
     return jsonify({"results": results})
 #Drafts API
 @lead_bp.route('/api/leads/search-results', methods=['POST'])
-# @login_required
+@login_required
 def save_search_results():
     """Save search results with search criteria as drafts"""
     try:
@@ -1335,7 +1335,7 @@ def get_search_session_drafts(search_session_id):
 
 # Drafts API
 @lead_bp.route('/api/leads/search-drafts', methods=['GET'])
-# @login_required
+@login_required
 def get_search_drafts():
     """Get drafts by search criteria (industry and/or location)"""
     industry = request.args.get('industry')
@@ -1389,7 +1389,7 @@ def get_search_drafts():
     })
 
 @lead_bp.route('/api/leads/recent-searches', methods=['GET'])
-# @login_required
+@login_required
 def get_recent_search_sessions():
     """Get recent search sessions with their drafts"""
     limit = request.args.get('limit', 5, type=int)
@@ -1432,14 +1432,14 @@ def get_recent_search_sessions():
     })
 
 @lead_bp.route('/api/leads/drafts', methods=['GET'])
-# @login_required
+@login_required
 def get_user_drafts():
     """Get all drafts for the current user"""
     drafts = UserLeadDraft.query.filter_by(user_id=current_user.user_id, is_deleted=False).all()
     return jsonify([d.to_dict() for d in drafts])
 
 @lead_bp.route('/api/leads/drafts/<string:draft_id>', methods=['GET'])
-@login_required 
+@login_required
 def get_draft(draft_id):
     """Get a specific draft by ID"""
     draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
@@ -1448,7 +1448,7 @@ def get_draft(draft_id):
     return jsonify(draft.to_dict())
 
 @lead_bp.route('/api/leads/drafts/<string:draft_id>', methods=['PUT'])
-# @login_required
+@login_required
 def update_draft(draft_id):
     """Update a specific draft"""
     draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
@@ -1465,7 +1465,7 @@ def update_draft(draft_id):
     return jsonify(draft.to_dict())
 
 @lead_bp.route('/api/leads/drafts/<string:draft_id>', methods=['DELETE'])
-# @login_required
+@login_required
 def delete_draft(draft_id):
     """Soft delete a draft"""
     draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
@@ -1476,7 +1476,7 @@ def delete_draft(draft_id):
     return jsonify({"message": "Draft deleted"})
 
 @lead_bp.route('/api/leads/drafts', methods=['POST'])
-# @login_required
+@login_required
 def create_draft():
     """Create a new draft"""
     data = request.json
@@ -1495,7 +1495,7 @@ def create_draft():
     return jsonify(draft.to_dict()), 201
 
 @lead_bp.route('/drafts')
-# @login_required
+@login_required
 def view_drafts():
     """Render the drafts view template"""
     return render_template('leads/view_drafts.html')
