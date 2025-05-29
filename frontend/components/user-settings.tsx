@@ -13,10 +13,13 @@ type SettingsPageProps = {
 export default function SettingsPage({ isEditing, setIsEditing }: SettingsPageProps) {
     return (
         <div className="mx-auto max-w-4xl space-y-8 px-4 py-10">
+            <div>
+                <h1 className="text-4xl font-bold">User Settings</h1>
+            </div>
             {/* PERSONAL INFORMATION */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                    <h2 className="text-lg font-semibold">Personal Information</h2>
+                    <h2 className="text-lg font-semibold">Your Profile</h2>
                     <Button
                        
                         size="sm"
