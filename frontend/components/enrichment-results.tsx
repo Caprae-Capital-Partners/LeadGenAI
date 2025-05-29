@@ -441,6 +441,26 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     }
   };
 
+  const handleToggleFiltersWithCheck = async () => {
+    try {
+      const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+        withCredentials: true,
+      });
+
+      const planName = subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
+      if (planName === "free") {
+        showNotification("Advanced filters are disabled on the Free tier. Please upgrade your plan.", "info");
+        return;
+      }
+
+      setShowFilters((prev) => !prev);
+    } catch (err) {
+      console.error("❌ Failed to verify subscription:", err);
+      showNotification("Failed to verify your subscription. Please try again later.", "error");
+    }
+  };
+
+
   const handleBack = () => {
     router.push("?tab=data-enhancement")
     window.location.reload()
@@ -580,7 +600,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-[240px]"
               />
-              <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
+              <Button variant="outline" size="sm" onClick={handleToggleFiltersWithCheck}>
                 <Filter className="h-4 w-4 mr-2" />
                 {showFilters ? "Hide Filters" : "Show Filters"}
               </Button>

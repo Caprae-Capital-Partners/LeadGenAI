@@ -50,7 +50,7 @@ export function DataEnhancement() {
       }, 3500);
     };
 
-
+  const [hasEnrichedOnce, setHasEnrichedOnce] = useState(false);
   const [showTokenPopup, setShowTokenPopup] = useState(false);
   const [mergedView, setMergedView] = useState(false)
   const [showResults, setShowResults] = useState(false)
@@ -736,6 +736,7 @@ export function DataEnhancement() {
       }
       
       setShowResults(true);
+      setHasEnrichedOnce(true);
     } catch (err) {
       console.error("Enrichment failed:", err);
       stopProgressSimulation(0);
@@ -1110,7 +1111,7 @@ export function DataEnhancement() {
             Scraping and enriching data… please wait
           </p>
         </div>
-      ) : !mergedView ? (
+      ) : !mergedView && hasEnrichedOnce ? (
         <div className="mt-6 space-y-8">
           {/* ── DATABASE RESULTS ── */}
           {dbEnrichedCompanies.length > 0 && (
@@ -1155,15 +1156,16 @@ export function DataEnhancement() {
             </div>
           )}
 
-          {/* switch to merged only when user explicitly clicks */}
-          <div className="flex justify-center">
-            <Button onClick={() => setMergedView(true)}>
-              Show Combined Table
-            </Button>
-          </div>
+          {/* ── COMBINED TABLE BUTTON ── */}
+          {(dbEnrichedCompanies.length > 0 || scrapedEnrichedCompanies.length > 0) && (
+            <div className="flex justify-center">
+              <Button onClick={() => setMergedView(true)}>
+                Show Combined Table
+              </Button>
+            </div>
+          )}
         </div>
-      ) : (
-        /* ── MERGED VIEW ── */
+      ) : mergedView && hasEnrichedOnce ? (
         <div className="mt-6">
           <h2 className="text-lg font-semibold mb-2">All Enriched Results</h2>
           <EnrichmentResults
@@ -1173,7 +1175,8 @@ export function DataEnhancement() {
             ]}
           />
         </div>
-      )}
+      ) : null}
+
       <div className="flex justify-end mb-4">
         <Button
           onClick={() => {
