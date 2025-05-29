@@ -35,20 +35,41 @@ class SubscriptionController:
             )
             current_app.logger.info(f"[Subscription] Stripe session created successfully for user {user.user_id}, plan {plan_type}")
             user.tier = plan_type
-            # Update UserSubscription table as well
+            # Update or create UserSubscription table as well
             from models.user_subscription_model import UserSubscription
             from datetime import datetime
+            from models.plan_model import Plan
             user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
             if user_sub:
-                user_sub.plan_name = plan_type
-                user_sub.tier_start_timestamp = datetime.utcnow()
-                from models.plan_model import Plan
+                # Update all relevant fields from the selected plan
                 plan = Plan.query.filter_by(plan_name=plan_type).first()
-                if plan and plan.initial_credits is not None:
-                    user_sub.credits_remaining = plan.initial_credits
-                current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
+                if plan:
+                    user_sub.plan_id = plan.plan_id
+                    user_sub.plan_name = plan.plan_name
+                    user_sub.credits_remaining = plan.initial_credits if plan.initial_credits is not None else 0
+                    user_sub.payment_frequency = plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly'
+                    user_sub.tier_start_timestamp = datetime.utcnow()
+                    user_sub.plan_expiration_timestamp = None  # Or calculate if needed
+                    current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
+                else:
+                    current_app.logger.warning(f"[Subscription] Plan {plan_type} not found when updating UserSubscription for user {user.user_id}.")
             else:
-                current_app.logger.warning(f"[Subscription] No UserSubscription found for user {user.user_id} when updating plan.")
+                # Assign Free plan and create new UserSubscription
+                free_plan = Plan.query.filter_by(plan_name='Free').first()
+                if free_plan:
+                    new_sub = UserSubscription(
+                        user_id=user.user_id,
+                        plan_id=free_plan.plan_id,
+                        plan_name=free_plan.plan_name,
+                        credits_remaining=free_plan.initial_credits if free_plan.initial_credits is not None else 0,
+                        payment_frequency=free_plan.credit_reset_frequency if free_plan.credit_reset_frequency else 'monthly',
+                        tier_start_timestamp=datetime.utcnow(),
+                        plan_expiration_timestamp=None
+                    )
+                    db.session.add(new_sub)
+                    current_app.logger.info(f"[Subscription] Created new UserSubscription for user {user.user_id} with Free plan.")
+                else:
+                    current_app.logger.error(f"[Subscription] Free plan not found when creating UserSubscription for user {user.user_id}.")
 
             db.session.commit()
             current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier} In db.")
