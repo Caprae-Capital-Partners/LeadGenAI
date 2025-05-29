@@ -581,7 +581,7 @@ export function DataEnhancement() {
               JSON.stringify(payload),
               { headers: { "Content-Type": "application/json" } }
             );
-            showNotification("Data successfully enriched!");
+           
 
             for (const lead of payload) {
               try {
@@ -609,8 +609,7 @@ export function DataEnhancement() {
               } catch (err) {
                 console.error("❌ Failed to create draft:", err);
               }
-            }
-            
+            }            
           } catch (err) {
             console.error("❌ Upload or draft creation for DB leads failed:", err);
           }
@@ -744,6 +743,7 @@ export function DataEnhancement() {
       stopProgressSimulation(100);
       setLoading(false);
     }
+    showNotification("Data successfully enriched!");
   };
   
   
