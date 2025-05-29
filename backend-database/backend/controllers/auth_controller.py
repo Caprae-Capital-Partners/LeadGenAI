@@ -7,7 +7,7 @@ import logging
 
 class AuthController:
     @staticmethod
-    def register(username, email, password, role='user', company=''):
+    def register(username, email, password, role='user', company='', linkedin_url=''):
         """Register a new user"""
         # Check if username already exists
         if User.query.filter_by(username=username).first():
@@ -24,7 +24,7 @@ class AuthController:
 
         try:
             # Create new user
-            user = User(username=username, email=email, role=role, company=company)
+            user = User(username=username, email=email, role=role, company=company, linkedin_url=linkedin_url)
             user.set_password(password)
 
             # Add to database (commit early to get user_id if autoincremented, or ensure user exists for FK)

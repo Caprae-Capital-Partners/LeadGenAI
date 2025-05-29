@@ -19,6 +19,7 @@ class User(UserMixin, db.Model):
     company = db.Column(db.String(100))  # New field for company
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
+    linkedin_url = db.Column(db.String(255), nullable=True)
 
     def get_id(self):
         """Return user_id as the identifier for Flask-Login"""
@@ -78,6 +79,8 @@ class User(UserMixin, db.Model):
             "email": self.email,
             "role": self.role,
             "tier": self.tier,
+            "company": self.company,
+            "linkedin_url": self.linkedin_url,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "is_active": self.is_active
         }

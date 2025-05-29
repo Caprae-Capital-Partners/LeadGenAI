@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
+from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify, current_app
 from controllers.auth_controller import AuthController
 from controllers.subscription_controller import SubscriptionController
 from flask_login import login_required, current_user, login_user, logout_user
@@ -214,12 +214,13 @@ def register_api():
     username = data.get('username', '')
     role = data.get('role', 'user')  # Default role is user
     company = data.get('company', '') # Get company from JSON payload
+    linkedin_url = data.get('linkedin_url', '') # Get linkedin_url from JSON payload
 
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
     # Call the AuthController.register function
-    success, message = AuthController.register(username, email, password, role, company)
+    success, message = AuthController.register(username, email, password, role, company, linkedin_url)
 
     if success:
         # Fetch the newly created user to log them in if needed for API flow
@@ -405,3 +406,66 @@ def handle_successful_payment(session):
     except Exception as e:
         print(f"Error handling payment: {str(e)}")
         db.session.rollback()
+
+@auth_bp.route('/api/auth/update_user', methods=['POST'])
+@login_required
+def update_user_info():
+    """Update current user's username, email, and/or password"""
+    data = request.json or {}
+    user = current_user
+    updated = False
+    errors = []
+    updated_fields = []
+
+    if 'username' in data:
+        user.username = data['username']
+        updated = True
+        updated_fields.append('username')
+    if 'email' in data:
+        user.email = data['email']
+        updated = True
+        updated_fields.append('email')
+    if 'password' in data:
+        try:
+            user.set_password(data['password'])
+            updated = True
+            updated_fields.append('password')
+        except Exception as e:
+            errors.append(f"Password update failed: {str(e)}")
+    if 'company' in data:
+        user.company = data['company']
+        updated = True
+        updated_fields.append('company')
+    if 'linkedin_url' in data:
+        user.linkedin_url = data['linkedin_url']
+        updated = True
+        updated_fields.append('linkedin_url')
+
+    if updated:
+        try:
+            try:
+                current_app.logger.info(f"[User Update] User {user.user_id} attempting to update fields: {updated_fields}")
+            except Exception as log_e:
+                print(f"[User Update] Logging failed: {log_e}")
+            db.session.commit()
+            try:
+                current_app.logger.info(f"[User Update] User {user.user_id} updated fields: {updated_fields} successfully.")
+            except Exception as log_e:
+                print(f"[User Update] Logging failed: {log_e}")
+            return jsonify({
+                "message": "User info updated successfully",
+                "user": user.to_dict()
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            try:
+                current_app.logger.error(f"[User Update] Failed to update user {user.user_id}: {str(e)}")
+            except Exception as log_e:
+                print(f"[User Update] Logging failed: {log_e}")
+            return jsonify({"error": f"Failed to update user: {str(e)}"}), 500
+    else:
+        try:
+            current_app.logger.warning(f"[User Update] No valid fields to update for user {user.user_id}. Errors: {errors}")
+        except Exception as log_e:
+            print(f"[User Update] Logging failed: {log_e}")
+        return jsonify({"error": "No valid fields to update", "details": errors}), 400
