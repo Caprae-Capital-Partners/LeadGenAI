@@ -8,6 +8,8 @@ type Plan = {
     plan_name: string;
     monthly_price: number | string;
     annual_price: number | string;
+    monthly_lead_quota: number | string;
+    annual_lead_quota: number | string;
     features: string[] | string;
     id: string;
     description?: string;
@@ -18,6 +20,7 @@ type Plan = {
 
 export default function SubscriptionPage() {
     const [plans, setPlans] = useState<Plan[]>([]);
+    const [isAnnual, setIsAnnual] = useState(false);
 
     useEffect(() => {
         const fetchPlans = async () => {
@@ -27,15 +30,26 @@ export default function SubscriptionPage() {
                     credentials: "include",
                 });
                 const data = await res.json();
+
                 const plansWithIds = data.plans.map((plan: any) => ({
                     ...plan,
                     id: plan.plan_name.toLowerCase(),
-                    features: JSON.parse(plan.features || "[]"),
-                    style: plan.plan_name === "Gold" ? "default" :
-                        plan.plan_name === "Free" ? "secondary" : "outline",
+                    features: Array.isArray(plan.features)
+                        ? plan.features
+                        : JSON.parse(plan.features || "[]"),
+                    style:
+                        plan.plan_name === "Gold"
+                            ? "default"
+                            : plan.plan_name === "Free"
+                                ? "secondary"
+                                : "outline",
                     recommended: plan.plan_name === "Gold",
-                    link: plan.plan_name === "Enterprise" ? "https://www.saasquatchleads.com/" : undefined,
+                    link:
+                        plan.plan_name === "Enterprise"
+                            ? "https://www.saasquatchleads.com/"
+                            : undefined,
                 }));
+
                 setPlans(plansWithIds);
             } catch (err) {
                 console.error("❌ Failed to fetch plans:", err);
@@ -63,7 +77,9 @@ export default function SubscriptionPage() {
 
             const data = await res.json();
             if (res.ok && data.sessionId) {
-                const stripe = await loadStripe("pk_test_51RNp9cFS9KhotLbMiJM95rAjhuxjTwgjPpRLObOd1ghpwZHwZHOLDIVuxbp4wfXCJBHSLtZhoL99CdaTpOpWAY1L00GcymT5Xj");
+                const stripe = await loadStripe(
+                    "pk_test_51RNp9cFS9KhotLbMiJM95rAjhuxjTwgjPpRLObOd1ghpwZHwZHOLDIVuxbp4wfXCJBHSLtZhoL99CdaTpOpWAY1L00GcymT5Xj"
+                );
                 if (stripe) {
                     await stripe.redirectToCheckout({ sessionId: data.sessionId });
                 } else {
@@ -80,10 +96,9 @@ export default function SubscriptionPage() {
 
     
     return (
-        <div
-            className="animate-fade-in-down min-h-screen pt-48 pb-16 px-4 sm:px-6 lg:px-8 bg-background text-foreground"
-        >
-            <div className="max-w-7xl mx-auto space-y-20">
+        <div className="animate-fade-in-down min-h-screen pt-32 pb-16 px-4 sm:px-6 lg:px-8 bg-background text-foreground">
+            <div className="max-w-7xl mx-auto space-y-16">
+                {/* Header */}
                 <div className="text-center">
                     <h2 className="text-5xl font-extrabold tracking-tight">Upgrade Your Plan</h2>
                     <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
@@ -91,10 +106,30 @@ export default function SubscriptionPage() {
                     </p>
                 </div>
 
+                {/* Toggle */}
+                <div className="flex justify-center items-center gap-4">
+                    <span className="text-sm font-medium">Monthly</span>
+                    <label className="inline-flex items-center cursor-pointer">
+                        <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={isAnnual}
+                            onChange={() => setIsAnnual((prev) => !prev)}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 rounded-full shadow-inner dark:bg-gray-700">
+                            <div
+                                className={`w-5 h-5 bg-primary rounded-full transform transition-transform ${isAnnual ? "translate-x-5" : "translate-x-1"
+                                    }`}
+                            />
+                        </div>
+                    </label>
+                    <span className="text-sm font-medium">Annual</span>
+                </div>
+
+                {/* Plans */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                     {plans.map((plan) => {
-                        const isComingSoon =
-                            plan.id === "silver" || plan.id === "gold" || plan.id === "platinum";
+                        const isComingSoon = plan.id === "silver" || plan.id === "gold" || plan.id === "platinum";
 
                         const hoverTextColor =
                             plan.id === "gold"
@@ -122,22 +157,34 @@ export default function SubscriptionPage() {
                                                 ? "bg-blue-200 text-black"
                                                 : "bg-muted text-foreground";
 
+                        const price =
+                            isAnnual && typeof plan.annual_price === "number"
+                                ? `$${plan.annual_price} /year`
+                                : typeof plan.monthly_price === "number"
+                                    ? `$${plan.monthly_price} /month`
+                                    : plan.monthly_price;
+
+                        const quota =
+                            isAnnual && typeof plan.annual_lead_quota === "number"
+                                ? `${plan.annual_lead_quota} leads/year`
+                                : typeof plan.monthly_lead_quota === "number"
+                                    ? `${plan.monthly_lead_quota} leads/month`
+                                    : plan.monthly_lead_quota;
+
                         return (
                             <div
                                 key={plan.id}
-                                className="group rounded-[28px] overflow-hidden flex flex-col justify-between min-h-[300px] border-2 border-border bg-muted transition-all duration-300 hover:shadow-2xl hover:scale-[1.03]"
-
+                                className="group relative rounded-[28px] overflow-hidden flex flex-col justify-between min-h-[300px] border-2 border-border bg-muted transition-all duration-300 hover:shadow-2xl hover:scale-[1.03]"
                             >
                                 <div
                                     className={`text-center text-2xl font-bold py-4 border-y border-border bg-muted transition-all duration-300 group-hover:text-3xl group-hover:tracking-wide ${hoverTextColor}`}
                                 >
-                                    {typeof plan.monthly_price === "number"
-                                        ? `$${plan.monthly_price} /month`
-                                        : plan.monthly_price}
+                                    {price}
                                 </div>
 
                                 <div className="flex-1 p-6 flex flex-col justify-between">
                                     <div className="space-y-4">
+                                        <p className="text-base font-semibold text-primary">• {quota}</p>
                                         {(Array.isArray(plan.features) ? plan.features : []).map((feat, i) => (
                                             <p
                                                 key={i}
@@ -178,6 +225,7 @@ export default function SubscriptionPage() {
                     })}
                 </div>
 
+                {/* Continue Link */}
                 <div className="text-center">
                     <a href="https://app.saasquatchleads.com/">
                         <Button> Continue to Dashboard (Free Plan)</Button>
@@ -186,5 +234,4 @@ export default function SubscriptionPage() {
             </div>
         </div>
     );
-           
-}
+}      
