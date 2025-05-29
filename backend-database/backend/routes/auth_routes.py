@@ -67,8 +67,8 @@ def signup():
             if user:
                 login_user(user)
 
-            # Redirect to external app after successful signup
-            return redirect("https://app.saasquatchleads.com/")
+            # Redirect to choose plan page after successful signup
+            return redirect(url_for('auth.choose_plan'))
         else:
             flash(message, 'danger')
 
@@ -170,7 +170,7 @@ def ping_auth():
 @login_required
 def logout():
     logout_user()
-    return redirect("https://app.saasquatchleads.com/auth")
+    return redirect(url_for('auth.login'))
 
 
 @auth_bp.route('/api/auth/login', methods=['POST'])
@@ -236,7 +236,7 @@ def register_api():
         # Registration failed, return the error message from the controller
         return jsonify({"error": message}), 400 # Use 400 for bad request/validation errors
 
-@auth_bp.route('/api/auth/me', methods=['GET'])
+@auth_bp.route('/api/auth/user', methods=['GET'])
 @login_required
 def get_user_info():
     """Get current user information"""
@@ -326,31 +326,15 @@ def create_checkout_session():
     response, status_code = SubscriptionController.create_checkout_session(current_user)
     return jsonify(response), status_code
 
-# @auth_bp.route('/webhook', methods=['POST'])
-# def stripe_webhook():
-#     """Handle Stripe webhook events"""
-#     payload = request.get_data()
-#     sig_header = request.headers.get('stripe-signature')
-#     print("this is fomr the webhook", payload)
-
-#     # Call the controller method
-#     response, status_code = SubscriptionController.handle_stripe_webhook(payload, sig_header)
-#     print("afterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr handle stripe webhook ", response, status_code, )
-#     return jsonify(response), status_code
-
 @auth_bp.route('/payment/success')
 @login_required
 def payment_success():
-    """Render the payment success page"""
-    flash('Your subscription has been activated successfully!', 'success')
-    return redirect("https://app.saasquatchleads.com/")
+    return redirect("https://app.saasquatchleads.com")
 
 @auth_bp.route('/payment/cancel')
 @login_required
 def payment_cancel():
-    """Render the payment cancel page"""
-    flash('Payment cancelled. You can choose a plan when you are ready.', 'warning')
-    return redirect(url_for('auth.choose_plan'))
+    return redirect("https://app.saasquatchleads.com/subscription")
 
 @auth_bp.route('/manage_subscriptions')
 @login_required

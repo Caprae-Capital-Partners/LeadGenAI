@@ -37,59 +37,47 @@ class SubscriptionController:
                 payment_method_types=['card']
             )
             current_app.logger.info(f"[Subscription] Stripe session created successfully for user {user.user_id}, plan {plan_type}")
-            user.tier = plan_type
-            # Update or create UserSubscription table as well
-            from models.user_subscription_model import UserSubscription
-            from models.plan_model import Plan
-            user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
-            if user_sub:
-                # Update all relevant fields from the selected plan
-                now = datetime.utcnow()
-                plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
-                if plan:
-                    user_sub.plan_id = plan.plan_id
-                    user_sub.plan_name = plan.plan_name
-                    user_sub.credits_remaining = plan.initial_credits if plan.initial_credits is not None else 0
-                    user_sub.payment_frequency = plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly'
-                    user_sub.tier_start_timestamp = now
-                    # Calculate expiration date
-                    if plan.credit_reset_frequency == 'monthly':
-                        user_sub.plan_expiration_timestamp = now + relativedelta(months=1)
-                    elif plan.credit_reset_frequency == 'annual':
-                        user_sub.plan_expiration_timestamp = now + relativedelta(years=1)
-                    else:
-                        user_sub.plan_expiration_timestamp = None
-                    current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
-                else:
-                    current_app.logger.warning(f"[Subscription] Plan {plan_type} not found when updating UserSubscription for user {user.user_id}.")
-            else:
-                # Assign Free plan and create new UserSubscription
-                free_plan = Plan.query.filter(func.lower(Plan.plan_name) == 'free').first()
-                if free_plan:
-                    now = datetime.utcnow()
-                    if free_plan.credit_reset_frequency == 'monthly':
-                        expiration = now + relativedelta(months=1)
-                    elif free_plan.credit_reset_frequency == 'annual':
-                        expiration = now + relativedelta(years=1)
-                    else:
-                        expiration = None
-                    new_sub = UserSubscription(
-                        user_id=user.user_id,
-                        plan_id=free_plan.plan_id,
-                        plan_name=free_plan.plan_name,
-                        credits_remaining=free_plan.initial_credits if free_plan.initial_credits is not None else 0,
-                        payment_frequency=free_plan.credit_reset_frequency if free_plan.credit_reset_frequency else 'monthly',
-                        tier_start_timestamp=now,
-                        plan_expiration_timestamp=expiration
-                    )
-                    db.session.add(new_sub)
-                    current_app.logger.info(f"[Subscription] Created new UserSubscription for user {user.user_id} with Free plan.")
-                else:
-                    current_app.logger.error(f"[Subscription] Free plan not found when creating UserSubscription for user {user.user_id}.")
-
-            db.session.commit()
-            current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier} In db.")
-
+            current_app.logger.info(f"commented code for the db updates starts ")
+            # --- DB update logic moved to webhook. The following is intentionally commented out ---
+            # user.tier = plan_type
+            # Always update or create UserSubscription for the selected plan
+            # from models.user_subscription_model import UserSubscription
+            # from models.plan_model import Plan
+            # now = datetime.utcnow()
+            # plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
+            # if plan:
+            #     expiration = None
+            #     if plan.credit_reset_frequency == 'monthly':
+            #         expiration = now + relativedelta(months=1)
+            #     elif plan.credit_reset_frequency == 'annual':
+            #         expiration = now + relativedelta(years=1)
+            #     # Upsert logic: update if exists, else create
+            #     user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+            #     if user_sub:
+            #         user_sub.plan_id = plan.plan_id
+            #         user_sub.plan_name = plan.plan_name
+            #         user_sub.credits_remaining = plan.initial_credits if plan.initial_credits is not None else 0
+            #         user_sub.payment_frequency = plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly'
+            #         user_sub.tier_start_timestamp = now
+            #         user_sub.plan_expiration_timestamp = expiration
+            #         current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
+            #     else:
+            #         new_sub = UserSubscription(
+            #             user_id=user.user_id,
+            #             plan_id=plan.plan_id,
+            #             plan_name=plan.plan_name,
+            #             credits_remaining=plan.initial_credits if plan.initial_credits is not None else 0,
+            #             payment_frequency=plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly',
+            #             tier_start_timestamp=now,
+            #             plan_expiration_timestamp=expiration
+            #         )
+            #         db.session.add(new_sub)
+            #         current_app.logger.info(f"[Subscription] Created new UserSubscription for user {user.user_id} with plan {plan_type}.")
+            # else:
+            #     current_app.logger.error(f"[Subscription] Plan {plan_type} not found when updating/creating UserSubscription for user {user.user_id}.")
+            # db.session.commit()
+            # current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier} In db.")
+            # --- End of commented block ---
             return {'sessionId': checkout_session.id}, 200
         except Exception as e:
             import traceback
@@ -110,17 +98,80 @@ class SubscriptionController:
             if event['type'] == 'checkout.session.completed':
                 session = event['data']['object']
                 user_id = session.get('client_reference_id')
-                current_app.logger.info(f"Payment successful for user {user_id}")
-                SubscriptionController._handle_successful_payment(session)
+                plan_type = None
+                # Try to get plan_type from session metadata or line items
+                # If you set plan_type in metadata during checkout, use that
+                if 'metadata' in session and session['metadata'].get('plan_type'):
+                    plan_type = session['metadata']['plan_type']
+                else:
+                    # Fallback: get price_id from line items and map to plan_type
+                    line_items = stripe.checkout.Session.list_line_items(session['id'])
+                    if line_items and line_items.data:
+                        price_id = line_items.data[0].price.id
+                        # Map price_id to plan_type using config
+                        for k, v in current_app.config['STRIPE_PRICES'].items():
+                            if v == price_id:
+                                plan_type = k
+                                break
+                current_app.logger.info(f"Payment successful for user {user_id}, plan_type: {plan_type}")
+                # Only proceed if we have both user_id and plan_type
+                if user_id and plan_type:
+                    from models.user_model import User
+                    user = User.query.get(int(user_id))
+                    if user:
+                        user.tier = plan_type
+                        # Upsert UserSubscription as in create_checkout_session
+                        from models.user_subscription_model import UserSubscription
+                        from models.plan_model import Plan
+                        from sqlalchemy import func
+                        from dateutil.relativedelta import relativedelta
+                        from datetime import datetime
+                        now = datetime.utcnow()
+                        plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
+                        if plan:
+                            expiration = None
+                            if plan.credit_reset_frequency == 'monthly':
+                                expiration = now + relativedelta(months=1)
+                            elif plan.credit_reset_frequency == 'annual':
+                                expiration = now + relativedelta(years=1)
+                            user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+                            if user_sub:
+                                user_sub.plan_id = plan.plan_id
+                                user_sub.plan_name = plan.plan_name
+                                user_sub.credits_remaining = plan.initial_credits if plan.initial_credits is not None else 0
+                                user_sub.payment_frequency = plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly'
+                                user_sub.tier_start_timestamp = now
+                                user_sub.plan_expiration_timestamp = expiration
+                                current_app.logger.info(f"[Webhook] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
+                            else:
+                                new_sub = UserSubscription(
+                                    user_id=user.user_id,
+                                    plan_id=plan.plan_id,
+                                    plan_name=plan.plan_name,
+                                    credits_remaining=plan.initial_credits if plan.initial_credits is not None else 0,
+                                    payment_frequency=plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly',
+                                    tier_start_timestamp=now,
+                                    plan_expiration_timestamp=expiration
+                                )
+                                db.session.add(new_sub)
+                                current_app.logger.info(f"[Webhook] Created new UserSubscription for user {user.user_id} with plan {plan_type}.")
+                            db.session.commit()
+                            current_app.logger.info(f"[Webhook] User {user.user_id} tier updated to {user.tier} In db.")
+                        else:
+                            current_app.logger.error(f"[Webhook] Plan {plan_type} not found when updating/creating UserSubscription for user {user.user_id}.")
+                    else:
+                        current_app.logger.warning(f"[Webhook] User {user_id} not found for successful payment.")
+                else:
+                    current_app.logger.warning(f"[Webhook] Missing user_id or plan_type in session for successful payment.")
 
             elif event['type'] == 'checkout.session.async_payment_failed':
                 session = event['data']['object']
                 user_id = session.get('client_reference_id')
                 if user_id:
+                    from models.user_model import User
                     user = User.query.get(int(user_id))
                     if user:
                         user.tier = 'free'
-                        print(f" if payment failed the tire si is {user.tier}")
                         db.session.commit()
                         current_app.logger.info(f"Reset user {user_id} to free tier due to payment failure")
 
