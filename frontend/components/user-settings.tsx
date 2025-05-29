@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import Notif from "@/components/ui/notif"; // adjust path if needed
 
 type SettingsPageProps = {
     isEditing: boolean;
@@ -19,7 +20,7 @@ type User = {
     tier: string;
     user_id: string;
     username: string;
-    linkedin?: string;
+    linkedin_url?: string;
 };
 
 export default function SettingsPage({ isEditing, setIsEditing }: SettingsPageProps) {
@@ -27,7 +28,12 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
     const [username, setUsername] = useState("");
     const [linkedin, setLinkedin] = useState("");
     const [email, setEmail] = useState("");
-
+    const [notif, setNotif] = useState<{
+        show: boolean;
+        message: string;
+        type: "success" | "error";
+    }>({ show: false, message: "", type: "success" });
+      
 
     useEffect(() => {
         const sessionUser = sessionStorage.getItem("user");
@@ -36,7 +42,7 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
             setUser(parsedUser);
             setUsername(parsedUser.username);
             setEmail(parsedUser.email);
-            setLinkedin(parsedUser.linkedin ?? "");
+            setLinkedin(parsedUser.linkedin_url ?? "");
         }
     }, []);
 
@@ -150,10 +156,63 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
 
             {/* SAVE BUTTON (Only in edit mode) */}
             {isEditing && (
-                <Button className="md:col-span-3 w-full" type="submit">
+                <Button
+                    className="md:col-span-3 w-full"
+                    type="button"
+                    onClick={async () => {
+                        try {
+                            const res = await fetch("https://data.capraeleadseekers.site/api/auth/update_user", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                                credentials: "include",
+                                body: JSON.stringify({
+                                    username,
+                                    email,
+                                    linkedin_url: linkedin,
+                                }),
+                            });
+
+                            const data = await res.json();
+
+                            if (res.ok) {
+                                setNotif({
+                                    show: true,
+                                    message: "Profile updated successfully!",
+                                    type: "success",
+                                });
+                                sessionStorage.setItem("user", JSON.stringify(data.user));
+                                setUser(data.user);
+                                setIsEditing(false);
+                            } else {
+                                setNotif({
+                                    show: true,
+                                    message: "Update failed: " + (data.error || "Unknown error"),
+                                    type: "error",
+                                });
+                            }
+                        } catch (error) {
+                            console.error("Update error:", error);
+                            setNotif({
+                                show: true,
+                                message: "An error occurred while updating.",
+                                type: "error",
+                            });
+                        }
+                    }}
+                      
+                >
                     Save Changes
                 </Button>
             )}
+            <Notif
+                show={notif.show}
+                message={notif.message}
+                type={notif.type}
+                onClose={() => setNotif((prev) => ({ ...prev, show: false }))}
+            />
         </div>
+        
     );
 }
