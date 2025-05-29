@@ -1,6 +1,7 @@
 import stripe
 from flask import request, jsonify, current_app, url_for
 from models.user_model import User, db
+from sqlalchemy import func
 
 
 class SubscriptionController:
@@ -42,7 +43,7 @@ class SubscriptionController:
             user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
             if user_sub:
                 # Update all relevant fields from the selected plan
-                plan = Plan.query.filter_by(plan_name=plan_type).first()
+                plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
                 if plan:
                     user_sub.plan_id = plan.plan_id
                     user_sub.plan_name = plan.plan_name
@@ -55,7 +56,7 @@ class SubscriptionController:
                     current_app.logger.warning(f"[Subscription] Plan {plan_type} not found when updating UserSubscription for user {user.user_id}.")
             else:
                 # Assign Free plan and create new UserSubscription
-                free_plan = Plan.query.filter_by(plan_name='Free').first()
+                free_plan = Plan.query.filter(func.lower(Plan.plan_name) == 'free').first()
                 if free_plan:
                     new_sub = UserSubscription(
                         user_id=user.user_id,
