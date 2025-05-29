@@ -61,6 +61,7 @@ class SubscriptionController:
                     user_sub.payment_frequency = plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly'
                     user_sub.tier_start_timestamp = now
                     user_sub.plan_expiration_timestamp = expiration
+                    user_sub.username = user.username
                     current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
                 else:
                     new_sub = UserSubscription(
@@ -70,7 +71,8 @@ class SubscriptionController:
                         credits_remaining=plan.initial_credits if plan.initial_credits is not None else 0,
                         payment_frequency=plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly',
                         tier_start_timestamp=now,
-                        plan_expiration_timestamp=expiration
+                        plan_expiration_timestamp=expiration,
+                        username=user.username
                     )
                     db.session.add(new_sub)
                     current_app.logger.info(f"[Subscription] Created new UserSubscription for user {user.user_id} with plan {plan_type}.")
@@ -143,6 +145,7 @@ class SubscriptionController:
                                 user_sub.payment_frequency = plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly'
                                 user_sub.tier_start_timestamp = now
                                 user_sub.plan_expiration_timestamp = expiration
+                                user_sub.username = user.username
                                 current_app.logger.info(f"[Webhook] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
                             else:
                                 new_sub = UserSubscription(
@@ -152,7 +155,8 @@ class SubscriptionController:
                                     credits_remaining=plan.initial_credits if plan.initial_credits is not None else 0,
                                     payment_frequency=plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly',
                                     tier_start_timestamp=now,
-                                    plan_expiration_timestamp=expiration
+                                    plan_expiration_timestamp=expiration,
+                                    username=user.username
                                 )
                                 db.session.add(new_sub)
                                 current_app.logger.info(f"[Webhook] Created new UserSubscription for user {user.user_id} with plan {plan_type}.")
@@ -268,7 +272,8 @@ class SubscriptionController:
             'payment_frequency': user_sub.payment_frequency,
             'plan_name': user_sub.plan_name,
             'tier_start_timestamp': user_sub.tier_start_timestamp.isoformat() if user_sub.tier_start_timestamp else None,
-            'plan_expiration_timestamp': user_sub.plan_expiration_timestamp.isoformat() if user_sub.plan_expiration_timestamp else None
+            'plan_expiration_timestamp': user_sub.plan_expiration_timestamp.isoformat() if user_sub.plan_expiration_timestamp else None,
+            'username': user_sub.username
         }
         plan_data = None
         if plan:

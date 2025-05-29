@@ -12,6 +12,7 @@ class UserSubscription(db.Model):
     payment_frequency = db.Column(db.String(10), default='monthly', nullable=False)
     tier_start_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     plan_expiration_timestamp = db.Column(db.DateTime, nullable=True)
+    username = db.Column(db.String(100), nullable=True)
 
 # Tambahkan relationship setelah import Plan
 from models.plan_model import Plan
@@ -26,5 +27,6 @@ def to_dict(self):
         'payment_frequency': self.payment_frequency,
         'tier_start_timestamp': self.tier_start_timestamp.isoformat() if self.tier_start_timestamp else None,
         'plan_expiration_timestamp': self.plan_expiration_timestamp.isoformat() if self.plan_expiration_timestamp else None,
-        'plan': self.plan.to_dict() if hasattr(self, 'plan') and self.plan else None
+        'plan': self.plan.to_dict() if hasattr(self, 'plan') and self.plan else None,
+        'username': self.username
     }
