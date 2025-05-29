@@ -40,8 +40,8 @@ class SubscriptionController:
             current_app.logger.info(f"commented code for the db updates starts ")
             current_app.logger.info(f"===================== NO WEBHOOK FUNCTION IS WORKING, DOING CHANGES IN DB WITHOUT PAYMNET =====================")
             # --- DB update logic moved to webhook. The following is intentionally commented out ---
+            # Always update or create UserSubscription for the selected plan
             user.tier = plan_type
-            Always update or create UserSubscription for the selected plan
             from models.user_subscription_model import UserSubscription
             from models.plan_model import Plan
             now = datetime.utcnow()
