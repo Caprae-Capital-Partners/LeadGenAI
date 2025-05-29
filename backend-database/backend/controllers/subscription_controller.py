@@ -35,9 +35,6 @@ class SubscriptionController:
             )
             current_app.logger.info(f"[Subscription] Stripe session created successfully for user {user.user_id}, plan {plan_type}")
             user.tier = plan_type
-            db.session.commit()
-            current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier} In db.")
-
             # Update UserSubscription table as well
             from models.user_subscription_model import UserSubscription
             from datetime import datetime
@@ -45,10 +42,16 @@ class SubscriptionController:
             if user_sub:
                 user_sub.plan_name = plan_type
                 user_sub.tier_start_timestamp = datetime.utcnow()
-                db.session.commit()
+                from models.plan_model import Plan
+                plan = Plan.query.filter_by(plan_name=plan_type).first()
+                if plan and plan.initial_credits is not None:
+                    user_sub.credits_remaining = plan.initial_credits
                 current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
             else:
                 current_app.logger.warning(f"[Subscription] No UserSubscription found for user {user.user_id} when updating plan.")
+
+            db.session.commit()
+            current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier} In db.")
 
             return {'sessionId': checkout_session.id}, 200
         except Exception as e:
