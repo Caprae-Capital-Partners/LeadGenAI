@@ -567,28 +567,11 @@ export default function Home() {
   useEffect(() => {
     const fetchSubscriptionInfo = async () => {
       try {
-        const existing = sessionStorage.getItem("subscriptionInfo");
-        if (existing) {
-          setSubscriptionInfo(JSON.parse(existing));
-          return;
-        }
+        const res = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+          withCredentials: true,
+        });
 
-        const res = await fetch(
-          "https://data.capraeleadseekers.site/api/user/subscription_info",
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (!res.ok) {
-          console.warn("⚠️ Failed to fetch subscription info:", res.status);
-          return;
-        }
-
-        const data = await res.json();
-        sessionStorage.setItem("subscriptionInfo", JSON.stringify(data));
-        setSubscriptionInfo(data);
+        setSubscriptionInfo(res.data);
       } catch (err) {
         console.error("Error fetching subscription info:", err);
       }
