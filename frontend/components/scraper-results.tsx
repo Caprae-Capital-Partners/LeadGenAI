@@ -215,9 +215,7 @@ export function ScraperResults({ data, industry, location }: { data: string | an
     }
   }
 
-  const [dbOnlyMode, setDbOnlyMode] = useState(true); // default to true
-
-
+  
   const filteredResults = leads.filter(
     (result) =>
       result.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
