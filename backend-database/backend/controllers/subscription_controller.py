@@ -2,6 +2,8 @@ import stripe
 from flask import request, jsonify, current_app, url_for
 from models.user_model import User, db
 from sqlalchemy import func
+from dateutil.relativedelta import relativedelta
+from datetime import datetime
 
 
 class SubscriptionController:
@@ -38,19 +40,25 @@ class SubscriptionController:
             user.tier = plan_type
             # Update or create UserSubscription table as well
             from models.user_subscription_model import UserSubscription
-            from datetime import datetime
             from models.plan_model import Plan
             user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
             if user_sub:
                 # Update all relevant fields from the selected plan
+                now = datetime.utcnow()
                 plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
                 if plan:
                     user_sub.plan_id = plan.plan_id
                     user_sub.plan_name = plan.plan_name
                     user_sub.credits_remaining = plan.initial_credits if plan.initial_credits is not None else 0
                     user_sub.payment_frequency = plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly'
-                    user_sub.tier_start_timestamp = datetime.utcnow()
-                    user_sub.plan_expiration_timestamp = None  # Or calculate if needed
+                    user_sub.tier_start_timestamp = now
+                    # Calculate expiration date
+                    if plan.credit_reset_frequency == 'monthly':
+                        user_sub.plan_expiration_timestamp = now + relativedelta(months=1)
+                    elif plan.credit_reset_frequency == 'annual':
+                        user_sub.plan_expiration_timestamp = now + relativedelta(years=1)
+                    else:
+                        user_sub.plan_expiration_timestamp = None
                     current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
                 else:
                     current_app.logger.warning(f"[Subscription] Plan {plan_type} not found when updating UserSubscription for user {user.user_id}.")
@@ -58,14 +66,21 @@ class SubscriptionController:
                 # Assign Free plan and create new UserSubscription
                 free_plan = Plan.query.filter(func.lower(Plan.plan_name) == 'free').first()
                 if free_plan:
+                    now = datetime.utcnow()
+                    if free_plan.credit_reset_frequency == 'monthly':
+                        expiration = now + relativedelta(months=1)
+                    elif free_plan.credit_reset_frequency == 'annual':
+                        expiration = now + relativedelta(years=1)
+                    else:
+                        expiration = None
                     new_sub = UserSubscription(
                         user_id=user.user_id,
                         plan_id=free_plan.plan_id,
                         plan_name=free_plan.plan_name,
                         credits_remaining=free_plan.initial_credits if free_plan.initial_credits is not None else 0,
                         payment_frequency=free_plan.credit_reset_frequency if free_plan.credit_reset_frequency else 'monthly',
-                        tier_start_timestamp=datetime.utcnow(),
-                        plan_expiration_timestamp=None
+                        tier_start_timestamp=now,
+                        plan_expiration_timestamp=expiration
                     )
                     db.session.add(new_sub)
                     current_app.logger.info(f"[Subscription] Created new UserSubscription for user {user.user_id} with Free plan.")
