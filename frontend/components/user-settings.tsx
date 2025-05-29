@@ -1,18 +1,30 @@
 /* eslint-disable @next/next/no-img-element */
 import React from "react";
-import { Button } from "@/components/ui/button";   // shadcn/ui
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Linkedin } from "lucide-react"; // Import the LinkedIn icon
 
-export default function SettingsPage() {
+type SettingsPageProps = {
+    isEditing: boolean;
+    setIsEditing: React.Dispatch<React.SetStateAction<boolean>>;
+  };
+
+export default function SettingsPage({ isEditing, setIsEditing }: SettingsPageProps) {
     return (
         <div className="mx-auto max-w-4xl space-y-8 px-4 py-10">
             {/* PERSONAL INFORMATION */}
             <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                     <h2 className="text-lg font-semibold">Personal Information</h2>
+                    <Button
+                       
+                        size="sm"
+                        onClick={() => setIsEditing(prev => !prev)}
+                        className="text-sm"
+                    >
+                        {isEditing ? "Cancel" : "Edit Profile"}
+                    </Button>
                 </CardHeader>
 
                 <CardContent className="space-y-6">
@@ -23,16 +35,24 @@ export default function SettingsPage() {
                             alt="User avatar"
                             className="h-20 w-20 rounded-full object-cover"
                         />
-                        <Button variant="outline" size="sm">
-                            Change
-                        </Button>
+                        {isEditing && (
+                            <Button variant="outline" size="sm">
+                                Change
+                            </Button>
+                        )}
                     </div>
 
                     {/* Name + Email grid */}
                     <div className="grid gap-6 md:grid-cols-2">
                         <div className="flex flex-col gap-1.5">
                             <Label htmlFor="name">Name</Label>
-                            <Input id="name" placeholder="Your name" defaultValue="Praveen Juge" />
+                            <Input
+                                id="name"
+                                placeholder="Your name"
+                                defaultValue="Praveen Juge"
+                                readOnly={!isEditing}
+                                className={!isEditing ? "border-transparent bg-muted cursor-default" : ""}
+                            />
                         </div>
 
                         <div className="flex flex-col gap-1.5">
@@ -42,6 +62,8 @@ export default function SettingsPage() {
                                 type="email"
                                 placeholder="you@example.com"
                                 defaultValue="hello@praveenjuge.com"
+                                readOnly
+                                className="border-transparent bg-muted cursor-default"
                             />
                         </div>
                     </div>
@@ -49,10 +71,13 @@ export default function SettingsPage() {
                     {/* LinkedIn Profile Input */}
                     <div className="flex flex-col gap-1.5">
                         <Label htmlFor="linkedin">LinkedIn Profile</Label>
-                        <div className="relative">
-                            
-                            <Input id="Linkedin" placeholder="Your name" defaultValue="https://linkedin.com/in/praveenjuge" />
-                        </div>
+                        <Input
+                            id="linkedin"
+                            placeholder="https://linkedin.com/in/..."
+                            defaultValue="https://linkedin.com/in/praveenjuge"
+                            readOnly={!isEditing}
+                            className={!isEditing ? "border-transparent bg-muted cursor-default" : ""}
+                        />
                         <p className="text-sm text-muted-foreground">
                             Add your LinkedIn profile URL to help others connect with you
                         </p>
@@ -60,39 +85,40 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
 
-            {/* CHANGE PASSWORD */}
-            <Card>
-                <CardHeader>
-                    <h2 className="text-lg font-semibold">Change Password</h2>
-                </CardHeader>
+            {/* CHANGE PASSWORD SECTION (Only visible in edit mode) */}
+            {isEditing && (
+                <Card>
+                    <CardHeader>
+                        <h2 className="text-lg font-semibold">Change Password</h2>
+                    </CardHeader>
 
-                <CardContent>
-                    <form className="grid gap-6 md:grid-cols-3">
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="oldPassword">Old Password</Label>
-                            <Input id="oldPassword" type="password" placeholder="Enter your password" />
-                        </div>
+                    <CardContent>
+                        <form className="grid gap-6 md:grid-cols-3">
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="oldPassword">Old Password</Label>
+                                <Input id="oldPassword" type="password" placeholder="Enter your password" />
+                            </div>
 
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="newPassword">New Password</Label>
-                            <Input id="newPassword" type="password" placeholder="Enter your password" />
-                        </div>
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="newPassword">New Password</Label>
+                                <Input id="newPassword" type="password" placeholder="Enter your password" />
+                            </div>
 
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="confirmPassword">New Password Again</Label>
-                            <Input id="confirmPassword" type="password" placeholder="Enter your password" />
-                        </div>
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="confirmPassword">New Password Again</Label>
+                                <Input id="confirmPassword" type="password" placeholder="Enter your password" />
+                            </div>
+                        </form>
+                    </CardContent>
+                </Card>
+            )}
 
-                        {/* full-width Save button on a new row */}
-                        
-                    </form>
-                    
-                </CardContent>
-                
-            </Card>
-            <Button className="md:col-span-3 w-full" type="submit">
-                Save Changes
-            </Button>
+            {/* SAVE BUTTON (Only in edit mode) */}
+            {isEditing && (
+                <Button className="md:col-span-3 w-full" type="submit">
+                    Save Changes
+                </Button>
+            )}
         </div>
     );
 }
