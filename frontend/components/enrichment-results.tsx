@@ -132,8 +132,6 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
         : normalized
     }
 
-
-
     const csvRows = [
       headers.join(","),
       ...data.map(row =>
