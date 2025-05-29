@@ -350,7 +350,7 @@ def payment_success():
 def payment_cancel():
     """Render the payment cancel page"""
     flash('Payment cancelled. You can choose a plan when you are ready.', 'warning')
-    return redirect(url_for('auth.choose_plan'))
+    return redirect("https://app.saasquatchleads.com/subscription")
 
 @auth_bp.route('/manage_subscriptions')
 @login_required
