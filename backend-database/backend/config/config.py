@@ -20,7 +20,9 @@ class Config:
         'bronze': os.getenv('STRIPE_PRICE_BRONZE'),
         'silver': os.getenv('STRIPE_PRICE_SILVER'),
         'gold': os.getenv('STRIPE_PRICE_GOLD'),
-        'platinum': os.getenv('STRIPE_PRICE_PLATINUM')
+        'platinum': os.getenv('STRIPE_PRICE_PLATINUM'),
+        'bronze_annual': os.getenv('STRIPE_PRICE_BRONZE_ANNUAL')
+
     }
 
     # You might want to add checks to ensure these keys are loaded

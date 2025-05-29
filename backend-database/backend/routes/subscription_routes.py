@@ -48,7 +48,6 @@ def subscription_webhook():
     payload = request.get_data()
     sig_header = request.headers.get('stripe-signature')
     # Log the webhook receipt
-    current_app.logger.info(f"[Webhook] Stripe webhook received at /subscription/webhook. Headers: {dict(request.headers)}")
-    current_app.logger.info(f"[Webhook] Payload snippet: {payload[:200]}")
+    current_app.logger.info("[Webhook] Stripe webhook received. Processing event in handler.")
     response, status_code = SubscriptionController.handle_stripe_webhook(payload, sig_header)
     return jsonify(response), status_code

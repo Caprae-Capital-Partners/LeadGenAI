@@ -1,4 +1,4 @@
-from flask import request, redirect, render_template, flash, url_for, jsonify
+from flask import request, redirect, render_template, flash, url_for, jsonify, current_app
 from models.lead_model import db, Lead
 from models.audit_logs_model import AuditLog
 from sqlalchemy.exc import IntegrityError
@@ -25,6 +25,7 @@ class LeadController:
         # Basic search across multiple fields
         search = args.get('search', '').strip()
         if search:
+            current_app.logger.info(f"[Lead] Search applied: {search}")
             search_pattern = f"%{search.lower()}%"
             query = query.filter(
                 db.or_(
@@ -47,8 +48,10 @@ class LeadController:
 
         # Individual filters
         if args.get('company'):
+            current_app.logger.info(f"[Lead] Filter by company: {args.get('company')}")
             query = query.filter(Lead.company == args.get('company'))
         if args.get('location'):
+            current_app.logger.info(f"[Lead] Filter by location: {args.get('location')}")
             location = args.get('location')
             if ',' in location:
                 city, state = [x.strip() for x in location.split(',', 1)]
@@ -56,23 +59,37 @@ class LeadController:
             else:
                 query = query.filter(db.or_(Lead.city == location, Lead.state == location))
         if args.get('role'):
+            current_app.logger.info(f"[Lead] Filter by role: {args.get('role')}")
             query = query.filter(Lead.owner_title == args.get('role'))
         if args.get('status'):
+            current_app.logger.info(f"[Lead] Filter by status: {args.get('status')}")
             query = query.filter(Lead.status == args.get('status'))
         if args.get('revenue'):
+            current_app.logger.info(f"[Lead] Filter by revenue: {args.get('revenue')}")
             try:
                 revenue_val = float(args.get('revenue').replace('$','').replace('M','000000').replace('K','000'))
                 query = query.filter(Lead.revenue >= revenue_val)
             except:
                 pass
 
-        return query.order_by(Lead.updated_at.desc()).all()
+        try:
+            leads = query.order_by(Lead.updated_at.desc()).all()
+            current_app.logger.info(f"[Lead] Fetched {len(leads)} leads with applied filters.")
+            return leads
+        except Exception as e:
+            current_app.logger.error(f"[Lead] Error fetching leads: {str(e)}")
+            return []
 
     @staticmethod
     def get_lead_by_id(lead_id):
         """Get lead by ID"""
-        # return Lead.query.filter_by(id=lead_id, deleted=False).first_or_404()
-        return Lead.query.filter_by(lead_id=lead_id).first_or_404()
+        try:
+            lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
+            current_app.logger.info(f"[Lead] Fetched lead with ID: {lead_id}")
+            return lead
+        except Exception as e:
+            current_app.logger.error(f"[Lead] Error fetching lead by ID {lead_id}: {str(e)}")
+            return None
 
     @staticmethod
     def get_leads_by_ids(lead_ids):
@@ -136,17 +153,22 @@ class LeadController:
         try:
             db.session.add(lead)
             db.session.commit()
+            current_app.logger.info("Lead added successfully!")
             return True, "Lead added successfully!"
         except IntegrityError as e:
             db.session.rollback()
             if "lead_owner_email_key" in str(e):
+                current_app.logger.warning(f"Error: Email address '{lead.owner_email}' is already in use. Please use a different email.")
                 return False, f"Error: Email address '{lead.owner_email}' is already in use. Please use a different email."
             elif "lead_phone_key" in str(e):
+                current_app.logger.warning(f"Error: Phone number '{lead.phone}' is already in use. Please use a different phone number.")
                 return False, f"Error: Phone number '{lead.phone}' is already in use. Please use a different phone number."
             else:
+                current_app.logger.error(f"Error adding lead: {str(e)}")
                 return False, f"Error adding lead: {str(e)}"
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Error adding lead: {str(e)}")
             return False, f"Error adding lead: {str(e)}"
 
     @staticmethod
@@ -155,6 +177,7 @@ class LeadController:
         try:
             lead = Lead.query.get(lead_id)
             if not lead:
+                current_app.logger.warning("Lead not found")
                 return False, "Lead not found"
 
             # Handle numeric fields - convert empty strings to None
@@ -189,9 +212,11 @@ class LeadController:
             lead.updated_at = datetime.utcnow()
 
             db.session.commit()
+            current_app.logger.info("Lead updated successfully")
             return True, "Lead updated successfully"
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Error updating lead: {str(e)}")
             return False, f"Error updating lead: {str(e)}"
 
     @staticmethod
@@ -221,15 +246,18 @@ class LeadController:
                 )
 
             db.session.commit()
+            current_app.logger.info("Lead deleted successfully!")
             return True, "Lead deleted successfully!"
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Error deleting lead: {str(e)}")
             return False, f"Error deleting lead: {str(e)}"
 
     @staticmethod
     def delete_multiple_leads(lead_ids, current_user=None):
         """Soft delete multiple leads by their IDs"""
         if not lead_ids:
+            current_app.logger.warning("No leads selected for deletion.")
             return False, "No leads selected for deletion."
 
         try:
@@ -240,6 +268,7 @@ class LeadController:
             ).all()
 
             if not leads:
+                current_app.logger.warning("No leads found with the specified IDs.")
                 return False, "No leads found with the specified IDs."
 
             now = datetime.utcnow()
@@ -264,9 +293,11 @@ class LeadController:
                     )
 
             db.session.commit()
+            current_app.logger.info(f"{deleted_count} leads deleted successfully!")
             return True, f"{deleted_count} leads deleted successfully!"
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Error deleting leads: {str(e)}")
             return False, f"Error deleting leads: {str(e)}"
 
     @staticmethod
@@ -296,15 +327,18 @@ class LeadController:
                 )
 
             db.session.commit()
+            current_app.logger.info("Lead restored successfully!")
             return True, "Lead restored successfully!"
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Error restoring lead: {str(e)}")
             return False, f"Error restoring lead: {str(e)}"
 
     @staticmethod
     def restore_multiple_leads(lead_ids, current_user=None):
         """Restore multiple soft-deleted leads"""
         if not lead_ids:
+            current_app.logger.warning("No leads selected for restoration.")
             return False, "No leads selected for restoration."
 
         try:
@@ -312,6 +346,7 @@ class LeadController:
             leads = Lead.query.filter(Lead.lead_id.in_(lead_ids)).all()
 
             if not leads:
+                current_app.logger.warning("No leads found with the specified IDs.")
                 return False, "No leads found with the specified IDs."
 
             # Restore leads and create audit logs
@@ -333,9 +368,11 @@ class LeadController:
                     )
 
             db.session.commit()
+            current_app.logger.info(f"{len(leads)} leads restored successfully!")
             return True, f"{len(leads)} leads restored successfully!"
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Error restoring leads: {str(e)}")
             return False, f"Error restoring leads: {str(e)}"
 
     @staticmethod
@@ -360,6 +397,7 @@ class LeadController:
         if lead_data.get('lead_id'):
             lead = Lead.query.filter_by(lead_id=lead_data['lead_id']).first()
             if lead:
+                current_app.logger.info(f"Duplicate found by lead_id")
                 return lead, 'lead_id'
         # 2. Composite key: normalized company + owner_email + phone
         company = LeadController.normalize_company_name(lead_data.get('company', ''))
@@ -373,6 +411,7 @@ class LeadController:
                 Lead.deleted == False
             ).first()
             if lead:
+                current_app.logger.info(f"Duplicate found by composite (company+email+phone)")
                 return lead, 'composite (company+email+phone)'
         # 3. Normalized company only
         if company:
@@ -381,6 +420,7 @@ class LeadController:
                 Lead.deleted == False
             ).first()
             if lead:
+                current_app.logger.info(f"Duplicate found by company only")
                 return lead, 'company only'
         # 4. owner_email or phone only
         query = Lead.query
@@ -392,6 +432,7 @@ class LeadController:
         if conditions:
             lead = query.filter(db.or_(*conditions)).first()
             if lead:
+                current_app.logger.info(f"Duplicate found by email or phone only")
                 return lead, 'email or phone only'
         return None, None
 
@@ -428,10 +469,10 @@ class LeadController:
     def add_or_update_lead_by_match(lead_data):
         """Add a new lead or update existing lead by matching lead_id, company+email+phone, or email/phone only"""
         try:
-            logging.info(f"Processing lead: {lead_data.get('company')}")
+            current_app.logger.info(f"Processing lead: {lead_data.get('company')}")
             existing_lead, match_type = LeadController.find_duplicate_lead(lead_data)
             if existing_lead:
-                logging.info(f"Duplicate found by {match_type}")
+                current_app.logger.info(f"Duplicate found by {match_type}")
                 updated, updated_fields = LeadController.update_existing_lead(existing_lead, lead_data)
                 try:
                     if updated:
@@ -443,7 +484,7 @@ class LeadController:
                             "match_type": match_type,
                             "lead_id": existing_lead.lead_id
                         }
-                        logging.info(msg["message"])
+                        current_app.logger.info(msg["message"])
                         return (True, msg)
                     else:
                         msg = {
@@ -452,7 +493,7 @@ class LeadController:
                             "match_type": match_type,
                             "lead_id": existing_lead.lead_id
                         }
-                        logging.info(msg["message"])
+                        current_app.logger.info(msg["message"])
                         return (True, msg)
                 except Exception as e:
                     db.session.rollback()
@@ -461,7 +502,7 @@ class LeadController:
                         "message": f"Error updating duplicate lead (matched by {match_type}): {str(e)}",
                         "match_type": match_type
                     }
-                    logging.error(msg["message"])
+                    current_app.logger.error(msg["message"])
                     return (False, msg)
             else:
                 try:
@@ -471,7 +512,7 @@ class LeadController:
                         "message": "Lead was created successfully (no duplicate found).",
                         "lead_id": lead.lead_id
                     }
-                    logging.info(msg["message"])
+                    current_app.logger.info(msg["message"])
                     return (True, msg)
                 except Exception as e:
                     db.session.rollback()
@@ -479,7 +520,7 @@ class LeadController:
                         "status": "error",
                         "message": f"Error creating new lead: {str(e)}"
                     }
-                    logging.error(msg["message"])
+                    current_app.logger.error(msg["message"])
                     return (False, msg)
         except IntegrityError as e:
             db.session.rollback()
@@ -487,7 +528,7 @@ class LeadController:
                 "status": "error",
                 "message": f"IntegrityError while adding/updating lead: {str(e)}"
             }
-            logging.error(msg["message"])
+            current_app.logger.error(msg["message"])
             return (False, msg)
         except Exception as e:
             db.session.rollback()
@@ -495,72 +536,78 @@ class LeadController:
                 "status": "error",
                 "message": f"General exception while adding/updating lead: {str(e)}"
             }
-            logging.error(msg["message"])
+            current_app.logger.error(msg["message"])
             return (False, msg)
 
     @staticmethod
     def search_leads_by_industry_location(industry, location, current_user=None):
         """Search leads by industry and location, with plan-based filtering/masking."""
-        query = Lead.query.filter_by(deleted=False)
-        if industry:
-            query = query.filter(Lead.industry.ilike(f"%{industry}%"))
+        try:
+            current_app.logger.info(f"[Lead] Searching leads by industry='{industry}', location='{location}'")
+            query = Lead.query.filter_by(deleted=False)
+            if industry:
+                query = query.filter(Lead.industry.ilike(f"%{industry}%"))
 
-        if location:
-            location_filter = db.or_(
-                Lead.city.ilike(f"%{location}%"),
-                Lead.state.ilike(f"%{location}%"),
-                Lead.street.ilike(f"%{location}%")
-            )
-            not_null_or_empty = db.or_(
-                Lead.city.isnot(None) & (Lead.city != ''),
-                Lead.state.isnot(None) & (Lead.state != ''),
-                Lead.street.isnot(None) & (Lead.street != '')
-            )
-            query = query.filter(location_filter, not_null_or_empty)
+            if location:
+                location_filter = db.or_(
+                    Lead.city.ilike(f"%{location}%"),
+                    Lead.state.ilike(f"%{location}%"),
+                    Lead.street.ilike(f"%{location}%")
+                )
+                not_null_or_empty = db.or_(
+                    Lead.city.isnot(None) & (Lead.city != ''),
+                    Lead.state.isnot(None) & (Lead.state != ''),
+                    Lead.street.isnot(None) & (Lead.street != '')
+                )
+                query = query.filter(location_filter, not_null_or_empty)
 
-        leads = query.all()
+            leads = query.all()
+            current_app.logger.info(f"[Lead] Found {len(leads)} leads for industry='{industry}', location='{location}'")
 
-        processed_results = []
+            processed_results = []
 
-        allowed_fields_free = [
-            'lead_id', 'company', 'industry', 'street', 'city', 'state',
-            'bbb_rating', 'phone', 'website', 'owner_email'
-        ]
+            allowed_fields_free = [
+                'lead_id', 'company', 'industry', 'street', 'city', 'state',
+                'bbb_rating', 'phone', 'website', 'owner_email'
+            ]
 
-        for lead in leads:
-            lead_dict = {}
-            # Check user tier
+            for lead in leads:
+                lead_dict = {}
+                # Check user tier
 
-            if current_user and hasattr(current_user, 'tier') and current_user.tier == 'free':
-                # Filter and mask for Free plan
-                for field in allowed_fields_free:
-                    if hasattr(lead, field):
-                        value = getattr(lead, field)
-                        if field == 'phone':
-                            # Always mask, even if empty
-                            last4 = str(value)[-4:] if value and len(str(value)) > 4 else ''
-                            lead_dict[field] = '********' + last4
-                        elif field == 'owner_email':
-                            # Always mask, even if empty
-                            if value:
-                                email_parts = str(value).split('@')
-                                if len(email_parts) > 1:
-                                    lead_dict[field] = f"{email_parts[0][0] if email_parts[0] else ''}***@{email_parts[1]}"
+                if current_user and hasattr(current_user, 'tier') and current_user.tier == 'free':
+                    # Filter and mask for Free plan
+                    for field in allowed_fields_free:
+                        if hasattr(lead, field):
+                            value = getattr(lead, field)
+                            if field == 'phone':
+                                # Always mask, even if empty
+                                last4 = str(value)[-4:] if value and len(str(value)) > 4 else ''
+                                lead_dict[field] = '********' + last4
+                            elif field == 'owner_email':
+                                # Always mask, even if empty
+                                if value:
+                                    email_parts = str(value).split('@')
+                                    if len(email_parts) > 1:
+                                        lead_dict[field] = f"{email_parts[0][0] if email_parts[0] else ''}***@{email_parts[1]}"
+                                    else:
+                                        lead_dict[field] = f"{email_parts[0][0] if email_parts[0] else ''}***@******"
                                 else:
-                                    lead_dict[field] = f"{email_parts[0][0] if email_parts[0] else ''}***@******"
+                                    lead_dict[field] = "***@*****.***"
+                            elif value is not None and value != '':
+                                lead_dict[field] = value
                             else:
-                                lead_dict[field] = "***@*****.***"
-                        elif value is not None and value != '':
-                            lead_dict[field] = value
-                        else:
-                            lead_dict[field] = value if value is not None else ''
-            else:
-                # Return full details for other plans
-                lead_dict = lead.to_dict()
+                                lead_dict[field] = value if value is not None else ''
+                else:
+                    # Return full details for other plans
+                    lead_dict = lead.to_dict()
 
-            processed_results.append(lead_dict)
+                processed_results.append(lead_dict)
 
-        return processed_results
+            return processed_results
+        except Exception as e:
+            current_app.logger.error(f"[Lead] Error searching leads by industry/location: {str(e)}")
+            return []
 
     @staticmethod
     def search_leads_by_industry_location_old(industry=None, location=None):
@@ -621,12 +668,17 @@ class LeadController:
     @staticmethod
     def get_unique_industries():
         """Return a normalized, unique, sorted list of industries from the Lead table."""
-        industries_query = db.session.query(Lead.industry).filter(
-            Lead.industry.isnot(None),
-            Lead.industry != '',
-            Lead.deleted == False
-        ).distinct().all()
-        industries = [row[0] for row in industries_query]
-        # Normalize: strip, remove empty, deduplicate, sort
-        normalized = sorted(set(i.strip() for i in industries if i and i.strip()))
-        return normalized
+        try:
+            industries_query = db.session.query(Lead.industry).filter(
+                Lead.industry.isnot(None),
+                Lead.industry != '',
+                Lead.deleted == False
+            ).distinct().all()
+            industries = [row[0] for row in industries_query]
+            # Normalize: strip, remove empty, deduplicate, sort
+            normalized = sorted(set(i.strip() for i in industries if i and i.strip()))
+            current_app.logger.info(f"[Lead] Found {len(normalized)} unique industries.")
+            return normalized
+        except Exception as e:
+            current_app.logger.error(f"[Lead] Error getting unique industries: {str(e)}")
+            return []

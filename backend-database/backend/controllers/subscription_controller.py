@@ -218,6 +218,7 @@ class SubscriptionController:
                 current_app.config['STRIPE_PRICES']['gold']: 'gold',
                 current_app.config['STRIPE_PRICES']['silver']: 'silver',
                 current_app.config['STRIPE_PRICES']['bronze']: 'bronze',
+                current_app.config['STRIPE_PRICES']['bronze_annual']: 'bronze_annual',
                 current_app.config['STRIPE_PRICES']['platinum']: 'platinum' # Added Platinum tier
             }
 
