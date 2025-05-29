@@ -1241,11 +1241,26 @@ def save_search_results():
 
         # Create a draft for each lead
         drafts = []
+        skipped = []
         for idx, lead_data in enumerate(data):
-            # The lead_id is now expected to be present in lead_data
-            # If 'lead_id' is not in lead_data, this will raise a KeyError
-            # or you might need to add a check here if it's optional.
-            # For this modification, we assume lead_id is always provided.
+            lead_id = lead_data.get('lead_id')
+            if not lead_id:
+                continue
+
+            # Check if draft already exists for this lead and user
+            existing_draft = UserLeadDraft.query.filter_by(
+                user_id=current_user.user_id,
+                lead_id=lead_id,
+                is_deleted=False
+            ).first()
+
+            if existing_draft:
+                skipped.append({
+                    'lead_id': lead_id,
+                    'reason': 'Draft already exists',
+                    'existing_draft_id': existing_draft.draft_id
+                })
+                continue
 
             # Add search criteria to draft data
             draft_data = {
@@ -1263,7 +1278,7 @@ def save_search_results():
             # Create draft with explicit draft_id
             draft = UserLeadDraft(
                 user_id=current_user.user_id,
-                lead_id=lead_data['lead_id'], # lead_id is now assumed to be in lead_data
+                lead_id=lead_id,
                 draft_data=draft_data,
                 change_summary=f"Search result for industry: {industry}, location: {location}",
                 phase='draft',
@@ -1280,7 +1295,7 @@ def save_search_results():
         db.session.commit()
 
         return jsonify({
-            "message": f"Saved {len(drafts)} search results as drafts",
+            "message": f"Saved {len(drafts)} search results as drafts, skipped {len(skipped)} existing drafts",
             "search_session_id": search_session_id,
             "search_criteria": {
                 "industry": industry,
@@ -1290,7 +1305,8 @@ def save_search_results():
             "drafts": [{
                 **draft.to_dict(),
                 'search_index': draft.draft_data.get('search_criteria', {}).get('search_index')
-            } for draft in drafts]
+            } for draft in drafts],
+            "skipped": skipped
         })
 
     except Exception as e:
@@ -1447,6 +1463,14 @@ def get_draft(draft_id):
         return jsonify({"error": "Draft not found"}), 404
     return jsonify(draft.to_dict())
 
+def deep_merge_dict(original, updates):
+    for key, value in updates.items():
+        if isinstance(value, dict) and isinstance(original.get(key), dict):
+            original[key] = deep_merge_dict(original.get(key, {}), value)
+        else:
+            original[key] = value
+    return original
+
 @lead_bp.route('/api/leads/drafts/<string:draft_id>', methods=['PUT'])
 @login_required
 def update_draft(draft_id):
@@ -1456,7 +1480,14 @@ def update_draft(draft_id):
         return jsonify({"error": "Draft not found"}), 404
     data = request.json
     if 'draft_data' in data:
-        draft.draft_data = data['draft_data']
+        existing_data = draft.draft_data or {}
+        new_data = data['draft_data']
+        
+        merged = deep_merge_dict(existing_data, new_data)
+        draft.draft_data = dict(merged)
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(draft, "draft_data")
+       
     if 'change_summary' in data:
         draft.change_summary = data['change_summary']
     draft.updated_at = datetime.now(timezone.utc)
