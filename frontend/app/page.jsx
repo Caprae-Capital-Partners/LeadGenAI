@@ -580,6 +580,8 @@ export default function Home() {
     fetchSubscriptionInfo();
   }, []);
 
+  
+
   const COLORS = [
     "#1EBE8F", // More vibrant Green-Teal
     "#129C91", // Cyan shift, more pop
