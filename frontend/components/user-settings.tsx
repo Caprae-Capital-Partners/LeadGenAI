@@ -28,6 +28,9 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
     const [username, setUsername] = useState("");
     const [linkedin, setLinkedin] = useState("");
     const [email, setEmail] = useState("");
+    const [oldPassword, setOldPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [notif, setNotif] = useState<{
         show: boolean;
         message: string;
@@ -137,20 +140,39 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
                         <form className="grid gap-6 md:grid-cols-3">
                             <div className="flex flex-col gap-1.5">
                                 <Label htmlFor="oldPassword">Old Password</Label>
-                                <Input id="oldPassword" type="password" placeholder="Enter your password" />
+                                <Input
+                                    id="oldPassword"
+                                    type="password"
+                                    placeholder="Enter your old password"
+                                    value={oldPassword}
+                                    onChange={(e) => setOldPassword(e.target.value)}
+                                />
                             </div>
 
                             <div className="flex flex-col gap-1.5">
                                 <Label htmlFor="newPassword">New Password</Label>
-                                <Input id="newPassword" type="password" placeholder="Enter your password" />
+                                <Input
+                                    id="newPassword"
+                                    type="password"
+                                    placeholder="Enter new password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                />
                             </div>
 
                             <div className="flex flex-col gap-1.5">
-                                <Label htmlFor="confirmPassword">New Password Again</Label>
-                                <Input id="confirmPassword" type="password" placeholder="Enter your password" />
+                                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                                <Input
+                                    id="confirmPassword"
+                                    type="password"
+                                    placeholder="Re-enter new password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                />
                             </div>
                         </form>
                     </CardContent>
+
                 </Card>
             )}
 
@@ -160,6 +182,25 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
                     className="md:col-span-3 w-full"
                     type="button"
                     onClick={async () => {
+                        if (newPassword && newPassword !== confirmPassword) {
+                            setNotif({
+                                show: true,
+                                message: "New passwords do not match.",
+                                type: "error",
+                            });
+                            return;
+                        }
+
+                        const payload: any = {
+                            username,
+                            email,
+                            linkedin_url: linkedin,
+                        };
+
+                        if (newPassword) {
+                            payload.password = newPassword;
+                        }
+
                         try {
                             const res = await fetch("https://data.capraeleadseekers.site/api/auth/update_user", {
                                 method: "POST",
@@ -167,11 +208,7 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
                                     "Content-Type": "application/json",
                                 },
                                 credentials: "include",
-                                body: JSON.stringify({
-                                    username,
-                                    email,
-                                    linkedin_url: linkedin,
-                                }),
+                                body: JSON.stringify(payload),
                             });
 
                             const data = await res.json();
@@ -201,10 +238,10 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
                             });
                         }
                     }}
-                      
                 >
                     Save Changes
                 </Button>
+              
             )}
             <Notif
                 show={notif.show}
