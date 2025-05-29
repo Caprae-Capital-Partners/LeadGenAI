@@ -5,10 +5,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import Notif from "@/components/ui/notif";
+
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!;
 
 export default function AuthPage() {
+    const [notif, setNotif] = useState({
+        show: false,
+        message: "",
+        type: "success" as "success" | "error" | "info",
+    });
+
+    const showNotification = (message: string, type: "success" | "error" | "info" = "success") => {
+        setNotif({ show: true, message, type });
+        setTimeout(() => {
+            setNotif(prev => ({ ...prev, show: false }));
+        }, 3500);
+      };
+      
     const [isSignup, setIsSignup] = useState(false);
     const [formData, setFormData] = useState({
         username: "",
@@ -76,17 +91,23 @@ export default function AuthPage() {
 
             if (result.user) {
                 sessionStorage.setItem("user", JSON.stringify(result.user));
-            }
 
-            if (isSignup) {
-                router.push("/subscription");
-            } else {
-                if (window.location.hostname === "localhost") {
-                    router.push("/");
+                if (isSignup) {
+                    showNotification("Account successfully created!");
+                    setTimeout(() => {
+                        router.push("/subscription");
+                    }, 100); // small delay to allow notification to render
                 } else {
-                    window.location.href = "https://app.saasquatchleads.com/";
+                    showNotification("Successfully signed in!");
+                    setTimeout(() => {
+                        if (window.location.hostname === "localhost") {
+                            router.push("/");
+                        } else {
+                            window.location.href = "https://app.saasquatchleads.com/";
+                        }
+                    }, 100); // small delay to allow notification to render
                 }
-            }
+            }              
         } catch (err: any) {
             alert(err.message);
         }
@@ -212,6 +233,12 @@ export default function AuthPage() {
                     </form>
                 </div>
             </div>
+            <Notif
+                show={notif.show}
+                message={notif.message}
+                type={notif.type}
+                onClose={() => setNotif(prev => ({ ...prev, show: false }))}
+            />
         </div>
     );
 }

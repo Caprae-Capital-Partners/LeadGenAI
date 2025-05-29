@@ -548,14 +548,11 @@ export default function Home() {
           Hi, {user.username || "there"} 👋 Are you ready to scrape?
         </div>
 
-        {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {[
             {
               label: "Total Leads Scraped",
               value: scrapingHistory.length.toLocaleString(),
-              change: "+0%", // Optionally compute later
-              comparison: "total enriched leads",
             },
             {
               label: "Token Usage",
@@ -599,29 +596,35 @@ export default function Home() {
           ].map((stat, index) => (
             <Card
               key={index}
-              className="rounded-2xl border shadow-sm transition duration-200 transform hover:scale-105 hover:shadow-[0_4px_20px_0_rgba(122,194,164,0.5)]"
+              className="relative rounded-2xl border shadow-sm px-6 py-5 flex flex-col justify-between h-48"
             >
-              <CardHeader className="pb-2">
-                <CardDescription className="text-sm text-muted-foreground">
+              <CardHeader className="pb-2 relative">
+                <CardDescription className="text-base text-muted-foreground mb-1">
                   {stat.label}
                 </CardDescription>
-                <CardTitle className="text-2xl font-bold text-foreground">
+                <CardTitle className="text-4xl font-extrabold text-foreground leading-snug">
                   {stat.value}
                 </CardTitle>
+
+                {/* ✅ Top-right Upgrade button */}
+                {stat.label === "Subscription" && stat.action && (
+                  <a
+                    href={stat.action.link}
+                    className="absolute top-0 right-0 mt-3 mr-4"
+                  >
+                    <Button
+                      size="sm"
+                      className="text-sm px-4 py-1.5 font-semibold"
+                    >
+                      {stat.action.label}
+                    </Button>
+                  </a>
+                )}
               </CardHeader>
-              <CardContent className="pt-0 text-sm text-blue-600">
+
+              <CardContent className="pt-0 text-[15px] text-blue-500 font-medium">
                 <span>{stat.change}</span>{" "}
                 <span className="text-muted-foreground">{stat.comparison}</span>
-                {/* Show "Upgrade" button only if this stat has an action */}
-                {stat.action && (
-                  <div className="mt-3">
-                    <a href={stat.action.link}>
-                      <Button size="sm" variant="outline">
-                        {stat.action.label}
-                      </Button>
-                    </a>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}
