@@ -284,16 +284,27 @@ export default function Home() {
       "Owner Phone Number",
       "Owner Email",
       "Source",
-      "Created",
-      "Updated",
+      "Created At",
+      "Updated At",
     ];
 
     const csvContent = [
       headers.join(","), // Header row
       ...currentItems.map((row) =>
-        headers.map((h) => `"${row[toCamelCaseKeys(h)] || ""}"`).join(",")
+        headers
+          .map((h) => {
+            const key =
+              h === "Created At"
+                ? "created"
+                : h === "Updated At"
+                ? "updated"
+                : toCamelCaseKeys(h);
+            return `"${row[key] || ""}"`;
+          })
+          .join(",")
       ),
     ].join("\n");
+    
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -476,7 +487,10 @@ export default function Home() {
   // Line Chart: Weekly Enrichment Trends
   const dateCounts = scrapingHistory.reduce((acc, curr) => {
     const rawDate = curr.created || curr.updated || new Date().toISOString();
-    const date = new Date(rawDate).toISOString().split("T")[0];
+    const date =
+      rawDate && !isNaN(Date.parse(rawDate))
+        ? new Date(rawDate).toISOString().split("T")[0]
+        : "";
     acc[date] = (acc[date] || 0) + 1;
     return acc;
   }, {});
@@ -544,8 +558,12 @@ export default function Home() {
           ownerPhoneNumber: entry.draft_data?.owner_phone_number || "",
           ownerEmail: entry.draft_data?.owner_email || "",
           source: entry.draft_data?.source || "",
-          created: entry.created || "",
-          updated: entry.updated || "",
+          created: entry.created_at
+            ? new Date(entry.created_at).toLocaleString()
+            : "N/A",
+          updated: entry.updated_at
+            ? new Date(entry.updated_at).toLocaleString()
+            : "N/A",
           sourceType: "database",
         }));
 
