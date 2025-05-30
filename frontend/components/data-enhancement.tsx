@@ -576,44 +576,61 @@ export function DataEnhancement() {
 
         if (payload.length) {
           try {
-            await axios.post(
+            const uploadRes = await axios.post(
               `${DATABASE_URL}/upload_leads`,
               JSON.stringify(payload),
               { headers: { "Content-Type": "application/json" } }
             );
-           
 
-            for (const lead of payload) {
+            // Normalize the response to an array
+            const uploadedLeads = Array.isArray(uploadRes.data)
+              ? uploadRes.data
+              : [uploadRes.data];
+
+            for (let i = 0; i < payload.length; i++) {
+              const originalLead = payload[i];
+              const uploaded = uploadedLeads[i] || {};
+              const lead_id = originalLead.lead_id || uploaded.lead_id;
+
+              if (!lead_id) {
+                console.warn("⚠️ Skipping draft creation: Missing lead_id", {
+                  originalLead,
+                  uploaded,
+                });
+                continue;
+              }
+
+              const draftData = { ...originalLead, lead_id };
+
               try {
                 const res = await axios.post(
                   `${DATABASE_URL}/leads/drafts`,
                   {
-                    lead_id: lead.lead_id,
-                    draft_data: lead,
-                    change_summary: "Restored from DB"
+                    lead_id,
+                    draft_data: draftData,
+                    change_summary: "Restored from DB",
                   },
                   {
                     headers: { "Content-Type": "application/json" },
-                    withCredentials: true
+                    withCredentials: true,
                   }
                 );
 
                 const draft_id = res.data?.draft_id;
                 if (draft_id) {
-                  draftMap[lead.lead_id] = {
+                  draftMap[lead_id] = {
                     draft_id,
-                    company: lead.company,
-                  };                  
+                    company: draftData.company,
+                  };
                 }
-
               } catch (err) {
                 console.error("❌ Failed to create draft:", err);
               }
-            }            
+            }
           } catch (err) {
             console.error("❌ Upload or draft creation for DB leads failed:", err);
           }
-        }
+        }          
       }
 
       // ✅ Step 4: Proceed with scraping only for those not in DB
@@ -679,12 +696,22 @@ export function DataEnhancement() {
             source: normalizeValue(entry.source),
           };
 
+          let uploadedLead: any = validLead;
+
           try {
-            await axios.post(
+            const uploadRes = await axios.post(
               `${DATABASE_URL}/upload_leads`,
               JSON.stringify([validLead]),
               { headers: { "Content-Type": "application/json" } }
             );
+
+            const detailedResults = uploadRes.data?.stats?.detailed_results ?? [];
+            const leadFromResponse = detailedResults[0] || {};
+
+            if (!validLead.lead_id && leadFromResponse.lead_id) {
+              uploadedLead = { ...validLead, lead_id: leadFromResponse.lead_id };
+            }
+
             showNotification("Data successfully enriched!");
           } catch (uploadErr) {
             console.error("❌ Failed to upload lead:", validLead, uploadErr);
@@ -694,8 +721,8 @@ export function DataEnhancement() {
             const res = await axios.post(
               `${DATABASE_URL}/leads/drafts`,
               {
-                lead_id: validLead.lead_id,
-                draft_data: validLead,
+                lead_id: uploadedLead.lead_id,
+                draft_data: uploadedLead,
                 change_summary: "Initial enrichment draft",
               },
               {
@@ -706,18 +733,18 @@ export function DataEnhancement() {
 
             const draft_id = res.data?.draft_id;
             if (draft_id) {
-              draftMap[validLead.lead_id] = {
+              draftMap[uploadedLead.lead_id] = {
                 draft_id,
-                company: validLead.company,
-              };              
+                company: uploadedLead.company,
+              };
             }
-
           } catch (draftErr: any) {
             console.error("❌ Failed to create draft:", draftErr.response?.data || draftErr.message);
           }
 
+
           const yellowRow = toCamelCase({
-            ...validLead,
+            ...uploadedLead,
             source_type: "scraped",
           });
 
