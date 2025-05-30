@@ -128,7 +128,16 @@ class SubscriptionController:
                         from dateutil.relativedelta import relativedelta
                         from datetime import datetime
                         now = datetime.utcnow()
-                        plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
+                        # Map plan_type to correct plan name in database
+                        plan_name_mapping = {
+                            'bronze_annual': 'Bronze_Annual',
+                            'bronze': 'Bronze',
+                            'silver': 'Silver',
+                            'gold': 'Gold',
+                            'platinum': 'Platinum'
+                        }
+                        mapped_plan_name = plan_name_mapping.get(plan_type, plan_type)
+                        plan = Plan.query.filter(func.lower(Plan.plan_name) == mapped_plan_name.lower()).first()
                         if plan:
                             expiration = None
                             if plan.credit_reset_frequency == 'monthly':
