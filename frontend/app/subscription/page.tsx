@@ -17,6 +17,8 @@ type Plan = {
     style?: string;
     link?: string;
 };
+const STRIPE = process.env.NEXT_PUBLIC_STRIPE_CODE!
+
 
 export default function SubscriptionPage() {
     const [plans, setPlans] = useState<Plan[]>([]);
@@ -89,9 +91,7 @@ export default function SubscriptionPage() {
 
             const data = await res.json();
             if (res.ok && data.sessionId) {
-                const stripe = await loadStripe(
-                    "pk_test_51RNp9cFS9KhotLbMiJM95rAjhuxjTwgjPpRLObOd1ghpwZHwZHOLDIVuxbp4wfXCJBHSLtZhoL99CdaTpOpWAY1L00GcymT5Xj"
-                );
+                const stripe = await loadStripe(STRIPE);
                 if (stripe) {
                     await stripe.redirectToCheckout({ sessionId: data.sessionId });
                 } else {

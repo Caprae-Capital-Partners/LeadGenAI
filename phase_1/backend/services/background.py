@@ -24,7 +24,7 @@ from config.browser_config import PlaywrightManager
 
 import time
 
-def start_background_scraping(industry: str, location: str) -> Callable[[], Dict[str, Any]]:
+def start_background_scraping(industry: str, location: str, stop_flag: Dict[str, bool]) -> Callable[[], Dict[str, Any]]:
     state = {
         "results": {
             "bbb": [],
@@ -34,6 +34,7 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
             "superpages": []
         },
         "is_complete": False,
+        "should_stop": False,
         "start_time": time.time(),
         "in_progress": {
             "bbb": True,
@@ -54,6 +55,10 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
     
     # Define the async function to run all scrapers
     async def run_all_scrapers():
+        
+        if stop_flag["stop"]:
+            print("🔌 Scraper stopped by user request.")
+            return
        
         # Running parallel
         manager = PlaywrightManager(headless=True)
@@ -78,24 +83,37 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
         # Mark as complete
         with lock:
             state["is_complete"] = True
-            await manager.stop_browser()
+        await manager.stop_browser()
     
     async def run_scraper(scraper_func, scraper_name, industry, location, **kwargs):
         try:
             print(f"Starting {scraper_name} scraper...")
+            if stop_flag["stop"]:
+                print(f"🔌 {scraper_name} scraper stopped by user request.")
+                return
 
             # Initialize empty list in shared state at the start
             with lock:
                 state["results"][scraper_name] = []
                 state["in_progress"][scraper_name] = True
 
-            scraper = scraper_func(industry, location, **kwargs)
+            if "stop_flag" in inspect.signature(scraper_func).parameters:
+                scraper = scraper_func(industry, location, stop_flag=stop_flag, **kwargs)
+            else:
+                scraper = scraper_func(industry, location, **kwargs)
+                
             if inspect.isasyncgen(scraper):
                 async for item in scraper:
+                    if stop_flag["stop"]:
+                        print(f"❌ {scraper_name} stopped early during streaming.")
+                        return
                     if item is not None:
                         with lock:
                             state["results"][scraper_name].append(item)
             else:
+                if stop_flag["stop"]:
+                    print(f"❌ {scraper_name} skipped due to early stop.")
+                    return
                 result_list = await scraper
                 with lock:
                     state["results"][scraper_name] = result_list
@@ -138,9 +156,6 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
                 # },
             }
             
-    def flatten(list_of_lists):
-        return [item for sublist in list_of_lists for item in sublist]
-
     def continuously_process_data():
         FIELDNAMES = [
             "Company",
@@ -150,10 +165,13 @@ def start_background_scraping(industry: str, location: str) -> Callable[[], Dict
             "Business_phone",
             "Website"
         ]
-        while not state["is_complete"]:
+        while not state["is_complete"] and not stop_flag["stop"]:
             time.sleep(2)  # Poll interval
 
             with lock:
+                if stop_flag["stop"]:
+                    print("Processor stopping early.")
+                    return
                 total_scraped = sum(len(v) for v in state["results"].values())
 
                 if total_scraped > processed_state["last_total"]:
