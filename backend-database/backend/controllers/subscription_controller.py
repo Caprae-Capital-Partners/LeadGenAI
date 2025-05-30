@@ -131,6 +131,9 @@ class SubscriptionController:
                         # Map plan_type to correct plan name in database
                         plan_name_mapping = {
                             'bronze_annual': 'Bronze_Annual',
+                            'silver_annual': 'Silver_Annual',
+                            'gold_annual': 'Gold_Annual',
+                            'platinum_annual': 'Platinum_Annual',
                             'bronze': 'Bronze',
                             'silver': 'Silver',
                             'gold': 'Gold',
@@ -227,8 +230,11 @@ class SubscriptionController:
                 current_app.config['STRIPE_PRICES']['gold']: 'gold',
                 current_app.config['STRIPE_PRICES']['silver']: 'silver',
                 current_app.config['STRIPE_PRICES']['bronze']: 'bronze',
+                current_app.config['STRIPE_PRICES']['platinum']: 'platinum', # Added Platinum tier
                 current_app.config['STRIPE_PRICES']['bronze_annual']: 'bronze_annual',
-                current_app.config['STRIPE_PRICES']['platinum']: 'platinum' # Added Platinum tier
+                current_app.config['STRIPE_PRICES']['silver_annual']: 'silver_annual',
+                current_app.config['STRIPE_PRICES']['gold_annual']: 'gold_annual',
+                current_app.config['STRIPE_PRICES']['platinum_annual']: 'platinum_annual',
             }
 
             new_tier = price_to_tier.get(price_id)
