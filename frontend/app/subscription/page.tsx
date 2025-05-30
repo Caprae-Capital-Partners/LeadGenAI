@@ -229,16 +229,20 @@ export default function SubscriptionPage() {
                                                     </Button>
                                                 </>
                                             ) : (
-                                                <Button
-                                                    onClick={() =>
-                                                        plan.id === "free"
-                                                            ? (window.location.href = "https://app.saasquatchleads.com/")
-                                                            : handleSelectPlan(plan.id)
-                                                    }
-                                                    className={`w-full rounded-full font-semibold transition-all duration-300 ${buttonHoverColor}`}
-                                                >
-                                                    {plan.plan_name.replace(/_Annual/i, "")}
-                                                </Button>
+                                                    <Button
+                                                        onClick={() => {
+                                                            if (plan.id === "free") {
+                                                                window.location.href = "https://app.saasquatchleads.com/";
+                                                            } else if (plan.id === "enterprise") {
+                                                                window.location.href = "/contact"; // ← redirect for Enterprise
+                                                            } else {
+                                                                handleSelectPlan(plan.id);
+                                                            }
+                                                        }}
+                                                        className={`w-full rounded-full font-semibold transition-all duration-300 ${buttonHoverColor}`}
+                                                    >
+                                                        {plan.plan_name.replace(/_Annual/i, "")}
+                                              </Button>
                                             )}
                                         </div>
                                     </div>
