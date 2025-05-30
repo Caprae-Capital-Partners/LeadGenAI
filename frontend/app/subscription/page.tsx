@@ -5,18 +5,21 @@ import { Button } from "@/components/ui/button";
 import { loadStripe } from "@stripe/stripe-js";
 
 type Plan = {
-    plan_name: string;
-    monthly_price: number | string;
-    annual_price: number | string;
-    monthly_lead_quota: number | string;
-    annual_lead_quota: number | string;
-    features: string[] | string;
     id: string;
+    plan_name: string;
+    price: number | string; // <-- added
+    lead_quota: number | string; // <-- added
+    cost_per_lead?: number | string;
     description?: string;
-    recommended?: boolean;
+    has_ai_features?: boolean;
+    features: string[] | string;
+    initial_credits?: number | string;
     style?: string;
+    recommended?: boolean;
     link?: string;
+    isAnnual: boolean; // <-- added
 };
+  
 const STRIPE = process.env.NEXT_PUBLIC_STRIPE_CODE!
 
 
@@ -27,7 +30,6 @@ export default function SubscriptionPage() {
     useEffect(() => {
         const fetchPlans = async () => {
             try {
-                // Check if data exists in localStorage
                 const cached = localStorage.getItem("cachedPlans");
                 if (cached) {
                     const parsed = JSON.parse(cached);
@@ -35,35 +37,43 @@ export default function SubscriptionPage() {
                     return;
                 }
 
-                // If not cached, fetch from API
                 const res = await fetch("https://data.capraeleadseekers.site/api/plans/all", {
                     method: "GET",
                     credentials: "include",
                 });
+
                 const data = await res.json();
+                const allPlans = (data.plans || []).map((plan: any) => {
+                    const isAnnualPlan = plan.plan_name.toLowerCase().includes("_annual");
+                    const planId = plan.plan_name.toLowerCase();
 
-                const plansWithIds = data.plans.map((plan: any) => ({
-                    ...plan,
-                    id: plan.plan_name.toLowerCase(),
-                    features: Array.isArray(plan.features)
-                        ? plan.features
-                        : JSON.parse(plan.features || "[]"),
-                    style:
-                        plan.plan_name === "Gold"
-                            ? "default"
-                            : plan.plan_name === "Free"
-                                ? "secondary"
-                                : "outline",
-                    recommended: plan.plan_name === "Gold",
-                    link:
-                        plan.plan_name === "Enterprise"
+                    return {
+                        id: planId,
+                        plan_name: plan.plan_name,
+                        price: isAnnualPlan ? plan.annual_price : plan.monthly_price,
+                        lead_quota: isAnnualPlan ? plan.annual_lead_quota : plan.monthly_lead_quota,
+                        cost_per_lead: plan.cost_per_lead,
+                        description: plan.description,
+                        has_ai_features: plan.has_ai_features,
+                        features: Array.isArray(plan.features)
+                            ? plan.features
+                            : JSON.parse(plan.features || "[]"),
+                        initial_credits: plan.initial_credits,
+                        style:
+                            plan.plan_name === "Gold" ? "default"
+                                : plan.plan_name === "Free" ? "secondary"
+                                    : "outline",
+                        recommended: plan.recommended ?? plan.plan_name === "Gold",
+                        link: plan.link || (plan.plan_name === "Enterprise"
                             ? "https://www.saasquatchleads.com/"
-                            : undefined,
-                }));
+                            : undefined),
+                        isAnnual: isAnnualPlan,
+                    };
+                });
 
-                // Save to localStorage and state
-                localStorage.setItem("cachedPlans", JSON.stringify(plansWithIds));
-                setPlans(plansWithIds);
+                // Save and set all, filtering handled in render
+                localStorage.setItem("cachedPlans", JSON.stringify(allPlans));
+                setPlans(allPlans);
             } catch (err) {
                 console.error("❌ Failed to fetch plans:", err);
             }
@@ -71,6 +81,7 @@ export default function SubscriptionPage() {
 
         fetchPlans();
     }, []);
+      
       
 
     const handleSelectPlan = async (planId: string) => {
@@ -140,101 +151,101 @@ export default function SubscriptionPage() {
 
                 {/* Plans */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {plans.map((plan) => {
-                        const isComingSoon = plan.id === "silver" || plan.id === "gold" || plan.id === "platinum";
+                    {plans
+                        .filter((plan) => plan.isAnnual === isAnnual)
+                        .map((plan) => {
+                            const isComingSoon =
+                                plan.id.includes("silver") ||
+                                plan.id.includes("gold") ||
+                                plan.id.includes("platinum");
 
-                        const hoverTextColor =
-                            plan.id === "gold"
-                                ? "group-hover:text-yellow-500"
-                                : plan.id === "silver"
-                                    ? "group-hover:text-gray-500"
-                                    : plan.id === "platinum"
-                                        ? "group-hover:text-purple-500"
-                                        : plan.id === "bronze"
-                                            ? "group-hover:text-amber-500"
-                                            : plan.id === "enterprise"
-                                                ? "group-hover:text-blue-500"
-                                                : "group-hover:text-foreground";
+                            const hoverTextColor =
+                                plan.id.includes("gold")
+                                    ? "group-hover:text-yellow-500"
+                                    : plan.id.includes("silver")
+                                        ? "group-hover:text-gray-500"
+                                        : plan.id.includes("platinum")
+                                            ? "group-hover:text-purple-500"
+                                            : plan.id.includes("bronze")
+                                                ? "group-hover:text-amber-500"
+                                                : plan.id.includes("enterprise")
+                                                    ? "group-hover:text-blue-500"
+                                                    : "group-hover:text-foreground";
 
-                        const buttonHoverColor =
-                            plan.id === "gold"
-                                ? "bg-yellow-300 text-black"
-                                : plan.id === "silver"
-                                    ? "bg-gray-300 text-black"
-                                    : plan.id === "platinum"
-                                        ? "bg-purple-400 text-black"
-                                        : plan.id === "bronze"
-                                            ? "bg-amber-200 text-black"
-                                            : plan.id === "enterprise"
-                                                ? "bg-blue-200 text-black"
-                                                : "bg-muted text-foreground";
+                            const buttonHoverColor =
+                                plan.id.includes("gold")
+                                    ? "bg-yellow-300 text-black"
+                                    : plan.id.includes("silver")
+                                        ? "bg-gray-300 text-black"
+                                        : plan.id.includes("platinum")
+                                            ? "bg-purple-400 text-black"
+                                            : plan.id.includes("bronze")
+                                                ? "bg-amber-200 text-black"
+                                                : plan.id.includes("enterprise")
+                                                    ? "bg-blue-200 text-black"
+                                                    : "bg-muted text-foreground";
 
-                        const price =
-                            isAnnual && typeof plan.annual_price === "number"
-                                ? `$${plan.annual_price} /year`
-                                : typeof plan.monthly_price === "number"
-                                    ? `$${plan.monthly_price} /month`
-                                    : plan.monthly_price;
+                            const price = typeof plan.price === "number"
+                                ? `$${plan.price} /${isAnnual ? "year" : "month"}`
+                                : plan.price;
 
-                        const quota =
-                            isAnnual && typeof plan.annual_lead_quota === "number"
-                                ? `${plan.annual_lead_quota} leads/year`
-                                : typeof plan.monthly_lead_quota === "number"
-                                    ? `${plan.monthly_lead_quota} leads/month`
-                                    : plan.monthly_lead_quota;
+                            const quota = typeof plan.lead_quota === "number"
+                                ? `${plan.lead_quota} leads/${isAnnual ? "year" : "month"}`
+                                : plan.lead_quota;
 
-                        return (
-                            <div
-                                key={plan.id}
-                                className="group relative rounded-[28px] overflow-hidden flex flex-col justify-between min-h-[300px] border-2 border-border bg-muted transition-all duration-300 hover:shadow-2xl hover:scale-[1.03]"
-                            >
+                            return (
                                 <div
-                                    className={`text-center text-2xl font-bold py-4 border-y border-border bg-muted transition-all duration-300 group-hover:text-3xl group-hover:tracking-wide ${hoverTextColor}`}
+                                    key={plan.id}
+                                    className="group relative rounded-[28px] overflow-hidden flex flex-col justify-between min-h-[300px] border-2 border-border bg-muted transition-all duration-300 hover:shadow-2xl hover:scale-[1.03]"
                                 >
-                                    {price}
-                                </div>
-
-                                <div className="flex-1 p-6 flex flex-col justify-between">
-                                    <div className="space-y-4">
-                                        <p className="text-base font-semibold text-primary">• {quota}</p>
-                                        {(Array.isArray(plan.features) ? plan.features : []).map((feat, i) => (
-                                            <p
-                                                key={i}
-                                                className="text-base font-medium transition-colors duration-300 group-hover:text-foreground"
-                                            >
-                                                • {feat}
-                                            </p>
-                                        ))}
+                                    <div
+                                        className={`text-center text-2xl font-bold py-4 border-y border-border bg-muted transition-all duration-300 group-hover:text-3xl group-hover:tracking-wide ${hoverTextColor}`}
+                                    >
+                                        {price}
                                     </div>
 
-                                    <div className="mt-8 text-center">
-                                        {isComingSoon ? (
-                                            <>
-                                                <p className="text-xs text-muted-foreground mb-2 italic">Coming Soon</p>
-                                                <Button
-                                                    disabled
-                                                    className={`w-full rounded-full font-semibold opacity-50 cursor-not-allowed ${buttonHoverColor}`}
+                                    <div className="flex-1 p-6 flex flex-col justify-between">
+                                        <div className="space-y-4">
+                                            <p className="text-base font-semibold text-primary">• {quota}</p>
+                                            {(Array.isArray(plan.features) ? plan.features : []).map((feat, i) => (
+                                                <p
+                                                    key={i}
+                                                    className="text-base font-medium transition-colors duration-300 group-hover:text-foreground"
                                                 >
-                                                    {plan.plan_name}
+                                                    • {feat}
+                                                </p>
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-8 text-center">
+                                            {isComingSoon ? (
+                                                <>
+                                                    <p className="text-xs text-muted-foreground mb-2 italic">Coming Soon</p>
+                                                    <Button
+                                                        disabled
+                                                        className={`w-full rounded-full font-semibold opacity-50 cursor-not-allowed ${buttonHoverColor}`}
+                                                    >
+                                                        {plan.plan_name.replace(/_Annual/i, "")}
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <Button
+                                                    onClick={() =>
+                                                        plan.id === "free"
+                                                            ? (window.location.href = "https://app.saasquatchleads.com/")
+                                                            : handleSelectPlan(plan.id)
+                                                    }
+                                                    className={`w-full rounded-full font-semibold transition-all duration-300 ${buttonHoverColor}`}
+                                                >
+                                                    {plan.plan_name.replace(/_Annual/i, "")}
                                                 </Button>
-                                            </>
-                                        ) : (
-                                            <Button
-                                                onClick={() =>
-                                                    plan.id === "free"
-                                                        ? (window.location.href = "https://app.saasquatchleads.com/")
-                                                        : handleSelectPlan(plan.id)
-                                                }
-                                                className={`w-full rounded-full font-semibold transition-all duration-300 ${buttonHoverColor}`}
-                                            >
-                                                {plan.plan_name}
-                                            </Button>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+
                 </div>
 
                 {/* Continue Link */}
