@@ -435,7 +435,7 @@ export function DataEnhancement() {
     }
 
     return {
-      company: preferValue(growjo.company_name, company.company),
+      company: company.company,
       website: preferValue(growjo.company_website, apollo.website_url, company.website),
       industry: preferValue(growjo.industry, apollo.industry, company.industry),
       productCategory: preferValue(
@@ -446,8 +446,8 @@ export function DataEnhancement() {
       employees: preferValue(growjo.employee_count, apollo.employee_count),
       revenue: preferValue(growjo.revenue, apollo.annual_revenue_printed),
       yearFounded: preferValue("", apollo.founded_year),
-      city: preferValue(growjo.location?.split(", ")[0], company.city),
-      state: preferValue(growjo.location?.split(", ")[1], company.state),
+      city: company.city,
+      state: company.state,
       bbbRating: company.bbb_rating,
       street: company.street || "",
       companyPhone: company.business_phone,
