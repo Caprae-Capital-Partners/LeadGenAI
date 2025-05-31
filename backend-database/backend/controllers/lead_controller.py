@@ -573,10 +573,12 @@ class LeadController:
 
             for lead in leads:
                 lead_dict = {}
-                # Check user tier
-
-                if current_user and hasattr(current_user, 'tier') and current_user.tier == 'free':
-                    # Filter and mask for Free plan
+                # Check user role and tier
+                if current_user and hasattr(current_user, 'role') and current_user.role != 'user':
+                    # Non-user roles get full details
+                    lead_dict = lead.to_dict()
+                elif current_user and hasattr(current_user, 'tier') and current_user.tier == 'free':
+                    # Filter and mask for Free plan (only for regular users)
                     for field in allowed_fields_free:
                         if hasattr(lead, field):
                             value = getattr(lead, field)
