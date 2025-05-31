@@ -20,7 +20,7 @@ export const DocumentationContent: FC = () => {
               Watch our comprehensive tutorial to get started with lead generation and enrichment.
             </p>
             <div className="bg-background p-4 rounded-xl shadow-lg border border-border">
-              <div className="aspect-video rounded-lg overflow-hidden max-w-md mx-auto">
+              <div className="aspect-video rounded-lg overflow-hidden">
                 <iframe
                   src="https://www.loom.com/embed/f39263d166604137ba506a86a4970a30?sid=a8b5c3d2-e1f4-5g6h-7i8j-9k0l1m2n3o4p"
                   allowFullScreen
