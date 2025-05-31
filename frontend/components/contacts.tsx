@@ -44,7 +44,7 @@ export const ContactForm: FC = () => {
                 </div>
                 <div className="ml-4">
                   <h3 className="text-lg font-medium text-foreground">Email</h3>
-                  <p className="mt-1 text-muted-foreground">support@capraeleadseekers.site</p>
+                  <p className="mt-1 text-muted-foreground">partners@capraecapital.com</p>
                 </div>
               </div>
               {/* Office */}
@@ -68,7 +68,7 @@ export const ContactForm: FC = () => {
           {/* Contact Form */}
           <div className="bg-background p-6 md:p-8 rounded-xl shadow-lg border border-border">
             <h2 className="text-xl font-semibold text-foreground mb-6">Send us a message</h2>
-            <form action="https://formsubmit.co/brillio.edu.id@gmail.com" method="POST" className="space-y-6">
+            <form action="https://formsubmit.co/partners@capraecapital.com" method="POST" className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-foreground mb-1">
