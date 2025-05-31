@@ -33,8 +33,8 @@ export function validateForm(data: FormData, isSignup: boolean): FormErrors {
       errors.linkedin = "Enter a valid LinkedIn profile URL.";
     }
 
-    if (data.password.length < 5) {
-      errors.password = "Password must be at least 5 characters.";
+    if (data.password.length < 8) {
+      errors.password = "Password must be at least 8 characters.";
     }
 
     if (data.confirmPassword !== data.password) {

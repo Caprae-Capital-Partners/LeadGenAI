@@ -38,7 +38,7 @@ export const DocumentationContent: FC = () => {
               <div className="border-b border-border pb-4">
                 <h3 className="text-lg font-medium text-foreground mb-2">Are the leads free?</h3>
                 <p className="text-muted-foreground">
-                  Yes! The leads scraped through our platform are completely free. Additionally, you can enrich up to 8 leads at no cost.
+                  Yes! The leads scraped through our platform are completely free. Additionally, you can enrich up to 5 leads at no cost.
                 </p>
               </div>
 
