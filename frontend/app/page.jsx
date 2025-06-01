@@ -66,7 +66,7 @@ import axios from "axios";
 import Notif from "@/components/ui/notif";
 
 import { redirect } from "next/navigation";
-const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 
 // export default function Home() {
 //   redirect('/auth');
@@ -94,50 +94,61 @@ export default function Home() {
 
   const router = useRouter();
   const handleSave = async (index) => {
+    // Helper to convert camelCase keys into snake_case
+    const toSnake = (str) => str.replace(/([A-Z])/g, "_$1").toLowerCase();
+
+    // Given a plain object with camelCase keys, return a new object
+    // whose keys are all snake_case.
+    const normalizeKeys = (obj) => {
+      const result = {};
+      for (const [k, v] of Object.entries(obj)) {
+        result[toSnake(k)] = v;
+      }
+      return result;
+    };
+
     try {
       const lead = editedRows[index];
       const leadId = lead.lead_id || lead.id;
-      const draftId = lead.draft_id;
-  
-      const draftData = {
-        ...lead,
-        user_id: user.id,
-      };
-  
-      // ✅ Always call the POST endpoint first
-      const response = await axios.post(
+      const originalDraftId = lead.draft_id;
+
+      // Normalize the edited fields so that every key is snake_case:
+      const normalizedLead = normalizeKeys(lead);
+      // Always include user_id in snake_case:
+      normalizedLead.user_id = user.id;
+
+      // 1) Always call POST first
+      const postResponse = await axios.post(
         `https://data.capraeleadseekers.site/leads/${leadId}/edit`,
-        draftData,
+        normalizedLead,
         { withCredentials: true }
       );
-  
-      const newDraftId = response.data?.draft?.draft_id;
-  
-      if (draftId || newDraftId) {
-        // ✅ If we already have a draft or got a new one, update it using PUT
-        const payload = {
-          draft_data: draftData,
-          change_summary: "Updated from homepage",
-          phase: "draft",
-          status: "pending",
-        };
-  
-        await axios.put(
-          `https://data.capraeleadseekers.site/api/leads/drafts/${draftId || newDraftId}`,
-          payload,
-          { withCredentials: true }
-        );
-  
-        showNotification("Draft updated successfully", "success");
-      } else {
-        showNotification("Draft created successfully", "success");
-      }
-  
-      // ✅ Update local state
+      showNotification("Draft POST called successfully", "success");
+
+      // If the POST returned a new draft_id, use it; otherwise keep originalDraftId
+      const newDraftId = postResponse.data?.draft?.draft_id;
+      const actualDraftId = newDraftId || originalDraftId;
+
+      // 2) Now call PUT to update that draft
+      const payload = {
+        draft_data: normalizedLead,
+        change_summary: "Updated from homepage",
+        phase: "draft",
+        status: "pending",
+      };
+
+      await axios.put(
+        `https://data.capraeleadseekers.site/api/leads/drafts/${actualDraftId}`,
+        payload,
+        { withCredentials: true }
+      );
+      showNotification("Draft updated successfully", "success");
+
+      // Reflect changes in local state (ensure draft_id is set)
       const updated = [...scrapingHistory];
       updated[index] = {
         ...lead,
-        draft_id: draftId ?? newDraftId ?? null,
+        draft_id: actualDraftId,
         updated: new Date().toLocaleString(),
       };
       setScrapingHistory(updated);
@@ -149,7 +160,6 @@ export default function Home() {
     }
   };
   
-  
 
   const handleDiscard = (index) => {
     const resetRow = scrapingHistory[index];
@@ -158,7 +168,7 @@ export default function Home() {
     setEditedRows(updated);
     setEditingRowIndex(null);
   };
-  
+
   const handleFieldChange = (index, field, value) => {
     const updated = [...editedRows];
     updated[index] = {
@@ -167,7 +177,7 @@ export default function Home() {
     };
     setEditedRows(updated);
   };
-  
+
   const [notif, setNotif] = useState({
     show: false,
     message: "",
@@ -185,7 +195,6 @@ export default function Home() {
 
   const [editingRowIndex, setEditingRowIndex] = useState(null);
 
-
   const clearAllFilters = () => {
     setEmployeesFilter("");
     setRevenueFilter("");
@@ -198,7 +207,6 @@ export default function Home() {
     setStateFilter("");
     setSourceFilter("");
   };
-
 
   const parseRevenue = (revenueInput) => {
     if (typeof revenueInput === "number") return revenueInput;
@@ -221,26 +229,39 @@ export default function Home() {
     const value = parseFloat(revenueStr);
     return isNaN(value) ? null : value * multiplier;
   };
-  
-  
 
   const parseFilter = (filterStr, isRevenue = false) => {
-    const result = { operation: "exact", value: null | null, upper: null  | null }
-    filterStr = filterStr.toLowerCase().trim()
-    const rangeMatch = filterStr.match(/^(\d+(?:[kmb]?)?)\s*-\s*(\d+(?:[kmb]?)?)$/)
+    const result = {
+      operation: "exact",
+      value: null | null,
+      upper: null | null,
+    };
+    filterStr = filterStr.toLowerCase().trim();
+    const rangeMatch = filterStr.match(
+      /^(\d+(?:[kmb]?)?)\s*-\s*(\d+(?:[kmb]?)?)$/
+    );
     if (rangeMatch) {
-      const val1 = isRevenue ? parseRevenue(rangeMatch[1]) : parseInt(rangeMatch[1])
-      const val2 = isRevenue ? parseRevenue(rangeMatch[2]) : parseInt(rangeMatch[2])
-      return { operation: "between", value: val1, upper: val2 }
+      const val1 = isRevenue
+        ? parseRevenue(rangeMatch[1])
+        : parseInt(rangeMatch[1]);
+      const val2 = isRevenue
+        ? parseRevenue(rangeMatch[2])
+        : parseInt(rangeMatch[2]);
+      return { operation: "between", value: val1, upper: val2 };
     }
-    if (filterStr.startsWith(">=")) result.operation = "greater than or equal", filterStr = filterStr.slice(2)
-    else if (filterStr.startsWith(">")) result.operation = "greater than", filterStr = filterStr.slice(1)
-    else if (filterStr.startsWith("<=")) result.operation = "less than or equal", filterStr = filterStr.slice(2)
-    else if (filterStr.startsWith("<")) result.operation = "less than", filterStr = filterStr.slice(1)
-    result.value = isRevenue ? parseRevenue(filterStr) : parseInt(filterStr)
-    return result
-  }
-
+    if (filterStr.startsWith(">="))
+      (result.operation = "greater than or equal"),
+        (filterStr = filterStr.slice(2));
+    else if (filterStr.startsWith(">"))
+      (result.operation = "greater than"), (filterStr = filterStr.slice(1));
+    else if (filterStr.startsWith("<="))
+      (result.operation = "less than or equal"),
+        (filterStr = filterStr.slice(2));
+    else if (filterStr.startsWith("<"))
+      (result.operation = "less than"), (filterStr = filterStr.slice(1));
+    result.value = isRevenue ? parseRevenue(filterStr) : parseInt(filterStr);
+    return result;
+  };
 
   const toCamelCase = (str) =>
     str.replace(/([-_][a-z])/gi, (group) =>
@@ -278,51 +299,74 @@ export default function Home() {
   };
 
   const handleExportCSVWithCredits = async () => {
-      try {
-        const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
-          withCredentials: true
-        });
-  
-        const planName = subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
-        const availableCredits = subscriptionInfo?.subscription?.credits_remaining ?? 0;
-        const requiredCredits = currentItems.length;
-  
-        if (planName === "free") {
-          showNotification("Exporting is not allowed on the Free tier. Please upgrade your plan.", "info");
-          return;
-        }
-  
-        if (availableCredits < requiredCredits) {
-          showNotification("Insufficient credits to export all selected leads. Please upgrade or reduce selection.", "error");
-          return;
-        }
-  
-        handleExportCSV(currentItems, "enriched_results.csv");
-      } catch (checkErr) {
-        console.error("❌ Failed to verify subscription:", checkErr);
-        showNotification("Failed to verify your subscription. Please try again later.", "error");
-      }
-    };
-  
-    const handleToggleFiltersWithCheck = async () => {
-      try {
-        const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+    try {
+      const { data: subscriptionInfo } = await axios.get(
+        `${DATABASE_URL}/user/subscription_info`,
+        {
           withCredentials: true,
-        });
-  
-        const planName = subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
-        if (planName === "free") {
-          showNotification("Advanced filters are disabled on the Free tier. Please upgrade your plan.", "info");
-          return;
         }
-  
-        setShowFilters((prev) => !prev);
-      } catch (err) {
-        console.error("❌ Failed to verify subscription:", err);
-        showNotification("Failed to verify your subscription. Please try again later.", "error");
-      }
-    };
+      );
 
+      const planName =
+        subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
+      const availableCredits =
+        subscriptionInfo?.subscription?.credits_remaining ?? 0;
+      const requiredCredits = currentItems.length;
+
+      if (planName === "free") {
+        showNotification(
+          "Exporting is not allowed on the Free tier. Please upgrade your plan.",
+          "info"
+        );
+        return;
+      }
+
+      if (availableCredits < requiredCredits) {
+        showNotification(
+          "Insufficient credits to export all selected leads. Please upgrade or reduce selection.",
+          "error"
+        );
+        return;
+      }
+
+      handleExportCSV(currentItems, "enriched_results.csv");
+    } catch (checkErr) {
+      console.error("❌ Failed to verify subscription:", checkErr);
+      showNotification(
+        "Failed to verify your subscription. Please try again later.",
+        "error"
+      );
+    }
+  };
+
+  const handleToggleFiltersWithCheck = async () => {
+    try {
+      const { data: subscriptionInfo } = await axios.get(
+        `${DATABASE_URL}/user/subscription_info`,
+        {
+          withCredentials: true,
+        }
+      );
+
+      const planName =
+        subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
+      if (planName === "free") {
+        showNotification(
+          "Advanced filters are disabled on the Free tier. Please upgrade your plan.",
+          "info"
+        );
+        return;
+      }
+
+      setShowFilters((prev) => !prev);
+    } catch (err) {
+      console.error("❌ Failed to verify subscription:", err);
+      showNotification(
+        "Failed to verify your subscription. Please try again later.",
+        "error"
+      );
+    }
+  };
 
   const [scrapingHistory, setScrapingHistory] = useState([]);
 
@@ -369,7 +413,6 @@ export default function Home() {
           .join(",")
       ),
     ].join("\n");
-    
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -382,7 +425,7 @@ export default function Home() {
   };
 
   const [editedRows, setEditedRows] = useState([...scrapingHistory]);
- // duplicate of original data
+  // duplicate of original data
   // Example pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -451,42 +494,39 @@ export default function Home() {
       ? emp >= empVal && emp <= (empUpper ?? empVal)
       : emp === empVal;
 
-      const {
-        operation: yearOp,
-        value: yearVal,
-        upper: yearUpper,
-      } = parseFilter(yearFoundedFilter);
-      const year = parseInt(entry.yearFounded);
-      const matchYearFounded = isNaN(yearVal)
-        ? true
-        : yearOp === "less than"
-        ? year < yearVal
-        : yearOp === "greater than"
-        ? year > yearVal
-        : yearOp === "less than or equal"
-        ? year <= yearVal
-        : yearOp === "greater than or equal"
-        ? year >= yearVal
-        : yearOp === "between"
-        ? year >= yearVal && year <= (yearUpper ?? yearVal)
-        : year === yearVal;
+    const {
+      operation: yearOp,
+      value: yearVal,
+      upper: yearUpper,
+    } = parseFilter(yearFoundedFilter);
+    const year = parseInt(entry.yearFounded);
+    const matchYearFounded = isNaN(yearVal)
+      ? true
+      : yearOp === "less than"
+      ? year < yearVal
+      : yearOp === "greater than"
+      ? year > yearVal
+      : yearOp === "less than or equal"
+      ? year <= yearVal
+      : yearOp === "greater than or equal"
+      ? year >= yearVal
+      : yearOp === "between"
+      ? year >= yearVal && year <= (yearUpper ?? yearVal)
+      : year === yearVal;
 
-        return (
-          matchIndustry &&
-          matchCity &&
-          matchState &&
-          matchBBB &&
-          matchProduct &&
-          matchBusinessType &&
-          matchRevenue &&
-          matchSource &&
-          matchEmployees &&
-          matchYearFounded
-        );
+    return (
+      matchIndustry &&
+      matchCity &&
+      matchState &&
+      matchBBB &&
+      matchProduct &&
+      matchBusinessType &&
+      matchRevenue &&
+      matchSource &&
+      matchEmployees &&
+      matchYearFounded
+    );
   });
-  
-  
-
 
   // Derive indexes for slicing the filtered data
   const totalPages = Math.ceil(filteredScrapingHistory.length / itemsPerPage);
@@ -664,8 +704,6 @@ export default function Home() {
 
     fetchSubscriptionInfo();
   }, []);
-
-  
 
   const COLORS = [
     "#1EBE8F", // More vibrant Green-Teal
