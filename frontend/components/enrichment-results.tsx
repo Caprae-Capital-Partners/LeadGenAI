@@ -492,13 +492,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
         const lead_id = c.lead_id || c.id;
         const draftId = draftMap[lead_id]?.draft_id;
 
-        if (!draftId) {
-          console.warn(`⚠️ No draft_id found for lead_id: ${lead_id}, company: ${c.company}`);
-          showNotification(`Missing draft ID for "${c.company}". Please re-enrich.`, "error");
-          continue;
-        }
-
-        const payload = {
+        const draftPayload = {
           draft_data: {
             user_id,
             company: c.company,
@@ -526,39 +520,70 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
           change_summary: "User edited company info",
         };
 
-        console.log(`📤 Sending (${index + 1}/${companiesToSave.length}):`, draftId, payload);
+        const flatPayload = {
+          ...draftPayload.draft_data,
+          user_id,
+        };
 
-        const res = await fetch(`https://data.capraeleadseekers.site/api/leads/drafts/${draftId}`, {
-          method: "PUT",
+        console.log(`📤 (${index + 1}/${companiesToSave.length}) Saving:`, c.company);
+
+        // ✅ Step 1: PUT to /leads/drafts/:draft_id
+        if (draftId) {
+          const res = await fetch(`https://data.capraeleadseekers.site/api/leads/drafts/${draftId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(draftPayload),
+          });
+
+          const text = await res.text();
+          console.log("📥 Draft update response:", text);
+          try {
+            const data = JSON.parse(text);
+            if (!res.ok || data.error) {
+              console.error("❌ Failed to update draft:", draftId, data);
+              showNotification(`Failed to update draft: ${c.company}`, "error");
+            } else {
+              console.log(`✅ Draft updated: ${c.company}`);
+            }
+          } catch {
+            console.error("❌ Non-JSON response from draft endpoint");
+          }
+        } else {
+          console.warn(`⚠️ No draft_id for ${c.company}`);
+        }
+
+        // ✅ Step 2: POST to /leads/:lead_id/edit
+        const editRes = await fetch(`https://data.capraeleadseekers.site/leads/${lead_id}/edit`, {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify(payload),
+          body: JSON.stringify(flatPayload),
         });
 
-        const text = await res.text();
-        console.log("📥 Raw response text:", text);
-
+        const editText = await editRes.text();
+        console.log("📥 Edit draft response:", editText);
         try {
-          const data = JSON.parse(text);
-          if (!res.ok || data.error) {
-            console.error("❌ Failed to update draft:", draftId, data);
-            showNotification(`Failed to update draft with ID: ${draftId}`, "error");
+          const editJson = JSON.parse(editText);
+          if (!editRes.ok || editJson.success === false) {
+            console.error("❌ Failed to POST to edit API:", editJson);
+            showNotification(`Failed to save edit for ${c.company}`, "error");
           } else {
-            console.log(`📝 Draft updated for: ${draftId}`);
+            console.log(`✅ Edit saved: ${c.company}`);
           }
         } catch {
-          console.error("❌ Failed to parse JSON. Response was likely HTML.");
-          showNotification("Server returned an unexpected response.", "error");
+          console.error("❌ Invalid JSON from /edit");
+          showNotification("Unexpected response from /edit", "error");
         }
+
       } catch (err) {
-        console.error("❌ Error updating draft:", err);
-        showNotification("Error updating a draft. See console for details.", "error");
+        console.error("❌ Error saving company:", err);
+        showNotification(`Error saving ${c.company}`, "error");
       }
     }
 
     showNotification("Done saving selected companies.", "success");
   };
-  
   
   
   
