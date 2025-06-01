@@ -41,8 +41,14 @@ export const DocumentationContent: FC = () => {
                   Yes! The leads scraped through our platform are completely free. Additionally, you can enrich up to 5 leads at no cost.
                 </p>
               </div>
-
               {/* FAQ Item 2 */}
+               <div className="border-b border-border pb-4">
+                <h3 className="text-lg font-medium text-foreground mb-2">What does 'enrichment/enhancement' mean?</h3>
+                <p className="text-muted-foreground">
+                Lead enrichment/enhancement means adding valuable contact information and business details to your basic lead data. Our platform enriches leads by adding details such as email addresses, phone numbers, and other professional information using services like Apollo and Growjo.
+                </p>
+              </div>
+              {/* FAQ Item 3 */}
               <div className="border-b border-border pb-4">
                 <h3 className="text-lg font-medium text-foreground mb-2">How does lead enrichment work?</h3>
                 <p className="text-muted-foreground">
@@ -50,7 +56,7 @@ export const DocumentationContent: FC = () => {
                 </p>
               </div>
 
-              {/* FAQ Item 3 */}
+              {/* FAQ Item 4 */}
               <div className="border-b border-border pb-4">
                 <h3 className="text-lg font-medium text-foreground mb-2">What data sources do you use?</h3>
                 <p className="text-muted-foreground">
@@ -58,7 +64,7 @@ export const DocumentationContent: FC = () => {
                 </p>
               </div>
 
-              {/* FAQ Item 4 */}
+              {/* FAQ Item 5 */}
               <div className="border-b border-border pb-4">
                 <h3 className="text-lg font-medium text-foreground mb-2">How accurate are the scraped leads?</h3>
                 <p className="text-muted-foreground">
@@ -66,18 +72,11 @@ export const DocumentationContent: FC = () => {
                 </p>
               </div>
 
-              {/* FAQ Item 5 */}
+              {/* FAQ Item 6 */}
               <div>
                 <h3 className="text-lg font-medium text-foreground mb-2">Can I export my leads?</h3>
                 <p className="text-muted-foreground">
                   Yes, you can export your leads in various formats including CSV and Excel for easy integration with your CRM or marketing tools.
-                </p>
-              </div>
-               {/* FAQ Item 6 */}
-               <div>
-                <h3 className="text-lg font-medium text-foreground mb-2">What does 'enrichment/enhancement' mean?</h3>
-                <p className="text-muted-foreground">
-                Lead enrichment/enhancement means adding valuable contact information and business details to your basic lead data. Our platform enriches leads by adding details such as email addresses, phone numbers, and other professional information using services like Apollo and Growjo.
                 </p>
               </div>
             </div>
