@@ -73,6 +73,13 @@ export const DocumentationContent: FC = () => {
                   Yes, you can export your leads in various formats including CSV and Excel for easy integration with your CRM or marketing tools.
                 </p>
               </div>
+               {/* FAQ Item 6 */}
+               <div>
+                <h3 className="text-lg font-medium text-foreground mb-2">What does 'enrichment/enhancement' mean?</h3>
+                <p className="text-muted-foreground">
+                Lead enrichment/enhancement means adding valuable contact information and business details to your basic lead data. Our platform enriches leads by adding details such as email addresses, phone numbers, and other professional information using services like Apollo and Growjo.
+                </p>
+              </div>
             </div>
           </div>
         </div>
