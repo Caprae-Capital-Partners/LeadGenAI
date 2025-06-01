@@ -27,7 +27,7 @@ import Loader from "@/components/ui/loader"
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import Popup from "@/components/ui/popup";
-import Notif  from "@/components/ui/notif"
+import Notif from "@/components/ui/notif"
 
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
@@ -36,19 +36,19 @@ const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 export function DataEnhancement() {
 
   const [notif, setNotif] = useState({
-      show: false,
-      message: "",
-      type: "success" as "success" | "error" | "info",
-    });
-    const showNotification = (message: string, type: "success" | "error" | "info" = "success") => {
-      setNotif({ show: true, message, type });
-  
-      // Automatically hide after X seconds (let Notif handle it visually)
-      // Optional if Notif itself auto-hides — but helpful as backup
-      setTimeout(() => {
-        setNotif(prev => ({ ...prev, show: false }));
-      }, 3500);
-    };
+    show: false,
+    message: "",
+    type: "success" as "success" | "error" | "info",
+  });
+  const showNotification = (message: string, type: "success" | "error" | "info" = "success") => {
+    setNotif({ show: true, message, type });
+
+    // Automatically hide after X seconds (let Notif handle it visually)
+    // Optional if Notif itself auto-hides — but helpful as backup
+    setTimeout(() => {
+      setNotif(prev => ({ ...prev, show: false }));
+    }, 3500);
+  };
 
   const [hasEnrichedOnce, setHasEnrichedOnce] = useState(false);
   const [showTokenPopup, setShowTokenPopup] = useState(false);
@@ -435,7 +435,7 @@ export function DataEnhancement() {
     }
 
     return {
-      company: company.company,
+      company: preferValue(growjo.company_name, company.company),
       website: preferValue(growjo.company_website, apollo.website_url, company.website),
       industry: preferValue(growjo.industry, apollo.industry, company.industry),
       productCategory: preferValue(
@@ -499,7 +499,7 @@ export function DataEnhancement() {
     overrideCompanies: any[] | null = null
   ) => {
     const user = JSON.parse(sessionStorage.getItem("user") || "{}");
-    const user_id = user.id || "";
+    const user_id = user.user_id || "";
     setLoading(true);
 
     if (!forceScrape) {
@@ -514,11 +514,12 @@ export function DataEnhancement() {
       const lead_ids = selected.map(c => c.lead_id).filter(Boolean);
       const queryString = lead_ids.join(",");
 
-      // ✅ Step 1: Check credits
+      // ✅ Step 1: Check credits (enough to cover all selected items)
       try {
-        const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
-          withCredentials: true
-        });
+        const { data: subscriptionInfo } = await axios.get(
+          `${DATABASE_URL}/user/subscription_info`,
+          { withCredentials: true }
+        );
 
         const availableCredits = subscriptionInfo?.subscription?.credits_remaining ?? 0;
         const requiredCredits = selected.length;
@@ -535,6 +536,7 @@ export function DataEnhancement() {
         return;
       }
 
+      // Fetch any existing enriched leads from DB
       let existingNames = new Set<string>();
       let dbLeads: any[] = [];
 
@@ -548,21 +550,7 @@ export function DataEnhancement() {
         setFromDatabaseLeads(Array.from(existingNames));
       }
 
-      // ✅ Step 2: Deduct credits for ALL selected leads
-      for (const lead of selected) {
-        const lead_id = lead.lead_id;
-        if (!lead_id) continue;
-        try {
-          await axios.post(`${DATABASE_URL}/user/deduct_credit/${lead_id}`, {}, {
-            withCredentials: true
-          });
-        } catch (deductErr) {
-          console.error(`❌ Credit deduction failed for lead ${lead_id}`, deductErr);
-          continue;
-        }
-      }
-
-      // ✅ Step 3: Show DB leads (if not force or override)
+      // ✅ Step 2: Show DB leads (if not force or override)
       if (!forceScrape && !overrideCompanies) {
         const tealRows = dbLeads.map(lead =>
           toCamelCase({ ...lead, source_type: "database" })
@@ -570,6 +558,7 @@ export function DataEnhancement() {
         setDbEnrichedCompanies(tealRows);
         setShowResults(true);
 
+        // Upload DB leads again and create drafts as needed
         const payload = dbLeads
           .filter(l => !!l.lead_id)
           .map(l => ({ ...l, user_id }));
@@ -582,7 +571,6 @@ export function DataEnhancement() {
               { headers: { "Content-Type": "application/json" } }
             );
 
-            // Normalize the response to an array
             const uploadedLeads = Array.isArray(uploadRes.data)
               ? uploadRes.data
               : [uploadRes.data];
@@ -591,7 +579,6 @@ export function DataEnhancement() {
               const originalLead = payload[i];
               const uploaded = uploadedLeads[i] || {};
               const lead_id = originalLead.lead_id || uploaded.lead_id;
-
               if (!lead_id) {
                 console.warn("⚠️ Skipping draft creation: Missing lead_id", {
                   originalLead,
@@ -599,7 +586,6 @@ export function DataEnhancement() {
                 });
                 continue;
               }
-
               const draftData = { ...originalLead, lead_id };
 
               try {
@@ -624,24 +610,25 @@ export function DataEnhancement() {
                   };
                 }
               } catch (err) {
-                console.error("❌ Failed to create draft:", err);
+                console.error("❌ Failed to create draft for DB lead:", err);
               }
             }
           } catch (err) {
             console.error("❌ Upload or draft creation for DB leads failed:", err);
           }
-        }          
+        }
       }
 
-      // ✅ Step 4: Proceed with scraping only for those not in DB
+      // ✅ Step 3: Proceed with scraping only for those not in DB
       const toScrape = forceScrape
         ? selected
         : selected.filter(c => !existingNames.has(c.company.toLowerCase()));
 
       for (const company of toScrape) {
         try {
-          const lead_id = company.lead_id || "";
+          const lead_id_before = company.lead_id || "";
 
+          // --- SCRAPER APIS ---
           const headers = { headers: { "Content-Type": "application/json" } };
 
           const growjo = (
@@ -662,6 +649,7 @@ export function DataEnhancement() {
 
           const entry = buildEnrichedCompany(company, growjo, apollo, person);
 
+          // --- UPLOAD_LEADS ---
           const normalizeValue = (v: any) => {
             const s = (v ?? "").toString().trim().toLowerCase();
             const isBad =
@@ -670,9 +658,9 @@ export function DataEnhancement() {
             return isBad ? "N/A" : v.toString().trim();
           };
 
-          const validLead = {
+          let validLead = {
             user_id,
-            lead_id,
+            lead_id: lead_id_before,
             company: normalizeValue(entry.company),
             website: normalizeValue(entry.website),
             industry: normalizeValue(entry.industry),
@@ -696,7 +684,7 @@ export function DataEnhancement() {
             source: normalizeValue(entry.source),
           };
 
-          let uploadedLead: any = validLead;
+          let finalLead = { ...validLead };
 
           try {
             const uploadRes = await axios.post(
@@ -708,8 +696,9 @@ export function DataEnhancement() {
             const detailedResults = uploadRes.data?.stats?.detailed_results ?? [];
             const leadFromResponse = detailedResults[0] || {};
 
+            // If original lead_id was empty, use the one returned
             if (!validLead.lead_id && leadFromResponse.lead_id) {
-              uploadedLead = { ...validLead, lead_id: leadFromResponse.lead_id };
+              finalLead = { ...validLead, lead_id: leadFromResponse.lead_id };
             }
 
             showNotification("Data successfully enriched!");
@@ -717,12 +706,13 @@ export function DataEnhancement() {
             console.error("❌ Failed to upload lead:", validLead, uploadErr);
           }
 
+          // --- DRAFT CREATION ---
           try {
             const res = await axios.post(
               `${DATABASE_URL}/leads/drafts`,
               {
-                lead_id: uploadedLead.lead_id,
-                draft_data: uploadedLead,
+                lead_id: finalLead.lead_id,
+                draft_data: finalLead,
                 change_summary: "Initial enrichment draft",
               },
               {
@@ -733,18 +723,38 @@ export function DataEnhancement() {
 
             const draft_id = res.data?.draft_id;
             if (draft_id) {
-              draftMap[uploadedLead.lead_id] = {
+              draftMap[finalLead.lead_id] = {
                 draft_id,
-                company: uploadedLead.company,
+                company: finalLead.company,
               };
             }
           } catch (draftErr: any) {
-            console.error("❌ Failed to create draft:", draftErr.response?.data || draftErr.message);
+            console.error(
+              "❌ Failed to create draft:",
+              draftErr.response?.data || draftErr.message
+            );
           }
 
+          // --- DEDUCT CREDIT FOR THIS LEAD_ID ---
+          try {
+            const lid = finalLead.lead_id;
+            if (lid) {
+              await axios.post(
+                `${DATABASE_URL}/user/deduct_credit/${lid}`,
+                {},
+                { withCredentials: true }
+              );
+            }
+          } catch (deductErr) {
+            console.error(
+              `❌ Credit deduction failed for lead ${finalLead.lead_id}`,
+              deductErr
+            );
+          }
 
+          // Show the newly scraped row in yellow
           const yellowRow = toCamelCase({
-            ...uploadedLead,
+            ...finalLead,
             source_type: "scraped",
           });
 
@@ -761,7 +771,7 @@ export function DataEnhancement() {
       if (Object.keys(draftMap).length > 0) {
         sessionStorage.setItem("leadToDraftMap", JSON.stringify(draftMap));
       }
-      
+
       setShowResults(true);
       setHasEnrichedOnce(true);
     } catch (err) {
@@ -771,10 +781,12 @@ export function DataEnhancement() {
       stopProgressSimulation(100);
       setLoading(false);
     }
+
     showNotification("Data successfully enriched!");
   };
   
-  
+
+
 
 
 
@@ -786,7 +798,7 @@ export function DataEnhancement() {
 
 
   return (
-    
+
     <div className="space-y-6">
       <Button
         onClick={handleBack}
@@ -1230,12 +1242,12 @@ export function DataEnhancement() {
         </div>
       </Popup>
 
-          <Notif
-            show={notif.show}
-            message={notif.message}
-            type={notif.type}
-            onClose={() => setNotif(prev => ({ ...prev, show: false }))}
-          />
+      <Notif
+        show={notif.show}
+        message={notif.message}
+        type={notif.type}
+        onClose={() => setNotif(prev => ({ ...prev, show: false }))}
+      />
 
     </div>
   )
