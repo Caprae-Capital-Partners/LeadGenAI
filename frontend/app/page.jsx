@@ -93,18 +93,94 @@ export default function Home() {
   const [selectAll, setSelectAll] = useState(false);
 
   const router = useRouter();
-  const handleSave = () => {
-    // Commit the edits to the main scrapingHistory state
-    setScrapingHistory(editedRows);
-    setIsEditing(false);
-    console.log("Saved edits:", editedRows);
-  };
-  const handleDiscard = () => {
-    setEditedRows(scrapingHistory); // Reset edits to the original state
-    setIsEditing(false); // Exit edit mode
-    console.log("Changes discarded.");
-  };
+  const handleSave = async (index) => {
+    try {
+      const lead = editedRows[index];
+      const leadId = lead.lead_id || lead.id;
+      const draftId = lead.draft_id;
 
+      const draftData = {
+        ...lead,
+        user_id: user.id,
+      };
+
+      let response;
+
+      if (!draftId) {
+        // First time: Create new draft
+        response = await axios.post(
+          `https://data.capraeleadseekers.site/leads/${leadId}/edit`,
+          draftData,
+          { withCredentials: true }
+        );
+
+        showNotification("Draft created successfully", "success");
+
+        // Try to get new draft_id from server if returned
+        const newDraftId = response.data?.draft?.draft_id;
+
+        // Update local state
+        const updated = [...scrapingHistory];
+        updated[index] = {
+          ...lead,
+          draft_id: newDraftId ?? null,
+          updated: new Date().toLocaleString(),
+        };
+        setScrapingHistory(updated);
+        setEditedRows(updated);
+      } else {
+        // Already has draft_id: update existing draft
+        const payload = {
+          draft_data: draftData,
+          change_summary: "Updated from homepage",
+          phase: "draft",
+          status: "pending",
+        };
+
+        await axios.put(
+          `https://data.capraeleadseekers.site/api/leads/drafts/${draftId}`,
+          payload,
+          {
+            withCredentials: true,
+          }
+        );
+
+        showNotification("Draft updated successfully", "success");
+
+        const updated = [...scrapingHistory];
+        updated[index] = {
+          ...lead,
+          updated: new Date().toLocaleString(),
+        };
+        setScrapingHistory(updated);
+        setEditedRows(updated);
+      }
+
+      setEditingRowIndex(null);
+    } catch (err) {
+      console.error("❌ Error saving row:", err);
+      showNotification("Failed to save row.", "error");
+    }
+  };
+  
+
+  const handleDiscard = (index) => {
+    const resetRow = scrapingHistory[index];
+    const updated = [...editedRows];
+    updated[index] = resetRow;
+    setEditedRows(updated);
+    setEditingRowIndex(null);
+  };
+  
+  const handleFieldChange = (index, field, value) => {
+    const updated = [...editedRows];
+    updated[index] = {
+      ...updated[index],
+      [field]: value,
+    };
+    setEditedRows(updated);
+  };
+  
   const [notif, setNotif] = useState({
     show: false,
     message: "",
@@ -120,7 +196,9 @@ export default function Home() {
     }, 3500);
   };
 
-  const [isEditing, setIsEditing] = useState(false);
+  const [editingRowIndex, setEditingRowIndex] = useState(null);
+
+
   const clearAllFilters = () => {
     setEmployeesFilter("");
     setRevenueFilter("");
@@ -316,7 +394,8 @@ export default function Home() {
     document.body.removeChild(link);
   };
 
-  const [editedRows, setEditedRows] = useState(scrapingHistory); // duplicate of original data
+  const [editedRows, setEditedRows] = useState([...scrapingHistory]);
+ // duplicate of original data
   // Example pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -537,6 +616,7 @@ export default function Home() {
         const parsed = (data || []).map((entry) => ({
           id: entry.lead_id || entry.id,
           lead_id: entry.lead_id || entry.id,
+          draft_id: entry.draft_id,
           company: entry.draft_data?.company || "N/A",
           website: entry.draft_data?.website || "",
           industry: entry.draft_data?.industry || "",
@@ -958,7 +1038,6 @@ export default function Home() {
                         onCheckedChange={() => handleSelectCompany(row.id)}
                       />
                     </TableCell>
-
                     {[
                       "company",
                       "website",
@@ -1010,11 +1089,11 @@ export default function Home() {
                           key={field}
                           className="px-6 py-2 max-w-[240px] align-top"
                         >
-                          {isEditing ? (
+                          {editingRowIndex === i ? (
                             <input
                               type="text"
                               className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
-                              value={rawValue ?? ""}
+                              value={editedRows[i]?.[field] ?? ""}
                               onChange={(e) =>
                                 handleFieldChange(i, field, e.target.value)
                               }
@@ -1035,30 +1114,30 @@ export default function Home() {
                         </TableCell>
                       );
                     })}
-
+                    {/* // Edit/Save/Discard action buttons: */}
                     <TableCell className="px-6 py-2">
-                      {!isEditing ? (
-                        <span
-                          className="text-blue-500 hover:underline cursor-pointer mr-2"
-                          onClick={() => setIsEditing(true)}
-                        >
-                          Edit
-                        </span>
-                      ) : (
+                      {editingRowIndex === i ? (
                         <>
                           <span
                             className="text-green-500 hover:underline cursor-pointer mr-2"
-                            onClick={handleSave}
+                            onClick={() => handleSave(i)}
                           >
                             Save
                           </span>
                           <span
                             className="text-red-500 hover:underline cursor-pointer"
-                            onClick={handleDiscard}
+                            onClick={() => handleDiscard(i)}
                           >
                             Discard
                           </span>
                         </>
+                      ) : (
+                        <span
+                          className="text-blue-500 hover:underline cursor-pointer mr-2"
+                          onClick={() => setEditingRowIndex(i)}
+                        >
+                          Edit
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -1165,36 +1244,6 @@ export default function Home() {
           </div>
         </div>
         <div className="flex justify-end mt-3 gap-3">
-          {isEditing ? (
-            <>
-              <button
-                onClick={() => {
-                  setEditedRows(scrapingHistory); // reset
-                  setIsEditing(false);
-                }}
-                className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
-              >
-                Discard Changes
-              </button>
-              <button
-                onClick={() => {
-                  // Save edited rows to original state or call API
-                  console.log("Saved:", editedRows);
-                  setIsEditing(false);
-                }}
-                className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
-              >
-                Save Changes
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="bg-[#7ac2a4] text-black px-6 py-2 rounded hover:bg-[#6bb293]"
-            >
-              Edit
-            </button>
-          )}
           <Notif
             show={notif.show}
             message={notif.message}
