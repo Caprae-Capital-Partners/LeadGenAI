@@ -98,70 +98,57 @@ export default function Home() {
       const lead = editedRows[index];
       const leadId = lead.lead_id || lead.id;
       const draftId = lead.draft_id;
-
+  
       const draftData = {
         ...lead,
         user_id: user.id,
       };
-
-      let response;
-
-      if (!draftId) {
-        // First time: Create new draft
-        response = await axios.post(
-          `https://data.capraeleadseekers.site/leads/${leadId}/edit`,
-          draftData,
-          { withCredentials: true }
-        );
-
-        showNotification("Draft created successfully", "success");
-
-        // Try to get new draft_id from server if returned
-        const newDraftId = response.data?.draft?.draft_id;
-
-        // Update local state
-        const updated = [...scrapingHistory];
-        updated[index] = {
-          ...lead,
-          draft_id: newDraftId ?? null,
-          updated: new Date().toLocaleString(),
-        };
-        setScrapingHistory(updated);
-        setEditedRows(updated);
-      } else {
-        // Already has draft_id: update existing draft
+  
+      // ✅ Always call the POST endpoint first
+      const response = await axios.post(
+        `https://data.capraeleadseekers.site/leads/${leadId}/edit`,
+        draftData,
+        { withCredentials: true }
+      );
+  
+      const newDraftId = response.data?.draft?.draft_id;
+  
+      if (draftId || newDraftId) {
+        // ✅ If we already have a draft or got a new one, update it using PUT
         const payload = {
           draft_data: draftData,
           change_summary: "Updated from homepage",
           phase: "draft",
           status: "pending",
         };
-
+  
         await axios.put(
-          `https://data.capraeleadseekers.site/api/leads/drafts/${draftId}`,
+          `https://data.capraeleadseekers.site/api/leads/drafts/${draftId || newDraftId}`,
           payload,
-          {
-            withCredentials: true,
-          }
+          { withCredentials: true }
         );
-
+  
         showNotification("Draft updated successfully", "success");
-
-        const updated = [...scrapingHistory];
-        updated[index] = {
-          ...lead,
-          updated: new Date().toLocaleString(),
-        };
-        setScrapingHistory(updated);
-        setEditedRows(updated);
+      } else {
+        showNotification("Draft created successfully", "success");
       }
-
+  
+      // ✅ Update local state
+      const updated = [...scrapingHistory];
+      updated[index] = {
+        ...lead,
+        draft_id: draftId ?? newDraftId ?? null,
+        updated: new Date().toLocaleString(),
+      };
+      setScrapingHistory(updated);
+      setEditedRows(updated);
       setEditingRowIndex(null);
     } catch (err) {
       console.error("❌ Error saving row:", err);
       showNotification("Failed to save row.", "error");
     }
   };
+  
   
 
   const handleDiscard = (index) => {
