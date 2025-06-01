@@ -75,6 +75,18 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen w-full overflow-auto relative flex flex-col justify-between">
+      <div className="absolute top-8 right-10 z-50">
+        <Button
+          onClick={() =>
+            (window.location.href = "https://app.saasquatchleads.com/auth")
+          }
+          className="px-7 py-3 text-base font-bold bg-yellow-400 text-black hover:bg-yellow-500 transition-all rounded-full shadow-lg leading-none flex items-center justify-center"
+          style={{ height: "48px", minWidth: "120px" }}
+        >
+          Sign Up
+        </Button>
+      </div>
+
       {/* Enhanced gradient background */}
       <div className="fixed inset-0 z-0">
         {/* Main gradient background */}
