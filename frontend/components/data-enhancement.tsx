@@ -1143,78 +1143,88 @@ export function DataEnhancement() {
         </CardContent>
       </Card>
 
-      {loading ? (
-        <div className="flex flex-col items-center py-8">
-          <Loader />
-          <p className="mt-4 text-sm text-muted-foreground">
-            Scraping and enriching data… please wait
-          </p>
-        </div>
-      ) : !mergedView && hasEnrichedOnce ? (
-        <div className="mt-6 space-y-8">
-          {/* ── DATABASE RESULTS ── */}
-          {dbEnrichedCompanies.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Fetched from Database</h2>
-              <EnrichmentResults
-                enrichedCompanies={dbEnrichedCompanies}
-                rowClassName={() => "bg-teal-50"}
-              />
+      {/*
+  Replace the nested ternary with a single block that always renders
+  the fetched and scraped results, and shows a loader banner at the top
+  when loading===true.
+*/}
+      <div className="mt-6 space-y-8">
+        {/* ── LOADER BANNER ── */}
+        {loading && (
+          <div className="flex flex-col items-center py-4">
+            <Loader />
+            <p className="mt-2 text-sm text-muted-foreground">
+              Scraping and enriching data… please wait
+            </p>
+          </div>
+        )}
 
-              {/* … re-enrich button … */}
-              {fromDatabaseLeads.length > 0 && (
-                <div className="mt-3 flex justify-end">
-                  <Button
-                    variant="destructive"
-                    onClick={async () => {
-                      // switch off merged view
-                      setMergedView(false);
-                      // re-select only the DB companies
-                      const toReselect = normalizedLeads.filter(c =>
-                        fromDatabaseLeads.includes(c.company.toLowerCase())
-                      );
-                      setSelectedCompanies(toReselect.map(c => c.id));
-                      await handleStartEnrichment(true, toReselect);
-                    }}
-                  >
-                    Re-enrich those companies
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+        {/* ── DATABASE RESULTS ── */}
+        {!mergedView && hasEnrichedOnce && dbEnrichedCompanies.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Fetched from Database</h2>
+            <EnrichmentResults
+              enrichedCompanies={dbEnrichedCompanies}
+              rowClassName={() => "bg-teal-50"}
+            />
 
-          {/* ── SCRAPED RESULTS ── */}
-          {scrapedEnrichedCompanies.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Freshly Scraped</h2>
-              <EnrichmentResults
-                enrichedCompanies={scrapedEnrichedCompanies}
-                rowClassName={() => "bg-yellow-50"}
-              />
-            </div>
-          )}
+            {/* … re-enrich button … */}
+            {fromDatabaseLeads.length > 0 && !loading && (
+              <div className="mt-3 flex justify-end">
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    setMergedView(false);
+                    const toReselect = normalizedLeads.filter(c =>
+                      fromDatabaseLeads.includes(c.company.toLowerCase())
+                    );
+                    setSelectedCompanies(toReselect.map(c => c.id));
+                    await handleStartEnrichment(true, toReselect);
+                  }}
+                >
+                  Re-enrich those companies
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
-          {/* ── COMBINED TABLE BUTTON ── */}
-          {(dbEnrichedCompanies.length > 0 || scrapedEnrichedCompanies.length > 0) && (
+        {/* ── SCRAPED RESULTS ── */}
+        {!mergedView && hasEnrichedOnce && scrapedEnrichedCompanies.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Freshly Scraped</h2>
+            <EnrichmentResults
+              enrichedCompanies={scrapedEnrichedCompanies}
+              rowClassName={() => "bg-yellow-50"}
+            />
+          </div>
+        )}
+
+        {/* ── COMBINED TABLE BUTTON ── */}
+        {!loading &&
+          !mergedView &&
+          hasEnrichedOnce &&
+          (dbEnrichedCompanies.length > 0 || scrapedEnrichedCompanies.length > 0) && (
             <div className="flex justify-center">
               <Button onClick={() => setMergedView(true)}>
-                Show Combined Table
+                Show The Final Table
               </Button>
             </div>
           )}
-        </div>
-      ) : mergedView && hasEnrichedOnce ? (
-        <div className="mt-6">
-          <h2 className="text-lg font-semibold mb-2">All Enriched Results</h2>
-          <EnrichmentResults
-            enrichedCompanies={[
-              ...dbEnrichedCompanies,
-              ...scrapedEnrichedCompanies,
-            ]}
-          />
-        </div>
-      ) : null}
+
+        {/* ── MERGED VIEW ── */}
+        {mergedView && hasEnrichedOnce && (
+          <div>
+            <h2 className="text-lg font-semibold mt-6 mb-2">All Enriched Results</h2>
+            <EnrichmentResults
+              enrichedCompanies={[
+                ...dbEnrichedCompanies,
+                ...scrapedEnrichedCompanies,
+              ]}
+            />
+          </div>
+        )}
+      </div>
 
       <div className="flex justify-end mb-4">
         <Button
