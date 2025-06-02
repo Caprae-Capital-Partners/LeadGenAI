@@ -551,7 +551,7 @@ export function DataEnhancement() {
       }
 
       // ✅ Step 2: Show DB leads (if not force or override)
-      if (!forceScrape && !overrideCompanies) {
+      if (!forceScrape && !overrideCompanies && dbLeads.length > 0) {
         const tealRows = dbLeads.map(lead =>
           toCamelCase({ ...lead, source_type: "database" })
         );
@@ -575,6 +575,7 @@ export function DataEnhancement() {
               ? uploadRes.data
               : [uploadRes.data];
 
+            // After upload, create drafts and deduct credits for each DB lead
             for (let i = 0; i < payload.length; i++) {
               const originalLead = payload[i];
               const uploaded = uploadedLeads[i] || {};
@@ -588,6 +589,7 @@ export function DataEnhancement() {
               }
               const draftData = { ...originalLead, lead_id };
 
+              // Create or update draft
               try {
                 const res = await axios.post(
                   `${DATABASE_URL}/leads/drafts`,
@@ -611,6 +613,20 @@ export function DataEnhancement() {
                 }
               } catch (err) {
                 console.error("❌ Failed to create draft for DB lead:", err);
+              }
+
+              // Deduct credit for this lead fetched from DB
+              try {
+                await axios.post(
+                  `${DATABASE_URL}/user/deduct_credit/${lead_id}`,
+                  {},
+                  { withCredentials: true }
+                );
+              } catch (deductErr) {
+                console.error(
+                  `❌ Credit deduction failed for DB lead ${lead_id}`,
+                  deductErr
+                );
               }
             }
           } catch (err) {
@@ -735,7 +751,7 @@ export function DataEnhancement() {
             );
           }
 
-          // --- DEDUCT CREDIT FOR THIS LEAD_ID ---
+          // --- DEDUCT CREDIT FOR THIS SCRAPED LEAD_ID ---
           try {
             const lid = finalLead.lead_id;
             if (lid) {
@@ -758,8 +774,8 @@ export function DataEnhancement() {
             source_type: "scraped",
           });
 
-          setScrapedEnrichedCompanies((prev) => [...prev, yellowRow]);
-          await new Promise((r) => setTimeout(r, 150));
+          setScrapedEnrichedCompanies(prev => [...prev, yellowRow]);
+          await new Promise(r => setTimeout(r, 150));
         } catch (err) {
           console.error(`❌ Failed enriching ${company.company}`, err);
         }
@@ -784,6 +800,7 @@ export function DataEnhancement() {
 
     showNotification("Data successfully enriched!");
   };
+  
   
 
 
