@@ -256,8 +256,8 @@ export default function AuthPage() {
             if (result.user) {
                 sessionStorage.setItem("user", JSON.stringify(result.user));
                 showNotification(isSignup ? "Account successfully created!" : "Successfully signed in!");
-                setTimeout(() => {
-                    router.push(isSignup ? "/subscription" : window.location.hostname === "localhost" ? "/" : "https://app.saasquatchleads.com/");
+              setTimeout(() => {
+                router.push(isSignup ? "/subscription" : "/");
                 }, 100);
             }
         } catch (err: any) {

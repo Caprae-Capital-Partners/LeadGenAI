@@ -120,8 +120,7 @@ export function Header() {
 
                     if (res.ok) {
                       sessionStorage.clear(); // ✅ Clear client-side session
-                      window.location.href =
-                        "https://app.saasquatchleads.com/auth"; // ⬅️ Redirect to login
+                      window.location.href = "/auth"; // ⬅️ Redirect to login
                     } else {
                       const data = await res.json();
                       alert(
