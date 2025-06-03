@@ -33,8 +33,8 @@ jobs:
 
             cd LeadGenAI || exit 1
             git remote set-url origin https://github.com/Caprae-Capital-Partners/LeadGenAI.git
-            git fetch origin main
-            git reset --hard origin/main
+            git fetch origin sandbox
+            git reset --hard origin/sandbox
 
             # 🔐 Inject env variables
             echo "${{ secrets.BACKEND_ENV_VARS }}" > .env
