@@ -774,29 +774,29 @@ export default function Home() {
           ].map((stat, index) => (
             <Card
               key={index}
-              className="relative rounded-2xl border shadow-sm px-6 py-5 flex flex-col justify-between h-48"
+              className="relative rounded-2xl border shadow-sm px-6 py-5 flex flex-col justify-between min-h-[12rem]"
             >
-              <CardHeader className="pb-2 relative">
-                <CardDescription className="text-base text-muted-foreground mb-1">
-                  {stat.label}
-                </CardDescription>
-                <CardTitle className="text-4xl font-extrabold text-foreground leading-snug">
-                  {stat.value}
-                </CardTitle>
+              <CardHeader className="pb-2 flex flex-wrap justify-between items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  <CardDescription className="text-base text-muted-foreground mb-1">
+                    {stat.label}
+                  </CardDescription>
+                  <CardTitle className="text-3xl sm:text-4xl font-extrabold text-foreground leading-snug truncate">
+                    {stat.value}
+                  </CardTitle>
+                </div>
 
-                {/* ✅ Top-right Upgrade button */}
                 {stat.label === "Subscription" && stat.action && (
-                  <a
-                    href={stat.action.link}
-                    className="absolute top-0 right-0 mt-3 mr-4"
-                  >
-                    <Button
-                      size="sm"
-                      className="text-sm px-4 py-1.5 font-semibold"
-                    >
-                      {stat.action.label}
-                    </Button>
-                  </a>
+                  <div className="flex-none">
+                    <a href={stat.action.link}>
+                      <Button
+                        size="sm"
+                        className="text-sm px-4 py-1.5 font-semibold"
+                      >
+                        {stat.action.label}
+                      </Button>
+                    </a>
+                  </div>
                 )}
               </CardHeader>
 
