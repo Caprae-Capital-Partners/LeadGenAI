@@ -1,4 +1,4 @@
-name: CD Pipeline (Deploy to Lightsail)
+name: CD Pipeline (Deploy to Lightsail Sandbox)
 
 on:
   push:
