@@ -1,4 +1,4 @@
-from flask import Blueprint, request, redirect, render_template, flash, url_for, jsonify, send_file
+from flask import Blueprint, request, redirect, render_template, flash, url_for, jsonify, send_file, current_app
 from controllers.lead_controller import LeadController
 from controllers.upload_controller import UploadController
 from controllers.export_controller import ExportController
@@ -30,12 +30,18 @@ lead_bp = Blueprint('lead', __name__)
 @login_required
 def index():
     """Redirect to view leads page"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: / by user_id={user_id}, username={username}')
     return redirect(url_for('lead.view_leads'))
 
 @lead_bp.route('/form')
 @login_required
 def form():
     """Display form to add new lead"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /form by user_id={user_id}, username={username}')
     return render_template('form.html')
 
 @lead_bp.route('/submit', methods=['POST'])
@@ -43,11 +49,16 @@ def form():
 @role_required('admin', 'developer')
 def submit():
     """Submit new lead - Admin and Developer only"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /submit by user_id={user_id}, username={username}')
     success, message = LeadController.create_lead(request.form)
 
     if success:
+        current_app.logger.info(f'Lead created successfully: {message}')
         flash(message, 'success')
     else:
+        current_app.logger.warning(f'Failed to create lead: {message}')
         flash(message, 'danger')
 
     return redirect(url_for('lead.view_leads'))
@@ -56,18 +67,26 @@ def submit():
 @login_required
 def upload_page():
     """Display CSV upload page"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /upload_page by user_id={user_id}, username={username}')
     return render_template('upload.html')
 
 @lead_bp.route('/upload', methods=['POST'])
 # #@login_required
 def upload_csv():
     """Handle CSV file upload"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /upload by user_id={user_id}, username={username}')
     if 'file' not in request.files:
+        current_app.logger.warning('No file part in upload request')
         flash('No file part', 'danger')
         return redirect(url_for('lead.upload_page'))
 
     file = request.files['file']
     if file.filename == '':
+        current_app.logger.warning('No selected file in upload request')
         flash('No selected file', 'danger')
         return redirect(url_for('lead.upload_page'))
 
@@ -83,6 +102,7 @@ def upload_csv():
     dynamic_fields = {name: value for name, value in zip(dynamic_field_names, dynamic_field_values) if name and value}
 
     try:
+        current_app.logger.info(f"[Lead] Starting CSV upload: {file.filename}")
         added, skipped_duplicates, skipped_empty_company, errors = UploadController.process_csv_file(
             file,
             name_col,
@@ -93,6 +113,7 @@ def upload_csv():
             last_name_col=last_name_col
         )
         db.session.commit()
+        current_app.logger.info(f"[Lead] Upload complete: Added={added}, Duplicates={skipped_duplicates}, Empty={skipped_empty_company}, Errors={errors}")
 
         # More informative success message
         message = 'Upload Complete! '
@@ -115,6 +136,7 @@ def upload_csv():
         flash(message, 'success')
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"[Lead] Error during upload: {str(e)}")
         flash(f'Error during upload: {str(e)}', 'danger')
 
     return redirect(url_for('lead.view_leads'))
@@ -122,6 +144,9 @@ def upload_csv():
 @lead_bp.route('/view_leads')
 @login_required
 def view_leads():
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /view_leads by user_id={user_id}, username={username}')
     # Ambil parameter dari query string
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
@@ -249,13 +274,18 @@ def view_leads():
 @role_required('admin', 'developer')
 def edit_lead(lead_id):
     """Edit lead - Admin and Developer only"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /edit/{lead_id} by user_id={user_id}, username={username}')
     if request.method == 'POST':
         success, message = LeadController.update_lead(lead_id, request.form)
 
         if success:
+            current_app.logger.info(f'Lead updated successfully: {lead_id}')
             flash(message, 'success')
             return redirect(url_for('lead.view_leads'))
         else:
+            current_app.logger.warning(f'Failed to update lead: {lead_id} - {message}')
             flash(message, 'danger')
 
     lead = LeadController.get_lead_by_id(lead_id)
@@ -265,17 +295,23 @@ def edit_lead(lead_id):
 #@login_required
 def update_status(lead_id):
     """Update lead status - All roles can update status"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /update_status/{lead_id} by user_id={user_id}, username={username}')
     try:
         lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
         new_status = request.form.get('status')
         if new_status:
             lead.status = new_status
             db.session.commit()
+            current_app.logger.info(f'Lead status updated: {lead_id} to {new_status}')
             flash('Status updated successfully', 'success')
         else:
+            current_app.logger.warning(f'No status provided for lead: {lead_id}')
             flash('No status provided', 'danger')
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f'Error updating status for lead {lead_id}: {str(e)}')
         flash(f'Error updating status: {str(e)}', 'danger')
 
     return redirect(url_for('lead.view_leads'))
@@ -285,13 +321,22 @@ def update_status(lead_id):
 @role_required('admin', 'developer', 'user')
 def delete_lead(lead_id):
     """Soft delete lead - Admin and Developer only"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /leads/{lead_id}/delete by user_id={user_id}, username={username}')
     try:
         success, message = LeadController.delete_lead(lead_id, current_user)
+        if success:
+            current_app.logger.info(f'Lead deleted: {lead_id}')
+        else:
+            current_app.logger.warning(f'Failed to delete lead: {lead_id} - {message}')
         return jsonify({'success': success, 'message': message})
     except NotFound:
+        current_app.logger.error(f'Lead not found or already deleted: {lead_id}')
         return jsonify({'success': False, 'message': 'Lead not found or already deleted.'}), 404
     except Exception as e:
         import traceback
+        current_app.logger.error(f'Error deleting lead {lead_id}: {str(e)}')
         print(traceback.format_exc())
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -300,14 +345,23 @@ def delete_lead(lead_id):
 @role_required('admin', 'developer')
 def delete_multiple_leads():
     """Soft delete multiple leads - Admin and Developer only"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /leads/delete-multiple by user_id={user_id}, username={username}')
     try:
         lead_ids = request.json.get('lead_ids', [])
         if not lead_ids:
+            current_app.logger.warning('No leads selected for deletion')
             return jsonify({'success': False, 'message': 'No leads selected'}), 400
         success, message = LeadController.delete_multiple_leads(lead_ids, current_user)
+        if success:
+            current_app.logger.info(f'Multiple leads deleted: {lead_ids}')
+        else:
+            current_app.logger.warning(f'Failed to delete multiple leads: {lead_ids} - {message}')
         return jsonify({'success': success, 'message': message})
     except Exception as e:
         import traceback
+        current_app.logger.error(f'Error deleting multiple leads: {str(e)}')
         print(traceback.format_exc())
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -315,6 +369,9 @@ def delete_multiple_leads():
 #@login_required
 def get_leads():
     """API endpoint to get all leads with pagination, search and filtering"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads [GET] by user_id={user_id}, username={username}')
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
@@ -369,6 +426,7 @@ def get_leads():
         "leads": [lead.to_dict() for lead in paginated_leads.items]
     }
 
+    current_app.logger.info(f"[Lead] API get_leads returned {results['total']} leads.")
     return jsonify(results)
 
 @lead_bp.route('/api/leads', methods=['POST'])
@@ -376,12 +434,16 @@ def get_leads():
 @role_required('admin', 'developer')
 def create_lead():
     """Create a new lead via API - Admin and Developer only"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads [POST] by user_id={user_id}, username={username}')
     data = request.json
 
     company = data.get('company')
     owner_email = data.get('owner_email')
 
     if not company:
+        current_app.logger.warning("[Lead] Attempted to create lead with missing company field")
         return jsonify({"error": "Company field is required"}), 400
 
     # Make case-insensitive search
@@ -394,6 +456,7 @@ def create_lead():
         query = query.filter_by(owner_email=owner_email)
     existing_lead = query.first()
     if existing_lead:
+        current_app.logger.info(f"[Lead] Duplicate lead found for company: {company}, skipping creation.")
         return jsonify({
             "message": "Lead already exists, skipping creation.",
             "lead": existing_lead.to_dict(),
@@ -404,7 +467,7 @@ def create_lead():
     try:
         db.session.add(lead)
         db.session.commit()
-
+        current_app.logger.info(f"[Lead] Lead created successfully: {lead.lead_id}")
         # Verify lead was actually created
         verify_lead = Lead.query.filter_by(lead_id=lead.lead_id).first()
         if not verify_lead:
@@ -418,8 +481,7 @@ def create_lead():
         }), 201
     except Exception as e:
         db.session.rollback()
-        # Log the error for debugging
-        print(f"API create_lead error: {str(e)}")
+        current_app.logger.error(f"[Lead] Error creating lead: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 400
@@ -429,6 +491,9 @@ def create_lead():
 @role_required('admin', 'developer')
 def update_lead_api(lead_id):
     """Update a lead via API - Admin and Developer only"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/{lead_id} [PUT] by user_id={user_id}, username={username}')
     lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
     data = request.json
 
@@ -436,6 +501,7 @@ def update_lead_api(lead_id):
         for key, value in data.items():
             setattr(lead, key, value)
         db.session.commit()
+        current_app.logger.info(f"[Lead] Lead updated via API: {lead_id}")
         if request.is_json:
             return jsonify({'success': True, 'message': 'Lead updated successfully'})
         else:
@@ -443,24 +509,31 @@ def update_lead_api(lead_id):
             return redirect(url_for('lead.view_leads'))
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"[Lead] Error updating lead via API {lead_id}: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 @lead_bp.route('/api/leads/<string:lead_id>/status', methods=['PUT'])
 #@login_required
 def update_status_api(lead_id):
     """Update a lead's status via API - All roles can update status"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/{lead_id}/status [PUT] by user_id={user_id}, username={username}')
     lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
     data = request.json
 
     if 'status' not in data:
+        current_app.logger.warning(f"[Lead] Status field missing in update_status_api for lead {lead_id}")
         return jsonify({"error": "Status field is required"}), 400
 
     try:
         lead.status = data['status']
         db.session.commit()
+        current_app.logger.info(f"[Lead] Status updated via API: {lead_id} to {data['status']}")
         return jsonify({"message": "Status updated successfully", "lead": lead.to_dict()})
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"[Lead] Error updating status via API {lead_id}: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
 @lead_bp.route('/export_leads', methods=['POST'])
@@ -652,20 +725,29 @@ def api_upload_leads():
 @role_required('admin', 'developer')
 def delete_lead_api(lead_id):
     """Soft delete a lead via API - Admin and Developer only"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/{lead_id} [DELETE] by user_id={user_id}, username={username}')
     try:
         # Use the controller method which implements soft delete
         success, message = LeadController.delete_lead(lead_id, current_user=current_user)
         if success:
+            current_app.logger.info(f"[Lead] Lead deleted via API: {lead_id}")
             return jsonify({"message": "Lead successfully deleted"})
         else:
+            current_app.logger.warning(f"[Lead] Failed to delete lead via API: {lead_id} - {message}")
             return jsonify({"error": message}), 400
     except Exception as e:
+        current_app.logger.error(f"[Lead] Error deleting lead via API {lead_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/api/leads/<string:lead_id>', methods=['GET'])
 #@login_required
 def get_lead_by_id(lead_id):
     """Get detail of a single lead by ID"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/{lead_id} [GET] by user_id={user_id}, username={username}')
     try:
         lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first_or_404()
         return jsonify(lead.to_dict())
@@ -850,6 +932,9 @@ def get_top_sources():
 #@login_required
 def restore_lead(lead_id):
     """Restore a soft-deleted lead"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /leads/{lead_id}/restore by user_id={user_id}, username={username}')
     success, message = LeadController.restore_lead(lead_id, current_user)
     return jsonify({'success': success, 'message': message})
 
@@ -857,6 +942,9 @@ def restore_lead(lead_id):
 #@login_required
 def restore_multiple_leads():
     """Restore multiple soft-deleted leads"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /leads/restore-multiple by user_id={user_id}, username={username}')
     lead_ids = request.json.get('lead_ids', [])
     success, message = LeadController.restore_multiple_leads(lead_ids, current_user)
     return jsonify({'success': success, 'message': message})
@@ -865,6 +953,9 @@ def restore_multiple_leads():
 # #@login_required
 def view_deleted_leads():
     """View all soft-deleted leads"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /leads/deleted by user_id={user_id}, username={username}')
     leads = Lead.query.filter_by(deleted=True).order_by(Lead.deleted_at.desc()).all()
     return render_template('deleted_leads.html', leads=leads)
 
@@ -873,6 +964,9 @@ def view_deleted_leads():
 @role_required('admin', 'developer')
 def permanent_delete_lead(lead_id):
     """Permanently delete a lead from the database (hard delete)"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /leads/{lead_id}/permanent-delete by user_id={user_id}, username={username}')
     try:
         lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
         db.session.delete(lead)
@@ -892,6 +986,9 @@ def api_deduct_credit():
     # If we reach this point, the credit_required decorator has already
     # checked the subscription, credits, and successfully deducted 1 credit.
     # So, we just need to return a success response.
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/user/deduct_credit by user_id={user_id}, username={username}')
     return jsonify({
         "status": "success",
         "message": "1 credit deducted successfully.",
@@ -903,6 +1000,9 @@ def api_deduct_credit():
 def api_search_leads():
     data = request.get_json()
     # logging.debug(f"[IN] /api/search_leads data: {data}")
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/lead_scrape by user_id={user_id}, username={username}')
     industry = data.get("industry", "")
     location = data.get("location", "")
     results = LeadController.search_leads_by_industry_location(industry, location, current_user)
@@ -916,6 +1016,9 @@ def api_search_leads():
 def api_search_leads_old():
     data = request.get_json()
     # logging.debug(f"[IN] /api/search_leads data: {data}")
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/lead_scrape_old by user_id={user_id}, username={username}')
     industry = data.get("industry", "")
     location = data.get("location", "")
     results = LeadController.search_leads_by_industry_location_old(industry, location)
@@ -925,10 +1028,14 @@ def api_search_leads_old():
 
 
 @lead_bp.route('/api/industries', methods=['GET'])
-# #@login_required
+@login_required
 def get_industries():
     """Get all unique industries (normalized) for selection in frontend"""
     try:
+        user_id = getattr(current_user, 'user_id', None)
+        username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+        current_app.logger.info(f'Route hit: /api/industires by user_id={user_id}, username={username}')
+
         # Use controller logic if available, else query directly
         industries = LeadController.get_unique_industries() if hasattr(LeadController, 'get_unique_industries') else None
         if industries is None:
@@ -941,11 +1048,13 @@ def get_industries():
             industries = [row[0] for row in industries_query]
         # Normalize: strip, lower, remove duplicates, sort
         normalized = sorted(set(i.strip() for i in industries if i and i.strip()))
+        current_app.logger.info('Search industries successfully')
         return jsonify({
             "total": len(normalized),
             "industries": normalized
         })
     except Exception as e:
+        current_app.logger.info('Search industries failed')
         return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/api/leads/batch', methods=['PUT'])
@@ -1027,6 +1136,9 @@ def api_delete_multiple_leads():
             return jsonify({"status": "error", "message": "No lead_ids provided."}), 400
         # use the same controller
 
+        user_id = getattr(current_user, 'user_id', None)
+        username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+        current_app.logger.info(f'Route hit: /api/leads/delete-multiple by user_id={user_id}, username={username}')
         success, message = LeadController.delete_multiple_leads(lead_ids, current_user)
         if success:
             return jsonify({"status": "success", "message": message or f"{len(lead_ids)} leads deleted successfully"})
@@ -1096,6 +1208,9 @@ def edit_lead_api(lead_id):
     """Edit lead - Admin, Developer, User. Save to EditLeadDraft, not to Lead."""
     from datetime import datetime
     from models.edit_lead_drafts_model import EditLeadDraft
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /leads/{lead_id}/edit by user_id={user_id}, username={username}')
     lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first_or_404()
     if request.is_json:
         data = request.get_json()
@@ -1143,6 +1258,7 @@ def edit_lead_api(lead_id):
             draft.updated_at = datetime.now(timezone.utc)
             draft.phase = 'draft'
         db.session.commit()
+        current_app.logger.info(f"[Lead] Draft saved successfully: {lead_id}")
         if request.is_json or request.headers.get('Accept') == 'application/json':
             return jsonify({'success': True, 'message': 'Draft saved successfully'})
         else:
@@ -1150,6 +1266,7 @@ def edit_lead_api(lead_id):
             return redirect(url_for('lead.view_leads'))
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"[Lead] Error saving draft: {str(e)}")
         import traceback
         print(traceback.format_exc())
         if request.is_json or request.headers.get('Accept') == 'application/json':
@@ -1165,6 +1282,9 @@ def apply_edited_lead(lead_id):
     """Apply changes: finalize the edit, salin data dari draft ke Lead, hapus draft."""
     from models.edit_lead_drafts_model import EditLeadDraft
     from models.lead_model import Lead
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /leads/{lead_id}/apply by user_id={user_id}, username={username}')
     draft = EditLeadDraft.query.filter_by(lead_id=lead_id, is_deleted=False).first()
     lead = Lead.query.filter_by(lead_id=lead_id).first()
     if not draft or not lead:
@@ -1179,9 +1299,11 @@ def apply_edited_lead(lead_id):
                     setattr(lead, key, value)
         db.session.delete(draft)
         db.session.commit()
+        current_app.logger.info(f"[Lead] Changes applied and lead finalized: {lead_id}")
         return jsonify({'success': True, 'message': 'Changes applied and lead finalized.'})
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"[Lead] Error applying changes: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @lead_bp.route('/api/draft/delete', methods=['POST'])
@@ -1190,6 +1312,9 @@ def apply_edited_lead(lead_id):
 def delete_draft_api():
     """Permanently delete a draft by lead_id (API)."""
     from models.edit_lead_drafts_model import EditLeadDraft
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/draft/delete by user_id={user_id}, username={username}')
     data = request.get_json() or {}
     lead_id = data.get('lead_id')
     print('DEBUG: lead_id param:', lead_id)
@@ -1201,16 +1326,21 @@ def delete_draft_api():
         db.session.delete(draft)
         db.session.commit()
         print('DEBUG: draft permanently deleted')
+        current_app.logger.info(f"[Lead] Draft permanently deleted: {lead_id}")
         return jsonify({'success': True, 'message': 'Draft permanently deleted.'})
     except Exception as e:
         db.session.rollback()
         print('DEBUG: error:', e)
+        current_app.logger.error(f"[Lead] Error deleting draft: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @lead_bp.route('/api/leads/multiple', methods=['GET'])
 # @login_required
 def get_leads_by_multiple_ids():
     """Get details of multiple leads by comma-separated IDs in query param 'lead_ids'"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/multiple by user_id={user_id}, username={username}')
     lead_ids_param = request.args.get('lead_ids', '')
     if not lead_ids_param:
         return jsonify({"error": "No lead_ids provided"}), 400
@@ -1294,6 +1424,7 @@ def save_search_results():
         # Save all drafts
         db.session.commit()
 
+        current_app.logger.info(f"[Lead] Saved {len(drafts)} search results as drafts, skipped {len(skipped)} existing drafts")
         return jsonify({
             "message": f"Saved {len(drafts)} search results as drafts, skipped {len(skipped)} existing drafts",
             "search_session_id": search_session_id,
@@ -1311,6 +1442,7 @@ def save_search_results():
 
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"[Lead] Error saving search results: {str(e)}")
         import traceback
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
@@ -1319,6 +1451,9 @@ def save_search_results():
 @login_required
 def get_search_session_drafts(search_session_id):
     """Get all drafts from a specific search session"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/search-session/{search_session_id} by user_id={user_id}, username={username}')
     drafts = UserLeadDraft.query.filter(
         UserLeadDraft.user_id == current_user.user_id,
         UserLeadDraft.is_deleted == False,
@@ -1354,6 +1489,9 @@ def get_search_session_drafts(search_session_id):
 @login_required
 def get_search_drafts():
     """Get drafts by search criteria (industry and/or location)"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/search-drafts by user_id={user_id}, username={username}')
     industry = request.args.get('industry')
     location = request.args.get('location')
 
@@ -1408,6 +1546,9 @@ def get_search_drafts():
 @login_required
 def get_recent_search_sessions():
     """Get recent search sessions with their drafts"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/recent-searches by user_id={user_id}, username={username}')
     limit = request.args.get('limit', 5, type=int)
 
     # Get unique search sessions ordered by most recent
@@ -1451,6 +1592,9 @@ def get_recent_search_sessions():
 @login_required
 def get_user_drafts():
     """Get all drafts for the current user"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/drafts by user_id={user_id}, username={username}')
     drafts = UserLeadDraft.query.filter_by(user_id=current_user.user_id, is_deleted=False).all()
     return jsonify([d.to_dict() for d in drafts])
 
@@ -1458,6 +1602,9 @@ def get_user_drafts():
 @login_required
 def get_draft(draft_id):
     """Get a specific draft by ID"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/drafts/{draft_id} by user_id={user_id}, username={username}')
     draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
     if not draft:
         return jsonify({"error": "Draft not found"}), 404
@@ -1475,6 +1622,9 @@ def deep_merge_dict(original, updates):
 @login_required
 def update_draft(draft_id):
     """Update a specific draft"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/drafts/{draft_id} by user_id={user_id}, username={username}')
     draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
     if not draft:
         return jsonify({"error": "Draft not found"}), 404
@@ -1482,12 +1632,12 @@ def update_draft(draft_id):
     if 'draft_data' in data:
         existing_data = draft.draft_data or {}
         new_data = data['draft_data']
-        
+
         merged = deep_merge_dict(existing_data, new_data)
         draft.draft_data = dict(merged)
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(draft, "draft_data")
-       
+
     if 'change_summary' in data:
         draft.change_summary = data['change_summary']
     draft.updated_at = datetime.now(timezone.utc)
@@ -1499,6 +1649,9 @@ def update_draft(draft_id):
 @login_required
 def delete_draft(draft_id):
     """Soft delete a draft"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/drafts/{draft_id} by user_id={user_id}, username={username}')
     draft = UserLeadDraft.query.filter_by(draft_id=draft_id, is_deleted=False).first()
     if not draft:
         return jsonify({"error": "Draft not found"}), 404
@@ -1510,6 +1663,9 @@ def delete_draft(draft_id):
 @login_required
 def create_draft():
     """Create a new draft"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /api/leads/drafts by user_id={user_id}, username={username}')
     data = request.json
     lead_id = data.get('lead_id')
     draft_data = data.get('draft_data')
@@ -1529,4 +1685,7 @@ def create_draft():
 @login_required
 def view_drafts():
     """Render the drafts view template"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /drafts by user_id={user_id}, username={username}')
     return render_template('leads/view_drafts.html')

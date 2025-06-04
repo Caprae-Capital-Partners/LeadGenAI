@@ -327,16 +327,6 @@ def create_checkout_session():
     response, status_code = SubscriptionController.create_checkout_session(current_user)
     return jsonify(response), status_code
 
-@auth_bp.route('/payment/success')
-@login_required
-def payment_success():
-    return redirect("https://app.saasquatchleads.com")
-
-@auth_bp.route('/payment/cancel')
-@login_required
-def payment_cancel():
-    return redirect("https://app.saasquatchleads.com/subscription")
-
 @auth_bp.route('/manage_subscriptions')
 @login_required
 @role_required('admin')

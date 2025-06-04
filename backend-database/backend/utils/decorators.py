@@ -27,12 +27,16 @@ def role_required(*roles):
     return decorator
 
 def credit_required(cost=1):
-    """Decorator to check if the user has enough credits and deducts them on success."""
+    """Decorator to check if the user has enough credits and deducts them on success, but skips check for non-'user' roles."""
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
                 return jsonify({'status': 'error', 'message': 'Authentication required.'}), 401
+
+            # If the user is not a regular user, skip credit check
+            if hasattr(current_user, 'role') and current_user.role != 'user':
+                return f(*args, **kwargs)
 
             user_id = current_user.get_id()
             user_subscription = UserSubscription.query.filter_by(user_id=user_id).first()
@@ -49,9 +53,6 @@ def credit_required(cost=1):
             response = f(*args, **kwargs)
 
             # If the function executed successfully (didn't raise an exception), deduct credits
-            # We might need more sophisticated checks here depending on the function's return value
-            # or if exceptions are handled internally by the decorated function.
-            # For now, assume success if no exception was raised.
             try:
                 user_subscription.credits_remaining -= cost
                 db.session.commit()
