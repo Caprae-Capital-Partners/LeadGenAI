@@ -72,6 +72,22 @@ class LeadController:
             except:
                 pass
 
+        # Advanced filter for revenue
+        adv_field = args.get('adv_field_0')
+        adv_operator = args.get('adv_operator_0')
+        adv_value = args.get('adv_value_0')
+        if adv_field == 'revenue' and adv_operator and adv_value:
+            try:
+                revenue_val = float(adv_value)
+                if adv_operator == 'less':
+                    query = query.filter(Lead.revenue < revenue_val)
+                elif adv_operator == 'greater':
+                    query = query.filter(Lead.revenue > revenue_val)
+                elif adv_operator == 'equals':
+                    query = query.filter(Lead.revenue == revenue_val)
+            except Exception as e:
+                current_app.logger.error(f"Error parsing advanced revenue filter: {e}")
+
         try:
             leads = query.order_by(Lead.updated_at.desc()).all()
             current_app.logger.info(f"[Lead] Fetched {len(leads)} leads with applied filters.")
