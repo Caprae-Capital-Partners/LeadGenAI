@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Play, CheckCircle } from "lucide-react"
 import { submitLeadForm } from "@/lib/actions"
+import { Card, CardContent } from "@/components/ui/card"
 
 export function LandingPage() {
   const [formState, setFormState] = useState({
@@ -26,9 +27,74 @@ export function LandingPage() {
     const timer1 = setTimeout(() => setVisibleSections((prev) => ({ ...prev, logo: true })), 300)
     const timer2 = setTimeout(() => setVisibleSections((prev) => ({ ...prev, content: true })), 900)
 
+    // Add ActiveCampaign form embed
+    const existing = document.querySelector('script[src*="activehosted.com/f/embed.php"]');
+    if (!existing) {
+      const script = document.createElement("script");
+      script.src = "https://capraecapital.activehosted.com/f/embed.php?id=1";
+      script.charset = "utf-8";
+      script.async = true;
+      document.body.appendChild(script);
+
+      // Add custom styles for the form
+      const style = document.createElement('style');
+      style.textContent = `
+        #_form_1_ {
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        #_form_1_ ._form-title {
+          font-size: 1.5rem !important;
+          font-weight: 600 !important;
+          color: #fff !important;
+          margin-bottom: 1rem !important;
+        }
+        #_form_1_ input[type="text"],
+        #_form_1_ input[type="email"] {
+          background: #1A2438 !important;
+          border: 1px solid #2A3A59 !important;
+          color: #fff !important;
+          padding: 0.75rem 1rem !important;
+          border-radius: 0.5rem !important;
+          transition: all 0.2s !important;
+        }
+        #_form_1_ input[type="text"]:focus,
+        #_form_1_ input[type="email"]:focus {
+          border-color: #4fd1c5 !important;
+          box-shadow: 0 0 0 2px rgba(79, 209, 197, 0.2) !important;
+        }
+        #_form_1_ ._submit {
+          background: linear-gradient(to right, #1bc290, #2ab58b) !important;
+          border: none !important;
+          padding: 0.75rem 1.5rem !important;
+          border-radius: 0.5rem !important;
+          font-weight: 600 !important;
+          width: 100% !important;
+          margin-top: 1rem !important;
+          color: white !important;
+          text-shadow: 0 0 3px rgba(0, 0, 0, 0.3) !important;
+          box-shadow: 0 4px 8px rgba(27, 194, 144, 0.3) !important;
+        }
+        #_form_1_ ._submit:hover {
+          transform: translateY(-1px) !important;
+          box-shadow: 0 6px 12px rgba(27, 194, 144, 0.4) !important;
+        }
+        #_form_1_ label {
+          color: #e2e8f0 !important;
+          font-weight: 500 !important;
+          margin-bottom: 0.5rem !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     return () => {
       clearTimeout(timer1)
       clearTimeout(timer2)
+      const form = document.querySelector("._form_1");
+      if (form) form.innerHTML = "";
     }
   }, [])
 
@@ -185,11 +251,8 @@ export function LandingPage() {
             <div className="flex flex-col lg:flex-row gap-8 lg:gap-24 items-center lg:items-stretch">
               {/* Coming Soon Text */}
               <div className="absolute -top-20 left-0 right-0 text-center">
-                <div
-                  className="inline-block font-bold uppercase text-2xl md:text-4xl tracking-wide"
-                  style={{ color: "rgba(240 , 210, 120, 1)" }}
-                >
-                  COMING SOON
+                <div className="inline-block font-bold text-2xl md:text-4xl tracking-wide bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent">
+                  Transform Your Lead Generation
                 </div>
               </div>
 
@@ -208,148 +271,92 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                <div
-                  className="w-full h-[400px] md:h-[500px] bg-[#070D1A]/90 overflow-hidden shadow-[0_17px_39px_rgba(0,0,0,0.7)] relative border border-[#1E2A40]/40 rounded-xl"
-                  style={{ aspectRatio: "auto" }}
-                >
-                  {!isPlaying && (
-                    <>
-                      <div className="absolute inset-0 flex items-center justify-center z-10">
-                        <Button
-                          size="icon"
-                          className="h-[70px] w-[70px] rounded-full bg-yellow-400 hover:bg-yellow-500 shadow-lg flex items-center justify-center"
-                          onClick={() => setIsPlaying(true)}
-                        >
-                          <Play className="h-9 w-9 text-black" />
-                        </Button>
-                      </div>
-                      <Image
-                        src="/images/thumbnail_promo.png"
-                        alt="SaaSquatch Leads Thumbnail"
-                        width={1408}
-                        height={792}
-                        className="object-cover w-full h-full opacity-50 z-0"
-                      />
-                    </>
-                  )}
-                  {isPlaying && (
-                    <iframe
-                      className="absolute inset-0 w-full h-full rounded-xl"
-                      src="https://www.youtube.com/embed/BanHjKMRRPE?autoplay=1"
-                      title="SaaSquatch Leads Demo Video"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  )}
-                </div>
+                {/* Features List */}
+                <Card className="bg-[#1a1f2e]/50 backdrop-blur-sm border-gray-800 shadow-2xl relative z-10">
+                  <CardContent className="p-8">
+                    <ul className="space-y-8">
+                      <li className="flex items-start">
+                        <div className="flex-shrink-0 bg-teal-500/10 p-3 rounded-xl mr-4">
+                          <svg className="h-6 w-6 text-teal-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 17l4 4 4-4m0-5V3m-8 9a9 9 0 1118 0 9 9 0 01-18 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-gray-100 text-lg">Scraping Leads</span>
+                          <p className="text-gray-400 mt-1">
+                            Instantly gather targeted company and contact data from public sources.
+                          </p>
+                        </div>
+                      </li>
+
+                      <li className="flex items-start">
+                        <div className="flex-shrink-0 bg-teal-500/10 p-3 rounded-xl mr-4">
+                          <svg className="h-6 w-6 text-teal-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 1.343-3 3 0 1.657 1.343 3 3 3s3-1.343 3-3c0-1.657-1.343-3-3-3zm0 0V4m0 7v7m-7-7h14" />
+                          </svg>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-gray-100 text-lg">Enrichment for Lead Details</span>
+                          <p className="text-gray-400 mt-1">
+                            Get enriched profiles: emails, phones, LinkedIn, industry, revenue, and more.
+                          </p>
+                        </div>
+                      </li>
+
+                      <li className="flex items-start">
+                        <div className="flex-shrink-0 bg-teal-500/10 p-3 rounded-xl mr-4">
+                          <svg className="h-6 w-6 text-teal-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-gray-100 text-lg">Save & Export Leads</span>
+                          <p className="text-gray-400 mt-1">
+                            Save your leads to your dashboard and export to CSV or Excel for your workflow.
+                          </p>
+                        </div>
+                      </li>
+
+                      <li className="flex items-start">
+                        <div className="flex-shrink-0 bg-teal-500/10 p-3 rounded-xl mr-4">
+                          <svg className="h-6 w-6 text-teal-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                          </svg>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-gray-100 text-lg">Enterprise Outreach Tools</span>
+                          <p className="text-gray-400 mt-1">
+                            Cold call or email directly from the platform (for enterprise members).
+                          </p>
+                        </div>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Form Section - Now 50% width */}
               <div className="w-full lg:w-1/2 relative flex items-center">
-                {/* Blurred logo background
-                <div className="absolute top-0 right-0 w-[300px] h-[300px] z-0">
-                  <img
-                    src="/images/bg_logo.png" // Replace with your image
-                    alt="Decor"
-                    className="w-full h-full object-contain blur-1.9xl opacity-90 scale-125"
-                  />
-                </div> */}
-
                 <div className="w-full relative z-10">
-                  {isSuccess ? (
-                    <div className="text-center py-5 bg-[#121A2A]/80 rounded-xl border border-[#1E2A40]/40 shadow-xl p-5 backdrop-blur-sm">
-                      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#6366F1]/10">
-                        <CheckCircle className="h-6 w-6 text-[#6366F1]" />
-                      </div>
-                      <h3 className="mt-2.5 text-xl font-medium text-white font-heading">
-                        Thank you!
-                      </h3>
-                      <p className="mt-1.5 text-base text-gray-300">
-                        We've received your information and will contact you
-                        shortly.
-                      </p>
-                      <Button
-                        className="mt-4 bg-primary hover:bg-primary-light shadow-lg shadow-primary/20 h-10 px-5 text-base text-white"
-                        onClick={() => setIsSuccess(false)}
-                      >
-                        Submit another request
-                      </Button>
-                    </div>
-                  ) : (
-                    <form
-                      onSubmit={handleSubmit}
-                      className="space-y-12 bg-[#121A2A]/80 rounded-xl border border-[#1E2A40]/40 shadow-xl p-5 backdrop-blur-sm"
-                    >
-                      <div className="leading-none">
-                        <h2 className="text-xl md:text-2xl font-bold tracking-tight text-yellow-400 text-center mb-1 font-heading">
-                          Book a Demo
-                        </h2>
-                        <p
-                          className="text-sm text-center mt-4 mb-2 italic"
-                          style={{ color: "rgba(250, 240, 200, 0.85)" }}
-                        >
-                          Get Exclusive Early Access
+                  <Card className="bg-[#121A2A]/80 backdrop-blur-sm border-[#1E2A40]/40 shadow-2xl hover:shadow-teal-500/5 transition-all duration-300">
+                    <CardContent className="p-8">
+                      <div className="mb-6">
+                        <h2 className="text-2xl font-bold text-yellow-400 mb-2">Get Early Access</h2>
+                        <p className="text-gray-400">
+                          Join the waitlist and be the first to experience our powerful B2B lead generation platform.
                         </p>
                       </div>
-                      <div className="space-y-1.5">
-                        <Label
-                          htmlFor="name"
-                          className="text-sm font-medium text-yellow-400 font-heading"
-                        >
-                          Name *
-                        </Label>
-                        <Input
-                          id="name"
-                          name="name"
-                          required
-                          value={formState.name}
-                          onChange={handleChange}
-                          className="h-10 rounded-md bg-[#1A2438]/70 border-[#2A3A59]/50 focus:border-[#6366F1] focus:ring-[#6366F1] transition-all text-yellow-400 placeholder:text-yellow-400/50 pl-4"
-                          placeholder="John Doe"
-                        />
+                      
+                      <div className="_form_1"></div>
+                      
+                      <div className="mt-6 flex items-center space-x-3 text-sm text-gray-400">
+                        <svg className="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <span>Your information is secure and will never be shared.</span>
                       </div>
-
-                      <div className="space-y-1.5">
-                        <Label
-                          htmlFor="email"
-                          className="text-sm font-medium text-yellow-400 font-heading"
-                        >
-                          Email *
-                        </Label>
-                        <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          required
-                          value={formState.email}
-                          onChange={handleChange}
-                          className="h-10 rounded-md bg-[#1A2438]/70 border-[#2A3A59]/50 focus:border-[#6366F1] focus:ring-[#6366F1] transition-all text-yellow-400 placeholder:text-yellow-400/50 pl-4"
-                          placeholder="john.doe@example.com"
-                        />
-                      </div>
-
-                      <Button
-                        type="submit"
-                        className="w-full h-11 text-base font-medium transition-all mt-4 font-heading text-white"
-                        style={{
-                          background:
-                            "linear-gradient(to right, #1bc290, #2ab58b)",
-                          boxShadow: "0 4px 8px rgba(27, 194, 144, 0.3)",
-                          textShadow: "0 0 3px rgba(0, 0, 0, 0.3)",
-                        }}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? "Booking..." : "Book"}
-                      </Button>
-                      <p
-                        className="text-sm text-center"
-                        style={{ color: "rgba(250, 240, 200, 0.85)" }}
-                      >
-                        We will never share your information.
-                      </p>
-                    </form>
-                  )}
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             </div>
