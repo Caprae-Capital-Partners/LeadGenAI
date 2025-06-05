@@ -198,17 +198,107 @@ export function LandingPage() {
               visibleSections.logo ? "opacity-100" : "opacity-0"
             }`}
           >
-            {/* Logo Container */}
-            <div className="w-full max-w-[500px] px-4">
-              <div className="relative w-full" style={{ aspectRatio: "1 / 1" }}>
-                <Image
-                  src="/images/logo_vertical.png"
-                  alt="SaaSquatch Logo"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 70vw, 30vw"
-                />
+            <div className="flex flex-col lg:flex-row items-stretch justify-center py-4 mt-10 lg:mt-16">
+              {/* Logo Container */}
+              <div className="w-full max-w-[500px] px-4 flex-shrink-0 flex items-center">
+                <div className="relative w-full" style={{ aspectRatio: "1 / 1" }}>
+                  <Image
+                    src="/images/logo_vertical.png"
+                    alt="SaaSquatch Logo"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 70vw, 30vw"
+                  />
+                </div>
               </div>
+
+              {/* Outreach Description Card */}
+              <Card
+                className="bg-[#1a1f2e]/80 backdrop-blur-sm border-gray-800 shadow-2xl flex items-center transition-all duration-500"
+                style={{
+                  maxHeight: "500px",
+                  width: "fit-content",
+                  maxWidth: "100%",
+                }}
+              >
+                <CardContent className="p-8 w-full h-full overflow-auto">
+                  <ul className="space-y-8">
+                    <li className="flex items-start">
+                      <div className="flex-shrink-0 bg-blue-500/10 p-3 rounded-xl mr-4">
+                        {/* Phone Icon */}
+                        <svg className="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm0 12a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2zm12-12a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zm0 12a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-100 text-lg whitespace-nowrap">
+                          Someone from our Outreach Team will dial all the leads on your list to book meetings
+                        </span>
+                      </div>
+                    </li>
+                    <li className="flex items-start">
+                      <div className="flex-shrink-0 bg-green-500/10 p-3 rounded-xl mr-4">
+                        {/* Calendar Icon */}
+                        <svg className="h-6 w-6 text-green-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <rect width="18" height="18" x="3" y="4" rx="2" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16 2v4M8 2v4M3 10h18" />
+                        </svg>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-100 text-lg whitespace-nowrap">
+                          Team will book appointments on your behalf
+                        </span>
+                        <span className="text-gray-400 block text-sm">(Calendly Link or Doodle required)</span>
+                      </div>
+                    </li>
+                    <li className="flex items-start">
+                      <div className="flex-shrink-0 bg-yellow-500/10 p-3 rounded-xl mr-4">
+                        {/* Target Icon */}
+                        <svg className="h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" />
+                          <circle cx="12" cy="12" r="6" />
+                          <circle cx="12" cy="12" r="2" />
+                        </svg>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-100 text-lg whitespace-nowrap">
+                          Team will identify prospects that are most likely to respond to you
+                        </span>
+                      </div>
+                    </li>
+                    <li className="flex items-start">
+                      <div className="flex-shrink-0 bg-purple-500/10 p-3 rounded-xl mr-4">
+                        {/* Memo/Note Icon */}
+                        <svg className="h-6 w-6 text-purple-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <rect x="4" y="4" width="16" height="16" rx="2" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 8h8M8 12h8M8 16h4" />
+                        </svg>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-100 text-lg whitespace-nowrap">
+                          Final report of all dials, with individual notes about lead.
+                        </span>
+                      </div>
+                    </li>
+                    <li className="flex items-start">
+                      <div className="flex-shrink-0 bg-pink-500/10 p-3 rounded-xl mr-4">
+                        {/* Chart/Bar Icon */}
+                        <svg className="h-6 w-6 text-pink-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <rect x="3" y="12" width="4" height="8" rx="1" />
+                          <rect x="9" y="8" width="4" height="12" rx="1" />
+                          <rect x="15" y="4" width="4" height="16" rx="1" />
+                        </svg>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-100 text-lg whitespace-nowrap">
+                          Most customers average 5-15 new engagements.
+                        </span>
+                        <span className="text-gray-400 block text-sm whitespace-nowrap">(Results may vary depending on industry and region)</span>
+                      </div>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Tagline Text */}
