@@ -327,6 +327,35 @@ def create_checkout_session():
     response, status_code = SubscriptionController.create_checkout_session(current_user)
     return jsonify(response), status_code
 
+@auth_bp.route('/payment/success')
+@login_required
+def payment_success():
+    return redirect("https://app.saasquatchleads.com")
+
+@auth_bp.route('/payment/cancel')
+@login_required
+def payment_cancel():
+    return redirect("https://app.saasquatchleads.com/subscription")
+
+@auth_bp.route('/subscription')
+@login_required
+def subscription_page():
+    """Subscription management page"""
+    from models.user_subscription_model import UserSubscription
+    user_sub = UserSubscription.query.filter_by(user_id=str(current_user.user_id)).first()
+    return render_template('auth/manage_subscriptions.html', 
+                         user_subscription=user_sub, 
+                         current_tier=getattr(current_user, 'tier', 'free'))
+
+@auth_bp.route('/webhook', methods=['POST'])
+def stripe_webhook():
+    """Main Stripe webhook endpoint"""
+    from controllers.subscription_controller import SubscriptionController
+    payload = request.get_data()
+    sig_header = request.headers.get('stripe-signature')
+    response, status_code = SubscriptionController.handle_stripe_webhook(payload, sig_header)
+    return jsonify(response), status_code
+
 @auth_bp.route('/manage_subscriptions')
 @login_required
 @role_required('admin')
@@ -459,3 +488,35 @@ def update_user_info():
         except Exception as log_e:
             print(f"[User Update] Logging failed: {log_e}")
         return jsonify({"error": "No valid fields to update", "details": errors}), 400
+
+@auth_bp.route('/api/auth/payment_cancel')
+@login_required
+def api_payment_cancel():
+    """Handle payment cancellation via API"""
+    response, status_code = SubscriptionController.payment_cancel_handler(current_user)
+    return jsonify(response), status_code
+
+
+@auth_bp.route('/api/auth/update_payment_success')
+@login_required
+def update_payment_success():
+    """Handle successful payment method update"""
+    session_id = request.args.get('session_id')
+    current_app.logger.info(f"[Payment Update] Success for user {current_user.user_id}, session: {session_id}")
+
+    return jsonify({
+        'message': "Payment method updated successfully!",
+        'redirect_url': "https://app.saasquatchleads.com/subscription",
+        'session_id': session_id
+    }), 200
+
+@auth_bp.route('/api/auth/update_payment_cancel')
+@login_required
+def update_payment_cancel():
+    """Handle cancelled payment method update"""
+    current_app.logger.info(f"[Payment Update] Cancelled for user {current_user.user_id}")
+
+    return jsonify({
+        'message': "Payment method update was cancelled.",
+        'redirect_url': "https://app.saasquatchleads.com/subscription"
+    }), 200

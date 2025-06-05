@@ -12,6 +12,8 @@ class SubscriptionController:
     def create_checkout_session(user):
         try:
             current_app.logger.info(f"[Subscription] Incoming create_checkout_session request. User: {getattr(user, 'user_id', None)}, is_authenticated: {getattr(user, 'is_authenticated', None)}")
+            current_app.logger.info(f"[Subscription] Request data: {request.data}")
+            current_app.logger.info(f"[Subscription] Request json: {request.json}")
             plan_type = request.json.get('plan_type')
             current_app.logger.info(f"[Subscription] Extracted plan_type: {plan_type}")
             price_id = current_app.config['STRIPE_PRICES'].get(plan_type)
@@ -20,8 +22,8 @@ class SubscriptionController:
                 return {'error': f'Invalid plan type provided: {plan_type}. Check STRIPE_PRICES config.'}, 400
 
             stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
-            success_url = "https://app.saasquatchleads.com"
-            cancel_url = "https://app.saasquatchleads.com/subscription"
+            success_url = url_for('auth.payment_success', _external=True)
+            cancel_url = url_for('auth.payment_cancel', _external=True)
 
             checkout_session = stripe.checkout.Session.create(
                 line_items=[{
@@ -32,53 +34,14 @@ class SubscriptionController:
                 success_url=success_url,
                 cancel_url=cancel_url,
                 client_reference_id=str(user.user_id),
-                payment_method_types=['card']
+                payment_method_types=['card'],
+                metadata={
+                    'plan_type': plan_type,
+                    'user_id': str(user.user_id)
+                }
             )
             current_app.logger.info(f"[Subscription] Stripe session created successfully for user {user.user_id}, plan {plan_type}")
-            current_app.logger.info(f"commented code for the db updates starts ")
-            current_app.logger.info(f"===================== WEBHOOK FUNCTION IS WORKING, DOING CHANGES IN DB PAYMENT =====================")
-            # --- DB update logic moved to webhook. The following is intentionally commented out ---
-            # Always update or create UserSubscription for the selected plan
-            # user.tier = plan_type
-            # from models.user_subscription_model import UserSubscription
-            # from models.plan_model import Plan
-            # now = datetime.utcnow()
-            # plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
-            # if plan:
-            #     expiration = None
-            #     if plan.credit_reset_frequency == 'monthly':
-            #         expiration = now + relativedelta(months=1)
-            #     elif plan.credit_reset_frequency == 'annual':
-            #         expiration = now + relativedelta(years=1)
-            #     # Upsert logic: update if exists, else create
-            #     user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
-            #     if user_sub:
-            #         user_sub.plan_id = plan.plan_id
-            #         user_sub.plan_name = plan.plan_name
-            #         user_sub.credits_remaining = plan.initial_credits if plan.initial_credits is not None else 0
-            #         user_sub.payment_frequency = plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly'
-            #         user_sub.tier_start_timestamp = now
-            #         user_sub.plan_expiration_timestamp = expiration
-            #         user_sub.username = user.username
-            #         current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
-            #     else:
-            #         new_sub = UserSubscription(
-            #             user_id=user.user_id,
-            #             plan_id=plan.plan_id,
-            #             plan_name=plan.plan_name,
-            #             credits_remaining=plan.initial_credits if plan.initial_credits is not None else 0,
-            #             payment_frequency=plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly',
-            #             tier_start_timestamp=now,
-            #             plan_expiration_timestamp=expiration,
-            #             username=user.username
-            #         )
-            #         db.session.add(new_sub)
-            #         current_app.logger.info(f"[Subscription] Created new UserSubscription for user {user.user_id} with plan {plan_type}.")
-            # else:
-            #     current_app.logger.error(f"[Subscription] Plan {plan_type} not found when updating/creating UserSubscription for user {user.user_id}.")
-            # db.session.commit()
-            # current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier} In db.")
-            # --- End of commented block ---
+            # Database updates will happen in webhook after successful payment verification
             return {'sessionId': checkout_session.id}, 200
         except Exception as e:
             import traceback
@@ -118,9 +81,15 @@ class SubscriptionController:
                 # Only proceed if we have both user_id and plan_type
                 if user_id and plan_type:
                     from models.user_model import User
-                    user = User.query.get(user_id)
+                    user = User.query.get(int(user_id))
                     if user:
                         user.tier = plan_type
+                        # Get subscription ID from the session
+                        subscription_id = session.get('subscription')
+                        customer_id = session.get('customer')
+                        
+                        current_app.logger.info(f"[Webhook] Processing checkout completion - subscription_id: {subscription_id}, customer_id: {customer_id}")
+                        
                         # Upsert UserSubscription as in create_checkout_session
                         from models.user_subscription_model import UserSubscription
                         from models.plan_model import Plan
@@ -128,19 +97,7 @@ class SubscriptionController:
                         from dateutil.relativedelta import relativedelta
                         from datetime import datetime
                         now = datetime.utcnow()
-                        # Map plan_type to correct plan name in database
-                        plan_name_mapping = {
-                            'bronze_annual': 'Bronze_Annual',
-                            'silver_annual': 'Silver_Annual',
-                            'gold_annual': 'Gold_Annual',
-                            'platinum_annual': 'Platinum_Annual',
-                            'bronze': 'Bronze',
-                            'silver': 'Silver',
-                            'gold': 'Gold',
-                            'platinum': 'Platinum'
-                        }
-                        mapped_plan_name = plan_name_mapping.get(plan_type, plan_type)
-                        plan = Plan.query.filter(func.lower(Plan.plan_name) == mapped_plan_name.lower()).first()
+                        plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
                         if plan:
                             expiration = None
                             if plan.credit_reset_frequency == 'monthly':
@@ -156,7 +113,10 @@ class SubscriptionController:
                                 user_sub.tier_start_timestamp = now
                                 user_sub.plan_expiration_timestamp = expiration
                                 user_sub.username = user.username
-                                current_app.logger.info(f"[Webhook] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
+                                user_sub.stripe_subscription_id = subscription_id
+                                user_sub.stripe_customer_id = customer_id
+                                user_sub.cancel_at_period_end = False
+                                current_app.logger.info(f"[Webhook] UserSubscription for user {user.user_id} updated to plan {plan_type} with subscription_id {subscription_id}.")
                             else:
                                 new_sub = UserSubscription(
                                     user_id=user.user_id,
@@ -166,12 +126,15 @@ class SubscriptionController:
                                     payment_frequency=plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly',
                                     tier_start_timestamp=now,
                                     plan_expiration_timestamp=expiration,
-                                    username=user.username
+                                    username=user.username,
+                                    stripe_subscription_id=subscription_id,
+                                    stripe_customer_id=customer_id,
+                                    cancel_at_period_end=False
                                 )
                                 db.session.add(new_sub)
-                                current_app.logger.info(f"[Webhook] Created new UserSubscription for user {user.user_id} with plan {plan_type}.")
+                                current_app.logger.info(f"[Webhook] Created new UserSubscription for user {user.user_id} with plan {plan_type} and subscription_id {subscription_id}.")
                             db.session.commit()
-                            current_app.logger.info(f"[Webhook] User {user.user_id} tier updated to {user.tier} In db.")
+                            current_app.logger.info(f"[Webhook] User {user.user_id} tier updated to {user.tier} with subscription_id {subscription_id} stored in db.")
                         else:
                             current_app.logger.error(f"[Webhook] Plan {plan_type} not found when updating/creating UserSubscription for user {user.user_id}.")
                     else:
@@ -184,11 +147,27 @@ class SubscriptionController:
                 user_id = session.get('client_reference_id')
                 if user_id:
                     from models.user_model import User
-                    user = User.query.get(user_id)
+                    user = User.query.get(int(user_id))
                     if user:
                         user.tier = 'free'
                         db.session.commit()
                         current_app.logger.info(f"Reset user {user_id} to free tier due to payment failure")
+
+            elif event['type'] == 'customer.subscription.created':
+                subscription = event['data']['object']
+                SubscriptionController._handle_subscription_created(subscription)
+
+            elif event['type'] == 'customer.subscription.updated':
+                subscription = event['data']['object']
+                SubscriptionController._handle_subscription_updated(subscription)
+
+            elif event['type'] == 'customer.subscription.deleted':
+                subscription = event['data']['object']
+                SubscriptionController._handle_subscription_canceled(subscription)
+
+            elif event['type'] == 'setup_intent.succeeded':
+                setup_intent = event['data']['object']
+                SubscriptionController.handle_payment_method_update(setup_intent)
 
             # Add other Stripe event types as needed (e.g., invoice.payment_failed for recurring payments)
 
@@ -212,7 +191,7 @@ class SubscriptionController:
                 current_app.logger.warning("No user_id found in session")
                 return
 
-            user = User.query.get(user_id)
+            user = User.query.get(int(user_id))
             if not user:
                 current_app.logger.warning(f"User {user_id} not found")
                 return
@@ -230,11 +209,7 @@ class SubscriptionController:
                 current_app.config['STRIPE_PRICES']['gold']: 'gold',
                 current_app.config['STRIPE_PRICES']['silver']: 'silver',
                 current_app.config['STRIPE_PRICES']['bronze']: 'bronze',
-                current_app.config['STRIPE_PRICES']['platinum']: 'platinum', # Added Platinum tier
-                current_app.config['STRIPE_PRICES']['bronze_annual']: 'bronze_annual',
-                current_app.config['STRIPE_PRICES']['silver_annual']: 'silver_annual',
-                current_app.config['STRIPE_PRICES']['gold_annual']: 'gold_annual',
-                current_app.config['STRIPE_PRICES']['platinum_annual']: 'platinum_annual',
+                current_app.config['STRIPE_PRICES']['platinum']: 'platinum' # Added Platinum tier
             }
 
             new_tier = price_to_tier.get(price_id)
@@ -246,12 +221,13 @@ class SubscriptionController:
             # Update the user's tier instead of subscription_tier
             user.tier = new_tier
             db.session.commit()
-            current_app.logger.info(f"Successfully updated user {user_id} to tier {new_tier}")
+            print(f"Successfully updated user {user_id} to tier {new_tier}")
 
         except Exception as e:
-            current_app.logger.info(f" changes not commited error ")
+            print(f" changes is commited ")
             current_app.logger.error(f"Error handling successful payment for session {session.id}: {str(e)}")
             db.session.rollback()
+
 
     @staticmethod
     def get_current_user_subscription_info(user):
@@ -324,3 +300,334 @@ class SubscriptionController:
             'message': 'Payment cancelled. You can choose a plan when you are ready.',
             'redirect_url': 'https://app.saasquatchleads.com/subscription'
         }, 200
+
+    @staticmethod
+    def _handle_subscription_created(subscription):
+        """
+        Handle new subscription creation - ensure stripe_subscription_id is stored
+        """
+        try:
+            customer_id = subscription.get('customer')
+            subscription_id = subscription.get('id')
+            
+            current_app.logger.info(f"[Webhook] New subscription created {subscription_id} for customer {customer_id}")
+            
+            # Find user by customer ID
+            from models.user_subscription_model import UserSubscription
+            
+            user_sub = UserSubscription.query.filter_by(stripe_customer_id=customer_id).first()
+            if user_sub and not user_sub.stripe_subscription_id:
+                user_sub.stripe_subscription_id = subscription_id
+                db.session.commit()
+                current_app.logger.info(f"[Webhook] Updated UserSubscription with stripe_subscription_id {subscription_id} for user {user_sub.user_id}")
+            else:
+                current_app.logger.warning(f"[Webhook] UserSubscription not found or already has subscription_id for customer {customer_id}")
+                
+        except Exception as e:
+            current_app.logger.error(f"[Webhook] Error handling subscription creation: {str(e)}")
+
+    @staticmethod
+    def _handle_subscription_updated(subscription):
+        """
+        Handle subscription updates, particularly when cancel_at_period_end is set or pause_collection changes
+        """
+        try:
+            customer_id = subscription.get('customer')
+            cancel_at_period_end = subscription.get('cancel_at_period_end', False)
+            subscription_id = subscription.get('id')
+            pause_collection = subscription.get('pause_collection')
+            
+            current_app.logger.info(f"[Webhook] Subscription updated for customer {customer_id}, cancel_at_period_end: {cancel_at_period_end}, pause_collection: {pause_collection}")
+            
+            # Find user by subscription ID
+            from models.user_subscription_model import UserSubscription
+            
+            user_sub = UserSubscription.query.filter_by(stripe_subscription_id=subscription_id).first()
+            if user_sub:
+                user_sub.cancel_at_period_end = cancel_at_period_end
+                
+                # Handle pause collection updates
+                if pause_collection and pause_collection.get('behavior'):
+                    user_sub.is_paused = True
+                    user_sub.pause_behavior = pause_collection.get('behavior')
+                    user_sub.pause_resumes_at = pause_collection.get('resumes_at')
+                    current_app.logger.info(f"[Webhook] Subscription {subscription_id} paused with behavior {pause_collection.get('behavior')} for user {user_sub.user_id}")
+                else:
+                    user_sub.is_paused = False
+                    user_sub.pause_behavior = None
+                    user_sub.pause_resumes_at = None
+                    current_app.logger.info(f"[Webhook] Subscription {subscription_id} unpaused for user {user_sub.user_id}")
+                
+                db.session.commit()
+                
+                if cancel_at_period_end:
+                    current_app.logger.info(f"[Webhook] Subscription {subscription_id} scheduled for cancellation at period end for user {user_sub.user_id}")
+                else:
+                    current_app.logger.info(f"[Webhook] Subscription {subscription_id} cancellation was stopped for user {user_sub.user_id}")
+            else:
+                current_app.logger.warning(f"[Webhook] UserSubscription not found for updated subscription {subscription_id}")
+                
+        except Exception as e:
+            current_app.logger.error(f"[Webhook] Error handling subscription update: {str(e)}")
+
+    @staticmethod
+    def _handle_subscription_canceled(subscription):
+        """
+        Handle subscription cancellation - reset user to free tier
+        """
+        try:
+            customer_id = subscription.get('customer')
+            subscription_id = subscription.get('id')
+            
+            current_app.logger.info(f"[Webhook] Subscription {subscription_id} canceled for customer {customer_id}")
+            
+            # Find user by subscription ID
+            from models.user_subscription_model import UserSubscription
+            from models.user_model import User
+            
+            user_sub = UserSubscription.query.filter_by(stripe_subscription_id=subscription_id).first()
+            if user_sub:
+                user = User.query.get(user_sub.user_id)
+                if user:
+                    user.tier = 'free'
+                    user_sub.credits_remaining = 0
+                    user_sub.plan_name = 'free'
+                    user_sub.cancel_at_period_end = False
+                    db.session.commit()
+                    current_app.logger.info(f"[Webhook] Reset user {user.user_id} to free tier due to subscription cancellation")
+                else:
+                    current_app.logger.warning(f"[Webhook] User not found for subscription {subscription_id}")
+            else:
+                current_app.logger.warning(f"[Webhook] UserSubscription not found for canceled subscription {subscription_id}")
+            
+        except Exception as e:
+            current_app.logger.error(f"[Webhook] Error handling subscription cancellation: {str(e)}")
+
+    @staticmethod
+    def pause_subscription(user, subscription_id=None, behavior='void', resumes_at=None):
+        """
+        Pause user's subscription with specified behavior
+        """
+        try:
+            stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
+            
+            if not subscription_id:
+                # Get subscription ID from user's subscription record
+                from models.user_subscription_model import UserSubscription
+                user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+                if user_sub and user_sub.stripe_subscription_id:
+                    subscription_id = user_sub.stripe_subscription_id
+                else:
+                    current_app.logger.error(f"[Subscription] No subscription_id found for user {user.user_id}")
+                    return {'error': 'No active subscription found'}, 404
+            
+            # Prepare pause collection parameters
+            pause_collection = {'behavior': behavior}
+            if resumes_at:
+                pause_collection['resumes_at'] = resumes_at
+            
+            # Pause the subscription
+            subscription = stripe.Subscription.modify(
+                subscription_id,
+                pause_collection=pause_collection
+            )
+            
+            # Update local database
+            from models.user_subscription_model import UserSubscription
+            user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+            if user_sub:
+                user_sub.is_paused = True
+                user_sub.pause_behavior = behavior
+                user_sub.pause_resumes_at = resumes_at
+                db.session.commit()
+            
+            current_app.logger.info(f"[Subscription] Paused subscription {subscription_id} with behavior {behavior}")
+            return {
+                'message': f'Subscription paused successfully with {behavior} behavior',
+                'is_paused': True,
+                'pause_behavior': behavior,
+                'resumes_at': resumes_at
+            }, 200
+                
+        except stripe.error.InvalidRequestError as e:
+            current_app.logger.error(f"[Subscription] Invalid subscription pause request: {str(e)}")
+            return {'error': 'Invalid subscription or already paused'}, 400
+        except Exception as e:
+            current_app.logger.error(f"[Subscription] Error pausing subscription: {str(e)}")
+            return {'error': 'Error pausing subscription'}, 500
+
+    @staticmethod
+    def resume_subscription(user, subscription_id=None):
+        """
+        Resume user's paused subscription
+        """
+        try:
+            stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
+            
+            if not subscription_id:
+                # Get subscription ID from user's subscription record
+                from models.user_subscription_model import UserSubscription
+                user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+                if user_sub and user_sub.stripe_subscription_id:
+                    subscription_id = user_sub.stripe_subscription_id
+                else:
+                    current_app.logger.error(f"[Subscription] No subscription_id found for user {user.user_id}")
+                    return {'error': 'No active subscription found'}, 404
+            
+            # Resume the subscription by unsetting pause_collection
+            subscription = stripe.Subscription.modify(
+                subscription_id,
+                pause_collection=''
+            )
+            
+            # Update local database
+            from models.user_subscription_model import UserSubscription
+            user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+            if user_sub:
+                user_sub.is_paused = False
+                user_sub.pause_behavior = None
+                user_sub.pause_resumes_at = None
+                db.session.commit()
+            
+            current_app.logger.info(f"[Subscription] Resumed subscription {subscription_id}")
+            return {
+                'message': 'Subscription resumed successfully',
+                'is_paused': False
+            }, 200
+                
+        except stripe.error.InvalidRequestError as e:
+            current_app.logger.error(f"[Subscription] Invalid subscription resume request: {str(e)}")
+            return {'error': 'Invalid subscription or not paused'}, 400
+        except Exception as e:
+            current_app.logger.error(f"[Subscription] Error resuming subscription: {str(e)}")
+            return {'error': 'Error resuming subscription'}, 500
+
+    @staticmethod
+    def create_update_payment_session(user):
+        """
+        Create a Checkout session in setup mode to update payment method
+        """
+        try:
+            stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
+            
+            # Get user's subscription info
+            from models.user_subscription_model import UserSubscription
+            user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+            
+            if not user_sub or not user_sub.stripe_customer_id:
+                current_app.logger.error(f"[Subscription] No customer ID found for user {user.user_id}")
+                return {'error': 'No active subscription found'}, 404
+            
+            success_url = url_for('auth.update_payment_success', _external=True) + '?session_id={CHECKOUT_SESSION_ID}'
+            cancel_url = url_for('auth.update_payment_cancel', _external=True)
+            
+            # Create setup mode checkout session
+            checkout_session = stripe.checkout.Session.create(
+                mode='setup',
+                customer=user_sub.stripe_customer_id,
+                payment_method_types=['card'],
+                success_url=success_url,
+                cancel_url=cancel_url,
+                setup_intent_data={
+                    'metadata': {
+                        'subscription_id': user_sub.stripe_subscription_id,
+                        'user_id': str(user.user_id),
+                        'customer_id': user_sub.stripe_customer_id
+                    }
+                }
+            )
+            
+            current_app.logger.info(f"[Subscription] Setup session created for user {user.user_id}")
+            return {'sessionId': checkout_session.id}, 200
+            
+        except Exception as e:
+            current_app.logger.error(f"[Subscription] Error creating update payment session: {str(e)}")
+            return {'error': 'Error creating payment update session'}, 500
+
+    @staticmethod
+    def handle_payment_method_update(setup_intent):
+        """
+        Handle payment method update after successful setup
+        """
+        try:
+            stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
+            
+            metadata = setup_intent.get('metadata', {})
+            customer_id = metadata.get('customer_id')
+            subscription_id = metadata.get('subscription_id')
+            user_id = metadata.get('user_id')
+            payment_method_id = setup_intent.get('payment_method')
+            
+            if not all([customer_id, subscription_id, payment_method_id]):
+                current_app.logger.error(f"[Subscription] Missing required data in setup intent metadata")
+                return
+            
+            # Update the subscription's default payment method
+            stripe.Subscription.modify(
+                subscription_id,
+                default_payment_method=payment_method_id
+            )
+            
+            # Also update customer's default payment method for future invoices
+            stripe.Customer.modify(
+                customer_id,
+                invoice_settings={'default_payment_method': payment_method_id}
+            )
+            
+            current_app.logger.info(f"[Subscription] Updated payment method for user {user_id}, subscription {subscription_id}")
+            
+        except Exception as e:
+            current_app.logger.error(f"[Subscription] Error updating payment method: {str(e)}")
+
+    @staticmethod
+    def cancel_subscription(user, subscription_id=None, cancel_at_period_end=True):
+        """
+        Cancel user's subscription either immediately or at period end
+        """
+        try:
+            stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
+            
+            if not subscription_id:
+                # Get subscription ID from user's subscription record
+                from models.user_subscription_model import UserSubscription
+                user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+                if user_sub and user_sub.stripe_subscription_id:
+                    subscription_id = user_sub.stripe_subscription_id
+                else:
+                    current_app.logger.error(f"[Subscription] No subscription_id found for user {user.user_id}")
+                    return {'error': 'No active subscription found'}, 404
+            
+            if cancel_at_period_end:
+                # Schedule cancellation at period end
+                subscription = stripe.Subscription.modify(
+                    subscription_id,
+                    cancel_at_period_end=True
+                )
+                current_app.logger.info(f"[Subscription] Scheduled cancellation for subscription {subscription_id} at period end")
+                return {
+                    'message': 'Subscription will be canceled at the end of the current billing period',
+                    'cancel_at_period_end': True,
+                    'current_period_end': subscription.current_period_end
+                }, 200
+            else:
+                # Cancel immediately
+                subscription = stripe.Subscription.cancel(subscription_id)
+                # Update user tier immediately
+                user.tier = 'free'
+                user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+                if user_sub:
+                    user_sub.credits_remaining = 0
+                    user_sub.plan_name = 'free'
+                db.session.commit()
+                current_app.logger.info(f"[Subscription] Immediately canceled subscription {subscription_id}")
+                return {
+                    'message': 'Subscription canceled immediately',
+                    'canceled_at': subscription.canceled_at
+                }, 200
+                
+        except stripe.error.InvalidRequestError as e:
+            current_app.logger.error(f"[Subscription] Invalid subscription cancellation request: {str(e)}")
+            return {'error': 'Invalid subscription or already canceled'}, 400
+        except Exception as e:
+            current_app.logger.error(f"[Subscription] Error canceling subscription: {str(e)}")
+            return {'error': 'Error canceling subscription'}, 500
