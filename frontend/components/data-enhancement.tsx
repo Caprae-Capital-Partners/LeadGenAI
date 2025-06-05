@@ -400,44 +400,37 @@ export function DataEnhancement() {
   }
 
   const buildEnrichedCompany = (company: any, growjo: any, apollo: any, person: any) => {
+    // ── Step 1: Simplify cleanVal to only treat truly empty/null/undefined as “missing” ──
     const cleanVal = (val: any) => {
-      const s = (val || "").toString().trim().toLowerCase();
-
-      const isObscuredEmail = /^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*");
-
-      return (
-        ["", "na", "n/a", "none", "not", "found", "not found", "n.a.", "email_not_unlocked@domain.com"].includes(s) ||
-        isObscuredEmail
-      )
-        ? null
-        : val.toString().trim();
+      if (val === null || val === undefined) return null;
+      const s = val.toString().trim();
+      return s === "" ? null : s;
     };
 
+    // preferValue: take the first “non-empty” (cleanVal ≠ null) in (g, a), otherwise fallback
+    const preferValue = (g: any, a: any, fallback: any = "") =>
+      cleanVal(g) ?? cleanVal(a) ?? fallback;
 
-    const preferValue = (g: any, a: any, fallback: any = "") => cleanVal(g) ?? cleanVal(a) ?? fallback
-
-    const splitGrowjoName = (() => {
-      const raw = growjo.decider_name || ""
-      const clean = raw.toString().trim().toLowerCase()
-      if (["", "na", "n/a", "none", "not", "found", "not found"].includes(clean)) return []
-      return raw.split(" ")
-    })()
-    const growjoFirstName = splitGrowjoName[0] || ""
-    const growjoLastName = splitGrowjoName.slice(1).join(" ") || ""
+    // ── Step 2: Pull ownerFirstName / ownerLastName directly from backend fields ──
+    // (These fields are always non‐empty when returned, because backend supplies a
+    // friendly fallback sentence instead of an empty string.)
+    const growjoFirstName = growjo.ownerFirstName ?? "";
+    const growjoLastName = growjo.ownerLastName ?? "";
 
     const decider = {
       firstName: preferValue(growjoFirstName, person.first_name),
       lastName: preferValue(growjoLastName, person.last_name),
-      email: preferValue(growjo.decider_email, person.email),
-      phone: preferValue(growjo.decider_phone, person.phone_number),
-      linkedin: preferValue(growjo.decider_linkedin, person.linkedin_url),
-      title: preferValue(growjo.decider_title, person.title),
-    }
+      email: preferValue(growjo.ownerEmail, person.email),
+      phone: preferValue(growjo.ownerPhoneNumber, person.phone_number),
+      linkedin: preferValue(growjo.ownerLinkedin, person.linkedin_url),
+      title: preferValue(growjo.ownerTitle, person.title),
+    };
 
+    // ── Step 3: Build the final object, always using preferValue for each field ──
     return {
-      company: preferValue(growjo.company_name, company.company),
-      website: preferValue(growjo.company_website, apollo.website_url, company.website),
-      industry: preferValue(growjo.industry, apollo.industry, company.industry),
+      company: company.company,
+      website: preferValue(company.website, growjo.company_website, apollo.website_url),
+      industry: company.industry,
       productCategory: preferValue(
         growjo.interests,
         Array.isArray(apollo.keywords) ? apollo.keywords.join(", ") : apollo.keywords
@@ -452,16 +445,20 @@ export function DataEnhancement() {
       street: company.street || "",
       companyPhone: company.business_phone,
       companyLinkedin: preferValue("", apollo.linkedin_url),
+
       ownerFirstName: decider.firstName,
       ownerLastName: decider.lastName,
       ownerTitle: decider.title,
       ownerEmail: decider.email,
       ownerPhoneNumber: decider.phone,
       ownerLinkedin: decider.linkedin,
-      source: getSource(growjo, apollo, person),
-    }
 
-  }
+      source: getSource(growjo, apollo, person),
+    };
+  };
+  
+
+
   const toCamelCase = (lead: any): EnrichedCompany => ({
     id: lead.id || `${lead.company}-${Math.random()}`,
     lead_id: lead.lead_id,
@@ -514,7 +511,7 @@ export function DataEnhancement() {
       const lead_ids = selected.map(c => c.lead_id).filter(Boolean);
       const queryString = lead_ids.join(",");
 
-      // ✅ Step 1: Check credits (enough to cover all selected items)
+      // ── Step 1: Check credits ──
       try {
         const { data: subscriptionInfo } = await axios.get(
           `${DATABASE_URL}/user/subscription_info`,
@@ -523,7 +520,6 @@ export function DataEnhancement() {
 
         const availableCredits = subscriptionInfo?.subscription?.credits_remaining ?? 0;
         const requiredCredits = selected.length;
-
         if (availableCredits < requiredCredits) {
           setShowTokenPopup(true);
           setLoading(false);
@@ -536,7 +532,7 @@ export function DataEnhancement() {
         return;
       }
 
-      // Fetch any existing enriched leads from DB
+      // ── Step 2: Fetch existing DB leads ──
       let existingNames = new Set<string>();
       let dbLeads: any[] = [];
 
@@ -550,7 +546,7 @@ export function DataEnhancement() {
         setFromDatabaseLeads(Array.from(existingNames));
       }
 
-      // ✅ Step 2: Show DB leads (if not force or override)
+      // ── Step 3: Show DB results if any ──
       if (!forceScrape && !overrideCompanies && dbLeads.length > 0) {
         const tealRows = dbLeads.map(lead =>
           toCamelCase({ ...lead, source_type: "database" })
@@ -558,7 +554,7 @@ export function DataEnhancement() {
         setDbEnrichedCompanies(tealRows);
         setShowResults(true);
 
-        // Upload DB leads again and create drafts as needed
+        // Upload & create drafts for each DB lead
         const payload = dbLeads
           .filter(l => !!l.lead_id)
           .map(l => ({ ...l, user_id }));
@@ -575,7 +571,6 @@ export function DataEnhancement() {
               ? uploadRes.data
               : [uploadRes.data];
 
-            // After upload, create drafts and deduct credits for each DB lead
             for (let i = 0; i < payload.length; i++) {
               const originalLead = payload[i];
               const uploaded = uploadedLeads[i] || {};
@@ -603,7 +598,6 @@ export function DataEnhancement() {
                     withCredentials: true,
                   }
                 );
-
                 const draft_id = res.data?.draft_id;
                 if (draft_id) {
                   draftMap[lead_id] = {
@@ -615,7 +609,7 @@ export function DataEnhancement() {
                 console.error("❌ Failed to create draft for DB lead:", err);
               }
 
-              // Deduct credit for this lead fetched from DB
+              // Deduct credit for this DB lead
               try {
                 await axios.post(
                   `${DATABASE_URL}/user/deduct_credit/${lead_id}`,
@@ -635,16 +629,46 @@ export function DataEnhancement() {
         }
       }
 
-      // ✅ Step 3: Proceed with scraping only for those not in DB
+      // ── Step 4: Determine “toScrape” ──
       const toScrape = forceScrape
         ? selected
         : selected.filter(c => !existingNames.has(c.company.toLowerCase()));
 
+      // ── Step 5: If any need scraping, check/init the scraper ──
+      if (toScrape.length > 0) {
+        let isInitialized = false;
+
+        try {
+          const isResp = await axios.get(`${BACKEND_URL}/is-growjo-scraper`);
+          isInitialized = isResp.data.initialized;
+        } catch (err) {
+          console.error("❌ Error checking GrowjoScraper status:", err);
+        }
+
+        if (!isInitialized) {
+          // Show a persistent “please wait…” notification
+          showNotification("Initializing scraper, please wait...", "info");
+
+          try {
+            await axios.post(`${BACKEND_URL}/init-growjo-scraper`);
+            console.log("✅ GrowjoScraper initialized.");
+          } catch (initErr) {
+            console.error("❌ Failed to initialize GrowjoScraper:", initErr);
+            setNotif(prev => ({ ...prev, show: false }));
+            setLoading(false);
+            alert("Unable to start Growjo scraper. Please try again later.");
+            return;
+          }
+
+          // Hide that “Initializing…” notification now that init is done
+          setNotif(prev => ({ ...prev, show: false }));
+        }
+      }
+
+      // ── Step 6: Loop through “toScrape” ──
       for (const company of toScrape) {
         try {
           const lead_id_before = company.lead_id || "";
-
-          // --- SCRAPER APIS ---
           const headers = { headers: { "Content-Type": "application/json" } };
 
           const growjo = (
@@ -665,7 +689,7 @@ export function DataEnhancement() {
 
           const entry = buildEnrichedCompany(company, growjo, apollo, person);
 
-          // --- UPLOAD_LEADS ---
+          // --- Upload + draft + credit-deduction logic identical to earlier version ---
           const normalizeValue = (v: any) => {
             const s = (v ?? "").toString().trim().toLowerCase();
             const isBad =
@@ -682,9 +706,13 @@ export function DataEnhancement() {
             industry: normalizeValue(entry.industry),
             product_category: normalizeValue(entry.productCategory),
             business_type: normalizeValue(entry.businessType),
-            employees: typeof entry.employees === "number" ? entry.employees : parseInt(entry.employees) || 0,
+            employees: typeof entry.employees === "number"
+              ? entry.employees
+              : parseInt(entry.employees) || 0,
             revenue: normalizeValue(entry.revenue),
-            year_founded: typeof entry.yearFounded === "number" ? entry.yearFounded : parseInt(entry.yearFounded) || 0,
+            year_founded: typeof entry.yearFounded === "number"
+              ? entry.yearFounded
+              : parseInt(entry.yearFounded) || 0,
             bbb_rating: normalizeValue(entry.bbbRating),
             street: normalizeValue(entry.street),
             city: normalizeValue(entry.city),
@@ -711,18 +739,16 @@ export function DataEnhancement() {
 
             const detailedResults = uploadRes.data?.stats?.detailed_results ?? [];
             const leadFromResponse = detailedResults[0] || {};
-
-            // If original lead_id was empty, use the one returned
             if (!validLead.lead_id && leadFromResponse.lead_id) {
               finalLead = { ...validLead, lead_id: leadFromResponse.lead_id };
             }
 
-            showNotification("Data successfully enriched!");
+            // showNotification("Data successfully enriched!");
           } catch (uploadErr) {
             console.error("❌ Failed to upload lead:", validLead, uploadErr);
           }
 
-          // --- DRAFT CREATION ---
+          // ── Draft creation ──
           try {
             const res = await axios.post(
               `${DATABASE_URL}/leads/drafts`,
@@ -751,7 +777,7 @@ export function DataEnhancement() {
             );
           }
 
-          // --- DEDUCT CREDIT FOR THIS SCRAPED LEAD_ID ---
+          // ── Deduct credit ──
           try {
             const lid = finalLead.lead_id;
             if (lid) {
@@ -768,19 +794,21 @@ export function DataEnhancement() {
             );
           }
 
-          // Show the newly scraped row in yellow
+          // Add freshly scraped row in yellow
           const yellowRow = toCamelCase({
             ...finalLead,
             source_type: "scraped",
           });
-
           setScrapedEnrichedCompanies(prev => [...prev, yellowRow]);
+
+          // Small pause so UI can update incrementally
           await new Promise(r => setTimeout(r, 150));
         } catch (err) {
           console.error(`❌ Failed enriching ${company.company}`, err);
         }
       }
 
+      // ── Step 7: Final cleanup ──
       if (forceScrape) {
         setDbEnrichedCompanies([]);
       }
@@ -801,9 +829,6 @@ export function DataEnhancement() {
     showNotification("Data successfully enriched!");
   };
   
-  
-
-
 
 
 
@@ -1091,18 +1116,23 @@ export function DataEnhancement() {
                             <TableCell>{company.business_phone}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                {company.website ? cleanUrlForDisplay(company.website) : "N/A"}
-                                {company.website && company.website !== "N/A" && company.website !== "NA" && (
+                                {company.website && company.website !== "N/A" && company.website !== "NA" ? (
                                   <a
-                                    href={company.website.toString().startsWith("http") ? company.website : `https://${company.website}`}
+                                    href={
+                                      company.website.toString().startsWith("http")
+                                        ? company.website
+                                        : `https://${company.website}`
+                                    }
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-500 hover:text-blue-700"
                                     title="Open website in new tab"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <ExternalLink className="h-4 w-4" />
+                                    {cleanUrlForDisplay(company.website)}
                                   </a>
+                                ) : (
+                                  <span className="text-gray-500">N/A</span>
                                 )}
                               </div>
                             </TableCell>

@@ -14,6 +14,7 @@ from selenium.webdriver.edge.service import Service as EdgeService
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from openai import OpenAI
 import threading
+import random
 
 load_dotenv()
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
@@ -38,6 +39,70 @@ class GrowjoScraper:
         self.logged_in = False
 
         self._setup_browsers()
+
+    
+
+    def _friendly_fallback(self, field_type: str) -> str:
+        messages = {
+            "website": [
+                "We couldn't locate a website just yet.",
+                "No official domain found for this company.",
+                "Still searching for their online presence."
+            ],
+            "revenue": [
+                "Revenue details were not available.",
+                "Financial data is currently unavailable.",
+                "Revenue not disclosed publicly."
+            ],
+            "location": [
+                "Location wasn't listed.",
+                "Address not found in profile.",
+                "Couldn’t identify company location."
+            ],
+            "industry": [
+                "Industry information missing.",
+                "No industry specified.",
+                "Industry not identified yet."
+            ],
+            "interests": [
+                "Specialties not mentioned.",
+                "No keyword tags found.",
+                "Expertise area not provided."
+            ],
+            "employee_count": [
+                "Employee count is unavailable.",
+                "Headcount data not shown.",
+                "Staff size not listed."
+            ],
+            "decider_name": [
+                "No decision maker found.",
+                "Couldn't locate a key contact.",
+                "No person of interest identified."
+            ],
+            "decider_title": [
+                "Title information not found.",
+                "No job title available.",
+                "No leadership title available."
+            ],
+            "decider_email": [
+                "Email is currently unavailable.",
+                "Contact email not revealed.",
+                "Email not listed."
+            ],
+            "decider_phone": [
+                "Phone number not listed.",
+                "No contact number found.",
+                "Phone info is missing."
+            ],
+            "decider_linkedin": [
+                "LinkedIn profile not available.",
+                "Couldn't find a LinkedIn link.",
+                "No LinkedIn data."
+            ]
+        }
+
+        return random.choice(messages.get(field_type, ["Information unavailable."]))
+
 
     def _setup_browsers(self):
         """Initialize two Edge browser instances faster."""
@@ -553,30 +618,38 @@ class GrowjoScraper:
             if not found:
                 print("[DEBUG] Growjo failed to find company — falling back to DeepSeek...")
                 inferred = self.deepseek_guess_website(company_name)
+
+                # When Growjo fails completely, produce full fallbacks:
+                owner_fallback = self._friendly_fallback("decider_name")
                 return {
                     "company_name": company_name,
-                    "company_website": inferred.get("website", "not found"),
-                    "revenue": "not found",
-                    "location": "not found",
-                    "industry": "not found",
-                    "interests": "not found",
-                    "employee_count": "not found",
-                    "decider_name": "not found",
-                    "decider_title": "not found",
-                    "decider_email": "not found",
-                    "decider_phone": "not found",
-                    "decider_linkedin": "not found"
+                    "company_website": inferred.get("website") or self._friendly_fallback("website"),
+                    "revenue": self._friendly_fallback("revenue"),
+                    "location": self._friendly_fallback("location"),
+                    "industry": self._friendly_fallback("industry"),
+                    "interests": self._friendly_fallback("interests"),
+                    "employee_count": self._friendly_fallback("employee_count"),
+
+                    # Entire fallback in first name; leave last name blank
+                    "ownerFirstName": owner_fallback,
+                    "ownerLastName": owner_fallback,
+
+                    # Other fields all use their own fallbacks
+                    "ownerTitle": self._friendly_fallback("decider_title"),
+                    "ownerEmail": self._friendly_fallback("decider_email"),
+                    "ownerPhoneNumber": self._friendly_fallback("decider_phone"),
+                    "ownerLinkedin": self._friendly_fallback("decider_linkedin"),
                 }
 
             # Step 2: Scrape company details
             company_info = self.extract_company_details(self.driver_public, company_name)
             decision_maker = self.find_decision_maker(self.driver_public, self.wait_public, company_name)
 
-            # Step 3: If decider found, get sensitive info
+            # Step 3: If a decision maker was found, log in and scrape their private info
             sensitive_info = {
                 "email": "not found",
                 "phone": "not found",
-                "linkedin": "not found"
+                "linkedin": "not found",
             }
             if decision_maker:
                 profile_url = decision_maker["profile_url"]
@@ -584,25 +657,44 @@ class GrowjoScraper:
                     self.login_logged_in_browser()
                 sensitive_info = self.scrape_decision_maker_details(profile_url, self.driver_logged_in)
 
-            # Step 4: Return final combined result
+            # Step 4: Determine ownerFirstName and ownerLastName
+            if decision_maker:
+                full_name = decision_maker.get("name", "").strip()
+                if full_name and " " in full_name:
+                    # Split on first space
+                    first, last = full_name.split(" ", 1)
+                else:
+                    # Either a single-word name or empty
+                    first, last = full_name, ""
+                owner_first = first or self._friendly_fallback("first_name")
+                owner_last = last  # may be empty
+            else:
+                # No decision_maker → use fallback in first, leave last blank
+                owner_first = self._friendly_fallback("decider_name")
+                owner_last = self._friendly_fallback("decider_name")
+
+            # Step 5: Build final response
             return {
-                "company_name": company_info.get("company", company_name),
-                "company_website": company_info.get("website", "not found"),
-                "revenue": company_info.get("revenue", "not found"),
-                "location": ", ".join(filter(None, [company_info.get("city", ""), company_info.get("state", "")])) or "not found",
-                "industry": company_info.get("industry", "not found"),
-                "interests": company_info.get("specialties", "not found"),
-                "employee_count": company_info.get("employees", "not found"),
-                "decider_name": decision_maker.get("name", "not found") if decision_maker else "not found",
-                "decider_title": decision_maker.get("title", "not found") if decision_maker else "not found",
-                "decider_email": sensitive_info.get("email", "not found"),
-                "decider_phone": sensitive_info.get("phone", "not found"),
-                "decider_linkedin": sensitive_info.get("linkedin", "not found")
+                "company_name":      company_info.get("company", company_name),
+                "company_website":   company_info.get("website") or self._friendly_fallback("website"),
+                "revenue":           company_info.get("revenue") or self._friendly_fallback("revenue"),
+                "location":          ", ".join(filter(None, [company_info.get("city", ""), company_info.get("state", "")])) or self._friendly_fallback("location"),
+                "industry":          company_info.get("industry") or self._friendly_fallback("industry"),
+                "interests":         company_info.get("specialties") or self._friendly_fallback("interests"),
+                "employee_count":    company_info.get("employees") or self._friendly_fallback("employee_count"),
+
+                "ownerFirstName":    owner_first,
+                "ownerLastName":     owner_last,
+                "ownerTitle":        decision_maker.get("title") if decision_maker else self._friendly_fallback("decider_title"),
+                "ownerEmail":        sensitive_info.get("email") if sensitive_info.get("email") != "not found" else self._friendly_fallback("decider_email"),
+                "ownerPhoneNumber":  sensitive_info.get("phone") if sensitive_info.get("phone") != "not found" else self._friendly_fallback("decider_phone"),
+                "ownerLinkedin":     sensitive_info.get("linkedin") if sensitive_info.get("linkedin") != "not found" else self._friendly_fallback("decider_linkedin"),
             }
 
         except Exception as e:
             print(f"[ERROR] Full pipeline error: {str(e)}")
             return {"error": str(e)}
+
 
 
     
