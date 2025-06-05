@@ -145,7 +145,7 @@ class AuthController:
             user.password_reset_sent_at = datetime.utcnow()
             db.session.commit()
             # Use frontend URL for reset
-            reset_url = f"https://saasquatchleads.com/reset-password/{token}"
+            reset_url = f"https://app.saasquatchleads.com/reset-password/{token}"
             html = render_template('emails/reset_password.html', reset_url=reset_url, user=user, now=datetime.utcnow)
             send_email('Reset Your Password', [user.email], html)
             current_app.logger.info(f"Password reset email sent to {user.email} at {datetime.utcnow()}, username: {user.username}")
