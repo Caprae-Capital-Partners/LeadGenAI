@@ -5,7 +5,7 @@ from models.user_subscription_model import UserSubscription
 from datetime import datetime, timedelta
 from utils.token_utils import generate_token, confirm_token
 from utils.email_utils import send_email
-from flask import url_for, render_template, current_app
+from flask import url_for, render_template, current_app, redirect
 
 class AuthController:
     @staticmethod
@@ -133,7 +133,7 @@ class AuthController:
             user.is_email_verified = True
             db.session.commit()
             current_app.logger.info(f"Email verified for user {user.email}.")
-            return True, "Email verified!"
+            return True, "Success, Email verified!"
         except Exception as e:
             current_app.logger.error(f"Error during email verification: {str(e)}")
             return False, f"Verification failed: {str(e)}"
@@ -144,7 +144,8 @@ class AuthController:
             token = generate_token(user.email, salt='password-reset')
             user.password_reset_sent_at = datetime.utcnow()
             db.session.commit()
-            reset_url = url_for('auth.reset_password', token=token, _external=True)
+            # Use frontend URL for reset
+            reset_url = f"https://saasquatchleads.com/reset-password/{token}"
             html = render_template('emails/reset_password.html', reset_url=reset_url, user=user, now=datetime.utcnow)
             send_email('Reset Your Password', [user.email], html)
             current_app.logger.info(f"Password reset email sent to {user.email} at {datetime.utcnow()}, username: {user.username}")
