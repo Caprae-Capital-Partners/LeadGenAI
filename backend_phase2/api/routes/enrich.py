@@ -96,7 +96,7 @@ def init_growjo_scraper():
         return jsonify({"status": "already initialized"}), 200
 
     try:
-        scraper = GrowjoScraper(headless=False)
+        scraper = GrowjoScraper(headless=True)
 
         # Open the "public" tab at https://growjo.com/ so it's ready for scraping
         scraper.driver_public.get("https://growjo.com/")
@@ -157,7 +157,7 @@ def scrape_growjo_single():
     try:
         # If not already initialized, spin it up (headless=False) and login
         if growjo_scraper_instance is None:
-            scraper = GrowjoScraper(headless=False)
+            scraper = GrowjoScraper(headless=True)
             scraper.driver_public.get("https://growjo.com/")
             scraper.login_logged_in_browser()
             growjo_scraper_instance = scraper
