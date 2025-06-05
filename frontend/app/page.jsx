@@ -299,12 +299,22 @@ export default function Home() {
   };
 
   const handleExportCSVWithCredits = async () => {
+    // 1) Read the user’s role from session storage
+    const stored = sessionStorage.getItem("user");
+    const currentUser = stored ? JSON.parse(stored) : {};
+    const role = currentUser.role || "";
+
+    // 2) If they’re a developer, bypass all checks and export immediately
+    if (role === "developer") {
+      handleExportCSV(currentItems, "enriched_results.csv");
+      return;
+    }
+
+    // 3) Otherwise, do the subscription/credits validation
     try {
       const { data: subscriptionInfo } = await axios.get(
         `${DATABASE_URL}/user/subscription_info`,
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
 
       const planName =
@@ -338,16 +348,26 @@ export default function Home() {
       );
     }
   };
+  
 
   const handleToggleFiltersWithCheck = async () => {
+    // 1) Read the user’s role
+    const stored = sessionStorage.getItem("user");
+    const currentUser = stored ? JSON.parse(stored) : {};
+    const role = currentUser.role || "";
+
+    // 2) If developer, bypass the subscription check
+    if (role === "developer") {
+      setShowFilters((prev) => !prev);
+      return;
+    }
+
+    // 3) Otherwise do the existing plan‐check logic
     try {
       const { data: subscriptionInfo } = await axios.get(
         `${DATABASE_URL}/user/subscription_info`,
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
-
       const planName =
         subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
       if (planName === "free") {
@@ -357,7 +377,6 @@ export default function Home() {
         );
         return;
       }
-
       setShowFilters((prev) => !prev);
     } catch (err) {
       console.error("❌ Failed to verify subscription:", err);
@@ -367,6 +386,7 @@ export default function Home() {
       );
     }
   };
+  
 
   const [scrapingHistory, setScrapingHistory] = useState([]);
 
