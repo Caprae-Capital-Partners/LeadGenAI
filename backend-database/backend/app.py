@@ -12,6 +12,7 @@ from sqlalchemy import event, text
 from flask_cors import CORS
 from routes.subscription_routes import subscription_bp
 from logging_setup import setup_logging
+from utils.email_utils import init_mail
 
 def create_app(config_class=config):
     """Create and configure the Flask application"""
@@ -46,6 +47,9 @@ def create_app(config_class=config):
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
+
+    # Initialize Flask-Mail
+    init_mail(app)
 
     @login_manager.user_loader
     def load_user(user_id):

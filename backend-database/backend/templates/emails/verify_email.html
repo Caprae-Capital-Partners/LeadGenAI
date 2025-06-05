@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Your Email</title>
+    <style>
+        body { background: #181f2a; color: #f1f5f9; font-family: 'Inter', Arial, sans-serif; }
+        .container { max-width: 480px; margin: 40px auto; background: #232b3a; border-radius: 10px; padding: 32px; box-shadow: 0 2px 12px rgba(37,99,235,0.08); }
+        .btn { display: inline-block; padding: 12px 28px; background: #2563eb; color: #fff; border-radius: 6px; text-decoration: none; font-weight: 600; margin-top: 18px; }
+        .btn:hover { background: #22d3ee; color: #181f2a; }
+        .footer { margin-top: 32px; color: #94a3b8; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome, {{ user.username }}!</h2>
+        <p>Thank you for registering. Please verify your email address by clicking the button below:</p>
+        <p style="text-align:center;">
+            <a href="{{ verify_url }}" class="btn">Verify Email</a>
+        </p>
+        <p>If you did not create an account, you can ignore this email.</p>
+        <div class="footer">
+            This link will expire in 1 hour for your security.<br>
+            &copy; {{ now().year }} SaaSquatch Leads
+        </div>
+    </div>
+</body>
+</html>

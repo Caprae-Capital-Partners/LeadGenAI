@@ -3,23 +3,29 @@ from flask_login import login_user, logout_user
 from models.plan_model import Plan
 from models.user_subscription_model import UserSubscription
 from datetime import datetime, timedelta
-import logging
+from utils.token_utils import generate_token, confirm_token
+from utils.email_utils import send_email
+from flask import url_for, render_template, current_app
 
 class AuthController:
     @staticmethod
     def register(username, email, password, role='user', company='', linkedin_url=''):
         """Register a new user"""
+        current_app.logger.info(f"Attempting to register user: username={username}, email={email}, role={role}")
         # Check if username already exists
         if User.query.filter_by(username=username).first():
+            current_app.logger.warning(f"Registration failed: Username '{username}' already exists.")
             return False, "Username already exists"
 
         # Check if email already exists
         if User.query.filter_by(email=email).first():
+            current_app.logger.warning(f"Registration failed: Email '{email}' already registered.")
             return False, "Email already registered"
 
         # Validate role
         valid_roles = ['admin', 'developer', 'user']
         if role not in valid_roles:
+            current_app.logger.warning(f"Registration failed: Invalid role '{role}'.")
             return False, f"Invalid role. Must be one of: {', '.join(valid_roles)}"
 
         try:
@@ -37,7 +43,7 @@ class AuthController:
 
             # Fetch the 'Free' plan
             free_plan = Plan.query.filter_by(plan_name='Free').first()
-            logging.info(f"free plan {free_plan}")
+            current_app.logger.info(f"Fetched free plan: {free_plan}")
             if free_plan:
                 # Calculate expiration date (30 days from start timestamp)
                 tier_start = datetime.utcnow()
@@ -56,16 +62,19 @@ class AuthController:
                 )
                 db.session.add(user_subscription)
             else:
-                logging.warning("'Free' plan not found in database. Cannot create initial user subscription.")
+                current_app.logger.warning("'Free' plan not found in database. Cannot create initial user subscription.")
                 # Decide how to handle this - maybe raise an error or create user without subscription?
                 # For now, user is created without subscription, which might cause issues later.
 
             # Commit both user and subscription (if created) in a single transaction
             db.session.commit()
+            current_app.logger.info(f"User '{username}' registered successfully. Sending verification email...")
+            AuthController.send_verification_email(user)
 
             return True, "Registration successful"
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Registration failed for user '{username}': {str(e)}")
             return False, f"Registration failed: {str(e)}"
 
     @staticmethod
@@ -90,3 +99,76 @@ class AuthController:
             return True, "Logout successful"
         except Exception as e:
             return False, f"Logout failed: {str(e)}"
+
+    @staticmethod
+    def send_verification_email(user):
+        try:
+            token = generate_token(user.email, salt='email-verify')
+            user.email_verification_sent_at = datetime.utcnow()
+            db.session.commit()
+            verify_url = url_for('auth.verify_email', token=token, _external=True)
+            html = render_template('emails/verify_email.html', verify_url=verify_url, user=user, now=datetime.utcnow)
+            send_email('Verify Your Email', [user.email], html)
+            current_app.logger.info(f"Verification email sent to {user.email}")
+        except Exception as e:
+            current_app.logger.error(f"Failed to send verification email to {user.email}: {str(e)}")
+
+    @staticmethod
+    def verify_email(token):
+        try:
+            email = confirm_token(token, salt='email-verify')
+            if not email:
+                current_app.logger.warning("Email verification failed: Invalid or expired token.")
+                return False, "Invalid or expired token."
+            user = User.query.filter_by(email=email).first()
+            if not user:
+                current_app.logger.warning(f"Email verification failed: No user found for email {email}.")
+                return False, "Invalid user."
+            if user.is_email_verified:
+                current_app.logger.info(f"Email already verified for user {user.email}.")
+                return False, "Email already verified."
+            if user.email_verification_sent_at and datetime.utcnow() > user.email_verification_sent_at + timedelta(hours=1):
+                current_app.logger.warning(f"Verification link expired for user {user.email}.")
+                return False, "Verification link expired."
+            user.is_email_verified = True
+            db.session.commit()
+            current_app.logger.info(f"Email verified for user {user.email}.")
+            return True, "Email verified!"
+        except Exception as e:
+            current_app.logger.error(f"Error during email verification: {str(e)}")
+            return False, f"Verification failed: {str(e)}"
+
+    @staticmethod
+    def send_password_reset_email(user):
+        try:
+            token = generate_token(user.email, salt='password-reset')
+            user.password_reset_sent_at = datetime.utcnow()
+            db.session.commit()
+            reset_url = url_for('auth.reset_password', token=token, _external=True)
+            html = render_template('emails/reset_password.html', reset_url=reset_url, user=user, now=datetime.utcnow)
+            send_email('Reset Your Password', [user.email], html)
+            current_app.logger.info(f"Password reset email sent to {user.email} at {datetime.utcnow()}, username: {user.username}")
+        except Exception as e:
+            current_app.logger.error(f"Failed to send password reset email to {user.email}: {str(e)}")
+
+    @staticmethod
+    def reset_password(token, new_password):
+        try:
+            email = confirm_token(token, salt='password-reset')
+            if not email:
+                current_app.logger.warning("Password reset failed: Invalid or expired token.")
+                return False, "Invalid or expired token."
+            user = User.query.filter_by(email=email).first()
+            if not user:
+                current_app.logger.warning(f"Password reset failed: No user found for email {email}.")
+                return False, "User not found."
+            if user.password_reset_sent_at and datetime.utcnow() > user.password_reset_sent_at + timedelta(hours=1):
+                current_app.logger.warning(f"Password reset link expired for user {user.email}.")
+                return False, "Reset link expired."
+            user.set_password(new_password)
+            db.session.commit()
+            current_app.logger.info(f"Password reset successful for user {user.email}.")
+            return True, "Password reset successful."
+        except Exception as e:
+            current_app.logger.error(f"Error during password reset: {str(e)}")
+            return False, f"Password reset failed: {str(e)}"

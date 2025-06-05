@@ -19,7 +19,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 def login():
     """Handle user login"""
     if current_user.is_authenticated:
-        return redirect("https://app.saasquatchleads.com/")
+        return redirect(url_for('main.index'))
+        # return redirect("https://app.saasquatchleads.com/")
 
     if request.method == 'POST':
         username = request.form.get('username')
@@ -29,7 +30,8 @@ def login():
 
         if success:
             flash(message, 'success')
-            return redirect("https://app.saasquatchleads.com/")
+            # return redirect("https://app.saasquatchleads.com/")
+            return redirect(url_for('main.index'))
         else:
             flash(message, 'danger')
 
@@ -459,3 +461,81 @@ def update_user_info():
         except Exception as log_e:
             print(f"[User Update] Logging failed: {log_e}")
         return jsonify({"error": "No valid fields to update", "details": errors}), 400
+
+@auth_bp.route('/verify-email/<token>')
+def verify_email(token):
+    success, message = AuthController.verify_email(token)
+    flash(message, 'success' if success else 'danger')
+    return redirect(url_for('auth.login'))
+
+@auth_bp.route('/send-verification')
+@login_required
+def send_verification():
+    AuthController.send_verification_email(current_user)
+    flash('Verification email sent!', 'info')
+    return redirect(url_for('main.index'))
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            AuthController.send_password_reset_email(user)
+        flash('If your email is registered, a reset link has been sent.', 'info')
+        return redirect(url_for('auth.login'))
+    return render_template('auth/forgot_password.html')
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if request.method == 'POST':
+        new_password = request.form.get('password')
+        success, message = AuthController.reset_password(token, new_password)
+        flash(message, 'success' if success else 'danger')
+        return redirect(url_for('auth.login'))
+    return render_template('auth/reset_password.html', token=token)
+
+# API: Send verification email (for logged-in user)
+@auth_bp.route('/api/auth/send-verification', methods=['POST'])
+@login_required
+def api_send_verification():
+    try:
+        AuthController.send_verification_email(current_user)
+        return jsonify({"message": "Verification email sent!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# API: Verify email with token
+@auth_bp.route('/api/auth/verify-email/<token>', methods=['POST'])
+def api_verify_email(token):
+    success, message = AuthController.verify_email(token)
+    if success:
+        return jsonify({"message": message}), 200
+    else:
+        return jsonify({"error": message}), 400
+
+# API: Forgot password (request reset email)
+@auth_bp.route('/api/auth/forgot-password', methods=['POST'])
+def api_forgot_password():
+    data = request.get_json()
+    email = data.get('email')
+    if not email:
+        return jsonify({"error": "Email is required."}), 400
+    user = User.query.filter_by(email=email).first()
+    if user:
+        AuthController.send_password_reset_email(user)
+    # Always return success to avoid leaking user existence
+    return jsonify({"message": "If your email is registered, a reset link has been sent."}), 200
+
+# API: Reset password with token
+@auth_bp.route('/api/auth/reset-password/<token>', methods=['POST'])
+def api_reset_password(token):
+    data = request.get_json()
+    new_password = data.get('password')
+    if not new_password:
+        return jsonify({"error": "Password is required."}), 400
+    success, message = AuthController.reset_password(token, new_password)
+    if success:
+        return jsonify({"message": message}), 200
+    else:
+        return jsonify({"error": message}), 400

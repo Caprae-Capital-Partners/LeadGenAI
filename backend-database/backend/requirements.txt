@@ -1,3 +1,5 @@
+Flask-Mail
+itsdangerous
 Flask
 psycopg2-binary
 Flask-WTF
