@@ -400,40 +400,33 @@ export function DataEnhancement() {
   }
 
   const buildEnrichedCompany = (company: any, growjo: any, apollo: any, person: any) => {
+    // ── Step 1: Simplify cleanVal to only treat truly empty/null/undefined as “missing” ──
     const cleanVal = (val: any) => {
-      const s = (val || "").toString().trim().toLowerCase();
-
-      const isObscuredEmail = /^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*");
-
-      return (
-        ["", "na", "n/a", "none", "not", "found", "not found", "n.a.", "email_not_unlocked@domain.com"].includes(s) ||
-        isObscuredEmail
-      )
-        ? null
-        : val.toString().trim();
+      if (val === null || val === undefined) return null;
+      const s = val.toString().trim();
+      return s === "" ? null : s;
     };
 
+    // preferValue: take the first “non-empty” (cleanVal ≠ null) in (g, a), otherwise fallback
+    const preferValue = (g: any, a: any, fallback: any = "") =>
+      cleanVal(g) ?? cleanVal(a) ?? fallback;
 
-    const preferValue = (g: any, a: any, fallback: any = "") => cleanVal(g) ?? cleanVal(a) ?? fallback
-
-    const splitGrowjoName = (() => {
-      const raw = growjo.decider_name || ""
-      const clean = raw.toString().trim().toLowerCase()
-      if (["", "na", "n/a", "none", "not", "found", "not found"].includes(clean)) return []
-      return raw.split(" ")
-    })()
-    const growjoFirstName = splitGrowjoName[0] || ""
-    const growjoLastName = splitGrowjoName.slice(1).join(" ") || ""
+    // ── Step 2: Pull ownerFirstName / ownerLastName directly from backend fields ──
+    // (These fields are always non‐empty when returned, because backend supplies a
+    // friendly fallback sentence instead of an empty string.)
+    const growjoFirstName = growjo.ownerFirstName ?? "";
+    const growjoLastName = growjo.ownerLastName ?? "";
 
     const decider = {
       firstName: preferValue(growjoFirstName, person.first_name),
       lastName: preferValue(growjoLastName, person.last_name),
-      email: preferValue(growjo.decider_email, person.email),
-      phone: preferValue(growjo.decider_phone, person.phone_number),
-      linkedin: preferValue(growjo.decider_linkedin, person.linkedin_url),
-      title: preferValue(growjo.decider_title, person.title),
-    }
+      email: preferValue(growjo.ownerEmail, person.email),
+      phone: preferValue(growjo.ownerPhoneNumber, person.phone_number),
+      linkedin: preferValue(growjo.ownerLinkedin, person.linkedin_url),
+      title: preferValue(growjo.ownerTitle, person.title),
+    };
 
+    // ── Step 3: Build the final object, always using preferValue for each field ──
     return {
       company: preferValue(growjo.company_name, company.company),
       website: preferValue(growjo.company_website, apollo.website_url, company.website),
@@ -452,16 +445,20 @@ export function DataEnhancement() {
       street: company.street || "",
       companyPhone: company.business_phone,
       companyLinkedin: preferValue("", apollo.linkedin_url),
+
       ownerFirstName: decider.firstName,
       ownerLastName: decider.lastName,
       ownerTitle: decider.title,
       ownerEmail: decider.email,
       ownerPhoneNumber: decider.phone,
       ownerLinkedin: decider.linkedin,
-      source: getSource(growjo, apollo, person),
-    }
 
-  }
+      source: getSource(growjo, apollo, person),
+    };
+  };
+  
+
+
   const toCamelCase = (lead: any): EnrichedCompany => ({
     id: lead.id || `${lead.company}-${Math.random()}`,
     lead_id: lead.lead_id,
