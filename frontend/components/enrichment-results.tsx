@@ -906,25 +906,48 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                                     className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
                                     value={String(value)}
                                     onChange={(e) =>
-                                      handleFieldChange(company.id, field as keyof EnrichedCompany, e.target.value)
+                                      handleFieldChange(
+                                        company.id,
+                                        field as keyof EnrichedCompany,
+                                        e.target.value
+                                      )
                                     }
                                   />
-                                ) : isLinkedInField && isValidLink ? (
-                                  <div className="flex items-center gap-1">
-                                    <span className="truncate">
-                                      {value.replace("https://", "").replace("www.", "").split("/")[0]}
-                                    </span>
+                                ) : (
+                                  // If this cell is “website” and has a non‐empty string value, render a blue <a>…
+                                  field === "website" &&
+                                    typeof value === "string" &&
+                                    value.trim() !== "" ? (
+                                    <a
+                                      href={value.startsWith("http") ? value : `https://${value}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-500 hover:text-blue-700 truncate"
+                                      title={value}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {cleanUrlForDisplay(value)}
+                                    </a>
+
+                                    // Otherwise, if this field is a LinkedIn field and starts with “http”, render a blue <a>…
+                                  ) : isLinkedInField &&
+                                    typeof value === "string" &&
+                                    value.startsWith("http") ? (
                                     <a
                                       href={value}
                                       target="_blank"
                                       rel="noopener noreferrer"
+                                      className="text-blue-500 hover:text-blue-700 truncate"
+                                      title={value}
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <ExternalLink className="h-4 w-4 text-blue-500 hover:text-blue-700" />
+                                      {value.replace(/^https?:\/\/(www\.)?/, "").split("?")[0]}
                                     </a>
-                                  </div>
-                                ) : (
-                                  displayValue
+
+                                    // For all other cases, just show the plain text (or “N/A” if empty)
+                                  ) : (
+                                    displayValue
+                                  )
                                 )}
                               </TableCell>
                             );

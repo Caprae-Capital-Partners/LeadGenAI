@@ -29,8 +29,11 @@ priority_titles = [
 
 
 def get_priority_rank(title):
+    # If title is None or empty, treat as lowest priority
+    title = title or ""
     if not title:
         return len(priority_titles) + 1
+
     title_lower = title.lower()
     for idx, keyword in enumerate(priority_titles):
         if keyword in title_lower:
@@ -168,24 +171,10 @@ def find_best_person(domain: str) -> dict:
       2) If no people or non-200, return full‐field fallbacks.
       3) Otherwise pick highest priority, then “enrich_person” for email/phone.
       4) Normalize each field via normalize(...).
+      5) If any exception arises, return full‐field fallbacks.
     """
-    # Prepare parameters for search
-    params = {
-        "person_titles[]": "",
-        "person_seniorities[]": ["owner", "founder", "c_suite", "vp", "director", "manager"],
-        "q_organization_domains_list[]": domain,
-        "contact_email_status[]": "",
-    }
-    headers = {
-        "accept": "application/json",
-        "Cache-Control": "no-cache",
-        "Content-Type": "application/json",
-        "x-api-key": APOLLO_API_KEY,
-    }
-
-    response = requests.post(APOLLO_SEARCH_URL, headers=headers, params=params)
-    if response.status_code != 200:
-        # Return full single‐domain fallback
+    # A helper to produce a “full fallback” dictionary in case anything goes wrong:
+    def full_fallback():
         return {
             "company": _friendly_fallback_person("company"),
             "domain": domain or _friendly_fallback_person("domain"),
@@ -197,52 +186,66 @@ def find_best_person(domain: str) -> dict:
             "phone_number": _friendly_fallback_person("phone_number"),
         }
 
-    data = response.json()
-    people = data.get("people", [])
-
-    if not people:
-        # No hits → full fallback
-        return {
-            "company": _friendly_fallback_person("company"),
-            "domain": domain or _friendly_fallback_person("domain"),
-            "first_name": _friendly_fallback_person("first_name"),
-            "last_name": _friendly_fallback_person("last_name"),
-            "title": _friendly_fallback_person("title"),
-            "linkedin_url": _friendly_fallback_person("linkedin_url"),
-            "email": _friendly_fallback_person("email"),
-            "phone_number": _friendly_fallback_person("phone_number"),
+    try:
+        # ── 1) Query Apollo search ──
+        params = {
+            "person_titles[]": "",
+            "person_seniorities[]": ["owner", "founder", "c_suite", "vp", "director", "manager"],
+            "q_organization_domains_list[]": domain,
+            "contact_email_status[]": "",
+        }
+        headers = {
+            "accept": "application/json",
+            "Cache-Control": "no-cache",
+            "Content-Type": "application/json",
+            "x-api-key": APOLLO_API_KEY,
         }
 
-    # Sort by our priority list (founder/co-founder/… first)
-    people_sorted = sorted(people, key=lambda x: get_priority_rank(x.get("title", "")))
-    best_person = people_sorted[0]
+        response = requests.post(APOLLO_SEARCH_URL, headers=headers, params=params)
+        if response.status_code != 200:
+            return full_fallback()
 
-    # Attempt “enrich_person” for missing email/phone
-    enriched = enrich_person(
-        first_name=best_person.get("first_name", ""),
-        last_name=best_person.get("last_name", ""),
-        domain=domain,
-    )
+        data = response.json()
+        people = data.get("people", [])
 
-    # Build a combined result, normalizing each field
-    combined_result = {
-        "company": normalize(best_person.get("organization", {}).get("name"), "company"),
-        "domain": domain or normalize("", "domain"),
-        "first_name": normalize(best_person.get("first_name"), "first_name"),
-        "last_name": normalize(best_person.get("last_name"), "last_name"),
-        "title": normalize(best_person.get("title"), "title"),
-        "linkedin_url": normalize(best_person.get("linkedin_url"), "linkedin_url"),
-        "email": normalize(best_person.get("email"), "email"),
-        "phone_number": normalize(
-            best_person.get("organization", {}).get("primary_phone", {}).get("sanitized_number"),
-            "phone_number"
-        ),
-    }
+        # ── 2) If no “people” hit, return full fallback ──
+        if not people:
+            return full_fallback()
 
-    # Override with “enriched” if present
-    if enriched:
-        combined_result["email"] = normalize(enriched.get("email"), "email")
-        combined_result["linkedin_url"] = normalize(enriched.get("linkedin_url"), "linkedin_url")
-        combined_result["phone_number"] = normalize(enriched.get("phone_number"), "phone_number")
+        # ── 3) Sort by priority_title and pick the top candidate ──
+        people_sorted = sorted(people, key=lambda x: get_priority_rank(x.get("title") or ""))
+        best_person = people_sorted[0]
 
-    return combined_result
+        # ── 4) Attempt to “enrich_person” for email/phone ──
+        enriched = enrich_person(
+            first_name=best_person.get("first_name", ""),
+            last_name=best_person.get("last_name", ""),
+            domain=domain,
+        )
+
+        # ── 5) Build a combined result, normalizing each field ──
+        combined_result = {
+            "company": normalize(best_person.get("organization", {}).get("name"), "company"),
+            "domain": domain or normalize("", "domain"),
+            "first_name": normalize(best_person.get("first_name"), "first_name"),
+            "last_name": normalize(best_person.get("last_name"), "last_name"),
+            "title": normalize(best_person.get("title"), "title"),
+            "linkedin_url": normalize(best_person.get("linkedin_url"), "linkedin_url"),
+            "email": normalize(best_person.get("email"), "email"),
+            "phone_number": normalize(
+                best_person.get("organization", {}).get("primary_phone", {}).get("sanitized_number"),
+                "phone_number"
+            ),
+        }
+
+        # ── 6) Override with enriched values if available ──
+        if enriched:
+            combined_result["email"] = normalize(enriched.get("email"), "email")
+            combined_result["linkedin_url"] = normalize(enriched.get("linkedin_url"), "linkedin_url")
+            combined_result["phone_number"] = normalize(enriched.get("phone_number"), "phone_number")
+
+        return combined_result
+
+    except Exception:
+        # If anything went wrong (e.g. “NoneType” has no .lower), return all‐fallbacks
+        return full_fallback()
