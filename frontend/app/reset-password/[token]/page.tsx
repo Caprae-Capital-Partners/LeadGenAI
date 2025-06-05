@@ -38,7 +38,7 @@ export default function ResetPasswordPage() {
             return;
         }
         try {
-            const res = await fetch(`${DATABASE_URL}/reset-password/${token}`, {
+            const res = await fetch(`${DATABASE_URL}/auth/reset-password/${token}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
