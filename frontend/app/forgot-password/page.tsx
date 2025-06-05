@@ -44,11 +44,11 @@ export default function ForgotPasswordPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
             <img
                 src="/images/logo_horizontal.png"
                 alt="SaaSquatch Leads Logo"
-                className="w-96 mx-auto mb-6"
+                className="w-96 mb-6"
             />
             <div className="w-full max-w-md bg-card rounded-xl shadow-md border border-border p-6">
                 <h2 className="text-2xl font-bold mb-4">Reset Your Password</h2>
