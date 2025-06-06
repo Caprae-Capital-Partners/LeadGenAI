@@ -107,7 +107,7 @@ class AuthController:
             user.email_verification_sent_at = datetime.utcnow()
             db.session.commit()
             # Use frontend URL for verification
-            verify_url = f"https://saasquatchleads.com/verify-email/{token}"
+            verify_url = f"https://app.saasquatchleads.com/verify-email/{token}"
             html = render_template('emails/verify_email.html', verify_url=verify_url, user=user, now=datetime.utcnow)
             send_email('Verify Your Email', [user.email], html)
             current_app.logger.info(f"Verification email sent to {user.email}")
