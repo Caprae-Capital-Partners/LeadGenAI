@@ -297,7 +297,7 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
                         </button>
                         <h3 className="text-xl font-bold mb-4">Cancel Subscription</h3>
                         <p className="mb-6 text-gray-600 dark:text-gray-300">
-                            Are you sure you want to cancel your subscription?
+                            Are you sure you want to cancel your subscription? All of your saved data will be deleted.
                         </p>
                         <div className="flex gap-3">
                             <Button
