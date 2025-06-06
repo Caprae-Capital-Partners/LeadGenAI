@@ -20,9 +20,9 @@ def login():
     """Handle user login"""
     if current_user.is_authenticated:
         
-        if "https://sandbox-api.capraeleadseekers.site" in request.host:
+        if "sandbox-api.capraeleadseekers.site" in request.host:
             return redirect(url_for("https://sandboxdev.saasquatchleads.com"))
-        elif "https://data.capraeleadseekers.site" in request.host:
+        elif "data.capraeleadseekers.site" in request.host:
             return redirect(url_for("https://app.saasquatchleads.com/"))
 
     if request.method == 'POST':
@@ -34,9 +34,9 @@ def login():
         if success:
             flash(message, 'success')
          
-            if "https://sandbox-api.capraeleadseekers.site" in request.host:
+            if "sandbox-api.capraeleadseekers.site" in request.host:
                 return redirect(url_for("https://sandboxdev.saasquatchleads.com"))
-            elif "https://data.capraeleadseekers.site" in request.host:
+            elif "data.capraeleadseekers.site" in request.host:
                 return redirect(url_for("https://app.saasquatchleads.com"))
         else:
             flash(message, 'danger')
