@@ -46,7 +46,19 @@ def get_all_plans():
     Returns: List of plans with all relevant details.
     """
     from models.plan_model import Plan
-    plans = Plan.query.order_by(Plan.monthly_price.asc().nullsfirst()).all()
+    from sqlalchemy import func
+
+    # Debug: print current user and role
+    print(f"Current user: {getattr(current_user, 'username', None)}, role: {getattr(current_user, 'role', None)}")
+
+    user_role = getattr(current_user, 'role', None)
+    if user_role and user_role.lower() == 'student':
+        # Only show student plans
+        plans = Plan.query.filter(func.lower(Plan.plan_name).like('%student%')).order_by(Plan.monthly_price.asc().nullsfirst()).all()
+    else:
+        # Only show non-student plans
+        plans = Plan.query.filter(~func.lower(Plan.plan_name).like('%student%')).order_by(Plan.monthly_price.asc().nullsfirst()).all()
+
     plan_list = []
     for plan in plans:
         plan_list.append({
