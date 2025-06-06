@@ -35,7 +35,7 @@ export default function VerifyEmailPage() {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || "Verification failed.");
 
-                showNotification("✅ Email verified successfully!", "success");
+                showNotification("Email verified successfully!", "success");
             } catch (err: any) {
                 showNotification(err.message || "Something went wrong.", "error");
             } finally {
