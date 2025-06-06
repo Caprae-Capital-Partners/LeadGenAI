@@ -419,6 +419,15 @@ class LeadController:
         company = LeadController.normalize_company_name(lead_data.get('company', ''))
         owner_email = str(lead_data.get('owner_email', '')).strip().lower()
         phone = str(lead_data.get('phone', '')).strip()
+        # Validate email: must contain '@'
+        if '@' not in owner_email:
+            owner_email = ''
+        # Validate phone: must be numeric (after removing non-digits)
+        phone_numeric = re.sub(r'\D', '', phone)
+        if not phone_numeric:
+            phone = ''
+        else:
+            phone = phone_numeric
         if company and owner_email and phone:
             lead = Lead.query.filter(
                 db.func.lower(db.func.replace(db.func.replace(db.func.replace(Lead.company, '-', ''), '.', ''), ',', '')) == company,
