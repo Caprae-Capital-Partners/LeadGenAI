@@ -2,19 +2,22 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB
 import hashlib
+import logging
+from flask import current_app
+
 
 db = SQLAlchemy()
 
 class Lead(db.Model):
     __tablename__ = 'leads'
-    
+
     # Primary key
     lead_id = db.Column(db.String(100), primary_key=True)
-    
+
     # Base data
     search_keyword = db.Column(JSONB, nullable=False)  # Base64-encoded JSON string
     draft_data = db.Column(JSONB, nullable=True)  # Draft user data
-    
+
     # Company Information
     company = db.Column(db.String(1000), nullable=False)
     website = db.Column(db.String(1000), nullable=True)
@@ -23,30 +26,30 @@ class Lead(db.Model):
     business_type = db.Column(db.String(1000), nullable=True)
     employees = db.Column(db.Integer, nullable=True)  # Previously employees_range
     revenue = db.Column(db.Float, nullable=True)
-    year_founded = db.Column(db.String(20), nullable=True)
+    year_founded = db.Column(db.String(100), nullable=True)
     bbb_rating = db.Column(db.String(10), nullable=True)
-    
+
     # Location Information
     street = db.Column(db.String(1000), nullable=True)
     city = db.Column(db.String(1000), nullable=True)
     state = db.Column(db.String(1000), nullable=True)
-    
+
     # Company Contact
-    company_phone = db.Column(db.String(20), nullable=True)  # New field
+    company_phone = db.Column(db.String(100), nullable=True)  # New field
     company_linkedin = db.Column(db.String(1000), nullable=True)  # Previously linkedin_url
-    
+
     # Owner/Contact Information
     owner_first_name = db.Column(db.String(1000), nullable=True)  # Previously first_name
     owner_last_name = db.Column(db.String(1000), nullable=True)  # Previously last_name
     owner_title = db.Column(db.String(1000), nullable=True)  # Previously title
     owner_linkedin = db.Column(db.String(1000), nullable=True)
-    owner_phone_number = db.Column(db.String(20), nullable=True)  # New field
+    owner_phone_number = db.Column(db.String(100), nullable=True)  # New field
     owner_email = db.Column(db.String(1000), nullable=True)  # Previously email
-    phone = db.Column(db.String(20), nullable=True)  # Changed from Integer to String
-    
+    phone = db.Column(db.String(100), nullable=True)  # Changed from Integer to String
+
     # Source information
     source = db.Column(db.String(1000), nullable=False)  # Growjo / Apollo / both
-    
+
     # Metadata
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -56,10 +59,10 @@ class Lead(db.Model):
     is_edited = db.Column(db.Boolean, default=False)
     edited_at = db.Column(db.DateTime, nullable=True)
     edited_by = db.Column(db.String(100), nullable=True)
-    
+
     def __repr__(self):
         return f'<Lead {self.lead_id}: {self.company}>'
-    
+
     # Helper method to convert to dictionary
     def to_dict(self):
         """Convert Lead object to dictionary for API response"""
@@ -107,7 +110,9 @@ class Lead(db.Model):
         """
         # Combine all fields into a single string, using empty string for None values
         combined = f"{company or ''}{street or ''}{city or ''}{state or ''}{company_phone or ''}{website or ''}"
+        current_app.logger.info(f"[LeadID Generation] Combined string for lead_id: {repr(combined)}")
         # Create SHA-256 hash
+
         hash_object = hashlib.sha256(combined.encode())
         # Return first 32 characters of the hex digest
         return hash_object.hexdigest()[:32]
@@ -123,4 +128,4 @@ class Lead(db.Model):
                 company_phone=kwargs.get('company_phone'),
                 website=kwargs.get('website')
             )
-        super().__init__(**kwargs) 
+        super().__init__(**kwargs)

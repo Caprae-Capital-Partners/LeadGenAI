@@ -612,8 +612,12 @@ def parse_revenue_value(revenue_str):
 def api_upload_leads():
     """API endpoint to upload multiple leads"""
     try:
+        user_id = getattr(current_user, 'user_id', None)
+        username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+        current_app.logger.info(f'Route hit: /api/upload_leads by user_id={user_id}, username={username}')
         data = request.get_json()
         if not data or not isinstance(data, list) or len(data) == 0:
+            current_app.logger.warning(f"[Upload] Invalid data format. Data: {data}")
             return jsonify({"status": "error", "message": "Invalid data format. Expected a list of leads"}), 400
         required_fields = ['company', 'website', 'owner_linkedin']
         valid_leads = []
@@ -660,15 +664,18 @@ def api_upload_leads():
                     invalid_indices.append(i)
             else:
                 invalid_indices.append(i)
+        current_app.logger.info(f"[Upload] Valid leads: {len(valid_leads)}, Invalid leads: {len(invalid_indices)}")
         added_new = 0
         updated = 0
         no_change = 0
         skipped = 0
         errors = 0
         detailed_results = []
+        valid_columns = set(c.name for c in Lead.__table__.columns)  # <-- Add this line
         for i, lead_data in enumerate(valid_leads):
             try:
-                success, result = LeadController.add_or_update_lead_by_match(lead_data)
+                filtered_lead_data = {k: v for k, v in lead_data.items() if k in valid_columns}
+                success, result = LeadController.add_or_update_lead_by_match(filtered_lead_data)
                 # Add original index for easier frontend mapping
                 result['original_index'] = invalid_indices.index(i) if i in invalid_indices else i
                 detailed_results.append(result)
@@ -689,7 +696,7 @@ def api_upload_leads():
             except Exception as e:
                 errors += 1
                 error_details.append(f"Exception saving lead at index {i}: {str(e)}")
-
+        current_app.logger.info(f"[Upload] Added: {added_new}, Updated: {updated}, No Change: {no_change}, Skipped: {skipped}, Errors: {errors}")
         # Determine overall status
         overall_status = "success"
         if errors > 0 or len(invalid_indices) > 0:
@@ -715,6 +722,7 @@ def api_upload_leads():
         }), 200
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"[Upload] Error during upload: {str(e)}")
         return jsonify({
             "status": "error",
             "message": f"Error during upload: {str(e)}"
@@ -1663,23 +1671,71 @@ def delete_draft(draft_id):
 @login_required
 def create_draft():
     """Create a new draft"""
+    from models.lead_model import Lead
     user_id = getattr(current_user, 'user_id', None)
     username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
     current_app.logger.info(f'Route hit: /api/leads/drafts by user_id={user_id}, username={username}')
     data = request.json
     lead_id = data.get('lead_id')
     draft_data = data.get('draft_data')
+
+    # If lead_id is not provided, try to find it in the leads table using company (and optionally other fields)
+    if not lead_id:
+        draft_data = data.get('draft_data', {})
+        company = data.get('company') or draft_data.get('company')
+        street = data.get('street') or draft_data.get('street')
+        city = data.get('city') or draft_data.get('city')
+        state = data.get('state') or draft_data.get('state')
+        company_phone = data.get('company_phone') or draft_data.get('company_phone')
+        website = data.get('website') or draft_data.get('website')
+        if not company:
+            current_app.logger.warning(f"[Draft] Cannot find or generate lead_id: company is missing. Data: {data}")
+            return jsonify({"error": "company is required to find or generate lead_id"}), 400
+        # Try to find the lead in the leads table (match on company, street, city, state, company_phone, website)
+        lead = Lead.query.filter_by(
+            company=company,
+            # street=street,
+            # city=city,
+            # state=state,
+            # company_phone=company_phone,
+            # website=website
+        ).first()
+        if lead:
+            lead_id = lead.lead_id
+            current_app.logger.info(f"[Draft] Found existing lead_id: {lead_id} for company='{company}'")
+        # else:
+        #     lead_id = Lead.generate_lead_id(
+        #         company=company,
+        #         street=street,
+        #         city=city,
+        #         state=state,
+        #         company_phone=company_phone,
+        #         website=website
+        #     )
+        #     current_app.logger.info(f"[Draft] No existing lead found, generated lead_id: {lead_id} using company='{company}', street='{street}', city='{city}', state='{state}', company_phone='{company_phone}', website='{website}'")
+    else:
+        current_app.logger.info(f"[Draft] lead_id provided in request: {lead_id}")
+
     if not lead_id or not draft_data:
-        return jsonify({"error": "lead_id and draft_data are required"}), 400
-    draft = UserLeadDraft(
-        user_id=current_user.user_id,
-        lead_id=lead_id,
-        draft_data=draft_data,
-        change_summary=data.get('change_summary')
-    )
-    db.session.add(draft)
-    db.session.commit()
-    return jsonify(draft.to_dict()), 201
+        current_app.logger.warning(f"[Draft] Missing lead_id or draft_data. lead_id: {lead_id}, draft_data: {draft_data}")
+        return jsonify({"error": "lead_id and draft_data are required (or enough data to generate lead_id)"}), 400
+
+    current_app.logger.info(f"[Draft] Creating draft with lead_id: {lead_id} for user_id: {current_user.user_id}")
+    try:
+        draft = UserLeadDraft(
+            user_id=current_user.user_id,
+            lead_id=lead_id,
+            draft_data=draft_data,
+            change_summary=data.get('change_summary')
+        )
+        db.session.add(draft)
+        db.session.commit()
+        current_app.logger.info(f"[Draft] Draft created successfully for lead_id: {lead_id}")
+        return jsonify(draft.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"[Draft] Error creating draft for lead_id: {lead_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/drafts')
 @login_required
