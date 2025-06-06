@@ -19,8 +19,11 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 def login():
     """Handle user login"""
     if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
-        # return redirect("https://app.saasquatchleads.com/")
+        
+        if "https://sandbox-api.capraeleadseekers.site" in request.host:
+            return redirect(url_for('https://sandboxdev.saasquatchleads.com'))
+        elif "https://data.capraeleadseekers.site" in request.host:
+            return redirect("https://app.saasquatchleads.com/")
 
     if request.method == 'POST':
         username = request.form.get('username')
@@ -30,8 +33,11 @@ def login():
 
         if success:
             flash(message, 'success')
-            # return redirect("https://app.saasquatchleads.com/")
-            return redirect(url_for('main.index'))
+         
+            if "https://sandbox-api.capraeleadseekers.site" in request.host:
+                return redirect(url_for('https://sandboxdev.saasquatchleads.com'))
+            elif "https://data.capraeleadseekers.site" in request.host:
+                return redirect("https://app.saasquatchleads.com")
         else:
             flash(message, 'danger')
 
