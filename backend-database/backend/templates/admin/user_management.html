@@ -1,0 +1,572 @@
+{% extends "base.html" %}
+
+{% block title %}User Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-light">User Management</h1>
+            <p class="text-muted">Manage user accounts, subscriptions, and access</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-dark border-primary h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Users</h6>
+                            <h3 class="mb-0 text-light" id="totalUsers">0</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-25 p-3 rounded">
+                            <i class="fas fa-users fa-2x text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-success h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Active Users</h6>
+                            <h3 class="mb-0 text-light" id="activeUsers">0</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-25 p-3 rounded">
+                            <i class="fas fa-user-check fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-info h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Premium Users</h6>
+                            <h3 class="mb-0 text-light" id="premiumUsers">0</h3>
+                        </div>
+                        <div class="bg-info bg-opacity-25 p-3 rounded">
+                            <i class="fas fa-crown fa-2x text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark border-warning h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Expiring Soon</h6>
+                            <h3 class="mb-0 text-light" id="expiringUsers">0</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-25 p-3 rounded">
+                            <i class="fas fa-clock fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table Card -->
+    <div class="card bg-dark border-secondary">
+        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center py-3">
+            <div>
+                <i class="fas fa-users me-2"></i>
+                <span class="h5 mb-0 text-light">Users List</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-dark mb-0" id="usersTable">
+                    <thead class="bg-dark text-light">
+                        <tr>
+                            <th class="border-0">User</th>
+                            <th class="border-0">Status</th>
+                            <th class="border-0">Role</th>
+                            <th class="border-0">Subscription</th>
+                            <th class="border-0">Credits</th>
+                            <th class="border-0">Expires</th>
+                            <th class="border-0 text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data will be populated via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage User Modal -->
+<div class="modal fade" id="manageUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light border-secondary">
+            <div class="modal-header bg-dark border-secondary">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-cog me-2"></i>
+                    Manage User
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4">
+                    <!-- User Info Card -->
+                    <div class="col-md-6">
+                        <div class="card bg-dark border-secondary h-100">
+                            <div class="card-header bg-dark border-secondary">
+                                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>User Information</h6>
+                            </div>
+                            <div class="card-body" id="userInfo">
+                                <!-- User info will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Subscription Card -->
+                    <div class="col-md-6">
+                        <div class="card bg-dark border-secondary h-100">
+                            <div class="card-header bg-dark border-secondary">
+                                <h6 class="mb-0"><i class="fas fa-crown me-2"></i>Subscription Details</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-danger" id="cancelSubscriptionBtn">
+                                        <i class="fas fa-times-circle me-2"></i>Cancel Subscription
+                                    </button>
+                                    <button class="btn btn-outline-warning" id="toggleStatusBtn">
+                                        <!-- Button text will be set dynamically -->
+                                    </button>
+                                    <button class="btn btn-outline-secondary" id="pauseSubscriptionBtn">
+                                        <i class="fas fa-pause-circle me-2"></i>Pause Subscription
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let users = [];
+document.addEventListener('DOMContentLoaded', function() {
+    const usersTable = document.getElementById('usersTable');
+    const manageModal = new bootstrap.Modal(document.getElementById('manageUserModal'));
+    let currentUserId = null;
+    let currentUser = null;
+
+    // Update stats
+    function updateStats() {
+        const total = users.length;
+        const active = users.filter(u => u.is_active).length;
+        const premium = users.filter(u => u.subscription?.plan !== 'free').length;
+        const expiring = users.filter(u => {
+            if (!u.subscription?.expires_at) return false;
+            const expires = new Date(u.subscription.expires_at);
+            const now = new Date();
+            const diffDays = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
+            return diffDays <= 7 && diffDays > 0;
+        }).length;
+
+        document.getElementById('totalUsers').textContent = total;
+        document.getElementById('activeUsers').textContent = active;
+        document.getElementById('premiumUsers').textContent = premium;
+        document.getElementById('expiringUsers').textContent = expiring;
+    }
+
+    // Fetch and display users
+    async function loadUsers() {
+        try {
+            const response = await fetch('/api/admin/users');
+            users = await response.json();
+            const tbody = usersTable.querySelector('tbody');
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle bg-${user.role === 'admin' ? 'primary' : user.role === 'developer' ? 'info' : 'secondary'} me-2">
+                                ${user.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <div class="fw-bold">${user.username}</div>
+                                <div class="small text-muted">${user.email}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge ${user.is_active ? 'bg-success' : 'bg-danger'} rounded-pill">
+                            <i class="fas fa-${user.is_active ? 'check' : 'times'}-circle me-1"></i>
+                            ${user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${user.role === 'admin' ? 'bg-primary' : user.role === 'developer' ? 'bg-info' : 'bg-secondary'} rounded-pill">
+                            <i class="fas fa-${user.role === 'admin' ? 'shield-alt' : user.role === 'developer' ? 'code' : 'user'}-me-1"></i>
+                            ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${user.subscription?.plan === 'premium' ? 'bg-warning' : user.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                            <i class="fas fa-${user.subscription?.plan === 'premium' ? 'crown' : 'user'}-me-1"></i>
+                            ${user.subscription?.plan || 'Free'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-coins text-warning me-2"></i>
+                            ${user.subscription?.credits || 0}
+                        </div>
+                    </td>
+                    <td>
+                        ${user.subscription?.expires_at ? 
+                            `<div class="d-flex align-items-center">
+                                <i class="fas fa-calendar-alt text-info me-2"></i>
+                                ${new Date(user.subscription.expires_at).toLocaleDateString()}
+                            </div>` : 
+                            '<span class="text-muted">N/A</span>'
+                        }
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary manage-user" data-user-id="${user.id}">
+                            <i class="fas fa-cog"></i>
+                            <span class="d-none d-md-inline ms-1">Manage</span>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Add event listeners
+            document.querySelectorAll('.manage-user').forEach(btn => {
+                btn.addEventListener('click', () => openManageModal(btn.dataset.userId));
+            });
+
+            // Update stats
+            updateStats();
+
+            // Initialize DataTable
+            if (!$.fn.DataTable.isDataTable('#usersTable')) {
+                $('#usersTable').DataTable({
+                    pageLength: 10,
+                    order: [[0, 'asc']],
+                    dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+                    language: {
+                        search: "",
+                        searchPlaceholder: "Search users..."
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading users:', error);
+            showToast('Error loading users. Please try again.', 'error');
+        }
+    }
+
+    // Open manage modal with improved layout
+    function openManageModal(userId) {
+        currentUserId = userId;
+        currentUser = users.find(u => u.id === userId);
+        if (currentUser) {
+            const infoHtml = `
+                <div class="mb-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-circle bg-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-3">
+                            ${currentUser.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <h5 class="mb-1">${currentUser.username}</h5>
+                            <p class="text-muted mb-0">${currentUser.email}</p>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-circle text-${currentUser.is_active ? 'success' : 'danger'} me-2"></i>
+                                <span>${currentUser.is_active ? 'Active' : 'Inactive'}</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-${currentUser.role === 'admin' ? 'shield-alt' : currentUser.role === 'developer' ? 'code' : 'user'} text-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-2"></i>
+                                <span>${currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr class="border-secondary">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Subscription Plan</small>
+                        <span class="badge ${currentUser.subscription?.plan === 'premium' ? 'bg-warning' : currentUser.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'}">
+                            ${currentUser.subscription?.plan || 'Free'}
+                        </span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Credits</small>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-coins text-warning me-2"></i>
+                            ${currentUser.subscription?.credits || 0}
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted d-block">Expires At</small>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-calendar-alt text-info me-2"></i>
+                            ${currentUser.subscription?.expires_at ? new Date(currentUser.subscription.expires_at).toLocaleDateString() : 'N/A'}
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('userInfo').innerHTML = infoHtml;
+            
+            // Set toggle status button
+            const toggleBtn = document.getElementById('toggleStatusBtn');
+            toggleBtn.innerHTML = `
+                <i class="fas fa-${currentUser.is_active ? 'ban' : 'check'}-circle me-2"></i>
+                ${currentUser.is_active ? 'Deactivate User' : 'Activate User'}
+            `;
+            toggleBtn.className = `btn btn-outline-${currentUser.is_active ? 'warning' : 'success'}`;
+            
+            manageModal.show();
+        }
+    }
+
+    // Add toast notification function
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed bottom-0 end-0 m-3`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    }
+
+    // Event Listeners
+    document.getElementById('refreshBtn').addEventListener('click', loadUsers);
+    
+    document.getElementById('cancelSubscriptionBtn').addEventListener('click', async function() {
+        if (!currentUser) return;
+        if (!confirm('Are you sure you want to cancel this user\'s subscription?')) return;
+        try {
+            const response = await fetch(`/api/admin/users/${currentUser.id}/subscription`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    plan: 'free', 
+                    credits: 0, 
+                    expires_at: new Date().toISOString(), 
+                    status: 'inactive' 
+                })
+            });
+            if (response.ok) {
+                manageModal.hide();
+                loadUsers();
+                showToast('Subscription cancelled successfully');
+            } else {
+                throw new Error('Failed to cancel subscription');
+            }
+        } catch (error) {
+            showToast('Error cancelling subscription', 'error');
+        }
+    });
+
+    document.getElementById('toggleStatusBtn').addEventListener('click', async function() {
+        if (!currentUser) return;
+        if (!confirm(`Are you sure you want to ${currentUser.is_active ? 'deactivate' : 'activate'} this user?`)) return;
+        try {
+            const response = await fetch(`/api/admin/users/${currentUser.id}/toggle-status`, { 
+                method: 'POST' 
+            });
+            if (response.ok) {
+                manageModal.hide();
+                loadUsers();
+                showToast(`User ${currentUser.is_active ? 'deactivated' : 'activated'} successfully`);
+            } else {
+                throw new Error('Failed to toggle user status');
+            }
+        } catch (error) {
+            showToast('Error changing user status', 'error');
+        }
+    });
+
+    document.getElementById('pauseSubscriptionBtn').addEventListener('click', async function() {
+        if (!currentUser) return;
+        if (!confirm('Are you sure you want to pause this user\'s subscription?')) return;
+        try {
+            const response = await fetch(`/api/admin/users/${currentUser.id}/subscription`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'suspended' })
+            });
+            if (response.ok) {
+                manageModal.hide();
+                loadUsers();
+                showToast('Subscription paused successfully');
+            } else {
+                throw new Error('Failed to pause subscription');
+            }
+        } catch (error) {
+            showToast('Error pausing subscription', 'error');
+        }
+    });
+
+    // Initial load
+    loadUsers();
+});
+</script>
+
+<style>
+:root {
+    --background-color: #181f2a;
+    --text-color: #f8f9fa;
+    --border-color: #232b3b;
+    --card-bg: var(--background-color);
+    --card-border: var(--border-color);
+}
+
+body, .container-fluid, .main-content {
+    background-color: var(--background-color) !important;
+    color: var(--text-color);
+}
+
+.card, .modal-content, .table, .dataTables_wrapper, .form-control, .form-select {
+    background-color: var(--card-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--card-border) !important;
+}
+
+.card-header, .modal-header, .modal-footer {
+    background-color: var(--card-bg) !important;
+    border-color: var(--card-border) !important;
+}
+
+.table > :not(caption) > * > * {
+    background-color: var(--card-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--card-border) !important;
+}
+
+input, select, .form-control, .form-select {
+    background-color: var(--card-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--card-border) !important;
+}
+
+input::placeholder {
+    color: #b0b8c1 !important;
+    opacity: 1;
+}
+
+.dataTables_wrapper .dataTables_length select,
+.dataTables_wrapper .dataTables_filter input {
+    background-color: var(--card-bg) !important;
+    border-color: var(--card-border) !important;
+    color: var(--text-color) !important;
+}
+
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_paginate {
+    color: #b0b8c1;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    color: var(--text-color) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: #fff !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #0b5ed7 !important;
+    border-color: #0b5ed7 !important;
+    color: #fff !important;
+}
+
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    background: #232b3b;
+}
+
+.card {
+    transition: transform 0.2s;
+    background-color: var(--card-bg) !important;
+    border-color: var(--card-border) !important;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.badge {
+    padding: 0.5em 0.8em;
+}
+
+.btn-group .btn {
+    border-radius: 0.25rem !important;
+}
+
+.toast {
+    z-index: 1050;
+    background-color: var(--card-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--card-border) !important;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #6c757d;
+    box-shadow: 0 0 0 0.25rem rgba(108, 117, 125, 0.25);
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    background: var(--background-color);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+</style>
+{% endblock %} 

@@ -511,6 +511,10 @@
                 <i class="bi bi-people"></i>
                 <span>Manage Users</span>
             </a>
+            <a href="{{ url_for('user_management.user_management') }}" class="nav-item {% if request.endpoint == 'user_management.user_management' %}active{% endif %}">
+                <i class="bi bi-person"></i>
+                <span>User Management</span>
+            </a>
             <a href="{{ url_for('auth.signup') }}" class="nav-item {% if request.endpoint == 'auth.signup' %}active{% endif %}">
                 <i class="bi bi-person-plus"></i>
                 <span>Create User</span>
