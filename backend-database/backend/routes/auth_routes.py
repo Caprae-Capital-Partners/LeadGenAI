@@ -21,7 +21,7 @@ def login():
     if current_user.is_authenticated:
         
         if "https://sandbox-api.capraeleadseekers.site" in request.host:
-            return redirect(url_for('https://sandboxdev.saasquatchleads.com'))
+            return redirect("https://sandboxdev.saasquatchleads.com")
         elif "https://data.capraeleadseekers.site" in request.host:
             return redirect("https://app.saasquatchleads.com/")
 
@@ -35,7 +35,7 @@ def login():
             flash(message, 'success')
          
             if "https://sandbox-api.capraeleadseekers.site" in request.host:
-                return redirect(url_for('https://sandboxdev.saasquatchleads.com'))
+                return redirect("https://sandboxdev.saasquatchleads.com")
             elif "https://data.capraeleadseekers.site" in request.host:
                 return redirect("https://app.saasquatchleads.com")
         else:
