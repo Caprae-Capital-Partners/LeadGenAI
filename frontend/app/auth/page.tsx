@@ -279,7 +279,8 @@ export default function AuthPage() {
                 }, 100);
             }
         } catch (err: any) {
-            alert(err.message);
+            console.error("❌ Login error:", err);
+            showNotification("Login failed. Please check your credentials and try again.", "error");
         }
     };
 
