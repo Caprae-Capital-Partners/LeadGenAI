@@ -4,30 +4,30 @@ import csv
 import io
 import boto3
 import time
-import os # Untuk mengakses variabel lingkungan
+import os # For accessing environment variables
 
-# --- Konfigurasi ---
-# Ganti dengan URL endpoint API Anda
+# --- Configuration ---
+# Change to your API endpoint URL
 API_BASE_URL = "https://data.capraeleadseekers.site" 
 API_UPLOAD_ENDPOINT = f"{API_BASE_URL}/api/upload_leads"
 
-# Ambil API Key dari variabel lingkungan.
-# API Key HARUS diatur sebagai variabel lingkungan (misalnya, export LEAD_API_KEY="...")
-# Jika tidak diatur, nilai akan menjadi string kosong.
+# Get API Key from environment variable.
+# API Key MUST be set as an environment variable (e.g., export LEAD_API_KEY="...")
+# If not set, the value will be an empty string.
 API_KEY = os.getenv("LEAD_API_KEY", "") 
 
-# Ukuran batch untuk setiap permintaan API
-# Sesuaikan ini berdasarkan kinerja API Anda dan batasan server
-# Mulai dengan 500-1000, lalu bisa dioptimalkan
+# Batch size for each API request
+# Adjust this based on your API performance and server limits
+# Start with 500-1000, then optimize as needed
 BATCH_SIZE = 500 
 
-# Path file CSV lokal
+# Local CSV file path
 CSV_FOLDER_PATH = "/Users/ghaly/Documents/Project/LeadGenAI/backend-database/split_data"
 
-# Kolom yang wajib ada di setiap file
+# Columns that must exist in every file
 REQUIRED_COLUMNS = ["company", "website", "owner_linkedin"]
 
-# Mapping kolom jika ada nama berbeda
+# Column mapping if there are different names
 COLUMN_MAPPING = {
     # Required fields
     "Company": "company",
@@ -66,12 +66,12 @@ COLUMN_MAPPING = {
     "Additional Notes": "additional_notes"
 }
 
-# --- Fungsi Pembantu ---
+# --- Helper Functions ---
 
 def send_batch_to_api(batch_data, batch_num, total_batches):
     """
-    Mengirimkan satu batch data ke API upload leads.
-    Menerapkan retry dengan exponential backoff untuk kegagalan sementara.
+    Send one batch of data to the upload leads API.
+    Implements retry with exponential backoff for temporary failures.
     """
     headers = {
         "Content-Type": "application/json",
@@ -82,61 +82,61 @@ def send_batch_to_api(batch_data, batch_num, total_batches):
 
     for attempt in range(max_retries):
         try:
-            print(f"Mengirim batch {batch_num}/{total_batches} ({len(batch_data)} data)... Percobaan {attempt + 1}/{max_retries}")
-            response = requests.post(API_UPLOAD_ENDPOINT, json=batch_data, headers=headers, timeout=60) # Timeout 60 detik
-            response.raise_for_status() # Akan memicu HTTPError untuk status code 4xx/5xx
+            print(f"Sending batch {batch_num}/{total_batches} ({len(batch_data)} records)... Attempt {attempt + 1}/{max_retries}")
+            response = requests.post(API_UPLOAD_ENDPOINT, json=batch_data, headers=headers, timeout=60) # 60 seconds timeout
+            response.raise_for_status() # Will raise HTTPError for 4xx/5xx status codes
 
             result = response.json()
             status = result.get('status', 'unknown')
             message = result.get('message', 'No message')
             
-            print(f"Batch {batch_num} berhasil dikirim. Status: {status}, Pesan: {message}")
+            print(f"Batch {batch_num} sent successfully. Status: {status}, Message: {message}")
             if status == "error":
-                print(f"Detail Error Batch {batch_num}: {result.get('stats', {}).get('error_details', 'N/A')}")
+                print(f"Batch {batch_num} Error Details: {result.get('stats', {}).get('error_details', 'N/A')}")
             return True, result
 
         except requests.exceptions.Timeout:
-            print(f"Timeout saat mengirim batch {batch_num}. Mencoba lagi dalam {retry_delay_seconds} detik...")
+            print(f"Timeout when sending batch {batch_num}. Retrying in {retry_delay_seconds} seconds...")
             time.sleep(retry_delay_seconds)
             retry_delay_seconds *= 2 # Exponential backoff
         except requests.exceptions.ConnectionError as e:
-            print(f"Kesalahan koneksi saat mengirim batch {batch_num}: {e}. Mencoba lagi dalam {retry_delay_seconds} detik...")
+            print(f"Connection error when sending batch {batch_num}: {e}. Retrying in {retry_delay_seconds} seconds...")
             time.sleep(retry_delay_seconds)
             retry_delay_seconds *= 2
         except requests.exceptions.HTTPError as e:
-            print(f"Kesalahan HTTP saat mengirim batch {batch_num}: {e.response.status_code} - {e.response.text}")
-            # Untuk error 4xx (misalnya 400 Bad Request), mungkin tidak perlu retry karena data salah
-            # Untuk error 5xx (server error), mungkin perlu retry
+            print(f"HTTP error when sending batch {batch_num}: {e.response.status_code} - {e.response.text}")
+            # For 4xx errors (e.g., 400 Bad Request), probably don't retry because the data is wrong
+            # For 5xx errors (server error), maybe retry
             if 500 <= e.response.status_code < 600:
-                print(f"Mencoba lagi dalam {retry_delay_seconds} detik...")
+                print(f"Retrying in {retry_delay_seconds} seconds...")
                 time.sleep(retry_delay_seconds)
                 retry_delay_seconds *= 2
             else:
                 return False, {"status": "error", "message": f"HTTP Error {e.response.status_code}: {e.response.text}"}
         except json.JSONDecodeError:
-            print(f"Gagal menguraikan respons JSON dari API untuk batch {batch_num}. Respons: {response.text}")
+            print(f"Failed to parse JSON response from API for batch {batch_num}. Response: {response.text}")
             return False, {"status": "error", "message": "Invalid JSON response from API"}
         except Exception as e:
-            print(f"Terjadi kesalahan tak terduga saat mengirim batch {batch_num}: {e}")
+            print(f"Unexpected error when sending batch {batch_num}: {e}")
             return False, {"status": "error", "message": f"Unexpected error: {str(e)}"}
     
-    print(f"Gagal mengirim batch {batch_num} setelah {max_retries} percobaan.")
+    print(f"Failed to send batch {batch_num} after {max_retries} attempts.")
     return False, {"status": "error", "message": "Max retries exceeded for batch"}
 
 def map_columns(row):
     mapped = {}
-    # Mapping manual untuk kolom wajib
+    # Manual mapping for required columns
     mapped['company'] = row.get('Company') or row.get('Company Name') or row.get('company') or ''
     mapped['website'] = row.get('Website') or row.get('website') or ''
     mapped['owner_linkedin'] = row.get("Owner's LinkedIn") or row.get('LinkedIn URL') or row.get('owner_linkedin') or ''
-    # Mapping kolom lain sesuai COLUMN_MAPPING
+    # Map other columns according to COLUMN_MAPPING
     for k, v in row.items():
         mapped_key = COLUMN_MAPPING.get(k.strip(), k.strip())
-        if mapped_key not in mapped:  # Jangan timpa kolom wajib
+        if mapped_key not in mapped:  # Don't overwrite required columns
             mapped[mapped_key] = v
     return mapped
 
-# --- Skrip Utama Impor ---
+# --- Main Import Script ---
 
 def import_leads_from_folder():
     # Process all part_*.csv files
@@ -144,18 +144,18 @@ def import_leads_from_folder():
              if f.endswith('.csv') and f.startswith('part_')]
     # Sort files to ensure they are processed in order (part_1.csv, part_2.csv, etc.)
     files.sort(key=lambda x: int(x.split('_')[1].split('.')[0]))
-    print(f"Ditemukan {len(files)} file CSV yang dipilih di folder {CSV_FOLDER_PATH}")
+    print(f"Found {len(files)} selected CSV files in folder {CSV_FOLDER_PATH}")
     for file in files:
         file_path = os.path.join(CSV_FOLDER_PATH, file)
-        print(f"\n=== Memproses file: {file} ===")
+        print(f"\n=== Processing file: {file} ===")
         try:
             with open(file_path, 'r', encoding='utf-8') as csvfile:
                 reader = csv.DictReader(csvfile)
                 headers = [h.strip() for h in reader.fieldnames]
-                # Cek kolom wajib
+                # Check required columns
                 for col in REQUIRED_COLUMNS:
                     if col not in headers and col not in COLUMN_MAPPING.values():
-                        print(f"File {file} TIDAK memiliki kolom wajib: {col}. Lewati file ini.")
+                        print(f"File {file} DOES NOT have required column: {col}. Skipping this file.")
                         break
                 else:
                     current_batch = []
@@ -186,11 +186,11 @@ def import_leads_from_folder():
                                 all_error_details.extend(batch_stats.get('error_details', []))
                             else:
                                 stats['total_errors'] += len(current_batch)
-                                all_error_details.append(f"Batch {batch_num} gagal total: {result.get('message', 'Unknown error')}")
+                                all_error_details.append(f"Batch {batch_num} totally failed: {result.get('message', 'Unknown error')}")
                             stats['total_leads_processed'] += len(current_batch)
                             current_batch = []
                             batch_num += 1
-                    # Sisa batch
+                    # Remaining batch
                     if current_batch:
                         success, result = send_batch_to_api(current_batch, batch_num, "N/A")
                         if success:
@@ -204,23 +204,23 @@ def import_leads_from_folder():
                             all_error_details.extend(batch_stats.get('error_details', []))
                         else:
                             stats['total_errors'] += len(current_batch)
-                            all_error_details.append(f"Batch {batch_num} gagal total: {result.get('message', 'Unknown error')}")
+                            all_error_details.append(f"Batch {batch_num} totally failed: {result.get('message', 'Unknown error')}")
                         stats['total_leads_processed'] += len(current_batch)
-                    print(f"\n--- Proses Impor Selesai untuk {file} ---")
-                    print(f"Total data diproses: {stats['total_leads_processed']}")
-                    print(f"Statistik Hasil:")
-                    print(f"  - Ditambahkan Baru: {stats['total_added_new']}")
-                    print(f"  - Diperbarui: {stats['total_updated']}")
-                    print(f"  - Tidak Ada Perubahan: {stats['total_no_change']}")
-                    print(f"  - Dilewati (Logika Controller): {stats['total_skipped_controller']}")
-                    print(f"  - Tidak Valid (Pengecekan Awal): {stats['total_invalid_initial_check']}")
-                    print(f"  - Error Saat Pemrosesan: {stats['total_errors']}")
+                    print(f"\n--- Import Process Finished for {file} ---")
+                    print(f"Total records processed: {stats['total_leads_processed']}")
+                    print(f"Result Statistics:")
+                    print(f"  - Added New: {stats['total_added_new']}")
+                    print(f"  - Updated: {stats['total_updated']}")
+                    print(f"  - No Change: {stats['total_no_change']}")
+                    print(f"  - Skipped (Controller Logic): {stats['total_skipped_controller']}")
+                    print(f"  - Invalid (Initial Check): {stats['total_invalid_initial_check']}")
+                    print(f"  - Errors During Processing: {stats['total_errors']}")
                     if all_error_details:
-                        print("\nDetail Error:")
+                        print("\nError Details:")
                         for err in all_error_details:
                             print(f"- {err}")
         except Exception as e:
-            print(f"Gagal memproses file {file}: {e}")
+            print(f"Failed to process file {file}: {e}")
 
 if __name__ == "__main__":
     import_leads_from_folder()
