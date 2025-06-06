@@ -264,7 +264,7 @@ export default function AuthPage() {
                             method: "POST",
                             credentials: "include", // assuming you're using Flask-Login session cookie
                         });
-                        showNotification("Verification email sent! Please check your inbox.", "success");
+                        showNotification("Your account has been created. Please verify your email to activate it. A link has been sent to your email.", "info");
                     } catch (err) {
                         console.error("❌ Failed to send verification email:", err);
                         showNotification("Account created, but failed to send verification email.", "error");
