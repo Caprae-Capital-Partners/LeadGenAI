@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { loadStripe } from "@stripe/stripe-js";
+import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 
 type Plan = {
     id: string;
@@ -24,6 +25,8 @@ const STRIPE = process.env.NEXT_PUBLIC_STRIPE_CODE!
 
 
 export default function SubscriptionPage() {
+    useEmailVerificationGuard();
+    
     const [plans, setPlans] = useState<Plan[]>([]);
     const [isAnnual, setIsAnnual] = useState(false);
 

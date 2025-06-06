@@ -62,7 +62,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import axios from "axios";
-
+import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Notif from "@/components/ui/notif";
 
 import { redirect } from "next/navigation";
@@ -72,6 +72,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2;
 //   redirect('/auth');
 // }
 export default function Home() {
+  useEmailVerificationGuard();
   const user =
     typeof window !== "undefined"
       ? JSON.parse(sessionStorage.getItem("user") || "{}")
