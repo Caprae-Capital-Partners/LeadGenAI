@@ -608,7 +608,7 @@ def parse_revenue_value(revenue_str):
         return None
 
 @lead_bp.route('/api/upload_leads', methods=['POST'])
-# @login_required
+@login_required
 def api_upload_leads():
     """API endpoint to upload multiple leads"""
     try:
