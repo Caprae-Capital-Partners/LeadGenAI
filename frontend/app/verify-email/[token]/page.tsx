@@ -5,7 +5,6 @@ import { useRouter, useParams } from "next/navigation";
 import Notif from "@/components/ui/notif";
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!;
-const VERIFY_ENDPOINT = `${DATABASE_URL}/auth/verify-email`;
 
 export default function VerifyEmailPage() {
     const { token } = useParams<{ token: string }>();
@@ -28,10 +27,10 @@ export default function VerifyEmailPage() {
     useEffect(() => {
         const verify = async () => {
             try {
-                const res = await fetch(`${VERIFY_ENDPOINT}/${token}`, {
-                    method: "GET",
-                    credentials: "include",
-                });
+                const res = await fetch(`${DATABASE_URL}/auth/verify-email/${token}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                  });
 
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || "Verification failed.");
