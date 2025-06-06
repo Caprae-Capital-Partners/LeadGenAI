@@ -29,73 +29,12 @@ export function LandingPage() {
     const timer2 = setTimeout(() => setVisibleSections((prev) => ({ ...prev, content: true })), 900)
 
     // Add ActiveCampaign form embed
-    const existing = document.querySelector('script[src*="activehosted.com/f/embed.php"]');
-    if (!existing) {
-      const script = document.createElement("script");
-      script.src = "https://capraecapital.activehosted.com/f/embed.php?id=1";
-      script.charset = "utf-8";
-      script.async = true;
-      document.body.appendChild(script);
-
-      // Add custom styles for the form
-      const style = document.createElement('style');
-      style.textContent = `
-        #_form_1_ {
-          background: transparent !important;
-          border: none !important;
-          padding: 0 !important;
-          margin: 0 !important;
-        }
-        #_form_1_ ._form-title {
-          font-size: 1.5rem !important;
-          font-weight: 600 !important;
-          color: #fff !important;
-          margin-bottom: 1rem !important;
-        }
-        #_form_1_ input[type="text"],
-        #_form_1_ input[type="email"] {
-          background: #1A2438 !important;
-          border: 1px solid #2A3A59 !important;
-          color: #fff !important;
-          padding: 0.75rem 1rem !important;
-          border-radius: 0.5rem !important;
-          transition: all 0.2s !important;
-        }
-        #_form_1_ input[type="text"]:focus,
-        #_form_1_ input[type="email"]:focus {
-          border-color: #4fd1c5 !important;
-          box-shadow: 0 0 0 2px rgba(79, 209, 197, 0.2) !important;
-        }
-        #_form_1_ ._submit {
-          background: linear-gradient(to right, #1bc290, #2ab58b) !important;
-          border: none !important;
-          padding: 0.75rem 1.5rem !important;
-          border-radius: 0.5rem !important;
-          font-weight: 600 !important;
-          width: 100% !important;
-          margin-top: 1rem !important;
-          color: white !important;
-          text-shadow: 0 0 3px rgba(0, 0, 0, 0.3) !important;
-          box-shadow: 0 4px 8px rgba(27, 194, 144, 0.3) !important;
-        }
-        #_form_1_ ._submit:hover {
-          transform: translateY(-1px) !important;
-          box-shadow: 0 6px 12px rgba(27, 194, 144, 0.4) !important;
-        }
-        #_form_1_ label {
-          color: #e2e8f0 !important;
-          font-weight: 500 !important;
-          margin-bottom: 0.5rem !important;
-        }
-      `;
-      document.head.appendChild(style);
-    }
 
     return () => {
       clearTimeout(timer1)
       clearTimeout(timer2)
-      const form = document.querySelector("._form_1");
-      if (form) form.innerHTML = "";
+      // const form = document.querySelector("._form_1");
+      // if (form) form.innerHTML = "";
     }
   }, [])
 
@@ -431,21 +370,21 @@ export function LandingPage() {
                 <div className="w-full relative z-10">
                   <Card className="bg-[#121A2A]/80 backdrop-blur-sm border-[#1E2A40]/40 shadow-2xl hover:shadow-teal-500/5 transition-all duration-300">
                     <CardContent className="p-8">
-                      <div className="mb-6">
+                      {/* <div className="mb-6">
                         <h2 className="text-2xl font-bold text-yellow-400 mb-2">Get Early Access</h2>
                         <p className="text-gray-400">
                           Join the waitlist and be the first to experience our powerful B2B lead generation platform.
                         </p>
-                      </div>
+                      </div> */}
                       
                       <CustomWaitlistForm />
                                           
-                      <div className="mt-6 flex items-center space-x-3 text-sm text-gray-400">
+                      {/* <div className="mt-6 flex items-center space-x-3 text-sm text-gray-400">
                         <svg className="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                         <span>Your information is secure and will never be shared.</span>
-                      </div>
+                      </div> */}
                     </CardContent>
                   </Card>
                 </div>

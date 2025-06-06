@@ -72,7 +72,7 @@ function CustomWaitlistForm() {
               required
               value={form.fullname}
               onChange={handleChange}
-              className="bg-[#1A2438] border border-teal-700 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/30 text-gray-100 placeholder-gray-500 rounded-lg px-4 py-3 transition-all"
+              className="!text-teal-300 bg-[#1A2438] border border-teal-700 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/30 placeholder-gray-500 rounded-lg px-4 py-3 transition-all"
               placeholder="Type your name"
             />
           </div>
@@ -87,7 +87,7 @@ function CustomWaitlistForm() {
               required
               value={form.email}
               onChange={handleChange}
-              className="bg-[#1A2438] border border-teal-700 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/30 text-gray-100 placeholder-gray-500 rounded-lg px-4 py-3 transition-all"
+              className="bg-[#1A2438] border border-teal-700 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/30 !text-teal-300 placeholder-gray-500 rounded-lg px-4 py-3 transition-all"
               placeholder="Type your email"
             />
           </div>
