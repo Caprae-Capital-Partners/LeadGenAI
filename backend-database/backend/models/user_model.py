@@ -21,6 +21,11 @@ class User(UserMixin, db.Model):
     is_active = db.Column(db.Boolean, default=True)
     linkedin_url = db.Column(db.String(255), nullable=True)
 
+    # # Email verification and password reset fields
+    is_email_verified = db.Column(db.Boolean, default=False)
+    email_verification_sent_at = db.Column(db.DateTime, nullable=True)
+    password_reset_sent_at = db.Column(db.DateTime, nullable=True)
+
     def get_id(self):
         """Return user_id as the identifier for Flask-Login"""
         return str(self.user_id)
@@ -82,5 +87,8 @@ class User(UserMixin, db.Model):
             "company": self.company,
             "linkedin_url": self.linkedin_url,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "is_active": self.is_active
+            "is_active": self.is_active,
+            "is_email_verified": self.is_email_verified,
+            "email_verification_sent_at": self.email_verification_sent_at.isoformat() if self.email_verification_sent_at else None,
+            "password_reset_sent_at": self.password_reset_sent_at.isoformat() if self.password_reset_sent_at else None
         }
