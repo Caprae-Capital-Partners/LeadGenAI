@@ -1720,21 +1720,31 @@ def create_draft():
         current_app.logger.warning(f"[Draft] Missing lead_id or draft_data. lead_id: {lead_id}, draft_data: {draft_data}")
         return jsonify({"error": "lead_id and draft_data are required (or enough data to generate lead_id)"}), 400
 
-    current_app.logger.info(f"[Draft] Creating draft with lead_id: {lead_id} for user_id: {current_user.user_id}")
+    current_app.logger.info(f"[Draft] Creating or updating draft with lead_id: {lead_id} for user_id: {current_user.user_id}")
     try:
-        draft = UserLeadDraft(
-            user_id=current_user.user_id,
-            lead_id=lead_id,
-            draft_data=draft_data,
-            change_summary=data.get('change_summary')
-        )
-        db.session.add(draft)
-        db.session.commit()
-        current_app.logger.info(f"[Draft] Draft created successfully for lead_id: {lead_id}")
-        return jsonify(draft.to_dict()), 201
+        # Check if a draft already exists for this user and lead_id
+        existing_draft = UserLeadDraft.query.filter_by(user_id=current_user.user_id, lead_id=lead_id, is_deleted=False).first()
+        if existing_draft:
+            existing_draft.draft_data = draft_data
+            existing_draft.change_summary = data.get('change_summary')
+            existing_draft.updated_at = datetime.utcnow()
+            db.session.commit()
+            current_app.logger.info(f"[Draft] Existing draft updated for lead_id: {lead_id}")
+            return jsonify(existing_draft.to_dict()), 200
+        else:
+            draft = UserLeadDraft(
+                user_id=current_user.user_id,
+                lead_id=lead_id,
+                draft_data=draft_data,
+                change_summary=data.get('change_summary')
+            )
+            db.session.add(draft)
+            db.session.commit()
+            current_app.logger.info(f"[Draft] Draft created successfully for lead_id: {lead_id}")
+            return jsonify(draft.to_dict()), 201
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"[Draft] Error creating draft for lead_id: {lead_id}: {str(e)}")
+        current_app.logger.error(f"[Draft] Error creating/updating draft for lead_id: {lead_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @lead_bp.route('/drafts')
