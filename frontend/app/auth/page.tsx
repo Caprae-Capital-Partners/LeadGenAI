@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import Notif from "@/components/ui/notif";
 import { validateField, validateForm, FormErrors } from "@/lib/formValidation";
+import Link from "next/link";
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!;
 
@@ -254,14 +255,33 @@ export default function AuthPage() {
             if (!res.ok) throw new Error(result.message || "Something went wrong");
 
             if (result.user) {
-                sessionStorage.setItem("user", JSON.stringify(result.user));
-                showNotification(isSignup ? "Account successfully created!" : "Successfully signed in!");
+              sessionStorage.setItem("user", JSON.stringify(result.user));
+
+              // 🔔 Send verification email after successful signup
+              if (isSignup) {
+                try {
+                  await fetch(`${DATABASE_URL}/auth/send-verification`, {
+                    method: "POST",
+                    credentials: "include", // assuming you're using Flask-Login session cookie
+                  });
+                  showNotification("Your account has been created. Please verify your email to activate it. A link has been sent to your email.", "info");
+                } catch (err) {
+                  console.error("❌ Failed to send verification email:", err);
+                  showNotification("Account created, but failed to send verification email.", "error");
+                }
+              } else {
+                showNotification("Successfully signed in!", "success");
+              }
+
+              // ✅ Redirect
               setTimeout(() => {
                 router.push(isSignup ? "/subscription" : "/");
-                }, 100);
+              }, 100);
             }
+
         } catch (err: any) {
-            alert(err.message);
+            console.error("❌ Login error:", err);
+            showNotification("Login failed. Please check your credentials and try again.", "error");
         }
     };
 
@@ -415,6 +435,18 @@ export default function AuthPage() {
                             )}
                         </div>
 
+                        {/* ← Show “Forgot password?” only when NOT in Sign-Up mode */}
+                        {!isSignup && (
+                            <div className="mt-1 text-right">
+                                <Link
+                                    href="/forgot-password"
+                                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                >
+                                    Forgot password?
+                                </Link>
+                            </div>
+                        )}
+
                         {isSignup && (
                             <div>
                                 <Label htmlFor="confirmPassword">Confirm Password</Label>
@@ -432,6 +464,8 @@ export default function AuthPage() {
                                 )}
                             </div>
                         )}
+                        
+                        
 
                         {isSignup && (
                         <div className="flex items-start space-x-2 text-sm">
