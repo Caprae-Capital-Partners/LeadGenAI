@@ -13,12 +13,10 @@ class UserSubscription(db.Model):
     tier_start_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     plan_expiration_timestamp = db.Column(db.DateTime, nullable=True)
     username = db.Column(db.String(100), nullable=True)
-    stripe_subscription_id = db.Column(db.String(255), nullable=True)
-    stripe_customer_id = db.Column(db.String(255), nullable=True)
-    cancel_at_period_end = db.Column(db.Boolean, default=False)
-    is_paused = db.Column(db.Boolean, default=False)
-    pause_behavior = db.Column(db.String(50), nullable=True)  # void, keep_as_draft, mark_uncollectible
-    pause_resumes_at = db.Column(db.Integer, nullable=True)  # Unix timestamp
+    is_paused = db.Column(db.Boolean, default=False, nullable=False)
+    pause_end_date = db.Column(db.DateTime, nullable=True)
+    original_plan_id = db.Column(db.Integer, nullable=True)
+    original_plan_name = db.Column(db.String(100), nullable=True)
 
 # Tambahkan relationship setelah import Plan
 from models.plan_model import Plan
@@ -34,8 +32,5 @@ def to_dict(self):
         'tier_start_timestamp': self.tier_start_timestamp.isoformat() if self.tier_start_timestamp else None,
         'plan_expiration_timestamp': self.plan_expiration_timestamp.isoformat() if self.plan_expiration_timestamp else None,
         'plan': self.plan.to_dict() if hasattr(self, 'plan') and self.plan else None,
-        'username': self.username,
-        'stripe_subscription_id': self.stripe_subscription_id,
-        'stripe_customer_id': self.stripe_customer_id,
-        'cancel_at_period_end': self.cancel_at_period_end
+        'username': self.username
     }

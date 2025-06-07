@@ -19,11 +19,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 def login():
     """Handle user login"""
     if current_user.is_authenticated:
-        
-        if "sandbox-api.capraeleadseekers.site" in request.host:
-            return redirect("https://sandboxdev.saasquatchleads.com")
-        elif "data.capraeleadseekers.site" in request.host:
-            return redirect("https://app.saasquatchleads.com/")
+        return redirect(url_for('main.index'))
+        # return redirect("https://app.saasquatchleads.com/")
 
     if request.method == 'POST':
         username = request.form.get('username')
@@ -33,11 +30,8 @@ def login():
 
         if success:
             flash(message, 'success')
-         
-            if "sandbox-api.capraeleadseekers.site" in request.host:
-                return redirect("https://sandboxdev.saasquatchleads.com")
-            elif "data.capraeleadseekers.site" in request.host:
-                return redirect("https://app.saasquatchleads.com")
+            # return redirect("https://app.saasquatchleads.com/")
+            return redirect(url_for('main.index'))
         else:
             flash(message, 'danger')
 
@@ -249,12 +243,20 @@ def register_api():
 @login_required
 def get_user_info():
     """Get current user information"""
+    from models.user_subscription_model import UserSubscription
+    
+    user_sub = UserSubscription.query.filter_by(user_id=current_user.user_id).first()
+    is_paused = getattr(user_sub, 'is_paused', False) if user_sub else False
+    pause_end_date = user_sub.pause_end_date.isoformat() if user_sub and getattr(user_sub, 'pause_end_date', None) else None
+    
     return jsonify({
         "id": current_user.user_id,
         "email": current_user.email,
         "name": current_user.username,
         "role": current_user.role,
-        "tier" : current_user.tier,
+        "tier": current_user.tier,
+        "is_paused": is_paused,
+        "pause_end_date": pause_end_date
     })
 
 @auth_bp.route('/api/auth/logout', methods=['POST'])
@@ -324,8 +326,108 @@ def api_update_user_role(user_id):
 @auth_bp.route('/choose_plan')
 @login_required
 def choose_plan():
-    """Display the plan selection page after signup"""
-    return render_template('auth/choose_plan.html')
+    """Render the plan selection page"""
+    from models.plan_model import Plan
+    from controllers.subscription_controller import SubscriptionController
+
+    # Get all available plans
+    plans = Plan.query.all()
+
+    # Get current user subscription info
+    subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
+
+    if status_code == 200:
+        current_plan = subscription_info.get('subscription', {}).get('plan_name', 'Free')
+        current_credits = subscription_info.get('subscription', {}).get('credits_remaining', 0)
+    else:
+        current_plan = 'Free'
+        current_credits = 0
+
+    return render_template('auth/choose_plan.html', 
+                         plans=plans, 
+                         current_plan=current_plan,
+                         current_credits=current_credits,
+                         user_tier=current_user.tier)
+
+@auth_bp.route('/pause_subscription')
+@login_required
+def pause_subscription_page():
+    """Render the subscription pause page"""
+    from controllers.subscription_controller import SubscriptionController
+    
+    # Get current user subscription info
+    subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
+    
+    if status_code != 200:
+        flash('No active subscription found.', 'info')
+        return redirect(url_for('auth.choose_plan'))
+    
+    # Check if user is on free tier or already paused
+    if current_user.tier == 'free':
+        flash('You are on the free plan and cannot pause.', 'info')
+        return redirect(url_for('auth.choose_plan'))
+    
+    if current_user.tier == 'pause':
+        flash('Your subscription is already paused.', 'info')
+        return redirect(url_for('auth.choose_plan'))
+    
+    return render_template('auth/pause_subscription.html', 
+                         subscription_info=subscription_info,
+                         user_tier=current_user.tier)
+
+@auth_bp.route('/create-pause-checkout-session', methods=['POST'])
+@login_required
+def create_pause_checkout_session():
+    """Create a Stripe checkout session for pause subscription"""
+    if not request.json:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    pause_duration = request.json.get('pause_duration')
+    if not pause_duration:
+        return jsonify({'error': 'pause_duration is required'}), 400
+    
+    # Call the controller method
+    response, status_code = SubscriptionController.create_pause_checkout_session(current_user, pause_duration)
+    return jsonify(response), status_code
+
+@auth_bp.route('/cancel_subscription')
+@login_required
+def cancel_subscription_page():
+    """Render the subscription cancellation page"""
+    from controllers.subscription_controller import SubscriptionController
+    
+    # Get current user subscription info
+    subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
+    
+    if status_code != 200:
+        flash('Unable to load subscription information.', 'error')
+        return redirect(url_for('auth.choose_plan'))
+    
+    # Check if already scheduled for cancellation
+    is_scheduled = subscription_info.get('subscription', {}).get('is_scheduled_for_cancellation', False)
+    
+    return render_template('auth/cancel_subscription.html', 
+                         subscription_info=subscription_info,
+                         is_scheduled_for_cancellation=is_scheduled)
+def cancel_subscription_page():
+    """Render the subscription cancellation page"""
+    from controllers.subscription_controller import SubscriptionController
+
+    # Get current user subscription info
+    subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
+
+    if status_code != 200:
+        flash('No active subscription found.', 'info')
+        return redirect(url_for('auth.choose_plan'))
+
+    # Check if user is already on free tier
+    if current_user.tier == 'free':
+        flash('You are already on the free plan.', 'info')
+        return redirect(url_for('auth.choose_plan'))
+
+    return render_template('auth/cancel_subscription.html', 
+                         subscription_info=subscription_info,
+                         user_tier=current_user.tier)
 
 @auth_bp.route('/create-checkout-session', methods=['POST'])
 @login_required
@@ -333,35 +435,6 @@ def create_checkout_session():
     """Create a Stripe checkout session"""
     # Call the controller method
     response, status_code = SubscriptionController.create_checkout_session(current_user)
-    return jsonify(response), status_code
-
-@auth_bp.route('/payment/success')
-@login_required
-def payment_success():
-    return redirect("https://app.saasquatchleads.com")
-
-@auth_bp.route('/payment/cancel')
-@login_required
-def payment_cancel():
-    return redirect("https://app.saasquatchleads.com/subscription")
-
-@auth_bp.route('/subscription')
-@login_required
-def subscription_page():
-    """Subscription management page"""
-    from models.user_subscription_model import UserSubscription
-    user_sub = UserSubscription.query.filter_by(user_id=str(current_user.user_id)).first()
-    return render_template('auth/manage_subscriptions.html', 
-                         user_subscription=user_sub, 
-                         current_tier=getattr(current_user, 'tier', 'free'))
-
-@auth_bp.route('/webhook', methods=['POST'])
-def stripe_webhook():
-    """Main Stripe webhook endpoint"""
-    from controllers.subscription_controller import SubscriptionController
-    payload = request.get_data()
-    sig_header = request.headers.get('stripe-signature')
-    response, status_code = SubscriptionController.handle_stripe_webhook(payload, sig_header)
     return jsonify(response), status_code
 
 @auth_bp.route('/manage_subscriptions')
@@ -497,34 +570,82 @@ def update_user_info():
             print(f"[User Update] Logging failed: {log_e}")
         return jsonify({"error": "No valid fields to update", "details": errors}), 400
 
-@auth_bp.route('/api/auth/payment_cancel')
+@auth_bp.route('/verify-email/<token>')
+def verify_email(token):
+    success, message = AuthController.verify_email(token)
+    flash(message, 'success' if success else 'danger')
+    return redirect(url_for('auth.login'))
+
+@auth_bp.route('/send-verification')
 @login_required
-def api_payment_cancel():
-    """Handle payment cancellation via API"""
-    response, status_code = SubscriptionController.payment_cancel_handler(current_user)
-    return jsonify(response), status_code
+def send_verification():
+    AuthController.send_verification_email(current_user)
+    flash('Verification email sent!', 'info')
+    return redirect(url_for('main.index'))
 
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            AuthController.send_password_reset_email(user)
+        flash('If your email is registered, a reset link has been sent.', 'info')
+        return redirect(url_for('auth.login'))
+    return render_template('auth/forgot_password.html')
 
-@auth_bp.route('/api/auth/update_payment_success')
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if request.method == 'POST':
+        new_password = request.form.get('password')
+        success, message = AuthController.reset_password(token, new_password)
+        flash(message, 'success' if success else 'danger')
+        return redirect(url_for('auth.login'))
+    return render_template('auth/reset_password.html', token=token)
+
+# API: Send verification email (for logged-in user)
+@auth_bp.route('/api/auth/send-verification', methods=['POST'])
 @login_required
-def update_payment_success():
-    """Handle successful payment method update"""
-    session_id = request.args.get('session_id')
-    current_app.logger.info(f"[Payment Update] Success for user {current_user.user_id}, session: {session_id}")
+def api_send_verification():
+    try:
+        AuthController.send_verification_email(current_user)
+        return jsonify({"message": "Verification email sent!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    return jsonify({
-        'message': "Payment method updated successfully!",
-        'redirect_url': "https://app.saasquatchleads.com/subscription",
-        'session_id': session_id
-    }), 200
+# API: Verify email with token
+@auth_bp.route('/api/auth/verify-email/<token>', methods=['POST'])
+def api_verify_email(token):
+    success, message = AuthController.verify_email(token)
+    if success:
+        return jsonify({"redirect_url": "https://app.saasquatchleads.com/auth", "message": message}), 200
+    else:
+        return jsonify({"error": message}), 400
 
-@auth_bp.route('/api/auth/update_payment_cancel')
-@login_required
-def update_payment_cancel():
-    """Handle cancelled payment method update"""
-    current_app.logger.info(f"[Payment Update] Cancelled for user {current_user.user_id}")
+# API: Forgot password (request reset email)
+@auth_bp.route('/api/auth/forgot-password', methods=['POST'])
+def api_forgot_password():
+    data = request.get_json()
+    email = data.get('email')
+    if not email:
+        return jsonify({"error": "Email is required."}), 400
+    user = User.query.filter_by(email=email).first()
+    if user:
+        AuthController.send_password_reset_email(user)
+    # Always return success to avoid leaking user existence
+    return jsonify({"message": "If your email is registered, a reset link has been sent."}), 200
 
-    return jsonify({
-        'message': "Payment method update was cancelled.",
-        'redirect_url': "https://app.saasquatchleads.com/subscription"
-    }), 200
+
+
+# API: Reset password with token
+@auth_bp.route('/api/auth/reset-password/<token>', methods=['POST'])
+def api_reset_password(token):
+    data = request.get_json()
+    new_password = data.get('password')
+    if not new_password:
+        return jsonify({"error": "Password is required."}), 400
+    success, message = AuthController.reset_password(token, new_password)
+    if success:
+        return jsonify({"message": message}), 200
+    else:
+        return jsonify({"error": message}), 400

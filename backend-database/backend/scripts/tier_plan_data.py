@@ -140,6 +140,19 @@ plans_data = [
         "features_json":
         json.dumps(
             ["Custom Credits/Year", "Custom Workflows", "Tailored Features"])
+    },
+    {
+        "plan_name": "Pause",
+        "description": "Temporary pause with limited access",
+        "monthly_price": Decimal('10.00'),
+        "annual_price": Decimal('10.00'),
+        "monthly_lead_quota": 0,
+        "annual_lead_quota": 0,
+        "cost_per_lead": None,
+        "has_ai_features": False,
+        "initial_credits": 0,
+        "credit_reset_frequency": "monthly",
+        "features_json": json.dumps(["Basic Filters Only", "No Credits", "Limited Access"])
     }
 ]
 

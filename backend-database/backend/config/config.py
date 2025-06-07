@@ -24,8 +24,10 @@ class Config:
         'bronze_annual': os.getenv('STRIPE_PRICE_BRONZE_ANNUAL'),
         'silver_annual': os.getenv('STRIPE_PRICE_SILVER_ANNUAL'),
         'gold_annual': os.getenv('STRIPE_PRICE_GOLD_ANNUAL'),
-        'platinum_annual': os.getenv('STRIPE_PRICE_PLATINUM_ANNUAL')
-
+        'platinum_annual': os.getenv('STRIPE_PRICE_PLATINUM_ANNUAL'),
+        'pause_one_month': os.getenv('STRIPE_PRICE_PAUSE_ONE_MONTH', 'price_1RX2HfFS9KhotLbMUP3bmChp'),
+        'pause_two_month': os.getenv('STRIPE_PRICE_PAUSE_TWO_MONTH', 'price_1RX2JNFS9KhotLbMyPp0tYr9'),
+        'pause_three_month': os.getenv('STRIPE_PRICE_PAUSE_THREE_MONTH', 'price_1RX2JyFS9KhotLbMG3HKxNex')
     }
 
     # You might want to add checks to ensure these keys are loaded

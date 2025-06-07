@@ -1,0 +1,138 @@
+
+{% extends "base.html" %}
+
+{% block title %}Pause Subscription - SaasquatchLeads{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">
+                        <i class="fas fa-pause-circle me-2"></i>
+                        Pause Your Subscription
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Current Plan:</strong> {{ subscription_info.subscription.plan_name }}<br>
+                        <strong>Credits Remaining:</strong> {{ subscription_info.subscription.credits_remaining }}
+                    </div>
+
+                    <h5>What happens when you pause?</h5>
+                    <ul class="mb-4">
+                        <li>You'll be charged $10/month during the pause period</li>
+                        <li>Your credits will be set to 0 during the pause</li>
+                        <li>Your account will have limited access (free tier features)</li>
+                        <li>After the pause period, your original subscription will be restored</li>
+                    </ul>
+
+                    <h5>Choose Pause Duration:</h5>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card pause-option" data-duration="pause_one_month">
+                                <div class="card-body text-center">
+                                    <h6>1 Month</h6>
+                                    <p class="text-muted">$10 total</p>
+                                    <button class="btn btn-warning btn-sm" onclick="selectPauseDuration('pause_one_month')">
+                                        Select
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card pause-option" data-duration="pause_two_month">
+                                <div class="card-body text-center">
+                                    <h6>2 Months</h6>
+                                    <p class="text-muted">$20 total</p>
+                                    <button class="btn btn-warning btn-sm" onclick="selectPauseDuration('pause_two_month')">
+                                        Select
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card pause-option" data-duration="pause_three_month">
+                                <div class="card-body text-center">
+                                    <h6>3 Months</h6>
+                                    <p class="text-muted">$30 total</p>
+                                    <button class="btn btn-warning btn-sm" onclick="selectPauseDuration('pause_three_month')">
+                                        Select
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('auth.choose_plan') }}" class="btn btn-secondary me-2">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            Back to Plans
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.pause-option {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.pause-option:hover {
+    border-color: #ffc107;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.pause-option.selected {
+    border-color: #ffc107;
+    background-color: #fff3cd;
+}
+</style>
+
+<script>
+async function selectPauseDuration(duration) {
+    try {
+        // Clear previous selections
+        document.querySelectorAll('.pause-option').forEach(el => el.classList.remove('selected'));
+        
+        // Mark current selection
+        document.querySelector(`[data-duration="${duration}"]`).classList.add('selected');
+        
+        const response = await fetch('/create-pause-checkout-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                pause_duration: duration
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.sessionId) {
+            // Redirect to Stripe Checkout
+            const stripe = Stripe('{{ config.STRIPE_PUBLIC_KEY }}');
+            await stripe.redirectToCheckout({
+                sessionId: result.sessionId
+            });
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error occurred'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Payment failed: ' + error.message);
+    }
+}
+</script>
+
+<!-- Load Stripe.js -->
+<script src="https://js.stripe.com/v3/"></script>
+{% endblock %}

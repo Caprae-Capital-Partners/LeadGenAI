@@ -5,7 +5,6 @@ from routes.main_routes import main_bp
 from routes.auth_routes import auth_bp
 from routes.credit_routes import credit_bp
 from routes.lead_access_routes import access_bp
-from routes.user_management_routes import user_management_bp
 from config.config import config
 from flask_login import LoginManager, current_user
 from models.user_model import User
@@ -83,7 +82,6 @@ def create_app(config_class=config):
     app.register_blueprint(subscription_bp)  # Register subscription routes
     app.register_blueprint(access_bp) # Register lead access routes
     app.register_blueprint(credit_bp)
-    app.register_blueprint(user_management_bp)  # Register user management routes
 
     # Create database tables
     with app.app_context():

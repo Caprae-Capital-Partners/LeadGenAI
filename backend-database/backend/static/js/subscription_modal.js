@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function checkFeatureAccess(feature) {
         const tierFeatures = {
             'free': ['basic_filters'],
+            'pause': ['basic_filters'], // Paused subscriptions get same as free
             'bronze': ['basic_filters', 'advanced_filters', 'export_csv'],
             'bronze_annual': ['basic_filters', 'advanced_filters', 'export_csv'],
             'silver': ['basic_filters', 'advanced_filters', 'export_csv', 'phone_numbers'],
