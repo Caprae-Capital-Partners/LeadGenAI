@@ -1,9 +1,9 @@
-name: CD Pipeline (Deploy to Lightsail)
+name: CD Pipeline (Deploy to Lightsail Sandbox)
 
 on:
   push:
     branches:
-      - main
+      - sandbox
 
 jobs:
   deploy:
@@ -16,13 +16,13 @@ jobs:
       - name: 🔐 Set up SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.LIGHTSAIL_SSH_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.LIGHTSAIL_SSH_KEY_SANDBOX }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.LIGHTSAIL_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.LIGHTSAIL_HOST_SANDBOX }} >> ~/.ssh/known_hosts
 
       - name: 🚀 Deploy to Lightsail
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.LIGHTSAIL_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.LIGHTSAIL_HOST_SANDBOX }} << 'EOF'
             mkdir -p ~/scraper-webapp
             cd ~/scraper-webapp
 
@@ -33,8 +33,8 @@ jobs:
 
             cd LeadGenAI || exit 1
             git remote set-url origin https://github.com/Caprae-Capital-Partners/LeadGenAI.git
-            git fetch origin main
-            git reset --hard origin/main
+            git fetch origin sandbox
+            git reset --hard origin/sandbox
 
             # 🔐 Inject env variables
             echo "${{ secrets.BACKEND_ENV_VARS }}" > .env
