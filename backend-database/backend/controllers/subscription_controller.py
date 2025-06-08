@@ -12,8 +12,6 @@ class SubscriptionController:
     def create_checkout_session(user):
         try:
             current_app.logger.info(f"[Subscription] Incoming create_checkout_session request. User: {getattr(user, 'user_id', None)}, is_authenticated: {getattr(user, 'is_authenticated', None)}")
-            current_app.logger.info(f"[Subscription] Request data: {request.data}")
-            current_app.logger.info(f"[Subscription] Request json: {request.json}")
             plan_type = request.json.get('plan_type')
             current_app.logger.info(f"[Subscription] Extracted plan_type: {plan_type}")
             price_id = current_app.config['STRIPE_PRICES'].get(plan_type)
@@ -22,8 +20,8 @@ class SubscriptionController:
                 return {'error': f'Invalid plan type provided: {plan_type}. Check STRIPE_PRICES config.'}, 400
 
             stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
-            success_url = url_for('auth.payment_success', _external=True)
-            cancel_url = url_for('auth.payment_cancel', _external=True)
+            success_url = "https://app.saasquatchleads.com"
+            cancel_url = "https://app.saasquatchleads.com/subscription"
 
             checkout_session = stripe.checkout.Session.create(
                 line_items=[{
@@ -38,48 +36,48 @@ class SubscriptionController:
             )
             current_app.logger.info(f"[Subscription] Stripe session created successfully for user {user.user_id}, plan {plan_type}")
             current_app.logger.info(f"commented code for the db updates starts ")
-            current_app.logger.info(f"===================== NO WEBHOOK FUNCTION IS WORKING, DOING CHANGES IN DB WITHOUT PAYMNET =====================")
+            current_app.logger.info(f"===================== WEBHOOK FUNCTION IS WORKING, DOING CHANGES IN DB PAYMENT =====================")
             # --- DB update logic moved to webhook. The following is intentionally commented out ---
             # Always update or create UserSubscription for the selected plan
-            user.tier = plan_type
-            from models.user_subscription_model import UserSubscription
-            from models.plan_model import Plan
-            now = datetime.utcnow()
-            plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
-            if plan:
-                expiration = None
-                if plan.credit_reset_frequency == 'monthly':
-                    expiration = now + relativedelta(months=1)
-                elif plan.credit_reset_frequency == 'annual':
-                    expiration = now + relativedelta(years=1)
-                # Upsert logic: update if exists, else create
-                user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
-                if user_sub:
-                    user_sub.plan_id = plan.plan_id
-                    user_sub.plan_name = plan.plan_name
-                    user_sub.credits_remaining = plan.initial_credits if plan.initial_credits is not None else 0
-                    user_sub.payment_frequency = plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly'
-                    user_sub.tier_start_timestamp = now
-                    user_sub.plan_expiration_timestamp = expiration
-                    user_sub.username = user.username
-                    current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
-                else:
-                    new_sub = UserSubscription(
-                        user_id=user.user_id,
-                        plan_id=plan.plan_id,
-                        plan_name=plan.plan_name,
-                        credits_remaining=plan.initial_credits if plan.initial_credits is not None else 0,
-                        payment_frequency=plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly',
-                        tier_start_timestamp=now,
-                        plan_expiration_timestamp=expiration,
-                        username=user.username
-                    )
-                    db.session.add(new_sub)
-                    current_app.logger.info(f"[Subscription] Created new UserSubscription for user {user.user_id} with plan {plan_type}.")
-            else:
-                current_app.logger.error(f"[Subscription] Plan {plan_type} not found when updating/creating UserSubscription for user {user.user_id}.")
-            db.session.commit()
-            current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier} In db.")
+            # user.tier = plan_type
+            # from models.user_subscription_model import UserSubscription
+            # from models.plan_model import Plan
+            # now = datetime.utcnow()
+            # plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
+            # if plan:
+            #     expiration = None
+            #     if plan.credit_reset_frequency == 'monthly':
+            #         expiration = now + relativedelta(months=1)
+            #     elif plan.credit_reset_frequency == 'annual':
+            #         expiration = now + relativedelta(years=1)
+            #     # Upsert logic: update if exists, else create
+            #     user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
+            #     if user_sub:
+            #         user_sub.plan_id = plan.plan_id
+            #         user_sub.plan_name = plan.plan_name
+            #         user_sub.credits_remaining = plan.initial_credits if plan.initial_credits is not None else 0
+            #         user_sub.payment_frequency = plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly'
+            #         user_sub.tier_start_timestamp = now
+            #         user_sub.plan_expiration_timestamp = expiration
+            #         user_sub.username = user.username
+            #         current_app.logger.info(f"[Subscription] UserSubscription for user {user.user_id} updated to plan {plan_type}.")
+            #     else:
+            #         new_sub = UserSubscription(
+            #             user_id=user.user_id,
+            #             plan_id=plan.plan_id,
+            #             plan_name=plan.plan_name,
+            #             credits_remaining=plan.initial_credits if plan.initial_credits is not None else 0,
+            #             payment_frequency=plan.credit_reset_frequency if plan.credit_reset_frequency else 'monthly',
+            #             tier_start_timestamp=now,
+            #             plan_expiration_timestamp=expiration,
+            #             username=user.username
+            #         )
+            #         db.session.add(new_sub)
+            #         current_app.logger.info(f"[Subscription] Created new UserSubscription for user {user.user_id} with plan {plan_type}.")
+            # else:
+            #     current_app.logger.error(f"[Subscription] Plan {plan_type} not found when updating/creating UserSubscription for user {user.user_id}.")
+            # db.session.commit()
+            # current_app.logger.info(f"[Subscription] User {user.user_id} tier updated to {user.tier} In db.")
             # --- End of commented block ---
             return {'sessionId': checkout_session.id}, 200
         except Exception as e:
@@ -120,7 +118,7 @@ class SubscriptionController:
                 # Only proceed if we have both user_id and plan_type
                 if user_id and plan_type:
                     from models.user_model import User
-                    user = User.query.get(int(user_id))
+                    user = User.query.get(user_id)
                     if user:
                         user.tier = plan_type
                         # Upsert UserSubscription as in create_checkout_session
@@ -130,7 +128,19 @@ class SubscriptionController:
                         from dateutil.relativedelta import relativedelta
                         from datetime import datetime
                         now = datetime.utcnow()
-                        plan = Plan.query.filter(func.lower(Plan.plan_name) == plan_type.lower()).first()
+                        # Map plan_type to correct plan name in database
+                        plan_name_mapping = {
+                            'bronze_annual': 'Bronze_Annual',
+                            'silver_annual': 'Silver_Annual',
+                            'gold_annual': 'Gold_Annual',
+                            'platinum_annual': 'Platinum_Annual',
+                            'bronze': 'Bronze',
+                            'silver': 'Silver',
+                            'gold': 'Gold',
+                            'platinum': 'Platinum'
+                        }
+                        mapped_plan_name = plan_name_mapping.get(plan_type, plan_type)
+                        plan = Plan.query.filter(func.lower(Plan.plan_name) == mapped_plan_name.lower()).first()
                         if plan:
                             expiration = None
                             if plan.credit_reset_frequency == 'monthly':
@@ -174,7 +184,7 @@ class SubscriptionController:
                 user_id = session.get('client_reference_id')
                 if user_id:
                     from models.user_model import User
-                    user = User.query.get(int(user_id))
+                    user = User.query.get(user_id)
                     if user:
                         user.tier = 'free'
                         db.session.commit()
@@ -202,7 +212,7 @@ class SubscriptionController:
                 current_app.logger.warning("No user_id found in session")
                 return
 
-            user = User.query.get(int(user_id))
+            user = User.query.get(user_id)
             if not user:
                 current_app.logger.warning(f"User {user_id} not found")
                 return
@@ -220,7 +230,11 @@ class SubscriptionController:
                 current_app.config['STRIPE_PRICES']['gold']: 'gold',
                 current_app.config['STRIPE_PRICES']['silver']: 'silver',
                 current_app.config['STRIPE_PRICES']['bronze']: 'bronze',
-                current_app.config['STRIPE_PRICES']['platinum']: 'platinum' # Added Platinum tier
+                current_app.config['STRIPE_PRICES']['platinum']: 'platinum', # Added Platinum tier
+                current_app.config['STRIPE_PRICES']['bronze_annual']: 'bronze_annual',
+                current_app.config['STRIPE_PRICES']['silver_annual']: 'silver_annual',
+                current_app.config['STRIPE_PRICES']['gold_annual']: 'gold_annual',
+                current_app.config['STRIPE_PRICES']['platinum_annual']: 'platinum_annual',
             }
 
             new_tier = price_to_tier.get(price_id)
@@ -232,13 +246,12 @@ class SubscriptionController:
             # Update the user's tier instead of subscription_tier
             user.tier = new_tier
             db.session.commit()
-            print(f"Successfully updated user {user_id} to tier {new_tier}")
+            current_app.logger.info(f"Successfully updated user {user_id} to tier {new_tier}")
 
         except Exception as e:
-            print(f" changes is commited ")
+            current_app.logger.info(f" changes not commited error ")
             current_app.logger.error(f"Error handling successful payment for session {session.id}: {str(e)}")
             db.session.rollback()
-
 
     @staticmethod
     def get_current_user_subscription_info(user):

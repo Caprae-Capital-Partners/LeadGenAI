@@ -10,10 +10,9 @@ import { ScraperResults } from "@/components/scraper-results"
 import axios from "axios"
 import { AlertCircle, DatabaseIcon } from "lucide-react"
 import { useRouter } from "next/navigation";
-import { headers } from "next/headers"
 
 
-const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P1}/scrape-stream`;
+const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/scrape-stream`;
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/industries`;
 const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/lead_scrape`;
 
@@ -76,21 +75,38 @@ export function Scraper() {
   const seenCompaniesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const fetchIndustries = async () => {
-    try {
-      const response = await fetch(FETCH_INDUSTRIES_API, {
-        credentials: 'include',
-      });
-      const data = await response.json();
-      if (data && Array.isArray(data.industries)) {
-        setIndustries(data.industries);
-      } else {
-        console.error("Invalid API response format:", data);
-      }
-    } catch (error) {
-      console.error("Error fetching industries:", error);
+
+
+    const cacheKey = "industries"
+    const cachedIndustries = localStorage.getItem(cacheKey);
+    const CACHE_DURATION = 604800000
+    if (cachedIndustries) {
+      try {
+        const { data, timestamp } = JSON.parse(cachedIndustries)
+        if (Array.isArray(data) && Date.now() - timestamp < CACHE_DURATION) {
+          setIndustries(data)
+          return;
+        }
+      } catch { }
     }
-  };
+
+    const fetchIndustries = async () => {
+      try {
+        const response = await fetch(FETCH_INDUSTRIES_API);
+        const data = await response.json();
+        if (data && Array.isArray(data.industries)) {
+          setIndustries(data.industries);
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({ data: data.industries, timestamp: Date.now() })
+          );
+        } else {
+          console.error("Invalid API response format:", data);
+        }
+      } catch (error) {
+        console.error('Error fetching industries:', error);
+      }
+    };
 
     fetchIndustries();
   }, []);

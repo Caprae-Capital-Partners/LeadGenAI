@@ -6,12 +6,11 @@ import { useRouter } from "next/navigation";
 import { Scraper } from "@/components/scraper";
 import { Header } from "@/components/header";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
-import Popup from "@/components/ui/popup";
 
 export default function ScraperPage() {
     const router = useRouter();
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-    const { showPopup, handleClose } = useEmailVerificationGuard();
+    useEmailVerificationGuard();
     useEffect(() => {
         const verifyLogin = async () => {
             try {
@@ -45,22 +44,6 @@ export default function ScraperPage() {
 
     return (
         <>
-        {/* Email-not-verified popup */}
-            <Popup show={showPopup} onClose={handleClose}>
-                <h2 className="text-lg font-semibold">Account Not Verified</h2>
-                <p className="mt-2">
-                    Your account hasn’t been verified yet. Please check your email for
-                    the verification link.
-                </p>
-                <button
-                    className="mt-4 px-4 py-2 rounded bg-blue-600 text-white"
-                    onClick={handleClose}
-                >
-                    OK
-                </button>
-            </Popup>
-
-            {/* Main app content */}
             <Header />
             <main className="px-20 py-16">
                 <Scraper />
