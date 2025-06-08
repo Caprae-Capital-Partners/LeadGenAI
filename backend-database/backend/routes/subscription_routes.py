@@ -72,12 +72,12 @@ def cancel_subscription():
     cancellation_type = data.get('type', 'immediate')  # 'immediate' or 'period_end'
     feedback = data.get('feedback')  # Optional feedback reason
     comment = data.get('comment')    # Optional comment
-    
+
     if cancellation_type not in ['immediate', 'period_end']:
         return jsonify({'error': 'Invalid cancellation type. Use "immediate" or "period_end"'}), 400
-    
+
     response, status_code = SubscriptionController.cancel_subscription(
-        current_user, 
+        current_user,
         cancellation_type=cancellation_type,
         feedback=feedback,
         comment=comment
@@ -90,44 +90,44 @@ def reactivate_subscription():
     """Reactivate a subscription that's scheduled for cancellation"""
     try:
         stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
-        
+
         # Find customer and subscription
         customers = stripe.Customer.list(email=current_user.email, limit=1)
         if not customers.data:
             return jsonify({'error': 'No Stripe customer found'}), 404
-        
+
         customer = customers.data[0]
         subscriptions = stripe.Subscription.list(
             customer=customer.id,
             status='active',
             limit=10
         )
-        
+
         if not subscriptions.data:
             return jsonify({'error': 'No active subscription found'}), 404
-        
+
         subscription = subscriptions.data[0]
-        
+
         # Remove cancel_at_period_end
         updated_subscription = stripe.Subscription.modify(
             subscription.id,
             cancel_at_period_end=False
         )
-        
+
         # Update local database
         from models.user_subscription_model import UserSubscription
         user_sub = UserSubscription.query.filter_by(user_id=current_user.user_id).first()
         if user_sub and '_scheduled_cancel' in user_sub.payment_frequency:
             user_sub.payment_frequency = user_sub.payment_frequency.replace('_scheduled_cancel', '')
             db.session.commit()
-        
+
         current_app.logger.info(f"Reactivated subscription for user {current_user.user_id}")
-        
+
         return jsonify({
             'message': 'Subscription reactivated successfully! Your subscription will continue as normal.',
             'status': 'active'
         }), 200
-        
+
     except Exception as e:
         current_app.logger.error(f"Error reactivating subscription for user {current_user.user_id}: {str(e)}")
         return jsonify({'error': 'Error reactivating subscription. Please try again later.'}), 500
@@ -136,20 +136,20 @@ def reactivate_subscription():
 def subscription_webhook():
     """Handle Stripe webhook events for subscriptions"""
     current_app.logger.info(f"[Webhook] Webhook received")
-    
+
     payload = request.get_data(as_text=True)
     sig_header = request.headers.get('stripe-signature')
-    
+
     if not sig_header:
         current_app.logger.error("[Webhook] Missing stripe-signature header")
         return jsonify({'error': 'Missing stripe-signature header'}), 400
-    
+
     # Log the webhook receipt
     current_app.logger.info("[Webhook] Stripe webhook received. Processing event in handler.")
-    
+
     try:
         response, status_code = SubscriptionController.handle_stripe_webhook(payload, sig_header)
-        return jsonify(response), status_code
+        return response, status_code
     except Exception as e:
         current_app.logger.error(f"[Webhook] Error processing webhook: {str(e)}")
         return jsonify({'error': 'Webhook processing failed'}), 500
