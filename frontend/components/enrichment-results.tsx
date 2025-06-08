@@ -21,22 +21,23 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { useEnrichment } from "@/components/EnrichmentProvider"
-import Notif  from "@/components/ui/notif"
+import Notif from "@/components/ui/notif"
 import axios from "axios"
 import { SortDropdown } from "@/components/ui/sort-dropdown"
+
 
 interface EnrichmentResultsProps {
   enrichedCompanies: EnrichedCompany[]
   loading?: boolean
   rowClassName?: (company: EnrichedCompany, index: number) => string
 }
-const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
-
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
+const DATABASE_URL_NOAPI = DATABASE_URL?.replace(/\/api\/?$/, "");
 
 export interface EnrichedCompany {
   id: string
   lead_id?: string;
-  draft_id?: string; 
+  draft_id?: string;
   company: string
   website: string
   industry: string
@@ -81,7 +82,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
       setNotif(prev => ({ ...prev, show: false }));
     }, 3500);
   };
-  
+
   const [editableCompanies, setEditableCompanies] = useState<EnrichedCompany[]>([])
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -109,7 +110,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
       )
     )
   }
-  
+
   const handleDiscardChanges = () => {
     setEditableCompanies([...enrichedCompanies])
   }
@@ -126,7 +127,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     yearFoundedFilter, bbbRatingFilter, streetFilter, cityFilter, stateFilter, sourceFilter]);
 
   const downloadCSV = (data: any[], filename: string) => {
-    const headers = Object.keys(data[0]).filter(header => 
+    const headers = Object.keys(data[0]).filter(header =>
       header !== 'id' && header !== 'lead_id' && header !== 'draft_id'
     )
     const normalizeCSVValue = (field: string, value: any) => {
@@ -466,7 +467,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
       );
     }
   };
-  
+
 
   const handleToggleFiltersWithCheck = async () => {
     // 1) Grab the current user from sessionStorage
@@ -507,7 +508,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
       );
     }
   };
-  
+
 
 
   const handleBack = () => {
@@ -540,7 +541,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     setEditableCompanies(sorted);
     setCurrentPage(1); // reset pagination
   };
-  
+
 
   const handleSaveEditedCompanies = async () => {
     const user = JSON.parse(sessionStorage.getItem("user") || "{}");
@@ -660,9 +661,9 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
 
     showNotification("Done saving selected companies.", "success");
   };
-  
-  
-  
+
+
+
 
 
 

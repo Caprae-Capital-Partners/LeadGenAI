@@ -30,7 +30,7 @@ import Popup from "@/components/ui/popup";
 import Notif from "@/components/ui/notif"
 
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P2!
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 
 export function DataEnhancement() {
@@ -462,7 +462,7 @@ export function DataEnhancement() {
     }
 
   }
-  
+
 
 
   const toCamelCase = (lead: any): EnrichedCompany => ({
@@ -834,7 +834,7 @@ export function DataEnhancement() {
 
     showNotification("Data successfully enriched!");
   };
-  
+
 
 
 
@@ -1117,7 +1117,7 @@ export function DataEnhancement() {
               </div>
             </div>
 
-            
+
             {/* Pagination controls */}
             {sortedFilteredLeads.length > 0 && (
               <div className="mb-4 flex items-center justify-between">
@@ -1180,7 +1180,7 @@ export function DataEnhancement() {
             {/* Results section */}
           </div>
         </CardContent>
-        
+
       </Card>
       <div className="flex flex-col items-end mt-4 gap-2">
         {/* Enrichment button and optional progress */}
