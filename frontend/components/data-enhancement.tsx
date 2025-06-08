@@ -917,66 +917,6 @@ export function DataEnhancement() {
               </div>
             )}
 
-            {/* Pagination controls */}
-            {sortedFilteredLeads.length > 0 && (
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results for {searchCriteria.industry} in {searchCriteria.location}
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1); // Reset to first page when changing items per page
-                  }}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Items per page" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25 per page</SelectItem>
-                      <SelectItem value="50">50 per page</SelectItem>
-                      <SelectItem value="100">100 per page</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          aria-disabled={currentPage === 1}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-
-                      {getPageNumbers().map((page, index) => (
-                        <PaginationItem key={index}>
-                          {page === 'ellipsis' ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              isActive={page === currentPage}
-                              onClick={() => setCurrentPage(Number(page))}
-                            >
-                              {page}
-                            </PaginationLink>
-                          )}
-                        </PaginationItem>
-                      ))}
-
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                          aria-disabled={currentPage === totalPages}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              </div>
-            )}
-
             <div className="w-full overflow-x-auto rounded-md border">
               <div className="w-full overflow-x-auto rounded-md border">
                 <Table className="w-full table-fixed">
@@ -1163,32 +1103,96 @@ export function DataEnhancement() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-muted-foreground">
-                {selectedCompanies.length} of {sortedFilteredLeads.length} selected
-              </div>
-              <div className="flex items-center gap-4">
-                {loading && (
-                  <div className="text-sm font-medium">
-                    {/* Progress: {progress}% */}
-                  </div>
-                )}
-                <Button
-                  onClick={() => {
-                    setMergedView(false);
-                    handleStartEnrichment(false);
-                  }}
-                  disabled={selectedCompanies.length === 0 || loading}
-                >
-                  {loading ? "Enriching..." : "Start Enrichment"}
-                </Button>
-              </div>
-            </div>
+            
+            {/* Pagination controls */}
+            {sortedFilteredLeads.length > 0 && (
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results for {searchCriteria.industry} in {searchCriteria.location}
+                </div>
 
+                <div className="flex items-center gap-4">
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1); // Reset to first page when changing items per page
+                  }}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Items per page" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25 per page</SelectItem>
+                      <SelectItem value="50">50 per page</SelectItem>
+                      <SelectItem value="100">100 per page</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          aria-disabled={currentPage === 1}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+
+                      {getPageNumbers().map((page, index) => (
+                        <PaginationItem key={index}>
+                          {page === 'ellipsis' ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              isActive={page === currentPage}
+                              onClick={() => setCurrentPage(Number(page))}
+                            >
+                              {page}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          aria-disabled={currentPage === totalPages}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </div>
+            )}
             {/* Results section */}
           </div>
         </CardContent>
+        
       </Card>
+      <div className="flex flex-col items-end mt-4 gap-2">
+        {/* Enrichment button and optional progress */}
+        <div className="flex items-center gap-4">
+          {loading && (
+            <div className="text-sm font-medium text-muted-foreground">
+              {/* Progress: {progress}% */}
+            </div>
+          )}
+          <Button
+            onClick={() => {
+              setMergedView(false);
+              handleStartEnrichment(false);
+            }}
+            disabled={selectedCompanies.length === 0 || loading}
+          >
+            {loading ? "Enriching..." : "Start Enrichment"}
+          </Button>
+        </div>
+        {/* Selection summary */}
+        <div className="text-sm text-muted-foreground">
+          <span className="text-foreground font-semibold">{selectedCompanies.length}</span>
+          <span className="mx-1">of</span>
+          <span className="text-foreground">{sortedFilteredLeads.length}</span> selected
+        </div>
+      </div>
 
       {/*
   Replace the nested ternary with a single block that always renders
@@ -1209,7 +1213,7 @@ export function DataEnhancement() {
         {/* ── DATABASE RESULTS ── */}
         {!mergedView && hasEnrichedOnce && dbEnrichedCompanies.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold mb-2">Fetched from Database</h2>
+            <h2 className="text-3xl font-bold mb-4">Fetched from Database</h2>
             <EnrichmentResults
               enrichedCompanies={dbEnrichedCompanies}
               rowClassName={() => "bg-teal-50"}
@@ -1239,7 +1243,7 @@ export function DataEnhancement() {
         {/* ── SCRAPED RESULTS ── */}
         {!mergedView && hasEnrichedOnce && scrapedEnrichedCompanies.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold mb-2">Freshly Scraped</h2>
+            <h2 className="text-3xl font-bold mb-4">Freshly Scraped</h2>
             <EnrichmentResults
               enrichedCompanies={scrapedEnrichedCompanies}
               rowClassName={() => "bg-yellow-50"}
@@ -1262,7 +1266,7 @@ export function DataEnhancement() {
         {/* ── MERGED VIEW ── */}
         {mergedView && hasEnrichedOnce && (
           <div>
-            <h2 className="text-lg font-semibold mt-6 mb-2">All Enriched Results</h2>
+            <h2 className="text-3xl font-bold mt-6 mb-4">All Enriched Results</h2>
             <EnrichmentResults
               enrichedCompanies={[
                 ...dbEnrichedCompanies,
