@@ -24,6 +24,7 @@ const STRIPE = process.env.NEXT_PUBLIC_STRIPE_CODE!
 
 
 export default function SubscriptionPage() {
+    
     const [plans, setPlans] = useState<Plan[]>([]);
     const [isAnnual, setIsAnnual] = useState(false);
 
