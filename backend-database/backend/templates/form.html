@@ -477,6 +477,7 @@
       {name: 'company_linkedin', label: 'Company LinkedIn', placeholder: 'Ex: https://linkedin.com/company/name'},
       {name: 'revenue', label: 'Revenue', placeholder: 'Ex: $1M-$5M'},
       {name: 'product_category', label: 'Product/Service Category', placeholder: 'Ex: SaaS, Consulting, Manufacturing'},
+      {name: 'employees', label: 'Employees Count', placeholder: 'Ex: 50, 100, 500'},
       {name: 'year_founded', label: 'Year Founded', placeholder: 'Ex: 2015'},
       {name: 'owner_linkedin', label: 'Owner LinkedIn', placeholder: 'Ex: https://linkedin.com/in/ownername'},
       {name: 'owner_phone_number', label: 'Owner Phone Number', placeholder: 'Ex: +1 (555) 123-4567'},
@@ -668,7 +669,11 @@
     document.addEventListener('change', function(e) {
       if (e.target.tagName === 'SELECT' && e.target.closest('.dynamic-field')) {
         const select = e.target;
-        select.style.background = 'var(--card-bg)';
+        if (select.value) {
+          select.style.background = 'white';
+        } else {
+          select.style.background = '#f8f9fa';
+        }
       }
     });
   });

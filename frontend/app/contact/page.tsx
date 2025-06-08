@@ -5,12 +5,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { ContactForm } from "@/components/contacts";
-import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 
 export default function ContactPage() {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  useEmailVerificationGuard();
 
   useEffect(() => {
     const verifyLogin = async () => {

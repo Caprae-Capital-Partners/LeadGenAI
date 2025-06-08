@@ -5,12 +5,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Scraper } from "@/components/scraper";
 import { Header } from "@/components/header";
-import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 
 export default function ScraperPage() {
     const router = useRouter();
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-    useEmailVerificationGuard();
+
     useEffect(() => {
         const verifyLogin = async () => {
             try {
