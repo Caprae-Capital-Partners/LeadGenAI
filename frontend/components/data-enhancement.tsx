@@ -27,7 +27,7 @@ import Loader from "@/components/ui/loader"
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import Popup from "@/components/ui/popup";
-import Notif from "@/components/ui/notif"
+import Notif  from "@/components/ui/notif"
 
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P2!
@@ -36,19 +36,19 @@ const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 export function DataEnhancement() {
 
   const [notif, setNotif] = useState({
-    show: false,
-    message: "",
-    type: "success" as "success" | "error" | "info",
-  });
-  const showNotification = (message: string, type: "success" | "error" | "info" = "success") => {
-    setNotif({ show: true, message, type });
-
-    // Automatically hide after X seconds (let Notif handle it visually)
-    // Optional if Notif itself auto-hides — but helpful as backup
-    setTimeout(() => {
-      setNotif(prev => ({ ...prev, show: false }));
-    }, 3500);
-  };
+      show: false,
+      message: "",
+      type: "success" as "success" | "error" | "info",
+    });
+    const showNotification = (message: string, type: "success" | "error" | "info" = "success") => {
+      setNotif({ show: true, message, type });
+  
+      // Automatically hide after X seconds (let Notif handle it visually)
+      // Optional if Notif itself auto-hides — but helpful as backup
+      setTimeout(() => {
+        setNotif(prev => ({ ...prev, show: false }));
+      }, 3500);
+    };
 
   const [hasEnrichedOnce, setHasEnrichedOnce] = useState(false);
   const [showTokenPopup, setShowTokenPopup] = useState(false);
@@ -400,37 +400,44 @@ export function DataEnhancement() {
   }
 
   const buildEnrichedCompany = (company: any, growjo: any, apollo: any, person: any) => {
-    // ── Step 1: Simplify cleanVal to only treat truly empty/null/undefined as “missing” ──
     const cleanVal = (val: any) => {
-      if (val === null || val === undefined) return null;
-      const s = val.toString().trim();
-      return s === "" ? null : s;
+      const s = (val || "").toString().trim().toLowerCase();
+
+      const isObscuredEmail = /^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*");
+
+      return (
+        ["", "na", "n/a", "none", "not", "found", "not found", "n.a.", "email_not_unlocked@domain.com"].includes(s) ||
+        isObscuredEmail
+      )
+        ? null
+        : val.toString().trim();
     };
 
-    // preferValue: take the first “non-empty” (cleanVal ≠ null) in (g, a), otherwise fallback
-    const preferValue = (g: any, a: any, fallback: any = "") =>
-      cleanVal(g) ?? cleanVal(a) ?? fallback;
 
-    // ── Step 2: Pull ownerFirstName / ownerLastName directly from backend fields ──
-    // (These fields are always non‐empty when returned, because backend supplies a
-    // friendly fallback sentence instead of an empty string.)
-    const growjoFirstName = growjo.ownerFirstName ?? "";
-    const growjoLastName = growjo.ownerLastName ?? "";
+    const preferValue = (g: any, a: any, fallback: any = "") => cleanVal(g) ?? cleanVal(a) ?? fallback
+
+    const splitGrowjoName = (() => {
+      const raw = growjo.decider_name || ""
+      const clean = raw.toString().trim().toLowerCase()
+      if (["", "na", "n/a", "none", "not", "found", "not found"].includes(clean)) return []
+      return raw.split(" ")
+    })()
+    const growjoFirstName = splitGrowjoName[0] || ""
+    const growjoLastName = splitGrowjoName.slice(1).join(" ") || ""
 
     const decider = {
       firstName: preferValue(growjoFirstName, person.first_name),
       lastName: preferValue(growjoLastName, person.last_name),
-      email: preferValue(growjo.ownerEmail, person.email),
-      phone: preferValue(growjo.ownerPhoneNumber, person.phone_number),
-      linkedin: preferValue(growjo.ownerLinkedin, person.linkedin_url),
-      title: preferValue(growjo.ownerTitle, person.title),
-    };
+      email: preferValue(growjo.decider_email, person.email),
+      phone: preferValue(growjo.decider_phone, person.phone_number),
+      linkedin: preferValue(growjo.decider_linkedin, person.linkedin_url),
+      title: preferValue(growjo.decider_title, person.title),
+    }
 
-    // ── Step 3: Build the final object, always using preferValue for each field ──
     return {
       company: company.company,
-      website: preferValue(company.website, growjo.company_website, apollo.website_url),
-      industry: company.industry,
+      website: preferValue(growjo.company_website, apollo.website_url, company.website),
+      industry: preferValue(growjo.industry, apollo.industry, company.industry),
       productCategory: preferValue(
         growjo.interests,
         Array.isArray(apollo.keywords) ? apollo.keywords.join(", ") : apollo.keywords
@@ -445,20 +452,16 @@ export function DataEnhancement() {
       street: company.street || "",
       companyPhone: company.business_phone,
       companyLinkedin: preferValue("", apollo.linkedin_url),
-
       ownerFirstName: decider.firstName,
       ownerLastName: decider.lastName,
       ownerTitle: decider.title,
       ownerEmail: decider.email,
       ownerPhoneNumber: decider.phone,
       ownerLinkedin: decider.linkedin,
-
       source: getSource(growjo, apollo, person),
-    };
-  };
-  
+    }
 
-
+  }
   const toCamelCase = (lead: any): EnrichedCompany => ({
     id: lead.id || `${lead.company}-${Math.random()}`,
     lead_id: lead.lead_id,
@@ -496,7 +499,7 @@ export function DataEnhancement() {
     overrideCompanies: any[] | null = null
   ) => {
     const user = JSON.parse(sessionStorage.getItem("user") || "{}");
-    const user_id = user.user_id || "";
+    const user_id = user.id || "";
     setLoading(true);
 
     if (!forceScrape) {
@@ -511,15 +514,15 @@ export function DataEnhancement() {
       const lead_ids = selected.map(c => c.lead_id).filter(Boolean);
       const queryString = lead_ids.join(",");
 
-      // ── Step 1: Check credits ──
+      // ✅ Step 1: Check credits
       try {
-        const { data: subscriptionInfo } = await axios.get(
-          `${DATABASE_URL}/user/subscription_info`,
-          { withCredentials: true }
-        );
+        const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+          withCredentials: true
+        });
 
         const availableCredits = subscriptionInfo?.subscription?.credits_remaining ?? 0;
         const requiredCredits = selected.length;
+
         if (availableCredits < requiredCredits) {
           setShowTokenPopup(true);
           setLoading(false);
@@ -532,7 +535,6 @@ export function DataEnhancement() {
         return;
       }
 
-      // ── Step 2: Fetch existing DB leads ──
       let existingNames = new Set<string>();
       let dbLeads: any[] = [];
 
@@ -546,15 +548,28 @@ export function DataEnhancement() {
         setFromDatabaseLeads(Array.from(existingNames));
       }
 
-      // ── Step 3: Show DB results if any ──
-      if (!forceScrape && !overrideCompanies && dbLeads.length > 0) {
+      // ✅ Step 2: Deduct credits for ALL selected leads
+      for (const lead of selected) {
+        const lead_id = lead.lead_id;
+        if (!lead_id) continue;
+        try {
+          await axios.post(`${DATABASE_URL}/user/deduct_credit/${lead_id}`, {}, {
+            withCredentials: true
+          });
+        } catch (deductErr) {
+          console.error(`❌ Credit deduction failed for lead ${lead_id}`, deductErr);
+          continue;
+        }
+      }
+
+      // ✅ Step 3: Show DB leads (if not force or override)
+      if (!forceScrape && !overrideCompanies) {
         const tealRows = dbLeads.map(lead =>
           toCamelCase({ ...lead, source_type: "database" })
         );
         setDbEnrichedCompanies(tealRows);
         setShowResults(true);
 
-        // Upload & create drafts for each DB lead
         const payload = dbLeads
           .filter(l => !!l.lead_id)
           .map(l => ({ ...l, user_id }));
@@ -567,6 +582,7 @@ export function DataEnhancement() {
               { headers: { "Content-Type": "application/json" } }
             );
 
+            // Normalize the response to an array
             const uploadedLeads = Array.isArray(uploadRes.data)
               ? uploadRes.data
               : [uploadRes.data];
@@ -575,6 +591,7 @@ export function DataEnhancement() {
               const originalLead = payload[i];
               const uploaded = uploadedLeads[i] || {};
               const lead_id = originalLead.lead_id || uploaded.lead_id;
+
               if (!lead_id) {
                 console.warn("⚠️ Skipping draft creation: Missing lead_id", {
                   originalLead,
@@ -582,9 +599,9 @@ export function DataEnhancement() {
                 });
                 continue;
               }
+
               const draftData = { ...originalLead, lead_id };
 
-              // Create or update draft
               try {
                 const res = await axios.post(
                   `${DATABASE_URL}/leads/drafts`,
@@ -598,6 +615,7 @@ export function DataEnhancement() {
                     withCredentials: true,
                   }
                 );
+
                 const draft_id = res.data?.draft_id;
                 if (draft_id) {
                   draftMap[lead_id] = {
@@ -606,69 +624,24 @@ export function DataEnhancement() {
                   };
                 }
               } catch (err) {
-                console.error("❌ Failed to create draft for DB lead:", err);
-              }
-
-              // Deduct credit for this DB lead
-              try {
-                await axios.post(
-                  `${DATABASE_URL}/user/deduct_credit/${lead_id}`,
-                  {},
-                  { withCredentials: true }
-                );
-              } catch (deductErr) {
-                console.error(
-                  `❌ Credit deduction failed for DB lead ${lead_id}`,
-                  deductErr
-                );
+                console.error("❌ Failed to create draft:", err);
               }
             }
           } catch (err) {
             console.error("❌ Upload or draft creation for DB leads failed:", err);
           }
-        }
+        }          
       }
 
-      // ── Step 4: Determine “toScrape” ──
+      // ✅ Step 4: Proceed with scraping only for those not in DB
       const toScrape = forceScrape
         ? selected
         : selected.filter(c => !existingNames.has(c.company.toLowerCase()));
 
-      // ── Step 5: If any need scraping, check/init the scraper ──
-      if (toScrape.length > 0) {
-        let isInitialized = false;
-
-        try {
-          const isResp = await axios.get(`${BACKEND_URL}/is-growjo-scraper`);
-          isInitialized = isResp.data.initialized;
-        } catch (err) {
-          console.error("❌ Error checking GrowjoScraper status:", err);
-        }
-
-        if (!isInitialized) {
-          // Show a persistent “please wait…” notification
-          showNotification("Initializing scraper, please wait...", "info");
-
-          try {
-            await axios.post(`${BACKEND_URL}/init-growjo-scraper`);
-            console.log("✅ GrowjoScraper initialized.");
-          } catch (initErr) {
-            console.error("❌ Failed to initialize GrowjoScraper:", initErr);
-            setNotif(prev => ({ ...prev, show: false }));
-            setLoading(false);
-            alert("Unable to start Growjo scraper. Please try again later.");
-            return;
-          }
-
-          // Hide that “Initializing…” notification now that init is done
-          setNotif(prev => ({ ...prev, show: false }));
-        }
-      }
-
-      // ── Step 6: Loop through “toScrape” ──
       for (const company of toScrape) {
         try {
-          const lead_id_before = company.lead_id || "";
+          const lead_id = company.lead_id || "";
+
           const headers = { headers: { "Content-Type": "application/json" } };
 
           const growjo = (
@@ -689,7 +662,6 @@ export function DataEnhancement() {
 
           const entry = buildEnrichedCompany(company, growjo, apollo, person);
 
-          // --- Upload + draft + credit-deduction logic identical to earlier version ---
           const normalizeValue = (v: any) => {
             const s = (v ?? "").toString().trim().toLowerCase();
             const isBad =
@@ -698,21 +670,17 @@ export function DataEnhancement() {
             return isBad ? "N/A" : v.toString().trim();
           };
 
-          let validLead = {
+          const validLead = {
             user_id,
-            lead_id: lead_id_before,
+            lead_id,
             company: normalizeValue(entry.company),
             website: normalizeValue(entry.website),
             industry: normalizeValue(entry.industry),
             product_category: normalizeValue(entry.productCategory),
             business_type: normalizeValue(entry.businessType),
-            employees: typeof entry.employees === "number"
-              ? entry.employees
-              : parseInt(entry.employees) || 0,
+            employees: typeof entry.employees === "number" ? entry.employees : parseInt(entry.employees) || 0,
             revenue: normalizeValue(entry.revenue),
-            year_founded: typeof entry.yearFounded === "number"
-              ? entry.yearFounded
-              : parseInt(entry.yearFounded) || 0,
+            year_founded: typeof entry.yearFounded === "number" ? entry.yearFounded : parseInt(entry.yearFounded) || 0,
             bbb_rating: normalizeValue(entry.bbbRating),
             street: normalizeValue(entry.street),
             city: normalizeValue(entry.city),
@@ -728,7 +696,7 @@ export function DataEnhancement() {
             source: normalizeValue(entry.source),
           };
 
-          let finalLead = { ...validLead };
+          let uploadedLead: any = validLead;
 
           try {
             const uploadRes = await axios.post(
@@ -739,22 +707,22 @@ export function DataEnhancement() {
 
             const detailedResults = uploadRes.data?.stats?.detailed_results ?? [];
             const leadFromResponse = detailedResults[0] || {};
+
             if (!validLead.lead_id && leadFromResponse.lead_id) {
-              finalLead = { ...validLead, lead_id: leadFromResponse.lead_id };
+              uploadedLead = { ...validLead, lead_id: leadFromResponse.lead_id };
             }
 
-            // showNotification("Data successfully enriched!");
+            showNotification("Data successfully enriched!");
           } catch (uploadErr) {
             console.error("❌ Failed to upload lead:", validLead, uploadErr);
           }
 
-          // ── Draft creation ──
           try {
             const res = await axios.post(
               `${DATABASE_URL}/leads/drafts`,
               {
-                lead_id: finalLead.lead_id,
-                draft_data: finalLead,
+                lead_id: uploadedLead.lead_id,
+                draft_data: uploadedLead,
                 change_summary: "Initial enrichment draft",
               },
               {
@@ -765,57 +733,35 @@ export function DataEnhancement() {
 
             const draft_id = res.data?.draft_id;
             if (draft_id) {
-              draftMap[finalLead.lead_id] = {
+              draftMap[uploadedLead.lead_id] = {
                 draft_id,
-                company: finalLead.company,
+                company: uploadedLead.company,
               };
             }
           } catch (draftErr: any) {
-            console.error(
-              "❌ Failed to create draft:",
-              draftErr.response?.data || draftErr.message
-            );
+            console.error("❌ Failed to create draft:", draftErr.response?.data || draftErr.message);
           }
 
-          // ── Deduct credit ──
-          try {
-            const lid = finalLead.lead_id;
-            if (lid) {
-              await axios.post(
-                `${DATABASE_URL}/user/deduct_credit/${lid}`,
-                {},
-                { withCredentials: true }
-              );
-            }
-          } catch (deductErr) {
-            console.error(
-              `❌ Credit deduction failed for lead ${finalLead.lead_id}`,
-              deductErr
-            );
-          }
 
-          // Add freshly scraped row in yellow
           const yellowRow = toCamelCase({
-            ...finalLead,
+            ...uploadedLead,
             source_type: "scraped",
           });
-          setScrapedEnrichedCompanies(prev => [...prev, yellowRow]);
 
-          // Small pause so UI can update incrementally
-          await new Promise(r => setTimeout(r, 150));
+          setScrapedEnrichedCompanies((prev) => [...prev, yellowRow]);
+          await new Promise((r) => setTimeout(r, 150));
         } catch (err) {
           console.error(`❌ Failed enriching ${company.company}`, err);
         }
       }
 
-      // ── Step 7: Final cleanup ──
       if (forceScrape) {
         setDbEnrichedCompanies([]);
       }
       if (Object.keys(draftMap).length > 0) {
         sessionStorage.setItem("leadToDraftMap", JSON.stringify(draftMap));
       }
-
+      
       setShowResults(true);
       setHasEnrichedOnce(true);
     } catch (err) {
@@ -825,9 +771,9 @@ export function DataEnhancement() {
       stopProgressSimulation(100);
       setLoading(false);
     }
-
     showNotification("Data successfully enriched!");
   };
+  
   
 
 
@@ -840,7 +786,7 @@ export function DataEnhancement() {
 
 
   return (
-
+    
     <div className="space-y-6">
       <Button
         onClick={handleBack}
@@ -1116,23 +1062,18 @@ export function DataEnhancement() {
                             <TableCell>{company.business_phone}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                {company.website && company.website !== "N/A" && company.website !== "NA" ? (
+                                {company.website ? cleanUrlForDisplay(company.website) : "N/A"}
+                                {company.website && company.website !== "N/A" && company.website !== "NA" && (
                                   <a
-                                    href={
-                                      company.website.toString().startsWith("http")
-                                        ? company.website
-                                        : `https://${company.website}`
-                                    }
+                                    href={company.website.toString().startsWith("http") ? company.website : `https://${company.website}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-500 hover:text-blue-700"
                                     title="Open website in new tab"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    {cleanUrlForDisplay(company.website)}
+                                    <ExternalLink className="h-4 w-4" />
                                   </a>
-                                ) : (
-                                  <span className="text-gray-500">N/A</span>
                                 )}
                               </div>
                             </TableCell>
@@ -1190,88 +1131,78 @@ export function DataEnhancement() {
         </CardContent>
       </Card>
 
-      {/*
-  Replace the nested ternary with a single block that always renders
-  the fetched and scraped results, and shows a loader banner at the top
-  when loading===true.
-*/}
-      <div className="mt-6 space-y-8">
-        {/* ── LOADER BANNER ── */}
-        {loading && (
-          <div className="flex flex-col items-center py-4">
-            <Loader />
-            <p className="mt-2 text-sm text-muted-foreground">
-              Scraping and enriching data… please wait
-            </p>
-          </div>
-        )}
+      {loading ? (
+        <div className="flex flex-col items-center py-8">
+          <Loader />
+          <p className="mt-4 text-sm text-muted-foreground">
+            Scraping and enriching data… please wait
+          </p>
+        </div>
+      ) : !mergedView && hasEnrichedOnce ? (
+        <div className="mt-6 space-y-8">
+          {/* ── DATABASE RESULTS ── */}
+          {dbEnrichedCompanies.length > 0 && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Fetched from Database</h2>
+              <EnrichmentResults
+                enrichedCompanies={dbEnrichedCompanies}
+                rowClassName={() => "bg-teal-50"}
+              />
 
-        {/* ── DATABASE RESULTS ── */}
-        {!mergedView && hasEnrichedOnce && dbEnrichedCompanies.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold mb-2">Fetched from Database</h2>
-            <EnrichmentResults
-              enrichedCompanies={dbEnrichedCompanies}
-              rowClassName={() => "bg-teal-50"}
-            />
-
-            {/* … re-enrich button … */}
-            {fromDatabaseLeads.length > 0 && !loading && (
-              <div className="mt-3 flex justify-end">
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    setMergedView(false);
-                    const toReselect = normalizedLeads.filter(c =>
-                      fromDatabaseLeads.includes(c.company.toLowerCase())
-                    );
-                    setSelectedCompanies(toReselect.map(c => c.id));
-                    await handleStartEnrichment(true, toReselect);
-                  }}
-                >
-                  Re-enrich those companies
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── SCRAPED RESULTS ── */}
-        {!mergedView && hasEnrichedOnce && scrapedEnrichedCompanies.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold mb-2">Freshly Scraped</h2>
-            <EnrichmentResults
-              enrichedCompanies={scrapedEnrichedCompanies}
-              rowClassName={() => "bg-yellow-50"}
-            />
-          </div>
-        )}
-
-        {/* ── COMBINED TABLE BUTTON ── */}
-        {!loading &&
-          !mergedView &&
-          hasEnrichedOnce &&
-          (dbEnrichedCompanies.length > 0 || scrapedEnrichedCompanies.length > 0) && (
-            <div className="flex justify-center">
-              <Button onClick={() => setMergedView(true)}>
-                Show The Final Table
-              </Button>
+              {/* … re-enrich button … */}
+              {fromDatabaseLeads.length > 0 && (
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      // switch off merged view
+                      setMergedView(false);
+                      // re-select only the DB companies
+                      const toReselect = normalizedLeads.filter(c =>
+                        fromDatabaseLeads.includes(c.company.toLowerCase())
+                      );
+                      setSelectedCompanies(toReselect.map(c => c.id));
+                      await handleStartEnrichment(true, toReselect);
+                    }}
+                  >
+                    Re-enrich those companies
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
-        {/* ── MERGED VIEW ── */}
-        {mergedView && hasEnrichedOnce && (
-          <div>
-            <h2 className="text-lg font-semibold mt-6 mb-2">All Enriched Results</h2>
-            <EnrichmentResults
-              enrichedCompanies={[
-                ...dbEnrichedCompanies,
-                ...scrapedEnrichedCompanies,
-              ]}
-            />
-          </div>
-        )}
-      </div>
+          {/* ── SCRAPED RESULTS ── */}
+          {scrapedEnrichedCompanies.length > 0 && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Freshly Scraped</h2>
+              <EnrichmentResults
+                enrichedCompanies={scrapedEnrichedCompanies}
+                rowClassName={() => "bg-yellow-50"}
+              />
+            </div>
+          )}
+
+          {/* ── COMBINED TABLE BUTTON ── */}
+          {(dbEnrichedCompanies.length > 0 || scrapedEnrichedCompanies.length > 0) && (
+            <div className="flex justify-center">
+              <Button onClick={() => setMergedView(true)}>
+                Show Combined Table
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : mergedView && hasEnrichedOnce ? (
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold mb-2">All Enriched Results</h2>
+          <EnrichmentResults
+            enrichedCompanies={[
+              ...dbEnrichedCompanies,
+              ...scrapedEnrichedCompanies,
+            ]}
+          />
+        </div>
+      ) : null}
 
       <div className="flex justify-end mb-4">
         <Button
@@ -1299,12 +1230,12 @@ export function DataEnhancement() {
         </div>
       </Popup>
 
-      <Notif
-        show={notif.show}
-        message={notif.message}
-        type={notif.type}
-        onClose={() => setNotif(prev => ({ ...prev, show: false }))}
-      />
+          <Notif
+            show={notif.show}
+            message={notif.message}
+            type={notif.type}
+            onClose={() => setNotif(prev => ({ ...prev, show: false }))}
+          />
 
     </div>
   )

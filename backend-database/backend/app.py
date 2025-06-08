@@ -31,7 +31,6 @@ def create_app(config_class=config):
         "https://35.165.209.201",
         "https://main.d2fzqm2i2qb7f3.amplifyapp.com",
         "http://35.165.209.201",
-        "https://sandboxdev.saasquatchleads.com",
         "https://www.saasquatchleads.com",
         "http://54.166.155.63:3000",
         "http://54.166.155.63",

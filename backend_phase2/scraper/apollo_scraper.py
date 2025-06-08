@@ -3,18 +3,20 @@ import requests
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
-import random
 
 load_dotenv()
 app = Flask(__name__)
 
 APOLLO_API_KEY = os.getenv("APOLLO_API_KEY")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")  # Assuming you're using an LLM with an OpenAI-compatible API
+DEEPSEEK_API_KEY = os.getenv(
+    "DEEPSEEK_API_KEY"
+)  # Assuming you're using an LLM with an OpenAI-compatible API
 
 client = OpenAI(
     api_key=DEEPSEEK_API_KEY,
     base_url="https://api.deepseek.com/v1",  # Replace with actual base URL if different
 )
+
 
 def infer_business_type(description):
     if not description or not description.strip():
@@ -42,61 +44,8 @@ def infer_business_type(description):
         return "N/A"
 
 
-def _friendly_fallback(field_type: str) -> str:
-    """
-    Return a random, friendly fallback for each field when Apollo data is missing.
-    """
-    messages = {
-        "founded_year": [
-            "Founding year not available.",
-            "Year founded is unknown.",
-            "Could not find founding date."
-        ],
-        "linkedin_url": [
-            "LinkedIn URL not provided.",
-            "No LinkedIn profile found.",
-            "LinkedIn information is missing."
-        ],
-        "keywords": [
-            "No keywords available.",
-            "Keywords not specified.",
-            "No keyword tags found."
-        ],
-        "annual_revenue_printed": [
-            "Revenue info unavailable.",
-            "No revenue data provided.",
-            "Financial figures not listed."
-        ],
-        "website_url": [
-            "Website not found.",
-            "No web address available.",
-            "Could not locate a website."
-        ],
-        "employee_count": [
-            "Employee count not disclosed.",
-            "Headcount unknown.",
-            "Staff size not listed."
-        ],
-        "industry": [
-            "Industry not specified.",
-            "No industry data.",
-            "Industry information missing."
-        ],
-        "business_type": [
-            "Business type unknown.",
-            "No business classification.",
-            "Could not identify B2B/B2C status."
-        ],
-    }
-    return random.choice(messages.get(field_type, ["Information unavailable."]))
-
-
 def enrich_single_company(domain):
-    """
-    Call Apollo API and extract founded_year, linkedin_url, keywords,
-    annual_revenue_printed, website_url, employee_count, industry,
-    business_type — replacing any empty or missing value with a friendly fallback.
-    """
+    """Call Apollo API and extract founded_year, linkedin_url, keywords, annual_revenue_printed, website_url, employee_count."""
     url = "https://api.apollo.io/api/v1/organizations/enrich"
     headers = {
         "accept": "application/json",
@@ -110,51 +59,48 @@ def enrich_single_company(domain):
         response = requests.get(url, headers=headers, params=params)
         if response.status_code == 200:
             org = response.json().get("organization", {})
+            founded_year = org.get("founded_year", "")
+            linkedin_url = org.get("linkedin_url", "")
 
-            # Extract raw values (may be empty string or None)
-            raw_founded_year         = org.get("founded_year", "")
-            raw_linkedin_url         = org.get("linkedin_url", "")
-            raw_keywords_list        = org.get("keywords", [])
-            raw_annual_revenue       = org.get("annual_revenue_printed", "")
-            raw_website_url          = org.get("website_url", "")
-            raw_employee_count       = org.get("estimated_num_employees", "")
-            raw_industry             = org.get("industry", "")
-            raw_about                = org.get("short_description", "")
+            # Limit keywords to 5
+            keywords_list = org.get("keywords", [])
+            keywords_trimmed = keywords_list[:5] if isinstance(keywords_list, list) else []
+            keywords_combined = ", ".join(keywords_trimmed)
 
-            # Trim or convert as needed
-            founded_year     = str(raw_founded_year).strip()
-            linkedin_url     = str(raw_linkedin_url).strip()
-            annual_revenue   = str(raw_annual_revenue).strip()
-            website_url      = str(raw_website_url).strip()
-            employee_count   = str(raw_employee_count).strip()
-            industry         = str(raw_industry).strip()
-            about            = str(raw_about).strip()
+            industry = org.get("industry", "")
+            # industry_list = org.get("industries")
 
-            # Keywords: limit to 5 if list, otherwise fallback
-            if isinstance(raw_keywords_list, list) and raw_keywords_list:
-                keywords_trimmed = raw_keywords_list[:5]
-                keywords_combined = ", ".join(kw.strip() for kw in keywords_trimmed if kw and kw.strip())
-                keywords = keywords_combined.strip()
+            # # Prefer list if it exists and is non-empty
+            # if isinstance(industry_list, list) and industry_list:
+            #     industry = ", ".join(industry_list[:5])  # limit to 5
+            # elif isinstance(industry_raw, str) and industry_raw.strip():
+            #     industry = industry_raw.strip()
+            # else:
+            #     industry = "N/A"
+
+            keywords_raw = org.get("keywords")
+            if isinstance(keywords_raw, list) and keywords_raw:
+                keywords_combined = ", ".join(keywords_raw[:5])
             else:
-                keywords = ""
+                keywords_combined = "N/A"
 
-            # Business type via LLM
-            business_type    = infer_business_type(about)
+            annual_revenue_printed = org.get("annual_revenue_printed", "")
+            website_url = org.get("website_url", "")
+            employee_count = org.get("estimated_num_employees", "")
+            about = org.get("short_description", "")
+            business_type = infer_business_type(about)
 
-            # Apply friendly fallback for each field that ended up empty
             return {
-                "founded_year":         founded_year   or _friendly_fallback("founded_year"),
-                "linkedin_url":         linkedin_url   or _friendly_fallback("linkedin_url"),
-                "keywords":             keywords       or _friendly_fallback("keywords"),
-                "annual_revenue_printed": annual_revenue or _friendly_fallback("annual_revenue_printed"),
-                "website_url":          website_url    or _friendly_fallback("website_url"),
-                "employee_count":       employee_count or _friendly_fallback("employee_count"),
-                "industry":             industry       or _friendly_fallback("industry"),
-                "business_type":        business_type  or _friendly_fallback("business_type"),
+                "founded_year": founded_year,
+                "linkedin_url": linkedin_url,
+                "keywords": keywords_combined,
+                "annual_revenue_printed": annual_revenue_printed,
+                "website_url": website_url,
+                "employee_count": employee_count,
+                "industry": industry,
+                "business_type": business_type,
             }
-
         else:
             return {"error": f"Status {response.status_code}"}
-
     except Exception as e:
         return {"error": str(e)}
