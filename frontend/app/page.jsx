@@ -62,17 +62,18 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import axios from "axios";
-
+import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Notif from "@/components/ui/notif";
+import Popup from "@/components/ui/popup";
 
 import { redirect } from "next/navigation";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P2;
-
 // export default function Home() {
 //   redirect('/auth');
 // }
 export default function Home() {
+  const { showPopup, handleClose } = useEmailVerificationGuard();
   const user =
     typeof window !== "undefined"
       ? JSON.parse(sessionStorage.getItem("user") || "{}")
@@ -300,12 +301,22 @@ export default function Home() {
   };
 
   const handleExportCSVWithCredits = async () => {
+    // 1) Read the user’s role from session storage
+    const stored = sessionStorage.getItem("user");
+    const currentUser = stored ? JSON.parse(stored) : {};
+    const role = currentUser.role || "";
+
+    // 2) If they’re a developer, bypass all checks and export immediately
+    if (role === "developer") {
+      handleExportCSV(currentItems, "enriched_results.csv");
+      return;
+    }
+
+    // 3) Otherwise, do the subscription/credits validation
     try {
       const { data: subscriptionInfo } = await axios.get(
         `${DATABASE_URL}/user/subscription_info`,
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
 
       const planName =
@@ -339,16 +350,26 @@ export default function Home() {
       );
     }
   };
+  
 
   const handleToggleFiltersWithCheck = async () => {
+    // 1) Read the user’s role
+    const stored = sessionStorage.getItem("user");
+    const currentUser = stored ? JSON.parse(stored) : {};
+    const role = currentUser.role || "";
+
+    // 2) If developer, bypass the subscription check
+    if (role === "developer") {
+      setShowFilters((prev) => !prev);
+      return;
+    }
+
+    // 3) Otherwise do the existing plan‐check logic
     try {
       const { data: subscriptionInfo } = await axios.get(
         `${DATABASE_URL}/user/subscription_info`,
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
-
       const planName =
         subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
       if (planName === "free") {
@@ -358,7 +379,6 @@ export default function Home() {
         );
         return;
       }
-
       setShowFilters((prev) => !prev);
     } catch (err) {
       console.error("❌ Failed to verify subscription:", err);
@@ -368,6 +388,7 @@ export default function Home() {
       );
     }
   };
+  
 
   const [scrapingHistory, setScrapingHistory] = useState([]);
 
@@ -688,6 +709,45 @@ export default function Home() {
     verifyAndFetchLeads();
   }, []);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    const ensureGrowjoIsRunning = async () => {
+      try {
+        // 1) Check whether GrowjoScraper is already initialized on the backend
+        const statusRes = await axios.get(`${BACKEND_URL}/is-growjo-scraper`, {
+          
+        });
+        if (isCancelled) return;
+
+        const alreadyInitialized = statusRes.data?.initialized;
+        if (alreadyInitialized) {
+          console.log("🔄 GrowjoScraper already running; skipping init.");
+          return;
+        }
+
+        // 2) If not initialized, call the init endpoint
+        const initRes = await axios.post(
+          `${BACKEND_URL}/init-growjo-scraper`,
+          {}
+        );
+        
+        console.log("✅ GrowjoScraper initialized:", initRes.data);
+      } catch (err) {
+        console.error("❌ Error checking or initializing GrowjoScraper:", err);
+      }
+    };
+
+    ensureGrowjoIsRunning();
+
+    // We do NOT close here automatically; cleanup is done explicitly on logout or navigation.
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+  
+
+
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
 
   useEffect(() => {
@@ -721,6 +781,25 @@ export default function Home() {
     </div>
   ) : (
     <>
+      {/* Email-not-verified popup */}
+      <Popup show={showPopup} onClose={handleClose}>
+        <div className="text-center flex flex-col items-center justify-center">
+          <h2 className="text-lg font-semibold">Account Not Verified</h2>
+          <p className="mt-2">
+            Your account hasn’t been verified yet. Please check your email for
+            the verification link.
+          </p>
+          <button
+            className="mt-4 px-4 py-2 rounded text-white"
+            style={{ backgroundColor: "#7bc3a4" }}
+            onClick={handleClose}
+          >
+            OK
+          </button>
+        </div>
+      </Popup>
+
+      {/* Main app content */}
       <Header />
       <main className="px-20 py-16 space-y-10">
         <div className="text-2xl font-semibold text-foreground text-white">
@@ -775,29 +854,29 @@ export default function Home() {
           ].map((stat, index) => (
             <Card
               key={index}
-              className="relative rounded-2xl border shadow-sm px-6 py-5 flex flex-col justify-between h-48"
+              className="relative rounded-2xl border shadow-sm px-6 py-5 flex flex-col justify-between min-h-[12rem]"
             >
-              <CardHeader className="pb-2 relative">
-                <CardDescription className="text-base text-muted-foreground mb-1">
-                  {stat.label}
-                </CardDescription>
-                <CardTitle className="text-4xl font-extrabold text-foreground leading-snug">
-                  {stat.value}
-                </CardTitle>
+              <CardHeader className="pb-2 flex flex-wrap justify-between items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  <CardDescription className="text-base text-muted-foreground mb-1">
+                    {stat.label}
+                  </CardDescription>
+                  <CardTitle className="text-3xl sm:text-4xl font-extrabold text-foreground leading-snug truncate">
+                    {stat.value}
+                  </CardTitle>
+                </div>
 
-                {/* ✅ Top-right Upgrade button */}
                 {stat.label === "Subscription" && stat.action && (
-                  <a
-                    href={stat.action.link}
-                    className="absolute top-0 right-0 mt-3 mr-4"
-                  >
-                    <Button
-                      size="sm"
-                      className="text-sm px-4 py-1.5 font-semibold"
-                    >
-                      {stat.action.label}
-                    </Button>
-                  </a>
+                  <div className="flex-none">
+                    <a href={stat.action.link}>
+                      <Button
+                        size="sm"
+                        className="text-sm px-4 py-1.5 font-semibold"
+                      >
+                        {stat.action.label}
+                      </Button>
+                    </a>
+                  </div>
                 )}
               </CardHeader>
 

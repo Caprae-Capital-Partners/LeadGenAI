@@ -12,8 +12,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P2;
+import axios from "axios";
 
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P2;
 export function Header() {
   const [userEmail, setUserEmail] = useState("");
   useEffect(() => {
@@ -110,6 +112,16 @@ export function Header() {
               <DropdownMenuSeparator className="bg-dark-border" />
               <DropdownMenuItem
                 onClick={async () => {
+                  // 1) Close Growjo scraper tabs
+                  try {
+                    await axios.post(`${BACKEND_URL}/close-growjo-scraper`);
+                    console.log("✅ Growjo scraper closed");
+                  } catch (err) {
+                    console.error("❌ Failed to close Growjo scraper:", err);
+                    // proceed to logout even if closing fails
+                  }
+
+                  // 2) Perform logout
                   try {
                     const res = await fetch(
                       "https://data.capraeleadseekers.site/api/auth/logout",
