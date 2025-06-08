@@ -665,18 +665,70 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Search companies, keywords, or contact"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-[240px]"
-              />
-              <Button variant="outline" size="sm" onClick={handleToggleFiltersWithCheck}>
-                <Filter className="h-4 w-4 mr-2" />
-                {showFilters ? "Hide Filters" : "Show Filters"}
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* Stretched Search Bar */}
+              <div className="flex-grow">
+                <Input
+                  placeholder="Search companies..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Right: Filter + Export + Edit */}
+              <div className="flex flex-wrap items-center gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={handleToggleFiltersWithCheck}>
+                  <Filter className="h-4 w-4 mr-2" />
+                  {showFilters ? "Hide Filters" : "Show Filters"}
+                </Button>
+
+                <Button
+                  onClick={handleExportCSVWithCredits}
+                  disabled={filteredCompanies.length === 0}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </Button>
+
+                {isEditing ? (
+                  <>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        setEditableCompanies([...enrichedCompanies])
+                        setIsEditing(false)
+                      }}
+                    >
+                      Discard Changes
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        handleSaveEditedCompanies()
+                        setIsEditing(false)
+                      }}
+                    >
+                      Save Changes
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    onClick={() => setIsEditing(true)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Edit
+                  </Button>
+                )}
+              </div>
             </div>
+
+
 
             {showFilters && (
               <div className="flex flex-wrap gap-4 my-4">
@@ -760,66 +812,6 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                   <X className="h-4 w-4 mr-1" />
                   Clear All
                 </Button>
-              </div>
-            )}
-
-            {/* Pagination controls */}
-            {filteredCompanies.length > 0 && (
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCompanies.length)} of {filteredCompanies.length} results
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1); // Reset to first page when changing items per page
-                  }}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Items per page" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25 per page</SelectItem>
-                      <SelectItem value="50">50 per page</SelectItem>
-                      <SelectItem value="100">100 per page</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          aria-disabled={currentPage === 1}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-
-                      {getPageNumbers().map((page, index) => (
-                        <PaginationItem key={index}>
-                          {page === 'ellipsis' ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              isActive={page === currentPage}
-                              onClick={() => setCurrentPage(Number(page))}
-                            >
-                              {page}
-                            </PaginationLink>
-                          )}
-                        </PaginationItem>
-                      ))}
-
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                          aria-disabled={currentPage === totalPages}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
               </div>
             )}
 
@@ -1014,49 +1006,67 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
 
               </div>
             </div>
-          </div>
-          <div className="flex justify-end mt-4">
-            <Button
-              onClick={handleExportCSVWithCredits}
-              disabled={filteredCompanies.length === 0}
-              variant="outline"
-              size="sm"
-              className="gap-1"
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
-            <div className="flex gap-3 ml-4">
-              {isEditing ? (
-                <>
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      setEditableCompanies([...enrichedCompanies])
-                      setIsEditing(false)
-                    }}
-                  >
-                    Discard Changes
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      handleSaveEditedCompanies()
-                      setIsEditing(false)
-                    }}
-                  >
-                    Save Changes
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  className="ml-4"
-                  onClick={() => setIsEditing(true)}
-                  variant="outline"
-                >
-                  Edit
-                </Button>
-              )}
-            </div>
+
+            {/* Pagination controls */}
+            {filteredCompanies.length > 0 && (
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCompanies.length)} of {filteredCompanies.length} results
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1); // Reset to first page when changing items per page
+                  }}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Items per page" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25 per page</SelectItem>
+                      <SelectItem value="50">50 per page</SelectItem>
+                      <SelectItem value="100">100 per page</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          aria-disabled={currentPage === 1}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+
+                      {getPageNumbers().map((page, index) => (
+                        <PaginationItem key={index}>
+                          {page === 'ellipsis' ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              isActive={page === currentPage}
+                              onClick={() => setCurrentPage(Number(page))}
+                            >
+                              {page}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          aria-disabled={currentPage === totalPages}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </div>
+            )}
+
           </div>
           <Notif
             show={notif.show}
