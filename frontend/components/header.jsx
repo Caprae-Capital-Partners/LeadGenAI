@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2;
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P2;
 export function Header() {
   const [userEmail, setUserEmail] = useState("");
   useEffect(() => {
