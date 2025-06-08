@@ -687,6 +687,44 @@ export default function Home() {
     verifyAndFetchLeads();
   }, []);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    const ensureGrowjoIsRunning = async () => {
+      try {
+        // 1) Check whether GrowjoScraper is already initialized on the backend
+        const statusRes = await axios.get(
+          `${BACKEND_URL}/is-growjo-scraper`,
+          {}
+        );
+        if (isCancelled) return;
+
+        const alreadyInitialized = statusRes.data?.initialized;
+        if (alreadyInitialized) {
+          console.log("🔄 GrowjoScraper already running; skipping init.");
+          return;
+        }
+
+        // 2) If not initialized, call the init endpoint
+        const initRes = await axios.post(
+          `${BACKEND_URL}/init-growjo-scraper`,
+          {}
+        );
+
+        console.log("✅ GrowjoScraper initialized:", initRes.data);
+      } catch (err) {
+        console.error("❌ Error checking or initializing GrowjoScraper:", err);
+      }
+    };
+
+    ensureGrowjoIsRunning();
+
+    // We do NOT close here automatically; cleanup is done explicitly on logout or navigation.
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
 
   useEffect(() => {
