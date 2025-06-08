@@ -146,7 +146,13 @@ def upload_csv():
 def view_leads():
     user_id = getattr(current_user, 'user_id', None)
     username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
-    current_app.logger.info(f'Route hit: /view_leads by user_id={user_id}, username={username}')
+    from models.user_subscription_model import UserSubscription
+    user_sub = UserSubscription.query.filter_by(user_id=user_id).first()
+    plan = user_sub.plan_name if user_sub else 'N/A'
+    credits = user_sub.credits_remaining if user_sub else 'N/A'
+    # Log user info
+    current_app.logger.info(f'Route hit: / by user_id={user_id}, username={username}, plan={plan}, credits_remaining={credits}')
+    print(f"[USER INFO] username: {username}, plan: {plan}, credits_remaining: {credits}")
     # Ambil parameter dari query string
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)

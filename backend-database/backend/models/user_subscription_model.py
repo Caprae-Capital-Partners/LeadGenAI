@@ -9,7 +9,7 @@ class UserSubscription(db.Model):
     credits_remaining = db.Column(db.Integer, nullable=False, default=10)
     plan_id = db.Column(db.Integer, db.ForeignKey('plans.plan_id'))
     plan_name = db.Column(db.String(100), nullable=True)
-    payment_frequency = db.Column(db.String(10), default='monthly', nullable=False)
+    payment_frequency = db.Column(db.String(30), default='monthly', nullable=False)
     tier_start_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     plan_expiration_timestamp = db.Column(db.DateTime, nullable=True)
     username = db.Column(db.String(100), nullable=True)
@@ -17,6 +17,8 @@ class UserSubscription(db.Model):
     pause_end_date = db.Column(db.DateTime, nullable=True)
     original_plan_id = db.Column(db.Integer, nullable=True)
     original_plan_name = db.Column(db.String(100), nullable=True)
+    is_canceled = db.Column(db.Boolean, default=False, nullable=False)
+    canceled_at = db.Column(db.DateTime, nullable=True)
 
 # Tambahkan relationship setelah import Plan
 from models.plan_model import Plan
@@ -32,5 +34,7 @@ def to_dict(self):
         'tier_start_timestamp': self.tier_start_timestamp.isoformat() if self.tier_start_timestamp else None,
         'plan_expiration_timestamp': self.plan_expiration_timestamp.isoformat() if self.plan_expiration_timestamp else None,
         'plan': self.plan.to_dict() if hasattr(self, 'plan') and self.plan else None,
-        'username': self.username
+        'username': self.username,
+        'is_canceled': self.is_canceled,
+        'canceled_at': self.canceled_at.isoformat() if self.canceled_at else None
     }
