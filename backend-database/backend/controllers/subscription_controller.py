@@ -596,10 +596,16 @@ class SubscriptionController:
                         }
                     )
                     import datetime
+                    current_app.logger.error(f"Stripe subscription retrieve response: {updated_subscription}")
+                    period_end = getattr(updated_subscription, 'current_period_end', None)
+                    if not period_end and isinstance(updated_subscription, dict):
+                        period_end = updated_subscription.get('current_period_end')
 
-                    # Fetch the updated subscription to get current_period_end
-                    updated_subscription = stripe.Subscription.retrieve(subscription.id)
-                    cancel_date = datetime.datetime.fromtimestamp(updated_subscription.current_period_end)
+                    if not period_end:
+                        current_app.logger.error(f"current_period_end not found in Stripe subscription: {updated_subscription}")
+                        return {'error': 'Could not determine the end of the current billing period from Stripe.'}, 500
+
+                    cancel_date = datetime.datetime.fromtimestamp(period_end)
                     current_app.logger.info(f"Scheduled cancellation at period end for subscription {subscription.id} for user {user.user_id}")
 
                     # Add a field to track scheduled cancellation in local database
