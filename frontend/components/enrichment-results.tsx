@@ -415,97 +415,50 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
   }
 
   const handleExportCSVWithCredits = async () => {
-    // 1) Grab current user’s role
-    const stored = sessionStorage.getItem("user");
-    const currentUser = stored ? JSON.parse(stored) : {};
-    const role = currentUser.role || "";
-
-    // 2) If they’re a developer, skip all checks
-    if (role === "developer") {
-      downloadCSV(filteredCompanies, "enriched_results.csv");
-      return;
-    }
-
-    // 3) Otherwise, do the existing subscription/credits checks
     try {
-      const { data: subscriptionInfo } = await axios.get(
-        `${DATABASE_URL}/user/subscription_info`,
-        { withCredentials: true }
-      );
+      const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+        withCredentials: true
+      });
 
-      const planName =
-        subscriptionInfo?.subscription?.plan_name?.toLowerCase() || "free";
-      const availableCredits =
-        subscriptionInfo?.subscription?.credits_remaining ?? 0;
+      const planName = subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
+      const availableCredits = subscriptionInfo?.subscription?.credits_remaining ?? 0;
       const requiredCredits = filteredCompanies.length;
 
       if (planName === "free") {
-        showNotification(
-          "Exporting is not allowed on the Free tier. Please upgrade your plan.",
-          "info"
-        );
+        showNotification("Exporting is not allowed on the Free tier. Please upgrade your plan.", "info");
         return;
       }
 
       if (availableCredits < requiredCredits) {
-        showNotification(
-          "Insufficient credits to export all selected leads. Please upgrade or reduce selection.",
-          "error"
-        );
+        showNotification("Insufficient credits to export all selected leads. Please upgrade or reduce selection.", "error");
         return;
       }
 
       downloadCSV(filteredCompanies, "enriched_results.csv");
     } catch (checkErr) {
       console.error("❌ Failed to verify subscription:", checkErr);
-      showNotification(
-        "Failed to verify your subscription. Please try again later.",
-        "error"
-      );
+      showNotification("Failed to verify your subscription. Please try again later.", "error");
     }
   };
-  
 
   const handleToggleFiltersWithCheck = async () => {
-    // 1) Grab the current user from sessionStorage
-    const stored = sessionStorage.getItem("user");
-    const currentUser = stored ? JSON.parse(stored) : {};
-    const role = currentUser.role || "";
-
-    // 2) If they’re a developer, skip subscription check entirely
-    if (role === "developer") {
-      setShowFilters((prev) => !prev);
-      return;
-    }
-
-    // 3) Otherwise, fall back to the existing “free‐tier” logic
     try {
-      const { data: subscriptionInfo } = await axios.get(
-        `${DATABASE_URL}/user/subscription_info`,
-        { withCredentials: true }
-      );
+      const { data: subscriptionInfo } = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
+        withCredentials: true,
+      });
 
-      const planName =
-        subscriptionInfo?.subscription?.plan_name?.toLowerCase() || "free";
-
+      const planName = subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
       if (planName === "free") {
-        showNotification(
-          "Advanced filters are disabled on the Free tier. Please upgrade your plan.",
-          "info"
-        );
+        showNotification("Advanced filters are disabled on the Free tier. Please upgrade your plan.", "info");
         return;
       }
 
       setShowFilters((prev) => !prev);
     } catch (err) {
       console.error("❌ Failed to verify subscription:", err);
-      showNotification(
-        "Failed to verify your subscription. Please try again later.",
-        "error"
-      );
+      showNotification("Failed to verify your subscription. Please try again later.", "error");
     }
   };
-  
 
 
   const handleBack = () => {
@@ -953,48 +906,25 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                                     className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
                                     value={String(value)}
                                     onChange={(e) =>
-                                      handleFieldChange(
-                                        company.id,
-                                        field as keyof EnrichedCompany,
-                                        e.target.value
-                                      )
+                                      handleFieldChange(company.id, field as keyof EnrichedCompany, e.target.value)
                                     }
                                   />
-                                ) : (
-                                  // If this cell is “website” and has a non‐empty string value, render a blue <a>…
-                                  field === "website" &&
-                                    typeof value === "string" &&
-                                    value.trim() !== "" ? (
-                                    <a
-                                      href={value.startsWith("http") ? value : `https://${value}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-500 hover:text-blue-700 truncate"
-                                      title={value}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {cleanUrlForDisplay(value)}
-                                    </a>
-
-                                    // Otherwise, if this field is a LinkedIn field and starts with “http”, render a blue <a>…
-                                  ) : isLinkedInField &&
-                                    typeof value === "string" &&
-                                    value.startsWith("http") ? (
+                                ) : isLinkedInField && isValidLink ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="truncate">
+                                      {value.replace("https://", "").replace("www.", "").split("/")[0]}
+                                    </span>
                                     <a
                                       href={value}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-blue-500 hover:text-blue-700 truncate"
-                                      title={value}
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      {value.replace(/^https?:\/\/(www\.)?/, "").split("?")[0]}
+                                      <ExternalLink className="h-4 w-4 text-blue-500 hover:text-blue-700" />
                                     </a>
-
-                                    // For all other cases, just show the plain text (or “N/A” if empty)
-                                  ) : (
-                                    displayValue
-                                  )
+                                  </div>
+                                ) : (
+                                  displayValue
                                 )}
                               </TableCell>
                             );
