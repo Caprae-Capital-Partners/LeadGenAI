@@ -64,6 +64,7 @@ import {
 import axios from "axios";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Notif from "@/components/ui/notif";
+import Popup from "@/components/ui/popup";
 
 import { redirect } from "next/navigation";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
@@ -72,7 +73,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2;
 //   redirect('/auth');
 // }
 export default function Home() {
-  useEmailVerificationGuard();
+  const { showPopup, handleClose } = useEmailVerificationGuard();
   const user =
     typeof window !== "undefined"
       ? JSON.parse(sessionStorage.getItem("user") || "{}")
@@ -780,6 +781,25 @@ export default function Home() {
     </div>
   ) : (
     <>
+      {/* Email-not-verified popup */}
+      <Popup show={showPopup} onClose={handleClose}>
+        <div className="text-center flex flex-col items-center justify-center">
+          <h2 className="text-lg font-semibold">Account Not Verified</h2>
+          <p className="mt-2">
+            Your account hasn’t been verified yet. Please check your email for
+            the verification link.
+          </p>
+          <button
+            className="mt-4 px-4 py-2 rounded text-white"
+            style={{ backgroundColor: "#7bc3a4" }}
+            onClick={handleClose}
+          >
+            OK
+          </button>
+        </div>
+      </Popup>
+
+      {/* Main app content */}
       <Header />
       <main className="px-20 py-16 space-y-10">
         <div className="text-2xl font-semibold text-foreground text-white">

@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { ContactForm } from "@/components/contacts";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
+import Popup from "@/components/ui/popup";
 
 export default function ContactPage() {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  useEmailVerificationGuard();
+  const { showPopup, handleClose } = useEmailVerificationGuard();
 
   useEffect(() => {
     const verifyLogin = async () => {
@@ -45,6 +46,22 @@ export default function ContactPage() {
 
   return (
     <>
+      {/* Email-not-verified popup */}
+      <Popup show={showPopup} onClose={handleClose}>
+        <h2 className="text-lg font-semibold">Account Not Verified</h2>
+        <p className="mt-2">
+          Your account hasn’t been verified yet. Please check your email for
+          the verification link.
+        </p>
+        <button
+          className="mt-4 px-4 py-2 rounded bg-blue-600 text-white"
+          onClick={handleClose}
+        >
+          OK
+        </button>
+      </Popup>
+
+      {/* Main app content */}
       <Header />
       <main className="px-4 md:px-20 py-8 md:py-16">
         <ContactForm />
