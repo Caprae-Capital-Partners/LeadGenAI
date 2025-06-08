@@ -67,7 +67,7 @@ import Notif from "@/components/ui/notif";
 
 import { redirect } from "next/navigation";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2;
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P2;
 // export default function Home() {
 //   redirect('/auth');
 // }
