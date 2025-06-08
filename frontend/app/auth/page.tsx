@@ -255,11 +255,33 @@ export default function AuthPage() {
 
             if (result.user) {
                 sessionStorage.setItem("user", JSON.stringify(result.user));
-                showNotification(isSignup ? "Account successfully created!" : "Successfully signed in!");
-              setTimeout(() => {
-                router.push(isSignup ? "/subscription" : "/");
+
+                // 🔔 Send verification email after successful signup
+                if (isSignup) {
+                  try {
+                    await fetch(`${DATABASE_URL}/auth/send-verification`, {
+                      method: "POST",
+                      credentials: "include", // assuming you're using Flask-Login session cookie
+                    });
+                    showNotification(
+                      "Your account has been created. Please verify your email to activate it. A link has been sent to your email.",
+                      "info"
+                    );
+                  } catch (err) {
+                    console.error("❌ Failed to send verification email:", err);
+                    showNotification("Account created, but failed to send verification email.", "error");
+                  }
+                } else {
+                  showNotification("Successfully signed in!", "success");
+                }
+
+                // ✅ Redirect
+                setTimeout(() => {
+                  router.push(isSignup ? "/subscription" : "/");
                 }, 100);
-            }
+              }
+
+
         } catch (err: any) {
             alert(err.message);
         }
