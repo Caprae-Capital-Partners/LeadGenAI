@@ -715,9 +715,10 @@ export default function Home() {
     const ensureGrowjoIsRunning = async () => {
       try {
         // 1) Check whether GrowjoScraper is already initialized on the backend
-        const statusRes = await axios.get(`${BACKEND_URL}/is-growjo-scraper`, {
-          
-        });
+        const statusRes = await axios.get(
+          `${BACKEND_URL}/is-growjo-scraper`,
+          {}
+        );
         if (isCancelled) return;
 
         const alreadyInitialized = statusRes.data?.initialized;
@@ -731,7 +732,6 @@ export default function Home() {
           `${BACKEND_URL}/init-growjo-scraper`,
           {}
         );
-        
         console.log("✅ GrowjoScraper initialized:", initRes.data);
       } catch (err) {
         console.error("❌ Error checking or initializing GrowjoScraper:", err);
@@ -745,8 +745,6 @@ export default function Home() {
       isCancelled = true;
     };
   }, []);
-  
-
 
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
 
