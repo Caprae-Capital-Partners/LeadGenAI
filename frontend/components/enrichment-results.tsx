@@ -23,6 +23,7 @@ import {
 import { useEnrichment } from "@/components/EnrichmentProvider"
 import Notif  from "@/components/ui/notif"
 import axios from "axios"
+import { SortDropdown } from "@/components/ui/sort-dropdown"
 
 interface EnrichmentResultsProps {
   enrichedCompanies: EnrichedCompany[]
@@ -108,6 +109,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
       )
     )
   }
+  
   const handleDiscardChanges = () => {
     setEditableCompanies([...enrichedCompanies])
   }
@@ -513,6 +515,33 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     window.location.reload()
   }
 
+  const handleSortBy = (sortBy: string, direction: "most" | "least") => {
+    const getFilledCount = (company: EnrichedCompany) => {
+      return Object.entries(company).filter(([key, value]) => {
+        if (
+          ["id", "lead_id", "draft_id", "sourceType"].includes(key) ||
+          value === null ||
+          value === undefined ||
+          normalizeDisplayValue(value) === "N/A"
+        ) {
+          return false;
+        }
+        return true;
+      }).length;
+    };
+
+    const sorted = [...filteredCompanies].sort((a, b) => {
+      const aCount = getFilledCount(a);
+      const bCount = getFilledCount(b);
+      return direction === "most" ? bCount - aCount : aCount - bCount;
+    });
+
+    setFilteredCompanies(sorted);
+    setEditableCompanies(sorted);
+    setCurrentPage(1); // reset pagination
+  };
+  
+
   const handleSaveEditedCompanies = async () => {
     const user = JSON.parse(sessionStorage.getItem("user") || "{}");
     const user_id = user.id || user.user_id || user._id;
@@ -678,51 +707,59 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
 
               {/* Right: Filter + Export + Edit */}
               <div className="flex flex-wrap items-center gap-2 justify-end">
-                <Button variant="outline" size="sm" onClick={handleToggleFiltersWithCheck}>
-                  <Filter className="h-4 w-4 mr-2" />
-                  {showFilters ? "Hide Filters" : "Show Filters"}
+                <SortDropdown onApply={(sortBy, direction) => handleSortBy(sortBy, direction)} />
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleToggleFiltersWithCheck}
+                  title={showFilters ? "Hide Filters" : "Show Filters"}
+                >
+                  <Filter className="h-4 w-4" />
                 </Button>
 
                 <Button
                   onClick={handleExportCSVWithCredits}
                   disabled={filteredCompanies.length === 0}
                   variant="outline"
-                  size="sm"
-                  className="gap-1"
+                  size="icon"
+                  title="Export CSV"
                 >
                   <Download className="h-4 w-4" />
-                  Export CSV
                 </Button>
 
                 {isEditing ? (
                   <>
                     <Button
                       variant="destructive"
-                      size="sm"
+                      size="icon"
                       onClick={() => {
-                        setEditableCompanies([...enrichedCompanies])
-                        setIsEditing(false)
+                        setEditableCompanies([...enrichedCompanies]);
+                        setIsEditing(false);
                       }}
+                      title="Discard Changes"
                     >
-                      Discard Changes
+                      <X className="h-4 w-4" />
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon"
                       onClick={() => {
-                        handleSaveEditedCompanies()
-                        setIsEditing(false)
+                        handleSaveEditedCompanies();
+                        setIsEditing(false);
                       }}
+                      title="Save Changes"
                     >
-                      Save Changes
+                      <ExternalLink className="h-4 w-4" />
                     </Button>
                   </>
                 ) : (
                   <Button
                     onClick={() => setIsEditing(true)}
                     variant="outline"
-                    size="sm"
+                    size="icon"
+                    title="Edit"
                   >
-                    Edit
+                    <Search className="h-4 w-4" />
                   </Button>
                 )}
               </div>
