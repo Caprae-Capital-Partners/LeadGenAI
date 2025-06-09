@@ -4,28 +4,22 @@ from models.user_model import User
 from models.user_subscription_model import UserSubscription
 from models.lead_model import db
 from functools import wraps
+from utils.decorators import role_required
 from datetime import datetime, timedelta
 
 user_management_bp = Blueprint('user_management', __name__)
 
-def super_admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin():
-            return jsonify({"error": "Unauthorized access"}), 403
-        return f(*args, **kwargs)
-    return decorated_function
 
 @user_management_bp.route('/admin/users')
 @login_required
-@super_admin_required
+
 def user_management():
     """Render the user management page"""
     return render_template('admin/user_management.html')
 
 @user_management_bp.route('/api/admin/users')
 @login_required
-@super_admin_required
+@role_required('admin', 'developer')
 def get_users():
     """Get all users with their subscription information"""
     users = User.query.all()
@@ -53,7 +47,7 @@ def get_users():
 
 @user_management_bp.route('/api/admin/users/<user_id>/subscription', methods=['PUT'])
 @login_required
-@super_admin_required
+@role_required('admin', 'developer')
 def update_subscription(user_id):
     """Update a user's subscription"""
     data = request.get_json()
@@ -81,7 +75,7 @@ def update_subscription(user_id):
 
 @user_management_bp.route('/api/admin/users/<user_id>/toggle-status', methods=['POST'])
 @login_required
-@super_admin_required
+@role_required('admin', 'developer')
 def toggle_user_status(user_id):
     """Toggle a user's active status"""
     user = User.query.get_or_404(user_id)
