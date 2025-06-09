@@ -68,69 +68,32 @@ def get_credits():
 @login_required
 def cancel_subscription():
     """Cancel user subscription"""
-    data = request.json or {}
-    cancellation_type = data.get('type', 'immediate')  # 'immediate' or 'period_end'
-    feedback = data.get('feedback')  # Optional feedback reason
-    comment = data.get('comment')    # Optional comment
-
-    if cancellation_type not in ['immediate', 'period_end']:
-        return jsonify({'error': 'Invalid cancellation type. Use "immediate" or "period_end"'}), 400
-
-    response, status_code = SubscriptionController.cancel_subscription(
-        current_user,
-        cancellation_type=cancellation_type,
-        feedback=feedback,
-        comment=comment
-    )
-    return jsonify(response), status_code
-
-@subscription_bp.route('/api/subscription/reactivate', methods=['POST'])
-@login_required
-def reactivate_subscription():
-    """Reactivate a subscription that's scheduled for cancellation"""
     try:
-        stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
+        data = request.json or {}
+        cancellation_type = data.get('type', 'immediate')  # 'immediate' or 'period_end'
+        feedback = data.get('feedback')  # Optional feedback reason
+        comment = data.get('comment')    # Optional comment
 
-        # Find customer and subscription
-        customers = stripe.Customer.list(email=current_user.email, limit=1)
-        if not customers.data:
-            return jsonify({'error': 'No Stripe customer found'}), 404
+        current_app.logger.info(f"[Cancel API] User {current_user.user_id} requesting {cancellation_type} cancellation")
 
-        customer = customers.data[0]
-        subscriptions = stripe.Subscription.list(
-            customer=customer.id,
-            status='active',
-            limit=10
+        if cancellation_type not in ['immediate', 'period_end']:
+            return jsonify({'error': 'Invalid cancellation type. Use "immediate" or "period_end"'}), 400
+
+        response, status_code = SubscriptionController.cancel_subscription(
+            current_user,
+            cancellation_type=cancellation_type,
+            feedback=feedback,
+            comment=comment
         )
-
-        if not subscriptions.data:
-            return jsonify({'error': 'No active subscription found'}), 404
-
-        subscription = subscriptions.data[0]
-
-        # Remove cancel_at_period_end
-        updated_subscription = stripe.Subscription.modify(
-            subscription.id,
-            cancel_at_period_end=False
-        )
-
-        # Update local database
-        from models.user_subscription_model import UserSubscription
-        user_sub = UserSubscription.query.filter_by(user_id=current_user.user_id).first()
-        if user_sub and '_scheduled_cancel' in user_sub.payment_frequency:
-            user_sub.payment_frequency = user_sub.payment_frequency.replace('_scheduled_cancel', '')
-            db.session.commit()
-
-        current_app.logger.info(f"Reactivated subscription for user {current_user.user_id}")
-
-        return jsonify({
-            'message': 'Subscription reactivated successfully! Your subscription will continue as normal.',
-            'status': 'active'
-        }), 200
-
+        
+        current_app.logger.info(f"[Cancel API] Response for user {current_user.user_id}: status={status_code}, response={response}")
+        return jsonify(response), status_code
+        
     except Exception as e:
-        current_app.logger.error(f"Error reactivating subscription for user {current_user.user_id}: {str(e)}")
-        return jsonify({'error': 'Error reactivating subscription. Please try again later.'}), 500
+        current_app.logger.error(f"[Cancel API] Error canceling subscription for user {current_user.user_id}: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+
 
 @subscription_bp.route('/webhook', methods=['POST'])
 def subscription_webhook():
@@ -153,3 +116,25 @@ def subscription_webhook():
     except Exception as e:
         current_app.logger.error(f"[Webhook] Error processing webhook: {str(e)}")
         return jsonify({'error': 'Webhook processing failed'}), 500
+
+@subscription_bp.route('/api/subscription/test-cancel', methods=['GET'])
+@login_required
+def test_cancel_access():
+    """Test endpoint to check if cancellation is possible"""
+    try:
+        from models.user_subscription_model import UserSubscription
+        user_sub = UserSubscription.query.filter_by(user_id=current_user.user_id).first()
+        
+        return jsonify({
+            'user_id': str(current_user.user_id),
+            'email': current_user.email,
+            'tier': current_user.tier,
+            'has_subscription': bool(user_sub),
+            'subscription_details': {
+                'plan_name': user_sub.plan_name if user_sub else None,
+                'payment_frequency': user_sub.payment_frequency if user_sub else None,
+                'credits_remaining': user_sub.credits_remaining if user_sub else None
+            } if user_sub else None
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
