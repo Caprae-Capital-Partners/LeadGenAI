@@ -48,32 +48,76 @@ def get_all_plans():
     from models.plan_model import Plan
     from sqlalchemy import func
 
-    # Debug: print current user and role
-    print(f"Current user: {getattr(current_user, 'username', None)}, role: {getattr(current_user, 'role', None)}")
+    user_role = getattr(current_user, 'role', None)
+    if user_role and user_role.lower() == 'student':
+        # Only show student plans in the order list
+        order = ['student monthly', 'student semester', 'student annual']
+        plans = Plan.query.filter(func.lower(Plan.plan_name).in_(order)).all()
+        def plan_sort_key(plan):
+            name = plan.plan_name.lower()
+            if name in order:
+                return (order.index(name), 0)
+            return (len(order), name)
+        plans = sorted([plan for plan in plans if plan.plan_name.lower() in order], key=plan_sort_key)
+    else:
+        # Only show non-student plans in the order list
+        order = ['free', 'bronze', 'silver', 'gold', 'enterprise', 'platinum', 'bronze_annual', 'silver_annual', 'gold_annual', 'platinum_annual']
+        plans = Plan.query.filter(func.lower(Plan.plan_name).in_(order)).all()
+        def plan_sort_key(plan):
+            name = plan.plan_name.lower()
+            if name in order:
+                return (order.index(name), 0)
+            return (len(order), name)
+        plans = sorted([plan for plan in plans if plan.plan_name.lower() in order], key=plan_sort_key)
+
+    plan_list = []
+    for plan in plans:
+        plan_list.append({
+            "plan_name": plan.plan_name,
+            "monthly_price": float(plan.monthly_price) if plan.monthly_price is not None else "Custom",
+            "annual_price": float(plan.annual_price) if plan.annual_price is not None else "Custom",
+            "monthly_lead_quota": plan.monthly_lead_quota if plan.monthly_lead_quota is not None else "Custom",
+            "annual_lead_quota": plan.annual_lead_quota if plan.annual_lead_quota is not None else "Custom",
+            "cost_per_lead": float(plan.cost_per_lead) if plan.cost_per_lead is not None else "~",
+            "has_ai_features": plan.has_ai_features,
+            "initial_credits": plan.initial_credits if plan.initial_credits is not None else "Custom",
+            "credit_reset_frequency": plan.credit_reset_frequency,
+            "features": plan.features_json,  # This is already a JSON/dict
+            "description": plan.description
+        })
+    return jsonify({"plans": plan_list}), 200
+
+@credit_bp.route('/api/plans/upgrade', methods=['GET'])
+@login_required
+def get_upgrade_plans():
+    """
+    Get available plans for upgrade, only those in the defined order list for students and non-students.
+    Returns: List of plans with all relevant details.
+    """
+    from models.plan_model import Plan
+    from sqlalchemy import func
 
     user_role = getattr(current_user, 'role', None)
     if user_role and user_role.lower() == 'student':
-        # Only show student plans
-        plans = Plan.query.filter(func.lower(Plan.plan_name).like('%student%')).all()
-        # Custom order: student monthly, student semester, student annual, then others
+        # Only show student plans in the order list
         order = ['student monthly', 'student semester', 'student annual']
+        plans = Plan.query.filter(func.lower(Plan.plan_name).in_(order)).all()
         def plan_sort_key(plan):
             name = plan.plan_name.lower()
             if name in order:
                 return (order.index(name), 0)
             return (len(order), name)
-        plans = sorted(plans, key=plan_sort_key)
+        plans = sorted([plan for plan in plans if plan.plan_name.lower() in order], key=plan_sort_key)
     else:
-        # Only show non-student plans
-        plans = Plan.query.filter(~func.lower(Plan.plan_name).like('%student%')).all()
-        # Custom order: Free, Bronze, Silver, Gold, Platinum, then others
+        # Only show non-student plans in the order list
         order = ['free', 'bronze', 'silver', 'gold', 'enterprise', 'platinum', 'bronze_annual', 'silver_annual', 'gold_annual', 'platinum_annual']
+        plans = Plan.query.filter(func.lower(Plan.plan_name).in_(order)).all()
         def plan_sort_key(plan):
             name = plan.plan_name.lower()
             if name in order:
                 return (order.index(name), 0)
             return (len(order), name)
-        plans = sorted(plans, key=plan_sort_key)
+        plans = sorted([plan for plan in plans if plan.plan_name.lower() in order], key=plan_sort_key)
 
     plan_list = []
     for plan in plans:
