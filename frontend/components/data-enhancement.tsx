@@ -30,7 +30,7 @@ import Popup from "@/components/ui/popup";
 import Notif from "@/components/ui/notif"
 
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P2!
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2!
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
 
 export function DataEnhancement() {

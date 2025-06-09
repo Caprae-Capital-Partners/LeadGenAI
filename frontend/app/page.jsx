@@ -69,7 +69,8 @@ import { SortDropdown } from "@/components/ui/sort-dropdown"
 
 import { redirect } from "next/navigation";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P2;
+const DATABASE_URL_NOAPI = DATABASE_URL?.replace(/\/api\/?$/, "");
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2;
 // export default function Home() {
 //   redirect('/auth');
 // }
@@ -141,7 +142,7 @@ export default function Home() {
       };
 
       await axios.put(
-        `https://data.capraeleadseekers.site/api/leads/drafts/${actualDraftId}`,
+        `${DATABASE_URL}/leads/drafts/${actualDraftId}`,
         payload,
         { withCredentials: true }
       );
@@ -652,74 +653,95 @@ export default function Home() {
   useEffect(() => {
     const verifyAndFetchLeads = async () => {
       try {
-        const authRes = await fetch(
-          "https://data.capraeleadseekers.site/api/ping-auth",
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
+        setIsCheckingAuth(true);
+
+        // 1. First verify authentication
+        const authRes = await fetch(`${DATABASE_URL}/ping-auth`, {
+          method: "GET",
+          credentials: "include",
+        });
 
         if (!authRes.ok) {
+          console.warn("⚠️ Auth check failed, redirecting to login");
           router.push("/auth");
           return;
         }
 
-        console.log("✅ Logged in");
+        console.log("✅ Authentication verified");
 
-        const draftsRes = await fetch(
-          "https://data.capraeleadseekers.site/api/leads/drafts",
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
+        // 2. Fetch drafts data
+        const draftsRes = await fetch(`${DATABASE_URL}/leads/drafts`, {
+          // Changed endpoint
+          method: "GET",
+          credentials: "include",
+        });
 
+        // Handle non-OK responses
         if (!draftsRes.ok) {
-          console.warn("⚠️ Could not fetch drafts, status:", draftsRes.status);
+          const errorText = await draftsRes.text();
+          console.warn("⚠️ Drafts fetch failed:", {
+            status: draftsRes.status,
+            statusText: draftsRes.statusText,
+            response: errorText,
+          });
           return;
         }
 
-        const data = await draftsRes.json();
+        // Safely parse JSON
+        let data = [];
+        try {
+          const responseText = await draftsRes.text();
+          data = responseText ? JSON.parse(responseText) : [];
+        } catch (parseError) {
+          console.error("🚨 Failed to parse drafts response:", parseError);
+          return;
+        }
 
-        const parsed = (data || []).map((entry) => ({
-          id: entry.lead_id || entry.id,
-          lead_id: entry.lead_id || entry.id,
-          draft_id: entry.draft_id,
-          company: entry.draft_data?.company || "N/A",
-          website: entry.draft_data?.website || "",
-          industry: entry.draft_data?.industry || "",
-          productCategory: entry.draft_data?.product_category || "",
-          businessType: entry.draft_data?.business_type || "",
-          employees: entry.draft_data?.employees || "",
-          revenue: entry.draft_data?.revenue || "",
-          yearFounded: entry.draft_data?.year_founded?.toString() || "",
-          bbbRating: entry.draft_data?.bbb_rating || "",
-          street: entry.draft_data?.street || "",
-          city: entry.draft_data?.city || "",
-          state: entry.draft_data?.state || "",
-          companyPhone: entry.draft_data?.company_phone || "",
-          companyLinkedin: entry.draft_data?.company_linkedin || "",
-          ownerFirstName: entry.draft_data?.owner_first_name || "",
-          ownerLastName: entry.draft_data?.owner_last_name || "",
-          ownerTitle: entry.draft_data?.owner_title || "",
-          ownerLinkedin: entry.draft_data?.owner_linkedin || "",
-          ownerPhoneNumber: entry.draft_data?.owner_phone_number || "",
-          ownerEmail: entry.draft_data?.owner_email || "",
-          source: entry.draft_data?.source || "",
-          created: entry.created_at
-            ? new Date(entry.created_at).toLocaleString()
-            : "N/A",
-          updated: entry.updated_at
-            ? new Date(entry.updated_at).toLocaleString()
-            : "N/A",
-          sourceType: "database",
-        }));
+        // Transform data with proper error handling
+        const parsed = (Array.isArray(data) ? data : []).map((entry) => {
+          const draftData = entry.draft_data || {};
+          return {
+            id: entry.lead_id || entry.id || "",
+            lead_id: entry.lead_id || entry.id || "",
+            draft_id: entry.draft_id || "",
+            company: draftData.company || "N/A",
+            website: draftData.website || "",
+            industry: draftData.industry || "",
+            productCategory: draftData.product_category || "",
+            businessType: draftData.business_type || "",
+            employees: draftData.employees || "",
+            revenue: draftData.revenue || "",
+            yearFounded: draftData.year_founded?.toString() || "",
+            bbbRating: draftData.bbb_rating || "",
+            street: draftData.street || "",
+            city: draftData.city || "",
+            state: draftData.state || "",
+            companyPhone: draftData.company_phone || "",
+            companyLinkedin: draftData.company_linkedin || "",
+            ownerFirstName: draftData.owner_first_name || "",
+            ownerLastName: draftData.owner_last_name || "",
+            ownerTitle: draftData.owner_title || "",
+            ownerLinkedin: draftData.owner_linkedin || "",
+            ownerPhoneNumber: draftData.owner_phone_number || "",
+            ownerEmail: draftData.owner_email || "",
+            source: draftData.source || "",
+            created: entry.created_at
+              ? new Date(entry.created_at).toLocaleString()
+              : "N/A",
+            updated: entry.updated_at
+              ? new Date(entry.updated_at).toLocaleString()
+              : "N/A",
+            sourceType: "database",
+          };
+        });
 
         setScrapingHistory(parsed);
         setEditedRows(parsed);
       } catch (error) {
-        console.error("🚨 Error verifying auth or fetching drafts:", error);
+        console.error("🚨 Error in verifyAndFetchLeads:", {
+          error: error.message,
+          stack: error.stack,
+        });
         router.push("/auth");
       } finally {
         setIsCheckingAuth(false);
@@ -727,7 +749,7 @@ export default function Home() {
     };
 
     verifyAndFetchLeads();
-  }, []);
+  }, [router]); // Added router to dependency array
 
   useEffect(() => {
     let isCancelled = false;
@@ -866,7 +888,9 @@ export default function Home() {
                 : "Expiration unknown",
               action: {
                 label: "Upgrade",
-                link: "/subscription",
+                onClick: () => {
+                  router.push("/subscription");
+                },
               },
             },
           ].map((stat, index) => (
@@ -886,14 +910,13 @@ export default function Home() {
 
                 {stat.label === "Subscription" && stat.action && (
                   <div className="flex-none">
-                    <a href={stat.action.link}>
-                      <Button
-                        size="sm"
-                        className="text-sm px-4 py-1.5 font-semibold"
-                      >
-                        {stat.action.label}
-                      </Button>
-                    </a>
+                    <Button
+                      size="sm"
+                      className="text-sm px-4 py-1.5 font-semibold"
+                      onClick={stat.action.onClick}
+                    >
+                      {stat.action.label}
+                    </Button>
                   </div>
                 )}
               </CardHeader>

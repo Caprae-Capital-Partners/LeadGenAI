@@ -13,7 +13,7 @@ def health_check():
     return jsonify({"status": "ok"})
 
 # Blueprint for enrichment routes
-app.register_blueprint(enrich_bp, url_prefix="/api")
+app.register_blueprint(enrich_bp, url_prefix="/enrich")
 
 # Run the app
 if __name__ == "__main__":
@@ -42,7 +42,7 @@ if __name__ == "__main__":
 #     return jsonify({"status": "ok"})
 
 # # Blueprint for enrichment routes
-# app.register_blueprint(enrich_bp, url_prefix="/api")
+# app.register_blueprint(enrich_bp, url_prefix="/enrich")
 
 # # Run the app
 # if __name__ == "__main__":

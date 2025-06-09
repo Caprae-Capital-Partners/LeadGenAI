@@ -12,7 +12,7 @@ import { AlertCircle, DatabaseIcon } from "lucide-react"
 import { useRouter } from "next/navigation";
 
 
-const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P1}/scrape-stream`;
+const SCRAPER_API = `${process.env.NEXT_PUBLIC_BACKEND_URL_P1}/scrape-stream`;
 const FETCH_INDUSTRIES_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/industries`;
 const FETCH_DB_API = `${process.env.NEXT_PUBLIC_DATABASE_URL}/lead_scrape`;
 

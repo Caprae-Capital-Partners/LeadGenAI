@@ -25,13 +25,14 @@ import Notif  from "@/components/ui/notif"
 import axios from "axios"
 import { SortDropdown } from "@/components/ui/sort-dropdown"
 
+
 interface EnrichmentResultsProps {
   enrichedCompanies: EnrichedCompany[]
   loading?: boolean
   rowClassName?: (company: EnrichedCompany, index: number) => string
 }
-const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!
-
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
+const DATABASE_URL_NOAPI = DATABASE_URL?.replace(/\/api\/?$/, "");
 
 export interface EnrichedCompany {
   id: string
