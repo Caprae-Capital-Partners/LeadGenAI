@@ -7,8 +7,8 @@ import { loadStripe } from "@stripe/stripe-js";
 type Plan = {
     id: string;
     plan_name: string;
-    price: number | string; // <-- added
-    lead_quota: number | string; // <-- added
+    price: number | string;
+    lead_quota: number | string;
     cost_per_lead?: number | string;
     description?: string;
     has_ai_features?: boolean;
@@ -17,28 +17,30 @@ type Plan = {
     style?: string;
     recommended?: boolean;
     link?: string;
-    isAnnual: boolean; // <-- added
+    isAnnual: boolean;
 };
-  
-const STRIPE = process.env.NEXT_PUBLIC_STRIPE_CODE!
 
+const STRIPE = process.env.NEXT_PUBLIC_STRIPE_CODE!;
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
+const DATABASE_URL_NOAPI = DATABASE_URL?.replace(/\/api\/?$/, "");
 
 export default function SubscriptionPage() {
-    
     const [plans, setPlans] = useState<Plan[]>([]);
     const [isAnnual, setIsAnnual] = useState(false);
 
     useEffect(() => {
-        const fetchPlans = async () => {
+        const fetchUpgradePlans = async () => {
             try {
-                const cached = localStorage.getItem("cachedPlans");
+                // Check localStorage first
+                const cached = localStorage.getItem("upgradePlans");
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     setPlans(parsed);
-                    return;
+                    return; // ✅ use cached, skip fetching
                 }
 
-                const res = await fetch("https://data.capraeleadseekers.site/api/plans/all", {
+                // Fetch from backend
+                const res = await fetch(`${DATABASE_URL}/plans/upgrade`, {
                     method: "GET",
                     credentials: "include",
                 });
@@ -61,27 +63,31 @@ export default function SubscriptionPage() {
                             : JSON.parse(plan.features || "[]"),
                         initial_credits: plan.initial_credits,
                         style:
-                            plan.plan_name === "Gold" ? "default"
-                                : plan.plan_name === "Free" ? "secondary"
+                            plan.plan_name === "Gold"
+                                ? "default"
+                                : plan.plan_name === "Free"
+                                    ? "secondary"
                                     : "outline",
                         recommended: plan.recommended ?? plan.plan_name === "Gold",
-                        link: plan.link || (plan.plan_name === "Enterprise"
-                            ? "https://www.saasquatchleads.com/"
-                            : undefined),
+                        link:
+                            plan.link ||
+                            (plan.plan_name === "Enterprise"
+                                ? "https://www.saasquatchleads.com/"
+                                : undefined),
                         isAnnual: isAnnualPlan,
                     };
                 });
 
-                // Save and set all, filtering handled in render
-                localStorage.setItem("cachedPlans", JSON.stringify(allPlans));
                 setPlans(allPlans);
+                localStorage.setItem("upgradePlans", JSON.stringify(allPlans)); // ✅ save to localStorage
             } catch (err) {
-                console.error("❌ Failed to fetch plans:", err);
+                console.error("❌ Failed to fetch upgrade plans:", err);
             }
         };
 
-        fetchPlans();
+        fetchUpgradePlans();
     }, []);
+
       
       
 
@@ -92,7 +98,7 @@ export default function SubscriptionPage() {
         }
 
         try {
-            const res = await fetch("https://data.capraeleadseekers.site/create-checkout-session", {
+            const res = await fetch(`${DATABASE_URL_NOAPI}/create-checkout-session`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -255,7 +261,7 @@ export default function SubscriptionPage() {
 
                 {/* Continue Link */}
                 <div className="text-center">
-                    <a href="https://app.saasquatchleads.com/">
+                    <a href="/">
                         <Button> Continue to Dashboard</Button>
                     </a>
                 </div>
