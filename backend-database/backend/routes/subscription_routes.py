@@ -85,10 +85,10 @@ def cancel_subscription():
             feedback=feedback,
             comment=comment
         )
-        
+
         current_app.logger.info(f"[Cancel API] Response for user {current_user.user_id}: status={status_code}, response={response}")
         return jsonify(response), status_code
-        
+
     except Exception as e:
         current_app.logger.error(f"[Cancel API] Error canceling subscription for user {current_user.user_id}: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
@@ -117,24 +117,24 @@ def subscription_webhook():
         current_app.logger.error(f"[Webhook] Error processing webhook: {str(e)}")
         return jsonify({'error': 'Webhook processing failed'}), 500
 
-@subscription_bp.route('/api/subscription/test-cancel', methods=['GET'])
-@login_required
-def test_cancel_access():
-    """Test endpoint to check if cancellation is possible"""
-    try:
-        from models.user_subscription_model import UserSubscription
-        user_sub = UserSubscription.query.filter_by(user_id=current_user.user_id).first()
-        
-        return jsonify({
-            'user_id': str(current_user.user_id),
-            'email': current_user.email,
-            'tier': current_user.tier,
-            'has_subscription': bool(user_sub),
-            'subscription_details': {
-                'plan_name': user_sub.plan_name if user_sub else None,
-                'payment_frequency': user_sub.payment_frequency if user_sub else None,
-                'credits_remaining': user_sub.credits_remaining if user_sub else None
-            } if user_sub else None
-        }), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+# @subscription_bp.route('/api/subscription/test-cancel', methods=['GET'])
+# @login_required
+# def test_cancel_access():
+#     """Test endpoint to check if cancellation is possible"""
+#     try:
+#         from models.user_subscription_model import UserSubscription
+#         user_sub = UserSubscription.query.filter_by(user_id=current_user.user_id).first()
+
+#         return jsonify({
+#             'user_id': str(current_user.user_id),
+#             'email': current_user.email,
+#             'tier': current_user.tier,
+#             'has_subscription': bool(user_sub),
+#             'subscription_details': {
+#                 'plan_name': user_sub.plan_name if user_sub else None,
+#                 'payment_frequency': user_sub.payment_frequency if user_sub else None,
+#                 'credits_remaining': user_sub.credits_remaining if user_sub else None
+#             } if user_sub else None
+#         }), 200
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500

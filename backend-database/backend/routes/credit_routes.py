@@ -110,7 +110,7 @@ def get_upgrade_plans():
         plans = sorted([plan for plan in plans if plan.plan_name.lower() in order], key=plan_sort_key)
     else:
         # Only show non-student plans in the order list
-        order = ['free', 'bronze', 'silver', 'gold', 'enterprise', 'platinum', 'bronze_annual', 'silver_annual', 'gold_annual', 'platinum_annual']
+        order = ['pro call outreach', 'bronze', 'silver', 'gold', 'enterprise', 'platinum', 'bronze_annual', 'silver_annual', 'gold_annual', 'platinum_annual']
         plans = Plan.query.filter(func.lower(Plan.plan_name).in_(order)).all()
         def plan_sort_key(plan):
             name = plan.plan_name.lower()

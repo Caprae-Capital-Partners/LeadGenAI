@@ -343,8 +343,8 @@ def choose_plan():
         current_plan = 'Free'
         current_credits = 0
 
-    return render_template('auth/choose_plan.html', 
-                         plans=plans, 
+    return render_template('auth/choose_plan.html',
+                         plans=plans,
                          current_plan=current_plan,
                          current_credits=current_credits,
                          user_tier=current_user.tier)
@@ -371,7 +371,7 @@ def pause_subscription_page():
         flash('Your subscription is already paused.', 'info')
         return redirect(url_for('auth.choose_plan'))
 
-    return render_template('auth/pause_subscription.html', 
+    return render_template('auth/pause_subscription.html',
                          subscription_info=subscription_info,
                          user_tier=current_user.tier)
 
@@ -382,13 +382,13 @@ def create_pause_checkout_session():
     try:
         data = request.json or {}
         pause_duration = data.get('pause_duration')
-        
+
         if not pause_duration:
             return jsonify({'error': 'pause_duration is required'}), 400
-            
+
         response, status_code = SubscriptionController.create_pause_checkout_session(current_user, pause_duration)
         return jsonify(response), status_code
-        
+
     except Exception as e:
         current_app.logger.error(f"Error creating pause checkout session: {str(e)}")
         return jsonify({'error': 'Failed to create pause checkout session'}), 500
@@ -405,10 +405,10 @@ def create_pause_checkout_session():
     response, status_code = SubscriptionController.create_pause_checkout_session(current_user, pause_duration)
     return jsonify(response), status_code
 
-@auth_bp.route('/upgrade_account')
-@login_required
-def upgrade_account():
-    return render_template('auth/upgrade_account.html')
+# @auth_bp.route('/upgrade_account')
+# @login_required
+# def upgrade_account():
+#     return render_template('auth/upgrade_account.html')
 
 @auth_bp.route('/cancel_subscription')
 @login_required
@@ -422,25 +422,25 @@ def cancel_subscription():
 
     return render_template('auth/cancel_subscription.html', subscription_info=subscription_info)
 
-def cancel_subscription_page():
-    """Render the subscription cancellation page"""
-    from controllers.subscription_controller import SubscriptionController
+# def cancel_subscription_page():
+#     """Render the subscription cancellation page"""
+#     from controllers.subscription_controller import SubscriptionController
 
-    # Get current user subscription info
-    subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
+#     # Get current user subscription info
+#     subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
 
-    if status_code != 200:
-        flash('No active subscription found.', 'info')
-        return redirect(url_for('auth.choose_plan'))
+#     if status_code != 200:
+#         flash('No active subscription found.', 'info')
+#         return redirect(url_for('auth.choose_plan'))
 
-    # Check if user is already on free tier
-    if current_user.tier == 'free':
-        flash('You are already on the free plan.', 'info')
-        return redirect(url_for('auth.choose_plan'))
+#     # Check if user is already on free tier
+#     if current_user.tier == 'free':
+#         flash('You are already on the free plan.', 'info')
+#         return redirect(url_for('auth.choose_plan'))
 
-    return render_template('auth/cancel_subscription.html', 
-                         subscription_info=subscription_info,
-                         user_tier=current_user.tier)
+#     return render_template('auth/cancel_subscription.html',
+#                          subscription_info=subscription_info,
+#                          user_tier=current_user.tier)
 
 @auth_bp.route('/create-checkout-session', methods=['POST'])
 @login_required
