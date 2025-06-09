@@ -857,11 +857,18 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                 <Table className="w-full overflow-x-auto">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="px-6 py-2 w-12">
+                      {/* Sticky Checkbox Column */}
+                      <TableHead className="sticky top-0 left-0 z-40 bg-[#1e263a] px-6 py-3 w-12 text-base font-bold text-white">
                         <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
                       </TableHead>
+
+                      {/* Sticky Company Column */}
+                      <TableHead className="sticky top-0 left-[3rem] z-30 bg-[#1e263a] px-6 py-3 min-w-[200px] text-base font-bold text-white whitespace-nowrap">
+                        Company
+                      </TableHead>
+
+                      {/* Remaining Headers */}
                       {[
-                        "Company",
                         "Website",
                         "Industry",
                         "Product/Service Category",
@@ -885,13 +892,14 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                       ].map((label, i) => (
                         <TableHead
                           key={i}
-                          className="text-xs font-semibold text-black px-6 py-2 whitespace-nowrap"
+                          className="sticky top-0 z-20 bg-[#1e263a] px-6 py-3 text-base font-bold text-white whitespace-nowrap"
                         >
                           {label}
                         </TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
+
 
                   <TableBody>
                     {currentItems.length > 0 ? (
@@ -907,15 +915,32 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                                 : "")
                           }
                         >
-                          <TableCell className="px-6 py-2">
+                          {/* Sticky Checkbox Column */}
+                          <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12  ">
                             <Checkbox
                               checked={selectedCompanies.includes(company.id)}
                               onCheckedChange={() => handleSelectCompany(company.id)}
                             />
                           </TableCell>
 
+                          {/* Sticky Company Column */}
+                          <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12  ">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
+                                value={String(company.company)}
+                                onChange={(e) =>
+                                  handleFieldChange(company.id, "company", e.target.value)
+                                }
+                              />
+                            ) : (
+                              <span>{normalizeDisplayValue(company.company)}</span>
+                            )}
+                          </TableCell>
+
+                          {/* Remaining Columns */}
                           {[
-                            "company",
                             "website",
                             "industry",
                             "productCategory",
@@ -943,7 +968,6 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                             const isLinkedInField = ["companyLinkedin", "ownerLinkedin"].includes(field);
                             const isValidLink = typeof value === "string" && value.startsWith("http");
 
-                            // Toggle logic only for productCategory
                             if (field === "productCategory") {
                               const isExpanded = expandedRows.has(i);
                               return (
@@ -989,41 +1013,30 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                                       )
                                     }
                                   />
+                                ) : field === "website" && typeof value === "string" && value.trim() !== "" ? (
+                                  <a
+                                    href={value.startsWith("http") ? value : `https://${value}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:text-blue-700 truncate"
+                                    title={value}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {cleanUrlForDisplay(value)}
+                                  </a>
+                                ) : isLinkedInField && typeof value === "string" && value.startsWith("http") ? (
+                                  <a
+                                    href={value}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:text-blue-700 truncate"
+                                    title={value}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {value.replace(/^https?:\/\/(www\.)?/, "").split("?")[0]}
+                                  </a>
                                 ) : (
-                                  // If this cell is “website” and has a non‐empty string value, render a blue <a>…
-                                  field === "website" &&
-                                    typeof value === "string" &&
-                                    value.trim() !== "" ? (
-                                    <a
-                                      href={value.startsWith("http") ? value : `https://${value}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-500 hover:text-blue-700 truncate"
-                                      title={value}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {cleanUrlForDisplay(value)}
-                                    </a>
-
-                                    // Otherwise, if this field is a LinkedIn field and starts with “http”, render a blue <a>…
-                                  ) : isLinkedInField &&
-                                    typeof value === "string" &&
-                                    value.startsWith("http") ? (
-                                    <a
-                                      href={value}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-500 hover:text-blue-700 truncate"
-                                      title={value}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {value.replace(/^https?:\/\/(www\.)?/, "").split("?")[0]}
-                                    </a>
-
-                                    // For all other cases, just show the plain text (or “N/A” if empty)
-                                  ) : (
-                                    displayValue
-                                  )
+                                  displayValue
                                 )}
                               </TableCell>
                             );
@@ -1038,6 +1051,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                       </TableRow>
                     )}
                   </TableBody>
+
 
                 </Table>
 

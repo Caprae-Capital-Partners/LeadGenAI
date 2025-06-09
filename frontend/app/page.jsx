@@ -65,6 +65,7 @@ import axios from "axios";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Notif from "@/components/ui/notif";
 import Popup from "@/components/ui/popup";
+import { SortDropdown } from "@/components/ui/sort-dropdown"
 
 import { redirect } from "next/navigation";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
@@ -79,7 +80,7 @@ export default function Home() {
       ? JSON.parse(sessionStorage.getItem("user") || "{}")
       : {};
   const userTier = user?.tier || "free";
-
+  const [searchTerm, setSearchTerm] = useState("");
   const [employeesFilter, setEmployeesFilter] = useState("");
   const [revenueFilter, setRevenueFilter] = useState("");
   const [businessTypeFilter, setBusinessTypeFilter] = useState("");
@@ -161,7 +162,6 @@ export default function Home() {
       showNotification("Failed to save row.", "error");
     }
   };
-  
 
   const handleDiscard = (index) => {
     const resetRow = scrapingHistory[index];
@@ -350,7 +350,6 @@ export default function Home() {
       );
     }
   };
-  
 
   const handleToggleFiltersWithCheck = async () => {
     // 1) Read the user’s role
@@ -388,7 +387,6 @@ export default function Home() {
       );
     }
   };
-  
 
   const [scrapingHistory, setScrapingHistory] = useState([]);
 
@@ -629,6 +627,50 @@ export default function Home() {
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
+  // At the top of Home(), alongside your other handlers:
+  const handleSortBy = (sortBy, direction) => {
+    // Count how many non‐empty fields each row has:
+    const getFilledCount = (row) =>
+      Object.entries(row).filter(([key, value]) => {
+        if (
+          ["id", "lead_id", "draft_id", "sourceType"].includes(key) ||
+          value === null ||
+          value === undefined ||
+          value === "" ||
+          value === "N/A"
+        ) {
+          return false;
+        }
+        return true;
+      }).length;
+
+    // Determine the base array to sort:
+    const base = [...scrapingHistory];
+
+    // Sort by completeness only if sortBy === "filled", otherwise you can
+    // extend this switch for revenue, employees, etc.:
+    const sorted = base.sort((a, b) => {
+      if (sortBy === "filled") {
+        const aCount = getFilledCount(a);
+        const bCount = getFilledCount(b);
+        return direction === "most" ? bCount - aCount : aCount - bCount;
+      }
+      // Example: alphabetical company
+      if (sortBy === "company") {
+        return direction === "most"
+          ? b.company.localeCompare(a.company)
+          : a.company.localeCompare(b.company);
+      }
+      // ...add more sortBy cases here...
+      return 0;
+    });
+
+    // Push the new order into state:
+    setScrapingHistory(sorted);
+    setEditedRows(sorted); // keep the “edited” mirror in sync
+    setCurrentPage(1); // reset pagination to page 1
+  };
+
   useEffect(() => {
     const verifyAndFetchLeads = async () => {
       try {
@@ -801,7 +843,7 @@ export default function Home() {
       <Header />
       <main className="px-20 py-16 space-y-10">
         <div className="text-2xl font-semibold text-foreground text-white">
-          Hi, {user.username || "there"} 👋 Are you ready to scrape?
+          Hi, {user.username || "there"} Are you ready to scrape?
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -950,32 +992,47 @@ export default function Home() {
 
         {/* History Table */}
         <div className="mt-10">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-2xl font-semibold text-foreground text-white">
-              Scraping History
-            </div>
-            {/* <button
-              onClick={null} // implement this function
-              className="bg-[#fad945] text-black font-medium px-6 py-2 rounded hover:bg-[#fff1b2] transition"
-            >
-              Export CSV
-            </button> */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleToggleFiltersWithCheck()}
-                className="bg-[#fad945] text-black font-medium px-6 py-2 rounded hover:bg-[#fff1b2] transition"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                {showFilters ? "Hide Filters" : "Show Filters"}
-              </Button>
-              <button
-                onClick={handleExportCSVWithCredits}
-                className="bg-[#fad945] text-black font-medium px-6 py-2 rounded hover:bg-[#fff1b2] transition"
-              >
-                Export CSV
-              </button>
+          {/* 1. Keep the heading here */}
+          <h2 className="text-2xl font-semibold text-foreground mb-2">
+            Scraping History
+          </h2>
+
+          {/* 2. Table container */}
+          <div className="w-full overflow-x-auto rounded-md border">
+            {/* 3. Toolbar INSIDE the table wrapper, above the table */}
+            <div className="flex flex-wrap items-center justify-between p-4 border-b bg-surface">
+              {/* Search */}
+              <div className="flex-grow max-w-xs">
+                <Input
+                  placeholder="Search history…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <SortDropdown onApply={handleSortBy} />
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowFilters((f) => !f)}
+                  title={showFilters ? "Hide Filters" : "Show Filters"}
+                >
+                  <Filter className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleExportCSVWithCredits}
+                  title="Export CSV"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
           {showFilters && (
@@ -1046,103 +1103,89 @@ export default function Home() {
               </Button>
             </div>
           )}
-          <div className="w-full overflow-x-auto rounded-md border">
-            <Table className="min-w-full text-sm">
-              <thead className="bg-[#7ac2a4] text-black text-opacity-100">
+          {/* Scrollable container with a max height */}
+          <div className="w-full max-h-[600px] overflow-auto relative border rounded-md">
+            <Table className="min-w-full text-sm ">
+              <TableHeader>
                 <TableRow>
-                  <TableHead className="px-6 py-2">
-                    <TableHead className="px-6 py-2">
-                      <Checkbox
-                        checked={selectAll}
-                        onCheckedChange={handleSelectAll}
-                      />
-                    </TableHead>
+                  {/* Sticky Checkbox Column */}
+                  <TableHead className="sticky top-0 left-0 z-40 bg-[#1e263a] px-6 py-3 w-12 text-base font-bold text-white">
+                    <Checkbox
+                      checked={selectAll}
+                      onCheckedChange={handleSelectAll}
+                    />
                   </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
+
+                  {/* Sticky Company Column */}
+                  <TableHead className="sticky top-0 left-[3rem] z-30 bg-[#1e263a] text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">
                     Company
                   </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Website
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Industry
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Product/Service Category
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Business Type (B2B, B2B2C)
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Employees Count
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Revenue
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Year Founded
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    BBB Rating
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Street
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    City
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    State
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Company Phone
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Company LinkedIn
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's First Name
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's Last Name
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's Title
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's LinkedIn
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's Phone Number
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's Email
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Source
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Created Date
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Updated
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Actions
-                  </TableHead>
+
+                  {/* Remaining Headers */}
+                  {[
+                    "Website",
+                    "Industry",
+                    "Product/Service Category",
+                    "Business Type (B2B, B2B2C)",
+                    "Employees Count",
+                    "Revenue",
+                    "Year Founded",
+                    "BBB Rating",
+                    "Street",
+                    "City",
+                    "State",
+                    "Company Phone",
+                    "Company LinkedIn",
+                    "Owner's First Name",
+                    "Owner's Last Name",
+                    "Owner's Title",
+                    "Owner's LinkedIn",
+                    "Owner's Phone Number",
+                    "Owner's Email",
+                    "Source",
+                    "Created Date",
+                    "Updated",
+                    "Actions",
+                  ].map((label, i) => (
+                    <TableHead
+                      key={i}
+                      className="sticky top-0 z-20 bg-[#1e263a] text-base font-bold text-white px-6 py-3 whitespace-nowrap"
+                    >
+                      {label}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              </thead>
+              </TableHeader>
+
               <tbody>
                 {currentItems.map((row, i) => (
                   <TableRow key={i} className="border-t">
-                    <TableCell className="px-6 py-2">
+                    {/* Sticky Checkbox Column */}
+                    <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12  ">
                       <Checkbox
                         checked={selectedCompanies.includes(row.id)}
                         onCheckedChange={() => handleSelectCompany(row.id)}
                       />
                     </TableCell>
+
+                    {/* Sticky Company Column */}
+                    <TableCell className="sticky left-[3rem] z-10 bg-inherit px-6 py-2 max-w-[240px] align-top  ">
+                      {editingRowIndex === i ? (
+                        <input
+                          type="text"
+                          className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
+                          value={editedRows[i]?.company ?? ""}
+                          onChange={(e) =>
+                            handleFieldChange(i, "company", e.target.value)
+                          }
+                        />
+                      ) : (
+                        <ExpandableCell text={row.company || "N/A"} />
+                      )}
+                    </TableCell>
+
+                    {/* Remaining Cells */}
                     {[
-                      "company",
                       "website",
                       "industry",
                       "productCategory",
@@ -1217,7 +1260,8 @@ export default function Home() {
                         </TableCell>
                       );
                     })}
-                    {/* // Edit/Save/Discard action buttons: */}
+
+                    {/* Action Column */}
                     <TableCell className="px-6 py-2">
                       {editingRowIndex === i ? (
                         <>
@@ -1247,102 +1291,100 @@ export default function Home() {
                 ))}
               </tbody>
             </Table>
-            <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
-              <div className="text-sm text-muted-foreground">
-                Showing {indexOfFirstItem + 1}–
-                {Math.min(indexOfLastItem, scrapingHistory.length)} of{" "}
-                {scrapingHistory.length} results
-              </div>
+          </div>
+          <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
+            <div className="text-sm text-muted-foreground">
+              Showing {indexOfFirstItem + 1}–
+              {Math.min(indexOfLastItem, scrapingHistory.length)} of{" "}
+              {scrapingHistory.length} results
+            </div>
 
-              <div className="flex items-center gap-3 px-3 py-2">
-                <Select
-                  value={itemsPerPage.toString()}
-                  onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[120px] bg-[#7ac2a4] text-black font-medium rounded-md hover:bg-[#6bb293]">
-                    <SelectValue placeholder="Items per page" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="25">25 per page</SelectItem>
-                    <SelectItem value="50">50 per page</SelectItem>
-                    <SelectItem value="100">100 per page</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="flex items-center gap-3 px-3 py-2">
+              <Select
+                value={itemsPerPage.toString()}
+                onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[120px]  text-black font-medium rounded-md hover:bg-[#6bb293]">
+                  <SelectValue placeholder="Items per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                  <SelectItem value="100">100 per page</SelectItem>
+                </SelectContent>
+              </Select>
 
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() =>
-                          setCurrentPage((p) => Math.max(p - 1, 1))
-                        }
-                        aria-disabled={currentPage === 1}
-                        className={
-                          currentPage === 1
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
-                      />
-                    </PaginationItem>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                      aria-disabled={currentPage === 1}
+                      className={
+                        currentPage === 1
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
 
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((page) => {
-                        // show all if totalPages <= 7
-                        if (totalPages <= 7) return true;
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((page) => {
+                      // show all if totalPages <= 7
+                      if (totalPages <= 7) return true;
 
-                        // show first, last, current, and neighbors
-                        return (
-                          page === 1 ||
-                          page === totalPages ||
-                          Math.abs(page - currentPage) <= 1
-                        );
-                      })
-                      .reduce((acc, page, i, arr) => {
-                        if (i > 0 && page - arr[i - 1] > 1) {
-                          acc.push("ellipsis");
-                        }
-                        acc.push(page);
-                        return acc;
-                      }, [])
-                      .map((page, idx) => (
-                        <PaginationItem key={idx}>
-                          {page === "ellipsis" ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              isActive={page === currentPage}
-                              onClick={() => setCurrentPage(page)}
-                              className={`px-3 py-1 rounded-md text-sm font-medium ${
-                                page === currentPage
-                                  ? "bg-[#7ac2a4] text-black" // active teal background
-                                  : "text-black hover:bg-muted"
-                              }`}
-                            >
-                              {page}
-                            </PaginationLink>
-                          )}
-                        </PaginationItem>
-                      ))}
+                      // show first, last, current, and neighbors
+                      return (
+                        page === 1 ||
+                        page === totalPages ||
+                        Math.abs(page - currentPage) <= 1
+                      );
+                    })
+                    .reduce((acc, page, i, arr) => {
+                      if (i > 0 && page - arr[i - 1] > 1) {
+                        acc.push("ellipsis");
+                      }
+                      acc.push(page);
+                      return acc;
+                    }, [])
+                    .map((page, idx) => (
+                      <PaginationItem key={idx}>
+                        {page === "ellipsis" ? (
+                          <PaginationEllipsis />
+                        ) : (
+                          <PaginationLink
+                            isActive={page === currentPage}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 rounded-md text-sm font-medium ${
+                              page === currentPage
+                                ? " text-black" // active teal background
+                                : "text-black hover:bg-muted"
+                            }`}
+                          >
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
 
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() =>
-                          setCurrentPage((p) => Math.min(p + 1, totalPages))
-                        }
-                        aria-disabled={currentPage === totalPages}
-                        className={
-                          currentPage === totalPages
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(p + 1, totalPages))
+                      }
+                      aria-disabled={currentPage === totalPages}
+                      className={
+                        currentPage === totalPages
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           </div>
         </div>
