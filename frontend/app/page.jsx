@@ -62,10 +62,10 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import axios from "axios";
-import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
+import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Notif from "@/components/ui/notif";
 import Popup from "@/components/ui/popup";
-import Popup from "@/components/ui/popup";
+import { SortDropdown } from "@/components/ui/sort-dropdown"
 
 import { redirect } from "next/navigation";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
@@ -74,7 +74,6 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_SANDBOX_P2;
 //   redirect('/auth');
 // }
 export default function Home() {
-  const { showPopup, handleClose } = useEmailVerificationGuard();
   const { showPopup, handleClose } = useEmailVerificationGuard();
   const user =
     typeof window !== "undefined"
@@ -302,22 +301,12 @@ export default function Home() {
   };
 
   const handleExportCSVWithCredits = async () => {
-    // 1) Read the user’s role from session storage
-    const stored = sessionStorage.getItem("user");
-    const currentUser = stored ? JSON.parse(stored) : {};
-    const role = currentUser.role || "";
-
-    // 2) If they’re a developer, bypass all checks and export immediately
-    if (role === "developer") {
-      handleExportCSV(currentItems, "enriched_results.csv");
-      return;
-    }
-
-    // 3) Otherwise, do the subscription/credits validation
     try {
       const { data: subscriptionInfo } = await axios.get(
         `${DATABASE_URL}/user/subscription_info`,
-        { withCredentials: true }
+        {
+          withCredentials: true,
+        }
       );
 
       const planName =
@@ -351,21 +340,8 @@ export default function Home() {
       );
     }
   };
-  
 
   const handleToggleFiltersWithCheck = async () => {
-    // 1) Read the user’s role
-    const stored = sessionStorage.getItem("user");
-    const currentUser = stored ? JSON.parse(stored) : {};
-    const role = currentUser.role || "";
-
-    // 2) If developer, bypass the subscription check
-    if (role === "developer") {
-      setShowFilters((prev) => !prev);
-      return;
-    }
-
-    // 3) Otherwise do the existing plan‐check logic
     try {
       const { data: subscriptionInfo } = await axios.get(
         `${DATABASE_URL}/user/subscription_info`,
@@ -389,7 +365,6 @@ export default function Home() {
       );
     }
   };
-  
 
   const [scrapingHistory, setScrapingHistory] = useState([]);
 
@@ -760,45 +735,6 @@ export default function Home() {
     const ensureGrowjoIsRunning = async () => {
       try {
         // 1) Check whether GrowjoScraper is already initialized on the backend
-        const statusRes = await axios.get(`${BACKEND_URL}/is-growjo-scraper`, {
-          
-        });
-        if (isCancelled) return;
-
-        const alreadyInitialized = statusRes.data?.initialized;
-        if (alreadyInitialized) {
-          console.log("🔄 GrowjoScraper already running; skipping init.");
-          return;
-        }
-
-        // 2) If not initialized, call the init endpoint
-        const initRes = await axios.post(
-          `${BACKEND_URL}/init-growjo-scraper`,
-          {}
-        );
-        
-        console.log("✅ GrowjoScraper initialized:", initRes.data);
-      } catch (err) {
-        console.error("❌ Error checking or initializing GrowjoScraper:", err);
-      }
-    };
-
-    ensureGrowjoIsRunning();
-
-    // We do NOT close here automatically; cleanup is done explicitly on logout or navigation.
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
-  
-
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    const ensureGrowjoIsRunning = async () => {
-      try {
-        // 1) Check whether GrowjoScraper is already initialized on the backend
         const statusRes = await axios.get(
           `${BACKEND_URL}/is-growjo-scraper`,
           {}
@@ -816,7 +752,6 @@ export default function Home() {
           `${BACKEND_URL}/init-growjo-scraper`,
           {}
         );
-        
         console.log("✅ GrowjoScraper initialized:", initRes.data);
       } catch (err) {
         console.error("❌ Error checking or initializing GrowjoScraper:", err);

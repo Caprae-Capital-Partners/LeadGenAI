@@ -928,15 +928,16 @@ export function DataEnhancement() {
                 <Table className="w-full table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12">
+                      <TableHead className="w-12 bg-[#1e263a]">
                         <Checkbox
                           checked={selectAll}
                           onCheckedChange={handleSelectAll}
                           aria-label="Select all"
                         />
                       </TableHead>
+
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
                         onClick={() => requestSort('company')}
                       >
                         <div className="flex items-center">
@@ -948,8 +949,9 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
+
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
                         onClick={() => requestSort('industry')}
                       >
                         <div className="flex items-center">
@@ -961,8 +963,9 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
+
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
                         onClick={() => requestSort('street')}
                       >
                         <div className="flex items-center">
@@ -974,8 +977,9 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
+
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
                         onClick={() => requestSort('city')}
                       >
                         <div className="flex items-center">
@@ -987,8 +991,9 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
+
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
                         onClick={() => requestSort('state')}
                       >
                         <div className="flex items-center">
@@ -1000,8 +1005,9 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
+
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
                         onClick={() => requestSort('bbb_rating')}
                       >
                         <div className="flex items-center">
@@ -1013,8 +1019,9 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
+
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
                         onClick={() => requestSort('business_phone')}
                       >
                         <div className="flex items-center">
@@ -1026,8 +1033,9 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
+
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
                         onClick={() => requestSort('website')}
                       >
                         <div className="flex items-center">
