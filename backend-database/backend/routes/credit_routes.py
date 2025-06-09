@@ -54,10 +54,26 @@ def get_all_plans():
     user_role = getattr(current_user, 'role', None)
     if user_role and user_role.lower() == 'student':
         # Only show student plans
-        plans = Plan.query.filter(func.lower(Plan.plan_name).like('%student%')).order_by(Plan.monthly_price.asc().nullsfirst()).all()
+        plans = Plan.query.filter(func.lower(Plan.plan_name).like('%student%')).all()
+        # Custom order: student monthly, student semester, student annual, then others
+        order = ['student monthly', 'student semester', 'student annual']
+        def plan_sort_key(plan):
+            name = plan.plan_name.lower()
+            if name in order:
+                return (order.index(name), 0)
+            return (len(order), name)
+        plans = sorted(plans, key=plan_sort_key)
     else:
         # Only show non-student plans
-        plans = Plan.query.filter(~func.lower(Plan.plan_name).like('%student%')).order_by(Plan.monthly_price.asc().nullsfirst()).all()
+        plans = Plan.query.filter(~func.lower(Plan.plan_name).like('%student%')).all()
+        # Custom order: Free, Bronze, Silver, Gold, Platinum, then others
+        order = ['free', 'bronze', 'silver', 'gold', 'enterprise', 'platinum', 'bronze_annual', 'silver_annual', 'gold_annual', 'platinum_annual']
+        def plan_sort_key(plan):
+            name = plan.plan_name.lower()
+            if name in order:
+                return (order.index(name), 0)
+            return (len(order), name)
+        plans = sorted(plans, key=plan_sort_key)
 
     plan_list = []
     for plan in plans:
