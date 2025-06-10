@@ -191,12 +191,12 @@ class SubscriptionController:
 
                 # Check if this is an outreach service payment
                 if session.get('metadata') and session['metadata'].get('service_type') == 'phone_call_outreach':
-                    current_app.logger.info(f"[Webhook] Processing outreach payment for user_id: {user_id}")
-                    from controllers.outreach_controller import OutreachController
-                    if OutreachController.handle_outreach_payment_success(session):
-                        current_app.logger.info(f"[Webhook] Successfully processed outreach payment for user {user_id}")
-                    else:
-                        current_app.logger.error(f"[Webhook] Failed to process outreach payment for user {user_id}")
+                    current_app.logger.info(f"-------------[Webhook] Processing outreach payment for user_id: {user_id} DOING NOTHING")
+                    # from controllers.outreach_controller import OutreachController
+                    # if OutreachController.handle_outreach_payment_success(session):
+                    #     current_app.logger.info(f"[Webhook] Successfully processed outreach payment for user {user_id}")
+                    # else:
+                    #     current_app.logger.error(f"[Webhook] Failed to process outreach payment for user {user_id}")
                 # Check if this is a pause subscription payment
                 elif session.get('metadata') and session['metadata'].get('is_pause_subscription') == 'true':
                     current_app.logger.info(f"[Webhook] Processing pause subscription payment for user_id: {user_id}")
@@ -235,7 +235,11 @@ class SubscriptionController:
                             'bronze': 'Bronze',
                             'silver': 'Silver',
                             'gold': 'Gold',
-                            'platinum': 'Platinum'
+                            'platinum': 'Platinum',
+                            'student_monthly': 'Student Monthly',
+                            'student_semester': 'Student Semester',
+                            'student_annual': 'Student Annual',
+                            'call_outreach': 'Pro Call Outreach',
                         }
                         mapped_plan_name = plan_name_mapping.get(plan_type, plan_type)
                         plan = Plan.query.filter(func.lower(Plan.plan_name) == mapped_plan_name.lower()).first()
@@ -649,10 +653,10 @@ class SubscriptionController:
                                 'feedback': feedback or 'other'
                             }
                         )
-                        
+
                         import datetime
                         current_app.logger.info(f"Stripe subscription updated successfully: cancel_at_period_end={updated_subscription.cancel_at_period_end}")
-                        
+
                         if updated_subscription.current_period_end:
                             cancel_date = datetime.datetime.fromtimestamp(updated_subscription.current_period_end)
                             current_app.logger.info(f"Scheduled cancellation at period end for subscription {subscription.id} for user {user.user_id}")
@@ -675,7 +679,7 @@ class SubscriptionController:
                             if '_scheduled_cancel' not in user_sub.payment_frequency:
                                 user_sub.payment_frequency = f"{user_sub.payment_frequency}_scheduled_cancel"
                                 db.session.commit()
-                            
+
                             return {
                                 'message': 'Subscription has been scheduled for cancellation at the end of your billing period.',
                                 'status': 'scheduled_for_cancellation'
@@ -685,7 +689,7 @@ class SubscriptionController:
                     current_app.logger.error(f"Stripe error during cancellation: {str(e)}")
                     # Fallback to local cancellation
                     return SubscriptionController._handle_local_cancellation(user, user_sub)
-            
+
             # If no Stripe subscription found, handle locally
             current_app.logger.info(f"No Stripe subscription found for user {user.user_id}, handling locally")
             if cancellation_type == 'period_end':
@@ -693,7 +697,7 @@ class SubscriptionController:
                 if '_scheduled_cancel' not in user_sub.payment_frequency:
                     user_sub.payment_frequency = f"{user_sub.payment_frequency}_scheduled_cancel"
                     db.session.commit()
-                
+
                 return {
                     'message': 'Subscription has been scheduled for cancellation at the end of your billing period.',
                     'status': 'scheduled_for_cancellation'
@@ -709,7 +713,7 @@ class SubscriptionController:
                 if user_sub and '_scheduled_cancel' not in user_sub.payment_frequency:
                     user_sub.payment_frequency = f"{user_sub.payment_frequency}_scheduled_cancel"
                     db.session.commit()
-                
+
                 return {
                     'message': 'Subscription has been scheduled for cancellation at the end of your billing period.',
                     'status': 'scheduled_for_cancellation'
