@@ -606,7 +606,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
 
         // ✅ Step 1: PUT to /leads/drafts/:draft_id
         if (draftId) {
-          const res = await fetch(`https://data.capraeleadseekers.site/api/leads/drafts/${draftId}`, {
+          const res = await fetch(`${DATABASE_URL}/leads/drafts/${draftId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -631,7 +631,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
         }
 
         // ✅ Step 2: POST to /leads/:lead_id/edit
-        const editRes = await fetch(`https://data.capraeleadseekers.site/leads/${lead_id}/edit`, {
+        const editRes = await fetch(`${DATABASE_URL_NOAPI}/leads/${lead_id}/edit`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
