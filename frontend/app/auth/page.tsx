@@ -222,67 +222,74 @@ export default function AuthPage() {
     
 
     const router = useRouter();
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const errors = validateForm(formData, isSignup);
-        setFormErrors(errors);
-        if (Object.keys(errors).length > 0) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errors = validateForm(formData, isSignup);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
 
-        const endpoint = isSignup ? "/auth/register" : "/auth/login";
-        const payload = isSignup
-            ? {
-                username: formData.username,
-                email: formData.email,
-                linkedin: formData.linkedin,
-                password: formData.password,
-                confirm_password: formData.confirmPassword,
-                gdpr_accept: formData.gdpr,
-            }
-            : {
-                email: formData.email,
-                password: formData.password,
-            };
-
-        try {
-            const res = await fetch(`${DATABASE_URL}${endpoint}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify(payload),
-            });
-
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.message || "Something went wrong");
-
-            if (result.user) {
-                sessionStorage.setItem("user", JSON.stringify(result.user));
-
-                // 🔔 Send verification email after successful signup
-                if (isSignup) {
-                    try {
-                        await fetch(`${DATABASE_URL}/auth/send-verification`, {
-                            method: "POST",
-                            credentials: "include", // assuming you're using Flask-Login session cookie
-                        });
-                        showNotification("Your account has been created. Please verify your email to activate it. A link has been sent to your email.", "info");
-                    } catch (err) {
-                        console.error("❌ Failed to send verification email:", err);
-                        showNotification("Account created, but failed to send verification email.", "error");
-                    }
-                } else {
-                    showNotification("Successfully signed in!", "success");
-                }
-
-                // ✅ Redirect
-                setTimeout(() => {
-                    router.push(isSignup ? "/subscription" : (window.location.hostname === "localhost" ? "/" : "https://app.saasquatchleads.com/"));
-                }, 100);
-            }
-        } catch (err: any) {
-            console.error("❌ Login error:", err);
-            showNotification("Login failed. Please check your credentials and try again.", "error");
-        }
+    const endpoint = isSignup ? "/auth/register" : "/auth/login";
+    const payload = isSignup ? {
+      username: formData.username,
+      email: formData.email,
+      linkedin: formData.linkedin,
+      password: formData.password,
+      confirm_password: formData.confirmPassword,
+      gdpr_accept: formData.gdpr,
+    } : {
+      email: formData.email,
+      password: formData.password,
     };
+
+    try {
+      const res = await fetch(`${DATABASE_URL}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      // First check if response is JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`Expected JSON but got: ${text.substring(0, 100)}`);
+      }
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message || `HTTP error! status: ${res.status}`);
+      }
+
+      if (result.user) {
+        sessionStorage.setItem("user", JSON.stringify(result.user));
+
+        if (isSignup) {
+          try {
+            await fetch(`${DATABASE_URL}/auth/send-verification`, {
+              method: "POST",
+              credentials: "include",
+            });
+            showNotification("Your account has been created. Please verify your email to activate it. A link has been sent to your email.", "info");
+          } catch (err) {
+            console.error("❌ Failed to send verification email:", err);
+            showNotification("Account created, but failed to send verification email.", "error");
+          }
+        } else {
+          showNotification("Successfully signed in!", "success");
+        }
+
+        setTimeout(() => {
+          const base = window.location.origin;
+          router.push(isSignup ? `${base}/subscription` : `${base}/`);
+        }, 100);
+      }
+    } catch (err: any) {
+      console.error("❌ Login error:", err);
+      showNotification(err.message || "Login failed. Please check your credentials and try again.", "error");
+    }
+  };
 
     const toggleMode = (signup: boolean) => {
         setIsSignup(signup);
