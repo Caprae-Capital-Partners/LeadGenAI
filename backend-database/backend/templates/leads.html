@@ -1647,34 +1647,76 @@
         }
 
         function clearAllFilters() {
-            if (document.getElementById('companyFilter')) document.getElementById('companyFilter').value = '';
-            if (document.getElementById('locationFilter')) document.getElementById('locationFilter').value = '';
-            if (document.getElementById('roleFilter')) document.getElementById('roleFilter').value = '';
-            if (document.getElementById('statusFilter')) document.getElementById('statusFilter').value = '';
-            if (document.getElementById('revenueFilter')) document.getElementById('revenueFilter').value = '';
-            if (document.getElementById('industryFilter')) document.getElementById('industryFilter').value = '';
-            document.getElementById('searchInput').value = '';
+            // Clear basic filters
+            const basicFilters = ['companyFilter', 'locationFilter', 'roleFilter', 'statusFilter', 'revenueFilter', 'industryFilter'];
+            basicFilters.forEach(filterId => {
+                const filter = document.getElementById(filterId);
+                if (filter) filter.value = '';
+            });
+
+            // Clear search input
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+
             // Clear advanced filters
             const advancedFilters = document.getElementById('advancedFilters');
             if (advancedFilters) {
                 const filterRows = advancedFilters.querySelectorAll('.filter-row');
                 filterRows.forEach((row, index) => {
                     if (index === 0) {
+                        // Clear first row but keep it
                         row.querySelector('.field-select').value = '';
                         row.querySelector('.operator-select').value = 'equals';
                         row.querySelector('.value-input').value = '';
                         row.querySelector('.logic-select').value = 'AND';
                     } else {
+                        // Remove additional rows
                         row.remove();
                     }
                 });
+                // Hide advanced filters section
                 advancedFilters.classList.remove('show');
                 const toggleButton = document.querySelector('.toggle-advanced');
                 if (toggleButton) {
                     toggleButton.setAttribute('aria-expanded', 'false');
                 }
             }
+
+            // Clear URL parameters and reload page
+            const url = new URL(window.location.href);
+            const params = new URLSearchParams(url.search);
+            
+            // Remove all filter-related parameters
+            Array.from(params.keys()).forEach(key => {
+                if (key.startsWith('adv_') || 
+                    ['company', 'location', 'role', 'status', 'revenue', 'industry', 'search', 'page'].includes(key)) {
+                    params.delete(key);
+                }
+            });
+
+            // Update URL without reloading
+            const newUrl = `${url.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+            window.history.pushState({}, '', newUrl);
+
+            // Apply filters to update the table
             applyFilters();
+
+            // Clear search history display if it's open
+            const searchHistory = document.getElementById('searchHistory');
+            if (searchHistory) {
+                searchHistory.classList.remove('show');
+            }
+
+            // Reset select all checkboxes
+            const topSelectAllCheckbox = document.getElementById('selectAll');
+            const headerCheckbox = document.getElementById('headerSelectAll');
+            if (topSelectAllCheckbox) topSelectAllCheckbox.checked = false;
+            if (headerCheckbox) headerCheckbox.checked = false;
+
+            // Update export button state
+            updateExportButton();
         }
 
         function showExportFormatDialog() {
