@@ -7,7 +7,6 @@ import { Header } from "@/components/header";
 import { DocumentationContent } from "@/components/documentation";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Popup from "@/components/ui/popup";
-
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 export default function DocumentationPage() {
   const router = useRouter();

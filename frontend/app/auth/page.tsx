@@ -281,7 +281,8 @@ export default function AuthPage() {
         }
 
         setTimeout(() => {
-          router.push(isSignup ? "/subscription" : (window.location.hostname === "localhost" ? "/" : "https://app.saasquatchleads.com/"));
+          const base = window.location.origin;
+          router.push(isSignup ? `${base}/subscription` : `${base}/`);
         }, 100);
       }
     } catch (err: any) {

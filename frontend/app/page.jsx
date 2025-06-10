@@ -65,7 +65,7 @@ import axios from "axios";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Notif from "@/components/ui/notif";
 import Popup from "@/components/ui/popup";
-import { SortDropdown } from "@/components/ui/sort-dropdown"
+import { SortDropdown } from "@/components/ui/sort-dropdown";
 
 import { redirect } from "next/navigation";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;

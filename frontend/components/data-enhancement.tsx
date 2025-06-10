@@ -462,7 +462,7 @@ export function DataEnhancement() {
     }
 
   }
-  
+
 
 
   const toCamelCase = (lead: any): EnrichedCompany => ({
@@ -834,7 +834,7 @@ export function DataEnhancement() {
 
     showNotification("Data successfully enriched!");
   };
-  
+
 
 
 
@@ -1117,7 +1117,7 @@ export function DataEnhancement() {
               </div>
             </div>
 
-            
+
             {/* Pagination controls */}
             {sortedFilteredLeads.length > 0 && (
               <div className="mb-4 flex items-center justify-between">
@@ -1180,7 +1180,7 @@ export function DataEnhancement() {
             {/* Results section */}
           </div>
         </CardContent>
-        
+
       </Card>
       <div className="flex flex-col items-end mt-4 gap-2">
         {/* Enrichment button and optional progress */}
