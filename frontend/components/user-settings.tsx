@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import Notif from "@/components/ui/notif"; // adjust path if needed
-const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
-const DATABASE_URL_NOAPI = DATABASE_URL?.replace(/\/api\/?$/, "");
+
 type SettingsPageProps = {
     isEditing: boolean;
     setIsEditing: React.Dispatch<React.SetStateAction<boolean>>;
@@ -203,7 +202,7 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
                         }
 
                         try {
-                            const res = await fetch(`${DATABASE_URL}/auth/update_user`, {
+                            const res = await fetch("https://data.capraeleadseekers.site/api/auth/update_user", {
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json",

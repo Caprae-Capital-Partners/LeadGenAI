@@ -400,44 +400,37 @@ export function DataEnhancement() {
   }
 
   const buildEnrichedCompany = (company: any, growjo: any, apollo: any, person: any) => {
+    // ── Step 1: Simplify cleanVal to only treat truly empty/null/undefined as “missing” ──
     const cleanVal = (val: any) => {
-      const s = (val || "").toString().trim().toLowerCase();
-
-      const isObscuredEmail = /^[a-z\*]+@[^ ]+\.[a-z]+$/.test(s) && s.includes("*");
-
-      return (
-        ["", "na", "n/a", "none", "not", "found", "not found", "n.a.", "email_not_unlocked@domain.com"].includes(s) ||
-        isObscuredEmail
-      )
-        ? null
-        : val.toString().trim();
+      if (val === null || val === undefined) return null;
+      const s = val.toString().trim();
+      return s === "" ? null : s;
     };
 
+    // preferValue: take the first “non-empty” (cleanVal ≠ null) in (g, a), otherwise fallback
+    const preferValue = (g: any, a: any, fallback: any = "") =>
+      cleanVal(g) ?? cleanVal(a) ?? fallback;
 
-    const preferValue = (g: any, a: any, fallback: any = "") => cleanVal(g) ?? cleanVal(a) ?? fallback
-
-    const splitGrowjoName = (() => {
-      const raw = growjo.decider_name || ""
-      const clean = raw.toString().trim().toLowerCase()
-      if (["", "na", "n/a", "none", "not", "found", "not found"].includes(clean)) return []
-      return raw.split(" ")
-    })()
-    const growjoFirstName = splitGrowjoName[0] || ""
-    const growjoLastName = splitGrowjoName.slice(1).join(" ") || ""
+    // ── Step 2: Pull ownerFirstName / ownerLastName directly from backend fields ──
+    // (These fields are always non‐empty when returned, because backend supplies a
+    // friendly fallback sentence instead of an empty string.)
+    const growjoFirstName = growjo.ownerFirstName ?? "";
+    const growjoLastName = growjo.ownerLastName ?? "";
 
     const decider = {
       firstName: preferValue(growjoFirstName, person.first_name),
       lastName: preferValue(growjoLastName, person.last_name),
-      email: preferValue(growjo.decider_email, person.email),
-      phone: preferValue(growjo.decider_phone, person.phone_number),
-      linkedin: preferValue(growjo.decider_linkedin, person.linkedin_url),
-      title: preferValue(growjo.decider_title, person.title),
-    }
+      email: preferValue(growjo.ownerEmail, person.email),
+      phone: preferValue(growjo.ownerPhoneNumber, person.phone_number),
+      linkedin: preferValue(growjo.ownerLinkedin, person.linkedin_url),
+      title: preferValue(growjo.ownerTitle, person.title),
+    };
 
+    // ── Step 3: Build the final object, always using preferValue for each field ──
     return {
       company: company.company,
-      website: preferValue(growjo.company_website, apollo.website_url, company.website),
-      industry: preferValue(growjo.industry, apollo.industry, company.industry),
+      website: preferValue(company.website, growjo.company_website, apollo.website_url),
+      industry: company.industry,
       productCategory: preferValue(
         growjo.interests,
         Array.isArray(apollo.keywords) ? apollo.keywords.join(", ") : apollo.keywords
@@ -452,17 +445,18 @@ export function DataEnhancement() {
       street: company.street || "",
       companyPhone: company.business_phone,
       companyLinkedin: preferValue("", apollo.linkedin_url),
+
       ownerFirstName: decider.firstName,
       ownerLastName: decider.lastName,
       ownerTitle: decider.title,
       ownerEmail: decider.email,
       ownerPhoneNumber: decider.phone,
       ownerLinkedin: decider.linkedin,
+
       source: getSource(growjo, apollo, person),
-    }
-
-  }
-
+    };
+  };
+  
 
 
   const toCamelCase = (lead: any): EnrichedCompany => ({
@@ -834,7 +828,7 @@ export function DataEnhancement() {
 
     showNotification("Data successfully enriched!");
   };
-
+  
 
 
 
@@ -923,21 +917,80 @@ export function DataEnhancement() {
               </div>
             )}
 
+            {/* Pagination controls */}
+            {sortedFilteredLeads.length > 0 && (
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results for {searchCriteria.industry} in {searchCriteria.location}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1); // Reset to first page when changing items per page
+                  }}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Items per page" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25 per page</SelectItem>
+                      <SelectItem value="50">50 per page</SelectItem>
+                      <SelectItem value="100">100 per page</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          aria-disabled={currentPage === 1}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+
+                      {getPageNumbers().map((page, index) => (
+                        <PaginationItem key={index}>
+                          {page === 'ellipsis' ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              isActive={page === currentPage}
+                              onClick={() => setCurrentPage(Number(page))}
+                            >
+                              {page}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          aria-disabled={currentPage === totalPages}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </div>
+            )}
+
             <div className="w-full overflow-x-auto rounded-md border">
               <div className="w-full overflow-x-auto rounded-md border">
                 <Table className="w-full table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12 bg-[#1e263a]">
+                      <TableHead className="w-12">
                         <Checkbox
                           checked={selectAll}
                           onCheckedChange={handleSelectAll}
                           aria-label="Select all"
                         />
                       </TableHead>
-
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                        className="cursor-pointer hover:bg-muted/50"
                         onClick={() => requestSort('company')}
                       >
                         <div className="flex items-center">
@@ -949,9 +1002,8 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
-
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                        className="cursor-pointer hover:bg-muted/50"
                         onClick={() => requestSort('industry')}
                       >
                         <div className="flex items-center">
@@ -963,9 +1015,8 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
-
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                        className="cursor-pointer hover:bg-muted/50"
                         onClick={() => requestSort('street')}
                       >
                         <div className="flex items-center">
@@ -977,9 +1028,8 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
-
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                        className="cursor-pointer hover:bg-muted/50"
                         onClick={() => requestSort('city')}
                       >
                         <div className="flex items-center">
@@ -991,9 +1041,8 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
-
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                        className="cursor-pointer hover:bg-muted/50"
                         onClick={() => requestSort('state')}
                       >
                         <div className="flex items-center">
@@ -1005,9 +1054,8 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
-
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                        className="cursor-pointer hover:bg-muted/50"
                         onClick={() => requestSort('bbb_rating')}
                       >
                         <div className="flex items-center">
@@ -1019,9 +1067,8 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
-
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                        className="cursor-pointer hover:bg-muted/50"
                         onClick={() => requestSort('business_phone')}
                       >
                         <div className="flex items-center">
@@ -1033,9 +1080,8 @@ export function DataEnhancement() {
                           )}
                         </div>
                       </TableHead>
-
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                        className="cursor-pointer hover:bg-muted/50"
                         onClick={() => requestSort('website')}
                       >
                         <div className="flex items-center">
@@ -1117,96 +1163,32 @@ export function DataEnhancement() {
               </div>
             </div>
 
-
-            {/* Pagination controls */}
-            {sortedFilteredLeads.length > 0 && (
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results for {searchCriteria.industry} in {searchCriteria.location}
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1); // Reset to first page when changing items per page
-                  }}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Items per page" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25 per page</SelectItem>
-                      <SelectItem value="50">50 per page</SelectItem>
-                      <SelectItem value="100">100 per page</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          aria-disabled={currentPage === 1}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-
-                      {getPageNumbers().map((page, index) => (
-                        <PaginationItem key={index}>
-                          {page === 'ellipsis' ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              isActive={page === currentPage}
-                              onClick={() => setCurrentPage(Number(page))}
-                            >
-                              {page}
-                            </PaginationLink>
-                          )}
-                        </PaginationItem>
-                      ))}
-
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                          aria-disabled={currentPage === totalPages}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                {selectedCompanies.length} of {sortedFilteredLeads.length} selected
               </div>
-            )}
+              <div className="flex items-center gap-4">
+                {loading && (
+                  <div className="text-sm font-medium">
+                    {/* Progress: {progress}% */}
+                  </div>
+                )}
+                <Button
+                  onClick={() => {
+                    setMergedView(false);
+                    handleStartEnrichment(false);
+                  }}
+                  disabled={selectedCompanies.length === 0 || loading}
+                >
+                  {loading ? "Enriching..." : "Start Enrichment"}
+                </Button>
+              </div>
+            </div>
+
             {/* Results section */}
           </div>
         </CardContent>
-
       </Card>
-      <div className="flex flex-col items-end mt-4 gap-2">
-        {/* Enrichment button and optional progress */}
-        <div className="flex items-center gap-4">
-          {loading && (
-            <div className="text-sm font-medium text-muted-foreground">
-              {/* Progress: {progress}% */}
-            </div>
-          )}
-          <Button
-            onClick={() => {
-              setMergedView(false);
-              handleStartEnrichment(false);
-            }}
-            disabled={selectedCompanies.length === 0 || loading}
-          >
-            {loading ? "Enriching..." : "Start Enrichment"}
-          </Button>
-        </div>
-        {/* Selection summary */}
-        <div className="text-sm text-muted-foreground">
-          <span className="text-foreground font-semibold">{selectedCompanies.length}</span>
-          <span className="mx-1">of</span>
-          <span className="text-foreground">{sortedFilteredLeads.length}</span> selected
-        </div>
-      </div>
 
       {/*
   Replace the nested ternary with a single block that always renders
@@ -1227,7 +1209,7 @@ export function DataEnhancement() {
         {/* ── DATABASE RESULTS ── */}
         {!mergedView && hasEnrichedOnce && dbEnrichedCompanies.length > 0 && (
           <div>
-            <h2 className="text-3xl font-bold mb-4">Fetched from Database</h2>
+            <h2 className="text-lg font-semibold mb-2">Fetched from Database</h2>
             <EnrichmentResults
               enrichedCompanies={dbEnrichedCompanies}
               rowClassName={() => "bg-teal-50"}
@@ -1257,7 +1239,7 @@ export function DataEnhancement() {
         {/* ── SCRAPED RESULTS ── */}
         {!mergedView && hasEnrichedOnce && scrapedEnrichedCompanies.length > 0 && (
           <div>
-            <h2 className="text-3xl font-bold mb-4">Freshly Scraped</h2>
+            <h2 className="text-lg font-semibold mb-2">Freshly Scraped</h2>
             <EnrichmentResults
               enrichedCompanies={scrapedEnrichedCompanies}
               rowClassName={() => "bg-yellow-50"}
@@ -1280,7 +1262,7 @@ export function DataEnhancement() {
         {/* ── MERGED VIEW ── */}
         {mergedView && hasEnrichedOnce && (
           <div>
-            <h2 className="text-3xl font-bold mt-6 mb-4">All Enriched Results</h2>
+            <h2 className="text-lg font-semibold mt-6 mb-2">All Enriched Results</h2>
             <EnrichmentResults
               enrichedCompanies={[
                 ...dbEnrichedCompanies,
