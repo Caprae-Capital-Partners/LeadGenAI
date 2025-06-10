@@ -1,6 +1,7 @@
 import stripe
 from flask import request, jsonify, current_app, url_for
 from models.user_model import User, db
+from models.user_subscription_model import UserSubscription
 from sqlalchemy import func
 from dateutil.relativedelta import relativedelta
 from datetime import datetime
