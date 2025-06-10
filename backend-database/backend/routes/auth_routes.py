@@ -586,6 +586,7 @@ def update_user_info():
 @auth_bp.route('/verify-email/<token>')
 def verify_email(token):
     success, message = AuthController.verify_email(token)
+    current_app.logger.info(f"Email verification result: {success}, message: {message}")
     flash(message, 'success' if success else 'danger')
     return redirect(url_for('auth.login'))
 
@@ -662,3 +663,14 @@ def api_reset_password(token):
         return jsonify({"message": message}), 200
     else:
         return jsonify({"error": message}), 400
+
+@auth_bp.route('/api/auth/check-student-email', methods=['POST'])
+def check_student_email():
+    """API endpoint to check if an email is a student email (school domain)"""
+    from controllers.student_verification_controller import is_student_email
+    data = request.json or {}
+    email = data.get('email', '').lower()
+    if not email:
+        return jsonify({"error": "Email is required."}), 400
+    is_student = is_student_email(email)
+    return jsonify({"is_student_email": is_student}), 200
