@@ -632,7 +632,7 @@ def api_send_verification():
 def api_verify_email(token):
     success, message = AuthController.verify_email(token)
     if success:
-        return jsonify({"redirect_url": "https://app.saasquatchleads.com/auth", "message": message}), 200
+        return jsonify({"redirect_url": "https://sandbox-api.saasquatchleads.com/auth", "message": message}), 200
     else:
         return jsonify({"error": message}), 400
 
