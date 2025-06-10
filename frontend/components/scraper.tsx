@@ -75,38 +75,21 @@ export function Scraper() {
   const seenCompaniesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-
-
-    const cacheKey = "industries"
-    const cachedIndustries = localStorage.getItem(cacheKey);
-    const CACHE_DURATION = 604800000
-    if (cachedIndustries) {
-      try {
-        const { data, timestamp } = JSON.parse(cachedIndustries)
-        if (Array.isArray(data) && Date.now() - timestamp < CACHE_DURATION) {
-          setIndustries(data)
-          return;
-        }
-      } catch { }
-    }
-
     const fetchIndustries = async () => {
-      try {
-        const response = await fetch(FETCH_INDUSTRIES_API);
-        const data = await response.json();
-        if (data && Array.isArray(data.industries)) {
-          setIndustries(data.industries);
-          localStorage.setItem(
-            cacheKey,
-            JSON.stringify({ data: data.industries, timestamp: Date.now() })
-          );
-        } else {
-          console.error("Invalid API response format:", data);
-        }
-      } catch (error) {
-        console.error('Error fetching industries:', error);
+    try {
+      const response = await fetch(FETCH_INDUSTRIES_API, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data && Array.isArray(data.industries)) {
+        setIndustries(data.industries);
+      } else {
+        console.error("Invalid API response format:", data);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching industries:", error);
+    }
+  };
 
     fetchIndustries();
   }, []);
@@ -441,16 +424,6 @@ export function Scraper() {
           <h2 className="text-3xl font-bold tracking-tight">Company Finder</h2>
           <p className="text-muted-foreground">Find companies by industry and location</p>
         </div>
-
-        {showResults && needMoreLeads && !isScrapingActive && (
-          <Button
-            onClick={handleStartScraping}
-            className="bg-amber-500 hover:bg-amber-600 text-white"
-          >
-            <AlertCircle className="mr-2 h-4 w-4" />
-            Scrape More Leads
-          </Button>
-        )}
       </div>
 
       <Card>
@@ -554,12 +527,21 @@ export function Scraper() {
       {showResults && (
         <>
           {needMoreLeads && !isScrapingActive && (
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-amber-800 flex items-center mb-4">
-              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-              <div>
-                <p className="font-medium">Only {scrapedResults.length} leads found</p>
-                <p className="text-sm">We recommend at least 100 leads for best results. Click "Scrape More Leads" above to find additional leads.</p>
+            <div className="bg-muted/50 border border-border rounded-md p-4 flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0 text-muted-foreground" />
+                <div>
+                  <p className="font-medium text-foreground">Only {scrapedResults.length} leads found</p>
+                  <p className="text-sm text-muted-foreground">We recommend at least 100 leads for best results.</p>
+                </div>
               </div>
+              <Button
+                onClick={handleStartScraping}
+                className="bg-amber-500 hover:bg-amber-600 text-white ml-4 flex-shrink-0"
+              >
+                <AlertCircle className="mr-2 h-4 w-4" />
+                Scrape More Leads
+              </Button>
             </div>
           )}
           <ScraperResults
