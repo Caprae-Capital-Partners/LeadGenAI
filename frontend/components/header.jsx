@@ -13,7 +13,7 @@ import {
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import axios from "axios";
-
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2;
 export function Header() {
   const [userEmail, setUserEmail] = useState("");
