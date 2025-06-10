@@ -25,21 +25,28 @@ class Config:
         'silver_annual': os.getenv('STRIPE_PRICE_SILVER_ANNUAL'),
         'gold_annual': os.getenv('STRIPE_PRICE_GOLD_ANNUAL'),
         'platinum_annual': os.getenv('STRIPE_PRICE_PLATINUM_ANNUAL'),
-        'pause_one_month': os.getenv('STRIPE_PRICE_PAUSE_ONE_MONTH', 'price_1RX2HfFS9KhotLbMUP3bmChp'),
-        'pause_two_month': os.getenv('STRIPE_PRICE_PAUSE_TWO_MONTH', 'price_1RX2JNFS9KhotLbMyPp0tYr9'),
-        'pause_three_month': os.getenv('STRIPE_PRICE_PAUSE_THREE_MONTH', 'price_1RX2JyFS9KhotLbMG3HKxNex')
+
+        'pause_one_month': os.getenv('STRIPE_PRICE_PAUSE_ONE_MONTH'),
+        'pause_two_month': os.getenv('STRIPE_PRICE_PAUSE_TWO_MONTH'),
+        'pause_three_month': os.getenv('STRIPE_PRICE_PAUSE_THREE_MONTH'),
+
+        'student_monthly': os.getenv('STRIPE_PRICE_STUDENT_MONTHLY'),
+        'student_semester': os.getenv('STRIPE_PRICE_STUDENT_SEMESTER'),
+        'student_annual': os.getenv('STRIPE_PRICE_STUDENT_ANNUAL'),
+
+        'call_outreach': os.getenv('STRIPE_PRICE_CALL_OUTREACH'),
     }
 
     # You might want to add checks to ensure these keys are loaded
     if not all([STRIPE_PUBLIC_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] + list(STRIPE_PRICES.values())):
          print("Warning: Stripe environment variables not fully loaded!")
 
-    # Ensure webhook events list remains
-    STRIPE_WEBHOOK_EVENTS = [
-        'checkout.session.completed', 'customer.subscription.created',
-        'customer.subscription.updated', 'customer.subscription.deleted',
-        'invoice.payment_succeeded', 'invoice.payment_failed'
-    ]
+    # # Ensure webhook events list remains
+    # STRIPE_WEBHOOK_EVENTS = [
+    #     'checkout.session.completed', 'customer.subscription.created',
+    #     'customer.subscription.updated', 'customer.subscription.deleted',
+    #     'invoice.payment_succeeded', 'invoice.payment_failed'
+    # ]
 
     SECURITY_PASSWORD_SALT = os.environ.get('SECURITY_PASSWORD_SALT')
     MAIL_SERVER = os.environ.get('MAIL_SERVER')

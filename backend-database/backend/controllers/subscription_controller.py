@@ -189,8 +189,23 @@ class SubscriptionController:
                 else:
                     current_app.logger.info("[Webhook] No payment_intent or subscription found in session; skipping payment method logging.")
 
-                # Only proceed if we have both user_id and plan_type
-                if user_id and plan_type:
+                # Check if this is an outreach service payment
+                if session.get('metadata') and session['metadata'].get('service_type') == 'phone_call_outreach':
+                    current_app.logger.info(f"-------------[Webhook] Processing outreach payment for user_id: {user_id} DOING NOTHING")
+                    # from controllers.outreach_controller import OutreachController
+                    # if OutreachController.handle_outreach_payment_success(session):
+                    #     current_app.logger.info(f"[Webhook] Successfully processed outreach payment for user {user_id}")
+                    # else:
+                    #     current_app.logger.error(f"[Webhook] Failed to process outreach payment for user {user_id}")
+                # Check if this is a pause subscription payment
+                elif session.get('metadata') and session['metadata'].get('is_pause_subscription') == 'true':
+                    current_app.logger.info(f"[Webhook] Processing pause subscription payment for user_id: {user_id}")
+                    if SubscriptionController.handle_pause_subscription_success(session['metadata'], user_id):
+                        current_app.logger.info(f"[Webhook] Successfully processed pause subscription for user {user_id}")
+                    else:
+                        current_app.logger.error(f"[Webhook] Failed to process pause subscription for user {user_id}")
+                # Only proceed if we have both user_id and plan_type for subscription payments
+                elif user_id and plan_type:
                     from models.user_model import User
                     user = User.query.get(user_id)
                     if user:
@@ -220,7 +235,11 @@ class SubscriptionController:
                             'bronze': 'Bronze',
                             'silver': 'Silver',
                             'gold': 'Gold',
-                            'platinum': 'Platinum'
+                            'platinum': 'Platinum',
+                            'student_monthly': 'Student Monthly',
+                            'student_semester': 'Student Semester',
+                            'student_annual': 'Student Annual',
+                            'call_outreach': 'Pro Call Outreach',
                         }
                         mapped_plan_name = plan_name_mapping.get(plan_type, plan_type)
                         plan = Plan.query.filter(func.lower(Plan.plan_name) == mapped_plan_name.lower()).first()
@@ -309,8 +328,6 @@ class SubscriptionController:
                         customer = stripe.Customer.retrieve(customer_id)
                         user = User.query.filter_by(email=customer.email).first()
                         if user:
-                            # Only process deletion if this is a true cancellation
-                            # (not just the end of a scheduled cancellation period)
                             user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
 
                             # Check if this was a scheduled cancellation
@@ -319,10 +336,11 @@ class SubscriptionController:
                                                  '_scheduled_cancel' in user_sub.payment_frequency)
 
                             if is_scheduled_cancel:
-                                current_app.logger.info(f"Processing scheduled cancellation for user {user.user_id}")
+                                current_app.logger.info(f"Processing scheduled cancellation for user {user.user_id} - subscription period has ended")
                             else:
                                 current_app.logger.info(f"Processing immediate cancellation for user {user.user_id}")
 
+                            # Now actually cancel and move to free tier
                             SubscriptionController._handle_local_cancellation(user, user_sub)
                             current_app.logger.info(f"Processed subscription cancellation for user {user.user_id}")
                     except Exception as e:
@@ -344,23 +362,32 @@ class SubscriptionController:
 
                             # Handle cancel_at_period_end updates
                             if subscription.get('cancel_at_period_end'):
-                                current_app.logger.info(f"Subscription {subscription.id} scheduled for cancellation at period end for user {user.user_id}")
+                                current_app.logger.info(f"Webhook: Subscription {subscription['id']} scheduled for cancellation at period end for user {user.user_id}")
+                                current_app.logger.info(f"Webhook: cancel_at_period_end timestamp: {subscription.get('cancel_at')}")
 
                                 # Mark the subscription as scheduled for cancellation
                                 if user_sub and user_sub.payment_frequency and '_scheduled_cancel' not in user_sub.payment_frequency:
                                     user_sub.payment_frequency = f"{user_sub.payment_frequency}_scheduled_cancel"
                                     db.session.commit()
-                                    current_app.logger.info(f"Marked subscription as scheduled for cancellation for user {user.user_id}")
+                                    current_app.logger.info(f"Webhook: Marked subscription as scheduled for cancellation for user {user.user_id}")
 
                             # Handle reactivation (when cancel_at_period_end is removed)
                             elif not subscription.get('cancel_at_period_end') and user_sub and user_sub.payment_frequency and '_scheduled_cancel' in user_sub.payment_frequency:
                                 # Remove the scheduled cancellation marker
                                 user_sub.payment_frequency = user_sub.payment_frequency.replace('_scheduled_cancel', '')
                                 db.session.commit()
-                                current_app.logger.info(f"Removed scheduled cancellation for user {user.user_id} - subscription reactivated")
+                                current_app.logger.info(f"Webhook: Removed scheduled cancellation for user {user.user_id} - subscription reactivated")
 
                     except Exception as e:
                         current_app.logger.error(f"Error processing subscription.updated webhook: {str(e)}")
+
+            elif event['type'] == 'payment_intent.succeeded':
+                # Handle one-time payments like outreach service
+                payment_intent = event['data']['object']
+                if payment_intent.get('metadata') and payment_intent['metadata'].get('service_type') == 'phone_call_outreach':
+                    current_app.logger.info(f"[Outreach] Payment intent succeeded for outreach service")
+                    # This will be handled by checkout.session.completed for outreach
+                    pass
 
             # Add other Stripe event types as needed (e.g., invoice.payment_failed for recurring payments)
 
@@ -531,7 +558,7 @@ class SubscriptionController:
         Cancel user subscription - either immediate or at period end
         """
         try:
-            current_app.logger.info("cancel_subscription called.")
+            current_app.logger.info(f"cancel_subscription called for user {user.user_id} with type {cancellation_type}")
             stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
 
             # Get user subscription info
@@ -543,100 +570,157 @@ class SubscriptionController:
                 current_app.logger.info("No user_sub found, returning error response.")
                 return {'error': 'No active subscription found'}, 404
 
-            # Since we don't store subscription_id, we need to find it via Stripe customer
-            # First, let's try to find the customer in Stripe by email
+            # Check if user is on free tier - if so, there's nothing to cancel
+            if user.tier == 'free':
+                current_app.logger.info(f"User {user.user_id} is already on free tier")
+                return {'message': 'You are already on the free plan.'}, 200
+
+            # Try multiple approaches to find Stripe customer and subscription
+            customer = None
+            subscription = None
+
+            # Approach 1: Find customer by email
             try:
-                customers = stripe.Customer.list(email=user.email, limit=1)
-                if not customers.data:
-                    # If user is on a paid tier but no Stripe customer found, inform the user
-                    current_app.logger.warning(f"User {user.user_id} has paid tier but no Stripe customer found")
-                    # return SubscriptionController._handle_local_cancellation(user, user_sub)
-                    current_app.logger.info("No Stripe customer found. User likely never made a payment. Returning error response.")
-                    return {'error': 'No Stripe customer found for your account. It looks like you never completed a payment. If this is a mistake, please contact support.'}, 400
-                customer = customers.data[0]
+                customers = stripe.Customer.list(email=user.email, limit=5)
+                if customers.data:
+                    customer = customers.data[0]
+                    current_app.logger.info(f"Found Stripe customer {customer.id} for email {user.email}")
+            except Exception as e:
+                current_app.logger.warning(f"Error searching customer by email: {str(e)}")
 
-                # Get active subscriptions for this customer
-                subscriptions = stripe.Subscription.list(
-                    customer=customer.id,
-                    status='active',
-                    limit=10
-                )
+            # Approach 2: If no customer found, search all customers (less efficient but thorough)
+            if not customer:
+                try:
+                    # Search through recent customers to find one that might match
+                    all_customers = stripe.Customer.list(limit=100)
+                    for cust in all_customers.data:
+                        if cust.email == user.email:
+                            customer = cust
+                            current_app.logger.info(f"Found customer {customer.id} in broader search")
+                            break
+                except Exception as e:
+                    current_app.logger.warning(f"Error in broader customer search: {str(e)}")
 
-                if not subscriptions.data:
-                    # No active subscriptions in Stripe, handle locally
-                    current_app.logger.warning(f"User {user.user_id} has no active Stripe subscriptions")
-                    current_app.logger.info("No active Stripe subscriptions, falling back to local cancellation.")
+            # If we found a customer, look for active subscriptions
+            if customer:
+                try:
+                    subscriptions = stripe.Subscription.list(
+                        customer=customer.id,
+                        status='active',
+                        limit=10
+                    )
+                    if subscriptions.data:
+                        subscription = subscriptions.data[0]
+                        current_app.logger.info(f"Found active subscription {subscription.id}")
+                    else:
+                        # Check for subscriptions that are past_due or incomplete
+                        all_subs = stripe.Subscription.list(
+                            customer=customer.id,
+                            limit=10
+                        )
+                        for sub in all_subs.data:
+                            if sub.status in ['active', 'past_due', 'incomplete']:
+                                subscription = sub
+                                current_app.logger.info(f"Found subscription {subscription.id} with status {sub.status}")
+                                break
+                except Exception as e:
+                    current_app.logger.warning(f"Error searching subscriptions: {str(e)}")
+
+            # If we have a subscription, proceed with Stripe cancellation
+            if subscription:
+                try:
+                    current_app.logger.info(f"Found subscription {subscription.id}. Proceeding with cancellation type: {cancellation_type}")
+
+                    if cancellation_type == 'immediate':
+                        # Cancel immediately
+                        current_app.logger.info("Attempting immediate cancellation in Stripe.")
+                        canceled_subscription = stripe.Subscription.cancel(
+                            subscription.id,
+                            prorate=True,
+                            invoice_now=False
+                        )
+                        current_app.logger.info(f"Subscription {subscription.id} canceled immediately in Stripe.")
+                        return SubscriptionController._handle_local_cancellation(user, user_sub)
+
+                    elif cancellation_type == 'period_end':
+                        # Cancel at period end - DO NOT cancel immediately, just schedule it
+                        current_app.logger.info("Attempting period_end cancellation in Stripe.")
+                        updated_subscription = stripe.Subscription.modify(
+                            subscription.id,
+                            cancel_at_period_end=True,
+                            cancellation_details={
+                                'comment': comment or '',
+                                'feedback': feedback or 'other'
+                            }
+                        )
+
+                        import datetime
+                        current_app.logger.info(f"Stripe subscription updated successfully: cancel_at_period_end={updated_subscription.cancel_at_period_end}")
+
+                        if updated_subscription.current_period_end:
+                            cancel_date = datetime.datetime.fromtimestamp(updated_subscription.current_period_end)
+                            current_app.logger.info(f"Scheduled cancellation at period end for subscription {subscription.id} for user {user.user_id}")
+
+                            # Mark subscription as scheduled for cancellation in local database
+                            # BUT DO NOT change user tier or plan - keep current access until period end
+                            if '_scheduled_cancel' not in user_sub.payment_frequency:
+                                user_sub.payment_frequency = f"{user_sub.payment_frequency}_scheduled_cancel"
+                                db.session.commit()
+                                current_app.logger.info(f"Updated payment_frequency to mark scheduled cancellation for user {user.user_id}.")
+
+                            return {
+                                'message': f'Subscription will be canceled at the end of your current billing period ({cancel_date.strftime("%B %d, %Y")}). You will retain access to your current plan until then.',
+                                'cancel_at': updated_subscription.current_period_end,
+                                'cancel_date': cancel_date.strftime("%B %d, %Y"),
+                                'status': 'scheduled_for_cancellation'
+                            }, 200
+                        else:
+                            # If no period end available, just mark as scheduled locally
+                            if '_scheduled_cancel' not in user_sub.payment_frequency:
+                                user_sub.payment_frequency = f"{user_sub.payment_frequency}_scheduled_cancel"
+                                db.session.commit()
+
+                            return {
+                                'message': 'Subscription has been scheduled for cancellation at the end of your billing period.',
+                                'status': 'scheduled_for_cancellation'
+                            }, 200
+
+                except stripe.error.StripeError as e:
+                    current_app.logger.error(f"Stripe error during cancellation: {str(e)}")
+                    # Fallback to local cancellation
                     return SubscriptionController._handle_local_cancellation(user, user_sub)
 
-                # Cancel the most recent active subscription
-                subscription = subscriptions.data[0]
-                current_app.logger.info(f"Found active subscription {subscription.id}. Proceeding with cancellation type: {cancellation_type}")
+            # If no Stripe subscription found, handle locally
+            current_app.logger.info(f"No Stripe subscription found for user {user.user_id}, handling locally")
+            if cancellation_type == 'period_end':
+                # For period end cancellation without Stripe subscription, just mark as scheduled
+                if '_scheduled_cancel' not in user_sub.payment_frequency:
+                    user_sub.payment_frequency = f"{user_sub.payment_frequency}_scheduled_cancel"
+                    db.session.commit()
 
-                if cancellation_type == 'immediate':
-                    # Cancel immediately
-                    current_app.logger.info("Attempting immediate cancellation in Stripe.")
-                    canceled_subscription = stripe.Subscription.cancel(
-                        subscription.id,
-                        prorate=True,
-                        invoice_now=False
-                    )
-                    current_app.logger.info(f"Subscription {subscription.id} canceled immediately in Stripe.")
-                    current_app.logger.info("Calling _handle_local_cancellation after immediate Stripe cancel.")
-                    return SubscriptionController._handle_local_cancellation(user, user_sub)
-
-                elif cancellation_type == 'period_end':
-                    # Cancel at period end
-                    current_app.logger.info("Attempting period_end cancellation in Stripe.")
-                    updated_subscription = stripe.Subscription.modify(
-                        subscription.id,
-                        cancel_at_period_end=True,
-                        cancellation_details={
-                            'comment': comment or '',
-                            'feedback': feedback or 'other'
-                        }
-                    )
-                    import datetime
-                    current_app.logger.error(f"Stripe subscription retrieve response: {updated_subscription}")
-                    period_end = getattr(updated_subscription, 'current_period_end', None)
-                    if not period_end and isinstance(updated_subscription, dict):
-                        period_end = updated_subscription.get('current_period_end')
-
-                    if not period_end:
-                        current_app.logger.error(f"current_period_end not found in Stripe subscription: {updated_subscription}")
-                        return {'error': 'Could not determine the end of the current billing period from Stripe.'}, 500
-
-                    cancel_date = datetime.datetime.fromtimestamp(period_end)
-                    current_app.logger.info(f"Scheduled cancellation at period end for subscription {subscription.id} for user {user.user_id}")
-
-                    # Add a field to track scheduled cancellation in local database
-                    # but don't downgrade the user yet
-                    # if not hasattr(user_sub, 'scheduled_for_cancellation'):
-                        # We'll add this tracking via a simple approach - store it in plan_name temporarily
-                        # or add a new field. For now, let's add a marker to track this state
-                    if '_scheduled_cancel' not in user_sub.payment_frequency:
-                        user_sub.payment_frequency = f"{user_sub.payment_frequency}_scheduled_cancel"
-                        db.session.commit()
-                        current_app.logger.info(f"Updated payment_frequency to mark scheduled cancellation for user {user.user_id}.")
-
-                    # Convert timestamp to readable format
-                    # cancel_date = datetime.datetime.fromtimestamp(updated_subscription.current_period_end)
-                    current_app.logger.info("Returning scheduled_for_cancellation response.")
-                    return {
-                        'message': f'Subscription will be canceled at the end of your current billing period ({cancel_date.strftime("%B %d, %Y")}). You will retain access to your current plan until then.',
-                        'cancel_at': updated_subscription.current_period_end,
-                        'cancel_date': cancel_date.strftime("%B %d, %Y"),
-                        'status': 'scheduled_for_cancellation'
-                    }, 200
-
-            except stripe.error.StripeError as e:
-                current_app.logger.error(f"Stripe error during cancellation for user {user.user_id}: {str(e)}")
-                # Fallback to local cancellation
+                return {
+                    'message': 'Subscription has been scheduled for cancellation at the end of your billing period.',
+                    'status': 'scheduled_for_cancellation'
+                }, 200
+            else:
+                # For immediate cancellation, proceed with local cancellation
                 return SubscriptionController._handle_local_cancellation(user, user_sub)
 
         except Exception as e:
             current_app.logger.error(f"Error canceling subscription for user {user.user_id}: {str(e)}")
-            current_app.logger.info("Returning error response from cancel_subscription.")
-            return {'error': 'Error canceling subscription. Please try again later.'}, 500
+            if cancellation_type == 'period_end':
+                # For period end cancellation, don't immediately cancel on error
+                if user_sub and '_scheduled_cancel' not in user_sub.payment_frequency:
+                    user_sub.payment_frequency = f"{user_sub.payment_frequency}_scheduled_cancel"
+                    db.session.commit()
+
+                return {
+                    'message': 'Subscription has been scheduled for cancellation at the end of your billing period.',
+                    'status': 'scheduled_for_cancellation'
+                }, 200
+            else:
+                # For immediate cancellation, proceed with local cancellation
+                return SubscriptionController._handle_local_cancellation(user, user_sub)
 
     @staticmethod
     def _handle_local_cancellation(user, user_sub):
@@ -644,7 +728,7 @@ class SubscriptionController:
         Handle cancellation in local database only
         """
         try:
-            current_app.logger.info("_handle_local_cancellation called.")
+            current_app.logger.info(f"_handle_local_cancellation called for user {user.user_id}")
             from models.plan_model import Plan
             from datetime import datetime
 
@@ -766,6 +850,7 @@ class SubscriptionController:
             from models.user_subscription_model import UserSubscription
             from models.plan_model import Plan
             from datetime import datetime, timedelta
+            from sqlalchemy import func
 
             user = User.query.get(user_id)
             if not user:
@@ -782,6 +867,8 @@ class SubscriptionController:
             original_plan_name = session_metadata.get('original_plan_name')
             original_tier = session_metadata.get('original_tier')
 
+            current_app.logger.info(f"[Pause] Processing pause for user {user_id}, duration: {pause_duration}")
+
             # Calculate pause end date
             duration_mapping = {
                 'pause_one_month': 1,
@@ -792,33 +879,38 @@ class SubscriptionController:
             months = duration_mapping.get(pause_duration, 1)
             pause_end_date = datetime.utcnow() + timedelta(days=30 * months)
 
-            # Store original subscription info
-            user_sub.original_plan_id = int(original_plan_id) if original_plan_id and original_plan_id.isdigit() else user_sub.plan_id
-            user_sub.original_plan_name = original_plan_name or user_sub.plan_name
+            # Store original subscription info before changing
+            if not user_sub.original_plan_id:  # Only store if not already set
+                user_sub.original_plan_id = user_sub.plan_id
+                user_sub.original_plan_name = user_sub.plan_name
 
             # Set pause status
             user_sub.is_paused = True
             user_sub.pause_end_date = pause_end_date
             user_sub.credits_remaining = 0  # Set credits to 0 during pause
 
-            # Update plan to pause plan
+            # Update plan to pause plan or create pause entry
             pause_plan = Plan.query.filter(func.lower(Plan.plan_name) == 'pause').first()
             if pause_plan:
                 user_sub.plan_id = pause_plan.plan_id
                 user_sub.plan_name = pause_plan.plan_name
+                current_app.logger.info(f"[Pause] Found existing pause plan, setting plan_id to {pause_plan.plan_id}")
             else:
-                # Create a temporary pause plan entry
+                # Set plan to pause without referencing a specific plan_id
                 user_sub.plan_name = 'Pause'
+                current_app.logger.info(f"[Pause] No pause plan found in database, setting plan_name to 'Pause'")
 
-            # Set user tier to pause (we'll treat this as a special tier)
+            # Set user tier to pause
             user.tier = 'pause'
 
             db.session.commit()
             current_app.logger.info(f"[Pause] Successfully paused subscription for user {user_id} until {pause_end_date}")
+            current_app.logger.info(f"[Pause] User tier set to: {user.tier}, plan_name: {user_sub.plan_name}, is_paused: {user_sub.is_paused}")
             return True
 
         except Exception as e:
-            current_app.logger.error(f"[Pause] Error handling pause subscription success: {str(e)}")
+            import traceback
+            current_app.logger.error(f"[Pause] Error handling pause subscription success: {str(e)}\n{traceback.format_exc()}")
             db.session.rollback()
             return False
 

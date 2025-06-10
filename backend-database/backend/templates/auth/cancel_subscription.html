@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,11 +58,6 @@
                             <div class="alert alert-warning mt-3">
                                 <strong>⚠️ Scheduled for Cancellation</strong><br>
                                 Your subscription is scheduled to cancel at the end of your current billing period. You will retain access to your current plan until then.
-                                <hr>
-                                <button type="button" class="btn btn-success btn-sm" id="reactivateBtn">
-                                    <span id="reactivateBtnText">Reactivate Subscription</span>
-                                    <span id="reactivateBtnSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
-                                </button>
                             </div>
                             {% endif %}
                         </div>
@@ -146,23 +140,23 @@
     <script>
         document.getElementById('cancellationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const submitBtn = document.getElementById('cancelBtn');
             const submitBtnText = document.getElementById('cancelBtnText');
             const submitBtnSpinner = document.getElementById('cancelBtnSpinner');
-            
+
             // Show loading state
             submitBtn.disabled = true;
             submitBtnText.classList.add('d-none');
             submitBtnSpinner.classList.remove('d-none');
-            
+
             const formData = new FormData(this);
             const data = {
                 type: formData.get('cancellationType'),
                 feedback: formData.get('feedback'),
                 comment: formData.get('comment')
             };
-            
+
             try {
                 const response = await fetch('/api/subscription/cancel', {
                     method: 'POST',
@@ -172,16 +166,23 @@
                     credentials: 'include',
                     body: JSON.stringify(data)
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     // Success
-                    alert(result.message || 'Subscription canceled successfully!');
-                    window.location.href = '/choose_plan';
+                    if (result.status === 'scheduled_for_cancellation') {
+                        alert('✅ ' + result.message);
+                        // Reload the page to show updated cancellation status
+                        location.reload();
+                    } else {
+                        alert('✅ ' + result.message);
+                        // For immediate cancellations, redirect to subscription page
+                        window.location.href = '/subscription';
+                    }
                 } else {
                     // Error
-                    alert(result.error || 'An error occurred while canceling your subscription.');
+                    alert('❌ ' + (result.error || 'An error occurred while canceling your subscription.'));
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -194,46 +195,8 @@
             }
         });
 
-        // Handle reactivation
-        const reactivateBtn = document.getElementById('reactivateBtn');
-        if (reactivateBtn) {
-            reactivateBtn.addEventListener('click', async function() {
-                const reactivateBtnText = document.getElementById('reactivateBtnText');
-                const reactivateBtnSpinner = document.getElementById('reactivateBtnSpinner');
-                
-                // Show loading state
-                reactivateBtn.disabled = true;
-                reactivateBtnText.classList.add('d-none');
-                reactivateBtnSpinner.classList.remove('d-none');
-                
-                try {
-                    const response = await fetch('/api/subscription/reactivate', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (response.ok) {
-                        alert(result.message || 'Subscription reactivated successfully!');
-                        // Refresh page to show updated status
-                        window.location.reload();
-                    } else {
-                        alert(result.error || 'An error occurred while reactivating your subscription.');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('An error occurred while reactivating your subscription. Please try again.');
-                } finally {
-                    // Reset button state
-                    reactivateBtn.disabled = false;
-                    reactivateBtnText.classList.remove('d-none');
-                    reactivateBtnSpinner.classList.add('d-none');
-                }
-            });
-        }
+        
     </script>
 </body>
 </html>
+```This code modifies the JavaScript part of the HTML to improve cancellation success handling by providing more informative alerts and redirecting to the appropriate page based on the cancellation type.

@@ -244,11 +244,11 @@ def register_api():
 def get_user_info():
     """Get current user information"""
     from models.user_subscription_model import UserSubscription
-    
+
     user_sub = UserSubscription.query.filter_by(user_id=current_user.user_id).first()
     is_paused = getattr(user_sub, 'is_paused', False) if user_sub else False
     pause_end_date = user_sub.pause_end_date.isoformat() if user_sub and getattr(user_sub, 'pause_end_date', None) else None
-    
+
     return jsonify({
         "id": current_user.user_id,
         "email": current_user.email,
@@ -343,8 +343,8 @@ def choose_plan():
         current_plan = 'Free'
         current_credits = 0
 
-    return render_template('auth/choose_plan.html', 
-                         plans=plans, 
+    return render_template('auth/choose_plan.html',
+                         plans=plans,
                          current_plan=current_plan,
                          current_credits=current_credits,
                          user_tier=current_user.tier)
@@ -354,24 +354,24 @@ def choose_plan():
 def pause_subscription_page():
     """Render the subscription pause page"""
     from controllers.subscription_controller import SubscriptionController
-    
+
     # Get current user subscription info
     subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
-    
+
     if status_code != 200:
         flash('No active subscription found.', 'info')
         return redirect(url_for('auth.choose_plan'))
-    
+
     # Check if user is on free tier or already paused
     if current_user.tier == 'free':
         flash('You are on the free plan and cannot pause.', 'info')
         return redirect(url_for('auth.choose_plan'))
-    
+
     if current_user.tier == 'pause':
         flash('Your subscription is already paused.', 'info')
         return redirect(url_for('auth.choose_plan'))
-    
-    return render_template('auth/pause_subscription.html', 
+
+    return render_template('auth/pause_subscription.html',
                          subscription_info=subscription_info,
                          user_tier=current_user.tier)
 
@@ -379,55 +379,68 @@ def pause_subscription_page():
 @login_required
 def create_pause_checkout_session():
     """Create a Stripe checkout session for pause subscription"""
+    try:
+        data = request.json or {}
+        pause_duration = data.get('pause_duration')
+
+        if not pause_duration:
+            return jsonify({'error': 'pause_duration is required'}), 400
+
+        response, status_code = SubscriptionController.create_pause_checkout_session(current_user, pause_duration)
+        return jsonify(response), status_code
+
+    except Exception as e:
+        current_app.logger.error(f"Error creating pause checkout session: {str(e)}")
+        return jsonify({'error': 'Failed to create pause checkout session'}), 500
+def create_pause_checkout_session():
+    """Create a Stripe checkout session for pause subscription"""
     if not request.json:
         return jsonify({'error': 'No data provided'}), 400
-    
+
     pause_duration = request.json.get('pause_duration')
     if not pause_duration:
         return jsonify({'error': 'pause_duration is required'}), 400
-    
+
     # Call the controller method
     response, status_code = SubscriptionController.create_pause_checkout_session(current_user, pause_duration)
     return jsonify(response), status_code
 
+# @auth_bp.route('/upgrade_account')
+# @login_required
+# def upgrade_account():
+#     return render_template('auth/upgrade_account.html')
+
 @auth_bp.route('/cancel_subscription')
 @login_required
-def cancel_subscription_page():
-    """Render the subscription cancellation page"""
+def cancel_subscription():
     from controllers.subscription_controller import SubscriptionController
-    
-    # Get current user subscription info
-    subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
-    
-    if status_code != 200:
-        flash('Unable to load subscription information.', 'error')
-        return redirect(url_for('auth.choose_plan'))
-    
-    # Check if already scheduled for cancellation
-    is_scheduled = subscription_info.get('subscription', {}).get('is_scheduled_for_cancellation', False)
-    
-    return render_template('auth/cancel_subscription.html', 
-                         subscription_info=subscription_info,
-                         is_scheduled_for_cancellation=is_scheduled)
-def cancel_subscription_page():
-    """Render the subscription cancellation page"""
-    from controllers.subscription_controller import SubscriptionController
-
-    # Get current user subscription info
     subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
 
     if status_code != 200:
-        flash('No active subscription found.', 'info')
+        flash('Unable to load subscription information', 'error')
         return redirect(url_for('auth.choose_plan'))
 
-    # Check if user is already on free tier
-    if current_user.tier == 'free':
-        flash('You are already on the free plan.', 'info')
-        return redirect(url_for('auth.choose_plan'))
+    return render_template('auth/cancel_subscription.html', subscription_info=subscription_info)
 
-    return render_template('auth/cancel_subscription.html', 
-                         subscription_info=subscription_info,
-                         user_tier=current_user.tier)
+# def cancel_subscription_page():
+#     """Render the subscription cancellation page"""
+#     from controllers.subscription_controller import SubscriptionController
+
+#     # Get current user subscription info
+#     subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
+
+#     if status_code != 200:
+#         flash('No active subscription found.', 'info')
+#         return redirect(url_for('auth.choose_plan'))
+
+#     # Check if user is already on free tier
+#     if current_user.tier == 'free':
+#         flash('You are already on the free plan.', 'info')
+#         return redirect(url_for('auth.choose_plan'))
+
+#     return render_template('auth/cancel_subscription.html',
+#                          subscription_info=subscription_info,
+#                          user_tier=current_user.tier)
 
 @auth_bp.route('/create-checkout-session', methods=['POST'])
 @login_required
@@ -573,6 +586,7 @@ def update_user_info():
 @auth_bp.route('/verify-email/<token>')
 def verify_email(token):
     success, message = AuthController.verify_email(token)
+    current_app.logger.info(f"Email verification result: {success}, message: {message}")
     flash(message, 'success' if success else 'danger')
     return redirect(url_for('auth.login'))
 
@@ -618,7 +632,7 @@ def api_send_verification():
 def api_verify_email(token):
     success, message = AuthController.verify_email(token)
     if success:
-        return jsonify({"redirect_url": "https://app.saasquatchleads.com/auth", "message": message}), 200
+        return jsonify({"redirect_url": "https://sandbox-api.saasquatchleads.com/auth", "message": message}), 200
     else:
         return jsonify({"error": message}), 400
 
@@ -649,3 +663,14 @@ def api_reset_password(token):
         return jsonify({"message": message}), 200
     else:
         return jsonify({"error": message}), 400
+
+@auth_bp.route('/api/auth/check-student-email', methods=['POST'])
+def check_student_email():
+    """API endpoint to check if an email is a student email (school domain)"""
+    from controllers.student_verification_controller import is_student_email
+    data = request.json or {}
+    email = data.get('email', '').lower()
+    if not email:
+        return jsonify({"error": "Email is required."}), 400
+    is_student = is_student_email(email)
+    return jsonify({"is_student_email": is_student}), 200
