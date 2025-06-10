@@ -19,30 +19,43 @@ def user_management():
 
 @user_management_bp.route('/api/admin/users')
 @login_required
+@role_required('admin', 'developer')
 def get_users():
     """Get all users with their subscription information"""
-    users = User.query.all()
-    user_list = []
-    
-    for user in users:
-        subscription = UserSubscription.query.filter_by(user_id=user.user_id).first()
-        user_data = {
-            'id': str(user.user_id),
-            'username': user.username,
-            'email': user.email,
-            'is_active': user.is_active,
-            'role': user.role,
-            'created_at': user.created_at.isoformat() if user.created_at else None,
-            'subscription': {
-                'plan': subscription.plan_name if subscription else None,
-                'status': 'active' if subscription and subscription.plan_expiration_timestamp and subscription.plan_expiration_timestamp > datetime.utcnow() else 'inactive',
-                'credits': subscription.credits_remaining if subscription else 0,
-                'expires_at': subscription.plan_expiration_timestamp.isoformat() if subscription and subscription.plan_expiration_timestamp else None
-            } if subscription else None
-        }
-        user_list.append(user_data)
-    
-    return jsonify(user_list)
+    try:
+        users = User.query.all()
+        user_list = []
+        
+        for user in users:
+            try:
+                # Convert user_id to string for consistent comparison
+                user_id_str = str(user.user_id)
+                subscription = UserSubscription.query.filter_by(user_id=user_id_str).first()
+                
+                user_data = {
+                    'id': user_id_str,
+                    'username': user.username,
+                    'email': user.email,
+                    'is_active': user.is_active,
+                    'role': user.role,
+                    'created_at': user.created_at.isoformat() if user.created_at else None,
+                    'subscription': {
+                        'plan': subscription.plan_name if subscription else None,
+                        'status': 'active' if subscription and subscription.plan_expiration_timestamp and subscription.plan_expiration_timestamp > datetime.utcnow() else 'inactive',
+                        'credits': subscription.credits_remaining if subscription else 0,
+                        'expires_at': subscription.plan_expiration_timestamp.isoformat() if subscription and subscription.plan_expiration_timestamp else None
+                    } if subscription else None
+                }
+                user_list.append(user_data)
+            except Exception as e:
+                current_app.logger.error(f"Error processing user {user.user_id}: {str(e)}")
+                # Continue with next user even if one fails
+                continue
+        
+        return jsonify(user_list)
+    except Exception as e:
+        current_app.logger.error(f"Error in get_users: {str(e)}")
+        return jsonify({"error": "Error fetching users"}), 500
 
 @user_management_bp.route('/api/admin/users/<user_id>/subscription', methods=['PUT'])
 @login_required
