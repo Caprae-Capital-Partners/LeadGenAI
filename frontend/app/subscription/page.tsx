@@ -93,7 +93,7 @@ export default function SubscriptionPage() {
 
     const handleSelectPlan = async (planId: string) => {
         if (planId === "free") {
-            window.location.href = "https://app.saasquatchleads.com/";
+            window.location.href = "/";
             return;
         }
 
@@ -239,7 +239,7 @@ export default function SubscriptionPage() {
                                                     <Button
                                                         onClick={() => {
                                                             if (plan.id === "free") {
-                                                                window.location.href = "https://app.saasquatchleads.com/";
+                                                                window.location.href = "/";
                                                             } else if (plan.id === "enterprise") {
                                                                 window.location.href = "/contact"; // ← redirect for Enterprise
                                                             } else {
