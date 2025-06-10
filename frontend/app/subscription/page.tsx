@@ -189,6 +189,8 @@ export default function SubscriptionPage() {
             if (res.ok && data.sessionId) {
                 const stripe = await loadStripe(STRIPE);
                 if (stripe) {
+                    console.log("Stripe Mode:", process.env.STRIPE_MODE);
+                    console.log("Session ID:", data.sessionId);
                     await stripe.redirectToCheckout({ sessionId: data.sessionId });
                 } else {
                     alert("Stripe.js failed to load.");
