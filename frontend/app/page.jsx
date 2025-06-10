@@ -123,7 +123,7 @@ export default function Home() {
 
       // 1) Always call POST first
       const postResponse = await axios.post(
-        `https://data.capraeleadseekers.site/leads/${leadId}/edit`,
+        `${DATABASE_URL_NOAPI}/leads/${leadId}/edit`,
         normalizedLead,
         { withCredentials: true }
       );

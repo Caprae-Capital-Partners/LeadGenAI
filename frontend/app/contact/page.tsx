@@ -7,6 +7,7 @@ import { Header } from "@/components/header";
 import { ContactForm } from "@/components/contacts";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Popup from "@/components/ui/popup";
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 
 export default function ContactPage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function ContactPage() {
   useEffect(() => {
     const verifyLogin = async () => {
       try {
-        const res = await fetch("https://data.capraeleadseekers.site/api/ping-auth", {
+        const res = await fetch(`${DATABASE_URL}/ping-auth`, {
           method: "GET",
           credentials: "include",
         });

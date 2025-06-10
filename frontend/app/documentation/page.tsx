@@ -8,6 +8,7 @@ import { DocumentationContent } from "@/components/documentation";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Popup from "@/components/ui/popup";
 
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 export default function DocumentationPage() {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -17,7 +18,7 @@ export default function DocumentationPage() {
   useEffect(() => {
     const verifyLogin = async () => {
       try {
-        const res = await fetch("https://data.capraeleadseekers.site/api/ping-auth", {
+        const res = await fetch(`${DATABASE_URL}/ping-auth`, {
           method: "GET",
           credentials: "include",
         });

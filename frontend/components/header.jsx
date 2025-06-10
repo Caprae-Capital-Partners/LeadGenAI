@@ -124,13 +124,10 @@ export function Header() {
 
                   // 2) Perform logout
                   try {
-                    const res = await fetch(
-                      "https://data.capraeleadseekers.site/api/auth/logout",
-                      {
-                        method: "POST",
-                        credentials: "include",
-                      }
-                    );
+                    const res = await fetch(`${DATABASE_URL}/auth/logout`, {
+                      method: "POST",
+                      credentials: "include",
+                    });
 
                     if (res.ok) {
                       sessionStorage.clear(); // ✅ Clear client-side session
