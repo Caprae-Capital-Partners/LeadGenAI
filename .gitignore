@@ -179,6 +179,7 @@ cython_debug/
 *.xlsx
 
 node_modules/
+/node_modules/
 
 .vscode/
 split_data/
