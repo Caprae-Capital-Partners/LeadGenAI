@@ -27,7 +27,7 @@ export default function RootLayout({ children }) {
       <head>
         <link rel="icon" href="/favicon.ico" /> {/* ✅ manual override */}
       </head>
-      <body className={`${montserrat.variable} ${poppins.variable} font-sans bg-[#121826] text-black-100`}>
+      <body className={`${montserrat.variable} ${poppins.variable} font-sans bg-[#121826] text-black`}>
         {children}
       </body>
     </html>
