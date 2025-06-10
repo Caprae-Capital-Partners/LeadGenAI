@@ -34,7 +34,12 @@ def get_users():
     user_list = []
 
     for user in users:
-        subscription = UserSubscription.query.filter_by(user_id=user.user_id).first()
+        try:
+            subscription = UserSubscription.query.filter_by(user_id=user.user_id).first()
+            # current_app.logger.info(f"Fetched subscription for user {user.username}: {subscription}")
+        except Exception as e:
+            current_app.logger.error(f"Error fetching subscription for user {user.username}: {str(e)}")
+            subscription = None
         user_data = {
             'id': str(user.user_id),
             'username': user.username,
