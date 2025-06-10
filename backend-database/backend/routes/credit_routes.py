@@ -51,7 +51,7 @@ def get_all_plans():
     user_role = getattr(current_user, 'role', None)
     if user_role and user_role.lower() == 'student':
         # Only show student plans in the order list
-        order = ['student monthly', 'student semester', 'student annual']
+        order = ['student monthly', 'student semester', 'student annual', 'free', 'bronze', 'silver', 'gold', 'enterprise', 'platinum', 'bronze_annual', 'silver_annual', 'gold_annual', 'platinum_annual']
         plans = Plan.query.filter(func.lower(Plan.plan_name).in_(order)).all()
         def plan_sort_key(plan):
             name = plan.plan_name.lower()
@@ -100,7 +100,7 @@ def get_upgrade_plans():
     user_role = getattr(current_user, 'role', None)
     if user_role and user_role.lower() == 'student':
         # Only show student plans in the order list
-        order = ['student monthly', 'student semester', 'student annual']
+        order = ['student monthly', 'student semester', 'student annual', 'bronze', 'silver', 'gold', 'enterprise', 'platinum', 'bronze_annual', 'silver_annual', 'gold_annual', 'platinum_annual']
         plans = Plan.query.filter(func.lower(Plan.plan_name).in_(order)).all()
         def plan_sort_key(plan):
             name = plan.plan_name.lower()
