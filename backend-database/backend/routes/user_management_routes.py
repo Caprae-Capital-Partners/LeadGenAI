@@ -19,7 +19,6 @@ def user_management():
 
 @user_management_bp.route('/api/admin/users')
 @login_required
-@role_required('admin', 'developer')
 def get_users():
     """Get all users with their subscription information"""
     users = User.query.all()
@@ -47,7 +46,6 @@ def get_users():
 
 @user_management_bp.route('/api/admin/users/<user_id>/subscription', methods=['PUT'])
 @login_required
-@role_required('admin', 'developer')
 def update_subscription(user_id):
     """Update a user's subscription"""
     data = request.get_json()
@@ -75,7 +73,6 @@ def update_subscription(user_id):
 
 @user_management_bp.route('/api/admin/users/<user_id>/toggle-status', methods=['POST'])
 @login_required
-@role_required('admin', 'developer')
 def toggle_user_status(user_id):
     """Toggle a user's active status"""
     user = User.query.get_or_404(user_id)
