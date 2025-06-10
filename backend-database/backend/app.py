@@ -38,7 +38,6 @@ def create_app(config_class=config):
         "http://54.166.155.63:3000",
         "http://54.166.155.63",
         "https://app.saasquatchleads.com",
-        "https://sandbox-api.capraeleadseekers.site"
     ], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
        allow_headers=["Content-Type", "Authorization"],
        supports_credentials=True)
