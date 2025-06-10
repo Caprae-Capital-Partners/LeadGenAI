@@ -4,61 +4,56 @@ from models.user_model import User
 from models.user_subscription_model import UserSubscription
 from models.lead_model import db
 from functools import wraps
-from utils.decorators import role_required
 from datetime import datetime, timedelta
 
 user_management_bp = Blueprint('user_management', __name__)
 
+def super_admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin():
+            return jsonify({"error": "Unauthorized access"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 @user_management_bp.route('/admin/users')
 @login_required
-
+@super_admin_required
 def user_management():
     """Render the user management page"""
     return render_template('admin/user_management.html')
 
 @user_management_bp.route('/api/admin/users')
 @login_required
-@role_required('admin', 'developer')
+@super_admin_required
 def get_users():
     """Get all users with their subscription information"""
-    try:
-        users = User.query.all()
-        user_list = []
-        
-        for user in users:
-            try:
-                # Convert user_id to string for consistent comparison
-                user_id_str = str(user.user_id)
-                subscription = UserSubscription.query.filter_by(user_id=user_id_str).first()
-                
-                user_data = {
-                    'id': user_id_str,
-                    'username': user.username,
-                    'email': user.email,
-                    'is_active': user.is_active,
-                    'role': user.role,
-                    'created_at': user.created_at.isoformat() if user.created_at else None,
-                    'subscription': {
-                        'plan': subscription.plan_name if subscription else None,
-                        'status': 'active' if subscription and subscription.plan_expiration_timestamp and subscription.plan_expiration_timestamp > datetime.utcnow() else 'inactive',
-                        'credits': subscription.credits_remaining if subscription else 0,
-                        'expires_at': subscription.plan_expiration_timestamp.isoformat() if subscription and subscription.plan_expiration_timestamp else None
-                    } if subscription else None
-                }
-                user_list.append(user_data)
-            except Exception as e:
-                current_app.logger.error(f"Error processing user {user.user_id}: {str(e)}")
-                # Continue with next user even if one fails
-                continue
-        
-        return jsonify(user_list)
-    except Exception as e:
-        current_app.logger.error(f"Error in get_users: {str(e)}")
-        return jsonify({"error": "Error fetching users"}), 500
+    users = User.query.all()
+    user_list = []
+    
+    for user in users:
+        subscription = UserSubscription.query.filter_by(user_id=user.user_id).first()
+        user_data = {
+            'id': str(user.user_id),
+            'username': user.username,
+            'email': user.email,
+            'is_active': user.is_active,
+            'role': user.role,
+            'created_at': user.created_at.isoformat() if user.created_at else None,
+            'subscription': {
+                'plan': subscription.plan_name if subscription else None,
+                'status': 'active' if subscription and subscription.plan_expiration_timestamp and subscription.plan_expiration_timestamp > datetime.utcnow() else 'inactive',
+                'credits': subscription.credits_remaining if subscription else 0,
+                'expires_at': subscription.plan_expiration_timestamp.isoformat() if subscription and subscription.plan_expiration_timestamp else None
+            } if subscription else None
+        }
+        user_list.append(user_data)
+    
+    return jsonify(user_list)
 
 @user_management_bp.route('/api/admin/users/<user_id>/subscription', methods=['PUT'])
 @login_required
+@super_admin_required
 def update_subscription(user_id):
     """Update a user's subscription"""
     data = request.get_json()
@@ -86,6 +81,7 @@ def update_subscription(user_id):
 
 @user_management_bp.route('/api/admin/users/<user_id>/toggle-status', methods=['POST'])
 @login_required
+@super_admin_required
 def toggle_user_status(user_id):
     """Toggle a user's active status"""
     user = User.query.get_or_404(user_id)
