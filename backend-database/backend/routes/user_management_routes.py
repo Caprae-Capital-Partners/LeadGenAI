@@ -24,7 +24,7 @@ def user_management():
     current_app.logger.info(f"Rendering user management page for user: {current_user.username}")
     return render_template('admin/user_management.html')
 
-@user_management_bp.route('/api/admin/users')
+@user_management_bp.route('/api/admin/users', methods=['GET'])
 @login_required
 @super_admin_required
 def get_users():
