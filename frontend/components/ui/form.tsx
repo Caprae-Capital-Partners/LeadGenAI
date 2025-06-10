@@ -62,7 +62,7 @@ function CustomWaitlistForm() {
       ) : (
         <>
           <div className="mb-4">
-            <Label htmlFor="fullname" className="text-gray-200 mb-1 block">
+            <Label htmlFor="fullname" className="text-gray-200 mb-1 block font-bold">
               Full Name
             </Label>
             <Input
@@ -77,7 +77,7 @@ function CustomWaitlistForm() {
             />
           </div>
           <div className="mb-4">
-            <Label htmlFor="email" className="text-gray-200 mb-1 block">
+            <Label htmlFor="email" className="text-gray-200 mb-1 block font-bold">
               Email <span className="text-yellow-400">*</span>
             </Label>
             <Input
