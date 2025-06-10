@@ -281,7 +281,8 @@ export default function AuthPage() {
         }
 
         setTimeout(() => {
-          router.push(isSignup ? "/subscription" : (window.location.hostname === "localhost" ? "/" : "/"));
+          const base = window.location.origin;
+          router.push(isSignup ? `${base}/subscription` : `${base}/`);
         }, 100);
       }
     } catch (err: any) {
