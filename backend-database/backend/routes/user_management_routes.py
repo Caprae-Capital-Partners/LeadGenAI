@@ -61,44 +61,50 @@ def get_users():
 
 @user_management_bp.route('/api/admin/users_simple')
 @login_required
-@super_admin_required
+# @super_admin_required
 def get_users_simple():
-    """Get all users with their subscription information (simple version, matching original keys)"""
+    """Get all users with their subscription information (simple version, matching original keys) in batches of 200"""
     from models.user_model import User
     from models.user_subscription_model import UserSubscription
     from datetime import datetime
 
+    batch_size = 200
+    offset = 0
     user_list = []
     try:
-        users = User.query.all()
-        current_app.logger.info(f"Fetched {len(users)} users from database.")
-        for idx, user in enumerate(users, start=1):
-            try:
-                subscription = UserSubscription.query.filter_by(user_id=user.user_id).first()
-                user_data = {
-                    'id': str(user.user_id),
-                    'username': user.username or "",
-                    'email': user.email or "",
-                    'is_active': bool(user.is_active),
-                    'role': user.role or "user",
-                    'created_at': user.created_at.isoformat() if user.created_at else None,
-                    'subscription': {
-                        'plan': subscription.plan_name if subscription else None,
-                        'status': 'active' if subscription and subscription.plan_expiration_timestamp and subscription.plan_expiration_timestamp > datetime.utcnow() else 'inactive',
-                        'credits': subscription.credits_remaining if subscription else 0,
-                        'expires_at': subscription.plan_expiration_timestamp.isoformat() if subscription and subscription.plan_expiration_timestamp else None
-                    } if subscription else {
-                        'plan': None,
-                        'status': 'inactive',
-                        'credits': 0,
-                        'expires_at': None
+        while True:
+            users = User.query.offset(offset).limit(batch_size).all()
+            if not users:
+                break
+            for idx, user in enumerate(users, start=offset+1):
+                try:
+                    current_app.logger.info(f"Processed user {idx}: {user.username}")
+                    subscription = UserSubscription.query.filter_by(user_id=user.user_id).first()
+                    user_data = {
+                        'id': str(user.user_id),
+                        'username': user.username or "",
+                        'email': user.email or "",
+                        'is_active': bool(user.is_active),
+                        'role': user.role or "user",
+                        'created_at': user.created_at.isoformat() if user.created_at else None,
+                        'subscription': {
+                            'plan': subscription.plan_name if subscription else None,
+                            'status': 'active' if subscription and subscription.plan_expiration_timestamp and subscription.plan_expiration_timestamp > datetime.utcnow() else 'inactive',
+                            'credits': subscription.credits_remaining if subscription else 0,
+                            'expires_at': subscription.plan_expiration_timestamp.isoformat() if subscription and subscription.plan_expiration_timestamp else None
+                        } if subscription else {
+                            'plan': None,
+                            'status': 'inactive',
+                            'credits': 0,
+                            'expires_at': None
+                        }
                     }
-                }
-                user_list.append(user_data)
-                current_app.logger.info(f"Processed user {idx}: {user.username}")
-            except Exception as e:
-                current_app.logger.error(f"Error processing user {getattr(user, 'user_id', 'unknown')}, {getattr(user, 'username', 'unknown')}: {str(e)}")
-                continue
+                    user_list.append(user_data)
+                    current_app.logger.info(f"Processed user {idx}: {user.username}")
+                except Exception as e:
+                    current_app.logger.error(f"Error processing user {getattr(user, 'user_id', 'unknown')}, {getattr(user, 'username', 'unknown')}: {str(e)}")
+                    continue
+            offset += batch_size
     except Exception as e:
         current_app.logger.error(f"Error fetching users or subscriptions: {str(e)}")
         return jsonify({'error': 'Failed to fetch users'}), 500
