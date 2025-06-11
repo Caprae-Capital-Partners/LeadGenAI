@@ -67,10 +67,7 @@ body, .container-fluid, .main-content {
 .card, .modal-content, .table {
     transition: box-shadow 0.2s, transform 0.2s;
 }
-.card:hover, .modal-content:hover, .table:hover {
-    box-shadow: 0 8px 32px rgba(37,99,235,0.10);
-    transform: translateY(-2px) scale(1.01);
-}
+
 .btn, .form-control, .form-select {
     border-radius: 10px !important;
 }
@@ -222,7 +219,7 @@ table.dataTable tbody tr:hover {
 }
 
 /* Table Spacing */
-.table-responsive {
+.table {
     padding: 0.5rem 0.5rem 1.5rem 0.5rem;
 }
 #usersTable {
@@ -360,7 +357,7 @@ table.dataTable tbody td {
             </div>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class="table">
                 <table class="table table-dark mb-0" id="usersTable">
                     <thead class="bg-dark text-light">
                         <tr>
