@@ -13,11 +13,11 @@ import {
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import axios from "axios";
-
-
+const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2;
 export function Header() {
   const [userEmail, setUserEmail] = useState("");
+  
   useEffect(() => {
     if (typeof window !== "undefined") {
       const user = JSON.parse(sessionStorage.getItem("user") || "{}");
@@ -123,16 +123,14 @@ export function Header() {
 
                   // 2) Perform logout
                   try {
-                    const res = await fetch(
-                      "https://data.capraeleadseekers.site/api/auth/logout",
-                      {
-                        method: "POST",
-                        credentials: "include",
-                      }
-                    );
+                    const res = await fetch(`${DATABASE_URL}/auth/logout`, {
+                      method: "POST",
+                      credentials: "include",
+                    });
 
                     if (res.ok) {
                       sessionStorage.clear(); // ✅ Clear client-side session
+                      localStorage.clear()
                       window.location.href = "/auth"; // ⬅️ Redirect to login
                     } else {
                       const data = await res.json();

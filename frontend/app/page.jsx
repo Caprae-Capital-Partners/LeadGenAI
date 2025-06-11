@@ -64,21 +64,24 @@ import {
 import axios from "axios";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Notif from "@/components/ui/notif";
+import Popup from "@/components/ui/popup";
+import { SortDropdown } from "@/components/ui/sort-dropdown";
 
 import { redirect } from "next/navigation";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
+const DATABASE_URL_NOAPI = DATABASE_URL?.replace(/\/api\/?$/, "");
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2;
 // export default function Home() {
 //   redirect('/auth');
 // }
 export default function Home() {
-  useEmailVerificationGuard();
+  const { showPopup, handleClose } = useEmailVerificationGuard();
   const user =
     typeof window !== "undefined"
       ? JSON.parse(sessionStorage.getItem("user") || "{}")
       : {};
   const userTier = user?.tier || "free";
-
+  const [searchTerm, setSearchTerm] = useState("");
   const [employeesFilter, setEmployeesFilter] = useState("");
   const [revenueFilter, setRevenueFilter] = useState("");
   const [businessTypeFilter, setBusinessTypeFilter] = useState("");
@@ -120,7 +123,7 @@ export default function Home() {
 
       // 1) Always call POST first
       const postResponse = await axios.post(
-        `https://data.capraeleadseekers.site/leads/${leadId}/edit`,
+        `${DATABASE_URL_NOAPI}/leads/${leadId}/edit`,
         normalizedLead,
         { withCredentials: true }
       );
@@ -139,7 +142,7 @@ export default function Home() {
       };
 
       await axios.put(
-        `https://data.capraeleadseekers.site/api/leads/drafts/${actualDraftId}`,
+        `${DATABASE_URL}/leads/drafts/${actualDraftId}`,
         payload,
         { withCredentials: true }
       );
@@ -160,7 +163,6 @@ export default function Home() {
       showNotification("Failed to save row.", "error");
     }
   };
-  
 
   const handleDiscard = (index) => {
     const resetRow = scrapingHistory[index];
@@ -300,22 +302,12 @@ export default function Home() {
   };
 
   const handleExportCSVWithCredits = async () => {
-    // 1) Read the user’s role from session storage
-    const stored = sessionStorage.getItem("user");
-    const currentUser = stored ? JSON.parse(stored) : {};
-    const role = currentUser.role || "";
-
-    // 2) If they’re a developer, bypass all checks and export immediately
-    if (role === "developer") {
-      handleExportCSV(currentItems, "enriched_results.csv");
-      return;
-    }
-
-    // 3) Otherwise, do the subscription/credits validation
     try {
       const { data: subscriptionInfo } = await axios.get(
         `${DATABASE_URL}/user/subscription_info`,
-        { withCredentials: true }
+        {
+          withCredentials: true,
+        }
       );
 
       const planName =
@@ -349,21 +341,8 @@ export default function Home() {
       );
     }
   };
-  
 
   const handleToggleFiltersWithCheck = async () => {
-    // 1) Read the user’s role
-    const stored = sessionStorage.getItem("user");
-    const currentUser = stored ? JSON.parse(stored) : {};
-    const role = currentUser.role || "";
-
-    // 2) If developer, bypass the subscription check
-    if (role === "developer") {
-      setShowFilters((prev) => !prev);
-      return;
-    }
-
-    // 3) Otherwise do the existing plan‐check logic
     try {
       const { data: subscriptionInfo } = await axios.get(
         `${DATABASE_URL}/user/subscription_info`,
@@ -387,7 +366,6 @@ export default function Home() {
       );
     }
   };
-  
 
   const [scrapingHistory, setScrapingHistory] = useState([]);
 
@@ -628,77 +606,142 @@ export default function Home() {
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
+  // At the top of Home(), alongside your other handlers:
+  const handleSortBy = (sortBy, direction) => {
+    // Count how many non‐empty fields each row has:
+    const getFilledCount = (row) =>
+      Object.entries(row).filter(([key, value]) => {
+        if (
+          ["id", "lead_id", "draft_id", "sourceType"].includes(key) ||
+          value === null ||
+          value === undefined ||
+          value === "" ||
+          value === "N/A"
+        ) {
+          return false;
+        }
+        return true;
+      }).length;
+
+    // Determine the base array to sort:
+    const base = [...scrapingHistory];
+
+    // Sort by completeness only if sortBy === "filled", otherwise you can
+    // extend this switch for revenue, employees, etc.:
+    const sorted = base.sort((a, b) => {
+      if (sortBy === "filled") {
+        const aCount = getFilledCount(a);
+        const bCount = getFilledCount(b);
+        return direction === "most" ? bCount - aCount : aCount - bCount;
+      }
+      // Example: alphabetical company
+      if (sortBy === "company") {
+        return direction === "most"
+          ? b.company.localeCompare(a.company)
+          : a.company.localeCompare(b.company);
+      }
+      // ...add more sortBy cases here...
+      return 0;
+    });
+
+    // Push the new order into state:
+    setScrapingHistory(sorted);
+    setEditedRows(sorted); // keep the “edited” mirror in sync
+    setCurrentPage(1); // reset pagination to page 1
+  };
+
   useEffect(() => {
     const verifyAndFetchLeads = async () => {
       try {
-        const authRes = await fetch(
-          "https://data.capraeleadseekers.site/api/ping-auth",
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
+        setIsCheckingAuth(true);
+
+        // 1. First verify authentication
+        const authRes = await fetch(`${DATABASE_URL}/ping-auth`, {
+          method: "GET",
+          credentials: "include",
+        });
 
         if (!authRes.ok) {
+          console.warn("⚠️ Auth check failed, redirecting to login");
           router.push("/auth");
           return;
         }
 
-        console.log("✅ Logged in");
+        console.log("✅ Authentication verified");
 
-        const draftsRes = await fetch(
-          "https://data.capraeleadseekers.site/api/leads/drafts",
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
+        // 2. Fetch drafts data
+        const draftsRes = await fetch(`${DATABASE_URL}/leads/drafts`, {
+          // Changed endpoint
+          method: "GET",
+          credentials: "include",
+        });
 
+        // Handle non-OK responses
         if (!draftsRes.ok) {
-          console.warn("⚠️ Could not fetch drafts, status:", draftsRes.status);
+          const errorText = await draftsRes.text();
+          console.warn("⚠️ Drafts fetch failed:", {
+            status: draftsRes.status,
+            statusText: draftsRes.statusText,
+            response: errorText,
+          });
           return;
         }
 
-        const data = await draftsRes.json();
+        // Safely parse JSON
+        let data = [];
+        try {
+          const responseText = await draftsRes.text();
+          data = responseText ? JSON.parse(responseText) : [];
+        } catch (parseError) {
+          console.error("🚨 Failed to parse drafts response:", parseError);
+          return;
+        }
 
-        const parsed = (data || []).map((entry) => ({
-          id: entry.lead_id || entry.id,
-          lead_id: entry.lead_id || entry.id,
-          draft_id: entry.draft_id,
-          company: entry.draft_data?.company || "N/A",
-          website: entry.draft_data?.website || "",
-          industry: entry.draft_data?.industry || "",
-          productCategory: entry.draft_data?.product_category || "",
-          businessType: entry.draft_data?.business_type || "",
-          employees: entry.draft_data?.employees || "",
-          revenue: entry.draft_data?.revenue || "",
-          yearFounded: entry.draft_data?.year_founded?.toString() || "",
-          bbbRating: entry.draft_data?.bbb_rating || "",
-          street: entry.draft_data?.street || "",
-          city: entry.draft_data?.city || "",
-          state: entry.draft_data?.state || "",
-          companyPhone: entry.draft_data?.company_phone || "",
-          companyLinkedin: entry.draft_data?.company_linkedin || "",
-          ownerFirstName: entry.draft_data?.owner_first_name || "",
-          ownerLastName: entry.draft_data?.owner_last_name || "",
-          ownerTitle: entry.draft_data?.owner_title || "",
-          ownerLinkedin: entry.draft_data?.owner_linkedin || "",
-          ownerPhoneNumber: entry.draft_data?.owner_phone_number || "",
-          ownerEmail: entry.draft_data?.owner_email || "",
-          source: entry.draft_data?.source || "",
-          created: entry.created_at
-            ? new Date(entry.created_at).toLocaleString()
-            : "N/A",
-          updated: entry.updated_at
-            ? new Date(entry.updated_at).toLocaleString()
-            : "N/A",
-          sourceType: "database",
-        }));
+        // Transform data with proper error handling
+        const parsed = (Array.isArray(data) ? data : []).map((entry) => {
+          const draftData = entry.draft_data || {};
+          return {
+            id: entry.lead_id || entry.id || "",
+            lead_id: entry.lead_id || entry.id || "",
+            draft_id: entry.draft_id || "",
+            company: draftData.company || "N/A",
+            website: draftData.website || "",
+            industry: draftData.industry || "",
+            productCategory: draftData.product_category || "",
+            businessType: draftData.business_type || "",
+            employees: draftData.employees || "",
+            revenue: draftData.revenue || "",
+            yearFounded: draftData.year_founded?.toString() || "",
+            bbbRating: draftData.bbb_rating || "",
+            street: draftData.street || "",
+            city: draftData.city || "",
+            state: draftData.state || "",
+            companyPhone: draftData.company_phone || "",
+            companyLinkedin: draftData.company_linkedin || "",
+            ownerFirstName: draftData.owner_first_name || "",
+            ownerLastName: draftData.owner_last_name || "",
+            ownerTitle: draftData.owner_title || "",
+            ownerLinkedin: draftData.owner_linkedin || "",
+            ownerPhoneNumber: draftData.owner_phone_number || "",
+            ownerEmail: draftData.owner_email || "",
+            source: draftData.source || "",
+            created: entry.created_at
+              ? new Date(entry.created_at).toLocaleString()
+              : "N/A",
+            updated: entry.updated_at
+              ? new Date(entry.updated_at).toLocaleString()
+              : "N/A",
+            sourceType: "database",
+          };
+        });
 
         setScrapingHistory(parsed);
         setEditedRows(parsed);
       } catch (error) {
-        console.error("🚨 Error verifying auth or fetching drafts:", error);
+        console.error("🚨 Error in verifyAndFetchLeads:", {
+          error: error.message,
+          stack: error.stack,
+        });
         router.push("/auth");
       } finally {
         setIsCheckingAuth(false);
@@ -706,7 +749,7 @@ export default function Home() {
     };
 
     verifyAndFetchLeads();
-  }, []);
+  }, [router]); // Added router to dependency array
 
   useEffect(() => {
     let isCancelled = false;
@@ -714,9 +757,10 @@ export default function Home() {
     const ensureGrowjoIsRunning = async () => {
       try {
         // 1) Check whether GrowjoScraper is already initialized on the backend
-        const statusRes = await axios.get(`${BACKEND_URL}/is-growjo-scraper`, {
-          
-        });
+        const statusRes = await axios.get(
+          `${BACKEND_URL}/is-growjo-scraper`,
+          {}
+        );
         if (isCancelled) return;
 
         const alreadyInitialized = statusRes.data?.initialized;
@@ -730,7 +774,6 @@ export default function Home() {
           `${BACKEND_URL}/init-growjo-scraper`,
           {}
         );
-        
         console.log("✅ GrowjoScraper initialized:", initRes.data);
       } catch (err) {
         console.error("❌ Error checking or initializing GrowjoScraper:", err);
@@ -744,8 +787,6 @@ export default function Home() {
       isCancelled = true;
     };
   }, []);
-  
-
 
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
 
@@ -780,10 +821,57 @@ export default function Home() {
     </div>
   ) : (
     <>
+      {/* Email-not-verified popup */}
+      <Popup show={showPopup} onClose={handleClose}>
+        <div className="text-center flex flex-col items-center justify-center">
+          <h2 className="text-lg font-semibold">Account Not Verified</h2>
+          <p className="mt-2">
+            Your account hasn’t been verified yet. Please check your email for
+            the verification link.
+          </p>
+
+          {/* Resend Verification Button */}
+          <button
+            className="mt-4 px-4 py-2 rounded text-white"
+            style={{ backgroundColor: "#4a90e2" }}
+            onClick={async () => {
+              try {
+                await fetch(`${DATABASE_URL}/auth/send-verification`, {
+                  method: "POST",
+                  credentials: "include",
+                });
+                showNotification(
+                  "Verification email resent. Please check your inbox.",
+                  "info"
+                );
+              } catch (err) {
+                console.error("Failed to resend verification email:", err);
+                showNotification(
+                  "Failed to resend verification email.",
+                  "error"
+                );
+              }
+            }}
+          >
+            Resend Verification Link
+          </button>
+
+          {/* OK Button */}
+          <button
+            className="mt-2 px-4 py-2 rounded text-white"
+            style={{ backgroundColor: "#7bc3a4" }}
+            onClick={handleClose}
+          >
+            OK
+          </button>
+        </div>
+      </Popup>
+
+      {/* Main app content */}
       <Header />
       <main className="px-20 py-16 space-y-10">
         <div className="text-2xl font-semibold text-foreground text-white">
-          Hi, {user.username || "there"} 👋 Are you ready to scrape?
+          Hi, {user.username || "there"} Are you ready to scrape?
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -828,7 +916,9 @@ export default function Home() {
                 : "Expiration unknown",
               action: {
                 label: "Upgrade",
-                link: "/subscription",
+                onClick: () => {
+                  router.push("/subscription");
+                },
               },
             },
           ].map((stat, index) => (
@@ -848,14 +938,13 @@ export default function Home() {
 
                 {stat.label === "Subscription" && stat.action && (
                   <div className="flex-none">
-                    <a href={stat.action.link}>
-                      <Button
-                        size="sm"
-                        className="text-sm px-4 py-1.5 font-semibold"
-                      >
-                        {stat.action.label}
-                      </Button>
-                    </a>
+                    <Button
+                      size="sm"
+                      className="text-sm px-4 py-1.5 font-semibold"
+                      onClick={stat.action.onClick}
+                    >
+                      {stat.action.label}
+                    </Button>
                   </div>
                 )}
               </CardHeader>
@@ -932,32 +1021,47 @@ export default function Home() {
 
         {/* History Table */}
         <div className="mt-10">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-2xl font-semibold text-foreground text-white">
-              Scraping History
-            </div>
-            {/* <button
-              onClick={null} // implement this function
-              className="bg-[#fad945] text-black font-medium px-6 py-2 rounded hover:bg-[#fff1b2] transition"
-            >
-              Export CSV
-            </button> */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleToggleFiltersWithCheck()}
-                className="bg-[#fad945] text-black font-medium px-6 py-2 rounded hover:bg-[#fff1b2] transition"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                {showFilters ? "Hide Filters" : "Show Filters"}
-              </Button>
-              <button
-                onClick={handleExportCSVWithCredits}
-                className="bg-[#fad945] text-black font-medium px-6 py-2 rounded hover:bg-[#fff1b2] transition"
-              >
-                Export CSV
-              </button>
+          {/* 1. Keep the heading here */}
+          <h2 className="text-2xl font-semibold text-foreground mb-2">
+            Scraping History
+          </h2>
+
+          {/* 2. Table container */}
+          <div className="w-full overflow-x-auto rounded-md border">
+            {/* 3. Toolbar INSIDE the table wrapper, above the table */}
+            <div className="flex flex-wrap items-center justify-between p-4 border-b bg-surface">
+              {/* Search */}
+              <div className="flex-grow max-w-xs">
+                <Input
+                  placeholder="Search history…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <SortDropdown onApply={handleSortBy} />
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowFilters((f) => !f)}
+                  title={showFilters ? "Hide Filters" : "Show Filters"}
+                >
+                  <Filter className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleExportCSVWithCredits}
+                  title="Export CSV"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
           {showFilters && (
@@ -1028,103 +1132,89 @@ export default function Home() {
               </Button>
             </div>
           )}
-          <div className="w-full overflow-x-auto rounded-md border">
-            <Table className="min-w-full text-sm">
-              <thead className="bg-[#7ac2a4] text-black text-opacity-100">
+          {/* Scrollable container with a max height */}
+          <div className="w-full overflow-x-auto relative border rounded-md">
+            <Table className="min-w-full text-sm ">
+              <TableHeader>
                 <TableRow>
-                  <TableHead className="px-6 py-2">
-                    <TableHead className="px-6 py-2">
-                      <Checkbox
-                        checked={selectAll}
-                        onCheckedChange={handleSelectAll}
-                      />
-                    </TableHead>
+                  {/* Sticky Checkbox Column */}
+                  <TableHead className="sticky top-0 left-0 z-40 bg-[#1e263a] px-6 py-3 w-12 text-base font-bold text-white">
+                    <Checkbox
+                      checked={selectAll}
+                      onCheckedChange={handleSelectAll}
+                    />
                   </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
+
+                  {/* Sticky Company Column */}
+                  <TableHead className="sticky top-0 left-[3rem] z-30 bg-[#1e263a] text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">
                     Company
                   </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Website
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Industry
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Product/Service Category
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Business Type (B2B, B2B2C)
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Employees Count
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Revenue
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Year Founded
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    BBB Rating
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Street
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    City
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    State
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Company Phone
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Company LinkedIn
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's First Name
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's Last Name
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's Title
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's LinkedIn
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's Phone Number
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Owner's Email
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Source
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Created Date
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Updated
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-black text-opacity-100 px-6 py-2">
-                    Actions
-                  </TableHead>
+
+                  {/* Remaining Headers */}
+                  {[
+                    "Website",
+                    "Industry",
+                    "Product/Service Category",
+                    "Business Type (B2B, B2B2C)",
+                    "Employees Count",
+                    "Revenue",
+                    "Year Founded",
+                    "BBB Rating",
+                    "Street",
+                    "City",
+                    "State",
+                    "Company Phone",
+                    "Company LinkedIn",
+                    "Owner's First Name",
+                    "Owner's Last Name",
+                    "Owner's Title",
+                    "Owner's LinkedIn",
+                    "Owner's Phone Number",
+                    "Owner's Email",
+                    "Source",
+                    "Created Date",
+                    "Updated",
+                    "Actions",
+                  ].map((label, i) => (
+                    <TableHead
+                      key={i}
+                      className="sticky top-0 z-20 bg-[#1e263a] text-base font-bold text-white px-6 py-3 whitespace-nowrap"
+                    >
+                      {label}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              </thead>
+              </TableHeader>
+
               <tbody>
                 {currentItems.map((row, i) => (
                   <TableRow key={i} className="border-t">
-                    <TableCell className="px-6 py-2">
+                    {/* Sticky Checkbox Column */}
+                    <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12  ">
                       <Checkbox
                         checked={selectedCompanies.includes(row.id)}
                         onCheckedChange={() => handleSelectCompany(row.id)}
                       />
                     </TableCell>
+
+                    {/* Sticky Company Column */}
+                    <TableCell className="sticky left-[3rem] z-10 bg-inherit px-6 py-2 max-w-[240px] align-top  ">
+                      {editingRowIndex === i ? (
+                        <input
+                          type="text"
+                          className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
+                          value={editedRows[i]?.company ?? ""}
+                          onChange={(e) =>
+                            handleFieldChange(i, "company", e.target.value)
+                          }
+                        />
+                      ) : (
+                        <ExpandableCell text={row.company || "N/A"} />
+                      )}
+                    </TableCell>
+
+                    {/* Remaining Cells */}
                     {[
-                      "company",
                       "website",
                       "industry",
                       "productCategory",
@@ -1199,7 +1289,8 @@ export default function Home() {
                         </TableCell>
                       );
                     })}
-                    {/* // Edit/Save/Discard action buttons: */}
+
+                    {/* Action Column */}
                     <TableCell className="px-6 py-2">
                       {editingRowIndex === i ? (
                         <>
@@ -1229,102 +1320,100 @@ export default function Home() {
                 ))}
               </tbody>
             </Table>
-            <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
-              <div className="text-sm text-muted-foreground">
-                Showing {indexOfFirstItem + 1}–
-                {Math.min(indexOfLastItem, scrapingHistory.length)} of{" "}
-                {scrapingHistory.length} results
-              </div>
+          </div>
+          <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
+            <div className="text-sm text-muted-foreground">
+              Showing {indexOfFirstItem + 1}–
+              {Math.min(indexOfLastItem, scrapingHistory.length)} of{" "}
+              {scrapingHistory.length} results
+            </div>
 
-              <div className="flex items-center gap-3 px-3 py-2">
-                <Select
-                  value={itemsPerPage.toString()}
-                  onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[120px] bg-[#7ac2a4] text-black font-medium rounded-md hover:bg-[#6bb293]">
-                    <SelectValue placeholder="Items per page" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="25">25 per page</SelectItem>
-                    <SelectItem value="50">50 per page</SelectItem>
-                    <SelectItem value="100">100 per page</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="flex items-center gap-3 px-3 py-2">
+              <Select
+                value={itemsPerPage.toString()}
+                onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[120px]  text-black font-medium rounded-md hover:bg-[#6bb293]">
+                  <SelectValue placeholder="Items per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                  <SelectItem value="100">100 per page</SelectItem>
+                </SelectContent>
+              </Select>
 
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() =>
-                          setCurrentPage((p) => Math.max(p - 1, 1))
-                        }
-                        aria-disabled={currentPage === 1}
-                        className={
-                          currentPage === 1
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
-                      />
-                    </PaginationItem>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                      aria-disabled={currentPage === 1}
+                      className={
+                        currentPage === 1
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
 
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((page) => {
-                        // show all if totalPages <= 7
-                        if (totalPages <= 7) return true;
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((page) => {
+                      // show all if totalPages <= 7
+                      if (totalPages <= 7) return true;
 
-                        // show first, last, current, and neighbors
-                        return (
-                          page === 1 ||
-                          page === totalPages ||
-                          Math.abs(page - currentPage) <= 1
-                        );
-                      })
-                      .reduce((acc, page, i, arr) => {
-                        if (i > 0 && page - arr[i - 1] > 1) {
-                          acc.push("ellipsis");
-                        }
-                        acc.push(page);
-                        return acc;
-                      }, [])
-                      .map((page, idx) => (
-                        <PaginationItem key={idx}>
-                          {page === "ellipsis" ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              isActive={page === currentPage}
-                              onClick={() => setCurrentPage(page)}
-                              className={`px-3 py-1 rounded-md text-sm font-medium ${
-                                page === currentPage
-                                  ? "bg-[#7ac2a4] text-black" // active teal background
-                                  : "text-black hover:bg-muted"
-                              }`}
-                            >
-                              {page}
-                            </PaginationLink>
-                          )}
-                        </PaginationItem>
-                      ))}
+                      // show first, last, current, and neighbors
+                      return (
+                        page === 1 ||
+                        page === totalPages ||
+                        Math.abs(page - currentPage) <= 1
+                      );
+                    })
+                    .reduce((acc, page, i, arr) => {
+                      if (i > 0 && page - arr[i - 1] > 1) {
+                        acc.push("ellipsis");
+                      }
+                      acc.push(page);
+                      return acc;
+                    }, [])
+                    .map((page, idx) => (
+                      <PaginationItem key={idx}>
+                        {page === "ellipsis" ? (
+                          <PaginationEllipsis />
+                        ) : (
+                          <PaginationLink
+                            isActive={page === currentPage}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-1 rounded-md text-sm font-medium ${
+                              page === currentPage
+                                ? " text-black" // active teal background
+                                : "text-black hover:bg-muted"
+                            }`}
+                          >
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
 
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() =>
-                          setCurrentPage((p) => Math.min(p + 1, totalPages))
-                        }
-                        aria-disabled={currentPage === totalPages}
-                        className={
-                          currentPage === totalPages
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(p + 1, totalPages))
+                      }
+                      aria-disabled={currentPage === totalPages}
+                      className={
+                        currentPage === totalPages
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           </div>
         </div>
