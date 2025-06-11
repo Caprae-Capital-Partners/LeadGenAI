@@ -30,6 +30,7 @@ def get_users():
     """Get all users with their subscription information"""
     current_app.logger.info(f"Fetching all users and their subscription info by admin: {current_user.username}")
     users = User.query.all()
+    users = users[:30]
     user_list = []
     for idx, user in enumerate(users, start=1):
         try:
@@ -52,6 +53,56 @@ def get_users():
         except Exception as e:
             current_app.logger.error(f"Error processing user {user.user_id}, {user.username} , {getattr(user, 'username', 'unknown')}: {str(e)}")
             continue
+    current_app.logger.info(f"Total users processed: {len(user_list)}")
+    return jsonify({
+        'count': len(user_list),
+        'users': user_list
+    })
+
+@user_management_bp.route('/api/admin/users_simple')
+@login_required
+@super_admin_required
+def get_users_simple():
+    """Get all users with their subscription information (simple version, matching original keys)"""
+    from models.user_model import User
+    from models.user_subscription_model import UserSubscription
+    from datetime import datetime
+
+    user_list = []
+    try:
+        users = User.query.all()
+        current_app.logger.info(f"Fetched {len(users)} users from database.")
+        for idx, user in enumerate(users, start=1):
+            try:
+                subscription = UserSubscription.query.filter_by(user_id=user.user_id).first()
+                user_data = {
+                    'id': str(user.user_id),
+                    'username': user.username or "",
+                    'email': user.email or "",
+                    'is_active': bool(user.is_active),
+                    'role': user.role or "user",
+                    'created_at': user.created_at.isoformat() if user.created_at else None,
+                    'subscription': {
+                        'plan': subscription.plan_name if subscription else None,
+                        'status': 'active' if subscription and subscription.plan_expiration_timestamp and subscription.plan_expiration_timestamp > datetime.utcnow() else 'inactive',
+                        'credits': subscription.credits_remaining if subscription else 0,
+                        'expires_at': subscription.plan_expiration_timestamp.isoformat() if subscription and subscription.plan_expiration_timestamp else None
+                    } if subscription else {
+                        'plan': None,
+                        'status': 'inactive',
+                        'credits': 0,
+                        'expires_at': None
+                    }
+                }
+                user_list.append(user_data)
+                current_app.logger.info(f"Processed user {idx}: {user.username}")
+            except Exception as e:
+                current_app.logger.error(f"Error processing user {getattr(user, 'user_id', 'unknown')}, {getattr(user, 'username', 'unknown')}: {str(e)}")
+                continue
+    except Exception as e:
+        current_app.logger.error(f"Error fetching users or subscriptions: {str(e)}")
+        return jsonify({'error': 'Failed to fetch users'}), 500
+
     current_app.logger.info(f"Total users processed: {len(user_list)}")
     return jsonify({
         'count': len(user_list),
