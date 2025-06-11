@@ -47,7 +47,7 @@ export default function EnhancementPage() {
     return (
         <>
             {/* Email-not-verified popup */}
-            <Popup show={showPopup} onClose={handleClose}>
+            {/* <Popup show={showPopup} onClose={handleClose}>
                 <h2 className="text-lg font-semibold">Account Not Verified</h2>
                 <p className="mt-2">
                     Your account hasn’t been verified yet. Please check your email for
@@ -59,7 +59,7 @@ export default function EnhancementPage() {
                 >
                     OK
                 </button>
-            </Popup>
+            </Popup> */}
 
             {/* Main app content */}
             <Header />
