@@ -191,8 +191,15 @@ class SubscriptionController:
                     current_app.logger.info("[Webhook] No payment_intent or subscription found in session; skipping payment method logging.")
 
                 # Check if this is an outreach service payment
-                
-                if session.get('metadata') and session['metadata'].get('is_pause_subscription') == 'true':
+                if session.get('metadata') and session['metadata'].get('service_type') == 'phone_call_outreach':
+                    current_app.logger.info(f"-------------[Webhook] Processing outreach payment for user_id: {user_id} DOING NOTHING")
+                    # from controllers.outreach_controller import OutreachController
+                    # if OutreachController.handle_outreach_payment_success(session):
+                    #     current_app.logger.info(f"[Webhook] Successfully processed outreach payment for user {user_id}")
+                    # else:
+                    #     current_app.logger.error(f"[Webhook] Failed to process outreach payment for user {user_id}")
+                # Check if this is a pause subscription payment
+                elif session.get('metadata') and session['metadata'].get('is_pause_subscription') == 'true':
                     current_app.logger.info(f"[Webhook] Processing pause subscription payment for user_id: {user_id}")
                     if SubscriptionController.handle_pause_subscription_success(session['metadata'], user_id):
                         current_app.logger.info(f"[Webhook] Successfully processed pause subscription for user {user_id}")
@@ -493,8 +500,7 @@ class SubscriptionController:
             'is_scheduled_for_cancellation': is_scheduled_for_cancellation,
             'is_paused': getattr(user_sub, 'is_paused', False),
             'pause_end_date': user_sub.pause_end_date.isoformat() if getattr(user_sub, 'pause_end_date', None) else None,
-            'original_plan_name': getattr(user_sub, 'original_plan_name', None),
-            'can_be_reactivated': user_sub.can_be_reactivated() if hasattr(user_sub, 'can_be_reactivated') else is_scheduled_for_cancellation and not getattr(user_sub, 'is_canceled', False)
+            'original_plan_name': getattr(user_sub, 'original_plan_name', None)
         }
         plan_data = None
         if plan:
@@ -977,98 +983,3 @@ class SubscriptionController:
         except Exception as e:
             current_app.logger.error(f"[Pause] Error checking expired pause subscriptions: {str(e)}")
             db.session.rollback()
-
-    @staticmethod
-    def reactivate_subscription(user):
-        """
-        Reactivate a subscription that was scheduled for cancellation
-        This only works for subscriptions that have cancel_at_period_end=true
-        """
-        try:
-            current_app.logger.info(f"reactivate_subscription called for user {user.user_id}")
-            stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
-
-            # Get user subscription info
-            from models.user_subscription_model import UserSubscription
-            from models.plan_model import Plan
-
-            user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
-            if not user_sub:
-                current_app.logger.info("No user_sub found for reactivation.")
-                return {'error': 'No subscription found'}, 404
-
-            # Check if subscription is scheduled for cancellation
-            is_scheduled_for_cancellation = (user_sub.payment_frequency and
-                                           '_scheduled_cancel' in user_sub.payment_frequency)
-
-            if not is_scheduled_for_cancellation:
-                current_app.logger.info(f"User {user.user_id} subscription is not scheduled for cancellation")
-                return {'error': 'Subscription is not scheduled for cancellation'}, 400
-
-            # Check if user is already canceled (immediate cancellation)
-            if user_sub.is_canceled:
-                current_app.logger.info(f"User {user.user_id} subscription is already canceled and cannot be reactivated")
-                return {'error': 'Subscription is already canceled and cannot be reactivated. Please create a new subscription.'}, 400
-
-            # Try to find and reactivate Stripe subscription
-            customer = None
-            subscription = None
-
-            # Find customer by email
-            try:
-                customers = stripe.Customer.list(email=user.email, limit=5)
-                if customers.data:
-                    customer = customers.data[0]
-                    current_app.logger.info(f"Found Stripe customer {customer.id} for email {user.email}")
-            except Exception as e:
-                current_app.logger.warning(f"Error searching customer by email: {str(e)}")
-
-            # If we found a customer, look for subscriptions
-            if customer:
-                try:
-                    subscriptions = stripe.Subscription.list(
-                        customer=customer.id,
-                        status='active',
-                        limit=10
-                    )
-                    if subscriptions.data:
-                        for sub in subscriptions.data:
-                            if sub.cancel_at_period_end:
-                                subscription = sub
-                                current_app.logger.info(f"Found subscription {subscription.id} scheduled for cancellation")
-                                break
-                except Exception as e:
-                    current_app.logger.warning(f"Error searching subscriptions: {str(e)}")
-
-            # If we have a subscription, reactivate it in Stripe
-            if subscription:
-                try:
-                    current_app.logger.info(f"Found subscription {subscription.id}. Proceeding with reactivation.")
-                    
-                    # Remove the scheduled cancellation
-                    updated_subscription = stripe.Subscription.modify(
-                        subscription.id,
-                        cancel_at_period_end=False
-                    )
-                    
-                    current_app.logger.info(f"Stripe subscription reactivated successfully: cancel_at_period_end={updated_subscription.cancel_at_period_end}")
-
-                except stripe.error.StripeError as e:
-                    current_app.logger.error(f"Stripe error during reactivation: {str(e)}")
-                    # Continue with local reactivation even if Stripe fails
-
-            # Reactivate locally by removing the scheduled cancellation marker
-            if '_scheduled_cancel' in user_sub.payment_frequency:
-                user_sub.payment_frequency = user_sub.payment_frequency.replace('_scheduled_cancel', '')
-                db.session.commit()
-                current_app.logger.info(f"Removed scheduled cancellation marker for user {user.user_id}.")
-
-            return {
-                'message': 'Subscription has been successfully reactivated. Your subscription will continue as normal.',
-                'status': 'reactivated'
-            }, 200
-
-        except Exception as e:
-            current_app.logger.error(f"Error reactivating subscription for user {user.user_id}: {str(e)}")
-            db.session.rollback()
-            return {'error': 'Error reactivating subscription'}, 500
