@@ -93,7 +93,21 @@ def cancel_subscription():
         current_app.logger.error(f"[Cancel API] Error canceling subscription for user {current_user.user_id}: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@subscription_bp.route('/api/subscription/reactivate', methods=['POST'])
+@login_required
+def reactivate_subscription():
+    """Reactivate canceled subscription"""
+    try:
+        current_app.logger.info(f"[Reactivate API] User {current_user.user_id} requesting subscription reactivation")
 
+        response, status_code = SubscriptionController.reactivate_subscription(current_user)
+
+        current_app.logger.info(f"[Reactivate API] Response for user {current_user.user_id}: status={status_code}, response={response}")
+        return jsonify(response), status_code
+
+    except Exception as e:
+        current_app.logger.error(f"[Reactivate API] Error reactivating subscription for user {current_user.user_id}: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @subscription_bp.route('/webhook', methods=['POST'])
 def subscription_webhook():
