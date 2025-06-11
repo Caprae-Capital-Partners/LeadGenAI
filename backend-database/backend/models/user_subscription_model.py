@@ -19,6 +19,7 @@ class UserSubscription(db.Model):
     original_plan_name = db.Column(db.String(100), nullable=True)
     is_canceled = db.Column(db.Boolean, default=False, nullable=False)
     canceled_at = db.Column(db.DateTime, nullable=True)
+    is_call_outreach_cust = db.Column(db.Boolean, default=False, nullable=False)
 
 # Tambahkan relationship setelah import Plan
 from models.plan_model import Plan
@@ -36,5 +37,6 @@ def to_dict(self):
         'plan': self.plan.to_dict() if hasattr(self, 'plan') and self.plan else None,
         'username': self.username,
         'is_canceled': self.is_canceled,
-        'canceled_at': self.canceled_at.isoformat() if self.canceled_at else None
+        'canceled_at': self.canceled_at.isoformat() if self.canceled_at else None,
+        'is_call_outreach_cust': self.is_call_outreach_cust
     }

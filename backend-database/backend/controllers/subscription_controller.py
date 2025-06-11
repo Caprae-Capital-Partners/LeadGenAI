@@ -40,36 +40,47 @@ class SubscriptionController:
             success_url = "https://app.saasquatchleads.com"
             cancel_url = "https://app.saasquatchleads.com/subscription"
 
-            checkout_session = stripe.checkout.Session.create(
-                line_items=[{
+            # Determine the Stripe mode based on plan_type
+            if plan_type == 'call_outreach':
+                stripe_mode = 'payment'  # For one-time payments
+            else:
+                stripe_mode = 'subscription' # For recurring subscriptions
+
+            # Initialize parameters for checkout session
+            checkout_session_params = {
+                'line_items': [{
                     'price': price_id,
                     'quantity': 1,
                 }],
-                mode='subscription',
-                success_url=success_url,
-                cancel_url=cancel_url,
-                client_reference_id=str(user.user_id),
-                # Enable multiple payment methods - keep only universally supported ones
-                payment_method_types=[
+                'mode': stripe_mode,
+                'success_url': success_url,
+                'cancel_url': cancel_url,
+                'client_reference_id': str(user.user_id),
+                'payment_method_types': [
                     'card',
-                    'link',             # Stripe Link
+                    'link',
                 ],
-                # Allow customers to save payment methods for future use
-                subscription_data={
+                'metadata': {
+                    'plan_type': plan_type,
+                    'user_id': str(user.user_id)
+                }
+            }
+
+            # Add subscription_data only if in subscription mode
+            if stripe_mode == 'subscription':
+                checkout_session_params['subscription_data'] = {
                     'metadata': {
                         'plan_type': plan_type,
                         'user_id': str(user.user_id)
                     }
-                },
-                # Add metadata to track plan type
-                metadata={
-                    'plan_type': plan_type,
-                    'user_id': str(user.user_id)
                 }
+
+            checkout_session = stripe.checkout.Session.create(
+                **checkout_session_params
             )
             current_app.logger.info(f"[Subscription] Stripe session created successfully for user {user.user_id}, plan {plan_type}")
             current_app.logger.info(f"commented code for the db updates starts ")
-            current_app.logger.info(f"===================== WEBHOOK FUNCTION IS WORKING, DOING CHANGES IN DB PAYMENT =====================")
+            current_app.logger.info(f"===================== WEBHOOK FUNCTION IS WORKING, WAITING FOR WEBHOOK TO UPDATE DB =====================")
             # --- DB update logic moved to webhook. The following is intentionally commented out ---
             # Always update or create UserSubscription for the selected plan
             # user.tier = plan_type
@@ -207,6 +218,18 @@ class SubscriptionController:
                         current_app.logger.error(f"[Webhook] Failed to process pause subscription for user {user_id}")
                 # Only proceed if we have both user_id and plan_type for subscription payments
                 elif user_id and plan_type:
+                    # Handle 'call_outreach' plan specifically
+                    if plan_type == 'call_outreach':
+                        from models.user_subscription_model import UserSubscription
+                        user_sub = UserSubscription.query.filter_by(user_id=user_id).first()
+                        if user_sub:
+                            user_sub.is_call_outreach_cust = True
+                            db.session.commit()
+                            current_app.logger.info(f"[Webhook] User {user_id} subscribed to 'Pro Call Outreach'. is_call_outreach_cust set to True.")
+                        else:
+                            current_app.logger.warning(f"[Webhook] UserSubscription not found for user {user_id} when processing 'call_outreach' payment.")
+                        return jsonify({'status': 'success'}), 200 # Exit after handling call_outreach
+
                     from models.user_model import User
                     user = User.query.get(user_id)
                     if user:
