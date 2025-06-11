@@ -287,7 +287,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('Server did not return JSON');
             }
 
-            users = await response.json();
+            const data = await response.json();
+            users = data.users || [];
             const tbody = usersTable.querySelector('tbody');
             tbody.innerHTML = '';
 
