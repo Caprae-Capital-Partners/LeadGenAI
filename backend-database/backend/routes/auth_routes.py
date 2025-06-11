@@ -154,6 +154,7 @@ def delete_user():
             return redirect(url_for('auth.manage_users'))
 
         username = user.username
+        # Delete all user subscriptions before deleting user
         from models.user_subscription_model import UserSubscription
         UserSubscription.query.filter_by(user_id=user.user_id).delete()
         db.session.delete(user)

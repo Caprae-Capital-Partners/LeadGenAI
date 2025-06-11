@@ -5,7 +5,7 @@ from models.user_subscription_model import UserSubscription
 from datetime import datetime, timedelta
 from utils.token_utils import generate_token, confirm_token
 from utils.email_utils import send_email
-from flask import url_for, render_template, current_app, redirect
+from flask import url_for, render_template, current_app, redirect, request
 from controllers.student_verification_controller import is_student_email, set_user_as_student
 
 
@@ -109,7 +109,12 @@ class AuthController:
             user.email_verification_sent_at = datetime.utcnow()
             db.session.commit()
             # Use frontend URL for verification
-            verify_url = f"https://sandboxdev.saasquatchleads.com/verify-email/{token}"
+            if "sandbox-api.capraeleadseekers.site" in request.host:
+                verify_url = f"https://sandboxdev.saasquatchleads.com/verify-email/{token}"
+            elif "data.capraeleadseekers.site" in request.host:
+                verify_url = f"https://app.saasquatchleads.com/verify-email/{token}"
+            else:
+                verify_url = f"https://app.saasquatchleads.com/verify-email/{token}"
             html = render_template('emails/verify_email.html', verify_url=verify_url, user=user, now=datetime.utcnow)
             send_email('Verify Your Email', [user.email], html)
             current_app.logger.info(f"Verification email sent to {user.email}")
@@ -153,7 +158,12 @@ class AuthController:
             user.password_reset_sent_at = datetime.utcnow()
             db.session.commit()
             # Use frontend URL for reset
-            reset_url = f"https://app.saasquatchleads.com/reset-password/{token}"
+            if "sandbox-api.capraeleadseekers.site" in request.host:
+                reset_url = f"https://sandboxdev.saasquatchleads.com/reset-password/{token}"
+            elif "data.capraeleadseekers.site" in request.host:
+                reset_url = f"https://app.saasquatchleads.com/reset-password/{token}"
+            else:
+                reset_url = f"https://app.saasquatchleads.com/reset-password/{token}"
             html = render_template('emails/reset_password.html', reset_url=reset_url, user=user, now=datetime.utcnow)
             send_email('Reset Your Password', [user.email], html)
             current_app.logger.info(f"Password reset email sent to {user.email} at {datetime.utcnow()}, username: {user.username}")
