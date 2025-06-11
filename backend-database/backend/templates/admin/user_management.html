@@ -3,11 +3,11 @@
 {% block title %}User Management{% endblock %}
 
 {% block head %}
-<!-- Add jQuery and DataTables CSS/JS -->
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+<!-- Add jQuery and DataTables CSS/JS in the correct order -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
 {% endblock %}
 
 {% block content %}
@@ -200,6 +200,15 @@
 
 {% block scripts %}
 <script>
+// Ensure jQuery is loaded before using it
+if (typeof jQuery === 'undefined') {
+    console.error('jQuery is not loaded!');
+    // Optionally show an error message to the user
+    document.body.innerHTML += '<div class="alert alert-danger">Error: Required libraries not loaded. Please refresh the page.</div>';
+} else {
+    console.log('jQuery version:', jQuery.fn.jquery);
+}
+
 let users = [];
 let dataTable = null;
 
@@ -228,29 +237,43 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('expiringUsers').textContent = expiring;
     }
 
-    // Initialize DataTable with proper error handling
+    // Update initializeDataTable function to check for jQuery
     function initializeDataTable() {
+        if (typeof jQuery === 'undefined') {
+            console.error('jQuery is not available for DataTables initialization');
+            return;
+        }
+
         if (dataTable) {
             dataTable.destroy();
         }
         
-        dataTable = $('#usersTable').DataTable({
-            pageLength: 10,
-            order: [[0, 'asc']],
-            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
-            language: {
-                search: "",
-                searchPlaceholder: "Search users...",
-                emptyTable: "No users found",
-                zeroRecords: "No matching users found"
-            },
-            drawCallback: function() {
-                // Reattach event listeners after table redraw
-                document.querySelectorAll('.manage-user').forEach(btn => {
-                    btn.addEventListener('click', () => openManageModal(btn.dataset.userId));
-                });
+        try {
+            dataTable = jQuery('#usersTable').DataTable({
+                pageLength: 10,
+                order: [[0, 'asc']],
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+                language: {
+                    search: "",
+                    searchPlaceholder: "Search users...",
+                    emptyTable: "No users found",
+                    zeroRecords: "No matching users found"
+                },
+                drawCallback: function() {
+                    // Reattach event listeners after table redraw
+                    document.querySelectorAll('.manage-user').forEach(btn => {
+                        btn.addEventListener('click', () => openManageModal(btn.dataset.userId));
+                    });
+                }
+            });
+        } catch (error) {
+            console.error('Error initializing DataTable:', error);
+            // Fallback to basic table if DataTables fails
+            const table = document.getElementById('usersTable');
+            if (table) {
+                table.classList.add('table', 'table-hover', 'table-dark');
             }
-        });
+        }
     }
 
     // Update loadUsers function with better error handling and auth headers
