@@ -2,11 +2,7 @@
 
 {% block title %}User Management{% endblock %}
 
-{% block head %}
-<!-- Add jQuery and DataTables CSS/JS in the correct order -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+{% block additional_styles %}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
 {% endblock %}
 
@@ -199,429 +195,447 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Load jQuery and DataTables in the correct order -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
-// Ensure jQuery is loaded before using it
-if (typeof jQuery === 'undefined') {
-    console.error('jQuery is not loaded!');
-    // Optionally show an error message to the user
-    document.body.innerHTML += '<div class="alert alert-danger">Error: Required libraries not loaded. Please refresh the page.</div>';
-} else {
-    console.log('jQuery version:', jQuery.fn.jquery);
-}
-
-let users = [];
-let dataTable = null;
-
+// Wait for jQuery to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-    const usersTable = document.getElementById('usersTable');
-    const manageModal = new bootstrap.Modal(document.getElementById('manageUserModal'));
-    let currentUserId = null;
-    let currentUser = null;
-
-    // Update stats
-    function updateStats() {
-        const total = users.length;
-        const active = users.filter(u => u.is_active).length;
-        const premium = users.filter(u => u.tier && u.tier !== 'free').length;
-        const expiring = users.filter(u => {
-            if (!u.subscription?.expires_at) return false;
-            const expires = new Date(u.subscription.expires_at);
-            const now = new Date();
-            const diffDays = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
-            return diffDays <= 7 && diffDays > 0;
-        }).length;
-
-        document.getElementById('totalUsers').textContent = total;
-        document.getElementById('activeUsers').textContent = active;
-        document.getElementById('premiumUsers').textContent = premium;
-        document.getElementById('expiringUsers').textContent = expiring;
+    // Check if jQuery is loaded
+    if (typeof jQuery === 'undefined') {
+        console.error('jQuery is not loaded!');
+        document.getElementById('usersTable').innerHTML = '<div class="alert alert-danger">Error: jQuery is not loaded. Please refresh the page or contact support.</div>';
+        return;
     }
 
-    // Update initializeDataTable function to check for jQuery
-    function initializeDataTable() {
-        if (typeof jQuery === 'undefined') {
-            console.error('jQuery is not available for DataTables initialization');
+    console.log('jQuery version:', jQuery.fn.jquery);
+
+    // Initialize DataTable only after jQuery is confirmed to be loaded
+    try {
+        if (typeof jQuery.fn.DataTable === 'undefined') {
+            console.error('DataTables is not loaded!');
+            document.getElementById('usersTable').innerHTML = '<div class="alert alert-danger">Error: DataTables is not loaded. Please refresh the page or contact support.</div>';
             return;
         }
 
-        if (dataTable) {
-            dataTable.destroy();
+        let users = [];
+        let dataTable = null;
+
+        const usersTable = document.getElementById('usersTable');
+        const manageModal = new bootstrap.Modal(document.getElementById('manageUserModal'));
+        let currentUserId = null;
+        let currentUser = null;
+
+        // Update stats
+        function updateStats() {
+            const total = users.length;
+            const active = users.filter(u => u.is_active).length;
+            const premium = users.filter(u => u.tier && u.tier !== 'free').length;
+            const expiring = users.filter(u => {
+                if (!u.subscription?.expires_at) return false;
+                const expires = new Date(u.subscription.expires_at);
+                const now = new Date();
+                const diffDays = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
+                return diffDays <= 7 && diffDays > 0;
+            }).length;
+
+            document.getElementById('totalUsers').textContent = total;
+            document.getElementById('activeUsers').textContent = active;
+            document.getElementById('premiumUsers').textContent = premium;
+            document.getElementById('expiringUsers').textContent = expiring;
         }
-        
-        try {
-            dataTable = jQuery('#usersTable').DataTable({
-                pageLength: 10,
-                order: [[0, 'asc']],
-                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
-                language: {
-                    search: "",
-                    searchPlaceholder: "Search users...",
-                    emptyTable: "No users found",
-                    zeroRecords: "No matching users found"
-                },
-                drawCallback: function() {
-                    // Reattach event listeners after table redraw
-                    document.querySelectorAll('.manage-user').forEach(btn => {
-                        btn.addEventListener('click', () => openManageModal(btn.dataset.userId));
-                    });
+
+        // Update initializeDataTable function to check for jQuery
+        function initializeDataTable() {
+            if (typeof jQuery === 'undefined') {
+                console.error('jQuery is not available for DataTables initialization');
+                return;
+            }
+
+            if (dataTable) {
+                dataTable.destroy();
+            }
+            
+            try {
+                dataTable = jQuery('#usersTable').DataTable({
+                    pageLength: 10,
+                    order: [[0, 'asc']],
+                    dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+                    language: {
+                        search: "",
+                        searchPlaceholder: "Search users...",
+                        emptyTable: "No users found",
+                        zeroRecords: "No matching users found"
+                    },
+                    drawCallback: function() {
+                        // Reattach event listeners after table redraw
+                        document.querySelectorAll('.manage-user').forEach(btn => {
+                            btn.addEventListener('click', () => openManageModal(btn.dataset.userId));
+                        });
+                    }
+                });
+            } catch (error) {
+                console.error('Error initializing DataTable:', error);
+                // Fallback to basic table if DataTables fails
+                const table = document.getElementById('usersTable');
+                if (table) {
+                    table.classList.add('table', 'table-hover', 'table-dark');
                 }
-            });
-        } catch (error) {
-            console.error('Error initializing DataTable:', error);
-            // Fallback to basic table if DataTables fails
-            const table = document.getElementById('usersTable');
-            if (table) {
-                table.classList.add('table', 'table-hover', 'table-dark');
             }
         }
-    }
 
-    // Update loadUsers function with better error handling and auth headers
-    async function loadUsers() {
-        try {
-            const response = await fetch('/api/admin/users', {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin' // This ensures cookies are sent with the request
-            });
+        // Update loadUsers function with better error handling and auth headers
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/admin/users', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin' // This ensures cookies are sent with the request
+                });
 
-            // Log the response status and headers for debugging
-            console.log('Response status:', response.status);
-            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                // Log the response status and headers for debugging
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
-            if (!response.ok) {
+                if (!response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                    } else {
+                        // If the response is not JSON, get the text and log it
+                        const text = await response.text();
+                        console.error('Non-JSON response:', text);
+                        throw new Error(`Server error (${response.status}). Please check server logs.`);
+                    }
+                }
+
                 const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                } else {
-                    // If the response is not JSON, get the text and log it
-                    const text = await response.text();
-                    console.error('Non-JSON response:', text);
-                    throw new Error(`Server error (${response.status}). Please check server logs.`);
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server did not return JSON');
                 }
+
+                const data = await response.json();
+                users = data.users || [];
+                const tbody = usersTable.querySelector('tbody');
+                tbody.innerHTML = '';
+
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle bg-${user.role === 'admin' ? 'primary' : user.role === 'developer' ? 'info' : 'secondary'} me-2">
+                                    ${user.username.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <div class="fw-bold">${user.username}</div>
+                                    <div class="small text-muted">${user.email}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge ${user.is_active ? 'bg-success' : 'bg-danger'} rounded-pill">
+                                <i class="fas fa-${user.is_active ? 'check' : 'times'}-circle me-1"></i>
+                                ${user.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${user.role === 'admin' ? 'bg-primary' : user.role === 'developer' ? 'bg-info' : 'bg-secondary'} rounded-pill">
+                                <i class="fas fa-${user.role === 'admin' ? 'shield-alt' : user.role === 'developer' ? 'code' : 'user'}-me-1"></i>
+                                ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${user.subscription?.plan === 'premium' ? 'bg-warning' : user.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                <i class="fas fa-${user.subscription?.plan === 'premium' ? 'crown' : 'user'}-me-1"></i>
+                                ${user.subscription?.plan || 'Free'}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-coins text-warning me-2"></i>
+                                ${user.subscription?.credits || 0}
+                            </div>
+                        </td>
+                        <td>
+                            ${user.subscription?.expires_at ? 
+                                `<div class="d-flex align-items-center">
+                                    <i class="fas fa-calendar-alt text-info me-2"></i>
+                                    ${new Date(user.subscription.expires_at).toLocaleDateString()}
+                                </div>` : 
+                                '<span class="text-muted">N/A</span>'
+                            }
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary manage-user" data-user-id="${user.id}">
+                                <i class="fas fa-cog"></i>
+                                <span class="d-none d-md-inline ms-1">Manage</span>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // Update stats
+                updateStats();
+
+                // Initialize or reinitialize DataTable
+                initializeDataTable();
+
+            } catch (error) {
+                console.error('Error loading users:', error);
+                // Show more detailed error message to user
+                let errorMessage = 'Error loading users: ';
+                if (error.message.includes('401')) {
+                    errorMessage += 'Please log in again.';
+                } else if (error.message.includes('403')) {
+                    errorMessage += 'You do not have permission to access this page.';
+                } else if (error.message.includes('500')) {
+                    errorMessage += 'Server error. Please try again later or contact support.';
+                } else {
+                    errorMessage += error.message;
+                }
+                showToast(errorMessage, 'error');
             }
+        }
 
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Server did not return JSON');
-            }
-
-            const data = await response.json();
-            users = data.users || [];
-            const tbody = usersTable.querySelector('tbody');
-            tbody.innerHTML = '';
-
-            users.forEach(user => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-circle bg-${user.role === 'admin' ? 'primary' : user.role === 'developer' ? 'info' : 'secondary'} me-2">
-                                ${user.username.charAt(0).toUpperCase()}
+        // Update modal management with proper focus handling
+        function openManageModal(userId) {
+            currentUserId = userId;
+            currentUser = users.find(u => u.id === userId);
+            if (currentUser) {
+                const infoHtml = `
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar-circle bg-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-3">
+                                ${currentUser.username.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                                <div class="fw-bold">${user.username}</div>
-                                <div class="small text-muted">${user.email}</div>
+                                <h5 class="mb-1">${currentUser.username}</h5>
+                                <p class="text-muted mb-0">${currentUser.email}</p>
                             </div>
                         </div>
-                    </td>
-                    <td>
-                        <span class="badge ${user.is_active ? 'bg-success' : 'bg-danger'} rounded-pill">
-                            <i class="fas fa-${user.is_active ? 'check' : 'times'}-circle me-1"></i>
-                            ${user.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="badge ${user.role === 'admin' ? 'bg-primary' : user.role === 'developer' ? 'bg-info' : 'bg-secondary'} rounded-pill">
-                            <i class="fas fa-${user.role === 'admin' ? 'shield-alt' : user.role === 'developer' ? 'code' : 'user'}-me-1"></i>
-                            ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="badge ${user.subscription?.plan === 'premium' ? 'bg-warning' : user.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'} rounded-pill">
-                            <i class="fas fa-${user.subscription?.plan === 'premium' ? 'crown' : 'user'}-me-1"></i>
-                            ${user.subscription?.plan || 'Free'}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-coins text-warning me-2"></i>
-                            ${user.subscription?.credits || 0}
-                        </div>
-                    </td>
-                    <td>
-                        ${user.subscription?.expires_at ? 
-                            `<div class="d-flex align-items-center">
-                                <i class="fas fa-calendar-alt text-info me-2"></i>
-                                ${new Date(user.subscription.expires_at).toLocaleDateString()}
-                            </div>` : 
-                            '<span class="text-muted">N/A</span>'
-                        }
-                    </td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary manage-user" data-user-id="${user.id}">
-                            <i class="fas fa-cog"></i>
-                            <span class="d-none d-md-inline ms-1">Manage</span>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            // Update stats
-            updateStats();
-
-            // Initialize or reinitialize DataTable
-            initializeDataTable();
-
-        } catch (error) {
-            console.error('Error loading users:', error);
-            // Show more detailed error message to user
-            let errorMessage = 'Error loading users: ';
-            if (error.message.includes('401')) {
-                errorMessage += 'Please log in again.';
-            } else if (error.message.includes('403')) {
-                errorMessage += 'You do not have permission to access this page.';
-            } else if (error.message.includes('500')) {
-                errorMessage += 'Server error. Please try again later or contact support.';
-            } else {
-                errorMessage += error.message;
-            }
-            showToast(errorMessage, 'error');
-        }
-    }
-
-    // Update modal management with proper focus handling
-    function openManageModal(userId) {
-        currentUserId = userId;
-        currentUser = users.find(u => u.id === userId);
-        if (currentUser) {
-            const infoHtml = `
-                <div class="mb-3">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="avatar-circle bg-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-3">
-                            ${currentUser.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                            <h5 class="mb-1">${currentUser.username}</h5>
-                            <p class="text-muted mb-0">${currentUser.email}</p>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-circle text-${currentUser.is_active ? 'success' : 'danger'} me-2"></i>
+                                    <span>${currentUser.is_active ? 'Active' : 'Inactive'}</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-${currentUser.role === 'admin' ? 'shield-alt' : currentUser.role === 'developer' ? 'code' : 'user'} text-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-2"></i>
+                                    <span>${currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    <hr class="border-secondary">
                     <div class="row g-3">
                         <div class="col-6">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-circle text-${currentUser.is_active ? 'success' : 'danger'} me-2"></i>
-                                <span>${currentUser.is_active ? 'Active' : 'Inactive'}</span>
-                            </div>
+                            <small class="text-muted d-block">Subscription Plan</small>
+                            <span class="badge ${currentUser.subscription?.plan === 'premium' ? 'bg-warning' : currentUser.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'}">
+                                ${currentUser.subscription?.plan || 'Free'}
+                            </span>
                         </div>
                         <div class="col-6">
+                            <small class="text-muted d-block">Credits</small>
                             <div class="d-flex align-items-center">
-                                <i class="fas fa-${currentUser.role === 'admin' ? 'shield-alt' : currentUser.role === 'developer' ? 'code' : 'user'} text-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-2"></i>
-                                <span>${currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}</span>
+                                <i class="fas fa-coins text-warning me-2"></i>
+                                ${currentUser.subscription?.credits || 0}
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <small class="text-muted d-block">Expires At</small>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-calendar-alt text-info me-2"></i>
+                                ${currentUser.subscription?.expires_at ? new Date(currentUser.subscription.expires_at).toLocaleDateString() : 'N/A'}
                             </div>
                         </div>
                     </div>
-                </div>
-                <hr class="border-secondary">
-                <div class="row g-3">
-                    <div class="col-6">
-                        <small class="text-muted d-block">Subscription Plan</small>
-                        <span class="badge ${currentUser.subscription?.plan === 'premium' ? 'bg-warning' : currentUser.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'}">
-                            ${currentUser.subscription?.plan || 'Free'}
-                        </span>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">Credits</small>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-coins text-warning me-2"></i>
-                            ${currentUser.subscription?.credits || 0}
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <small class="text-muted d-block">Expires At</small>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-calendar-alt text-info me-2"></i>
-                            ${currentUser.subscription?.expires_at ? new Date(currentUser.subscription.expires_at).toLocaleDateString() : 'N/A'}
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.getElementById('userInfo').innerHTML = infoHtml;
-            
-            // Set toggle status button
-            const toggleBtn = document.getElementById('toggleStatusBtn');
-            toggleBtn.innerHTML = `
-                <i class="fas fa-${currentUser.is_active ? 'ban' : 'check'}-circle me-2"></i>
-                ${currentUser.is_active ? 'Deactivate User' : 'Activate User'}
-            `;
-            toggleBtn.className = `btn btn-outline-${currentUser.is_active ? 'warning' : 'success'}`;
-            
-            // Store the last focused element
-            const lastFocusedElement = document.activeElement;
-            
-            // Show modal
-            manageModal.show();
-            
-            // Focus the first focusable element in the modal
-            const firstFocusable = manageModal._element.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-            if (firstFocusable) {
-                firstFocusable.focus();
-            }
-
-            // Handle modal hidden event
-            manageModal._element.addEventListener('hidden.bs.modal', function () {
-                // Restore focus to the last focused element
-                if (lastFocusedElement) {
-                    lastFocusedElement.focus();
+                `;
+                document.getElementById('userInfo').innerHTML = infoHtml;
+                
+                // Set toggle status button
+                const toggleBtn = document.getElementById('toggleStatusBtn');
+                toggleBtn.innerHTML = `
+                    <i class="fas fa-${currentUser.is_active ? 'ban' : 'check'}-circle me-2"></i>
+                    ${currentUser.is_active ? 'Deactivate User' : 'Activate User'}
+                `;
+                toggleBtn.className = `btn btn-outline-${currentUser.is_active ? 'warning' : 'success'}`;
+                
+                // Store the last focused element
+                const lastFocusedElement = document.activeElement;
+                
+                // Show modal
+                manageModal.show();
+                
+                // Focus the first focusable element in the modal
+                const firstFocusable = manageModal._element.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (firstFocusable) {
+                    firstFocusable.focus();
                 }
-            }, { once: true });
-        }
-    }
 
-    // Add toast notification function
-    function showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed bottom-0 end-0 m-3`;
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">
-                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
-                    ${message}
+                // Handle modal hidden event
+                manageModal._element.addEventListener('hidden.bs.modal', function () {
+                    // Restore focus to the last focused element
+                    if (lastFocusedElement) {
+                        lastFocusedElement.focus();
+                    }
+                }, { once: true });
+            }
+        }
+
+        // Add toast notification function
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed bottom-0 end-0 m-3`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
                 </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast);
-        bsToast.show();
-        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+            `;
+            document.body.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            toast.addEventListener('hidden.bs.toast', () => toast.remove());
+        }
+
+        // Event Listeners
+        document.getElementById('refreshBtn').addEventListener('click', loadUsers);
+        
+        // Initialize cancel subscription modal
+        const cancelSubscriptionModal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
+
+        // Update cancel subscription button click handler
+        document.getElementById('cancelSubscriptionBtn').addEventListener('click', function() {
+            if (!currentUser) return;
+            cancelSubscriptionModal.show();
+        });
+
+        // Update cancel subscription handlers with better error handling
+        document.getElementById('immediateCancelBtn').addEventListener('click', async function() {
+            if (!currentUser) return;
+            try {
+                const response = await fetch('/api/subscription/cancel', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        cancellation_type: 'immediate',
+                        user_id: currentUser.id
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to cancel subscription');
+                }
+
+                manageModal.hide();
+                cancelSubscriptionModal.hide();
+                await loadUsers(); // Reload users after successful cancellation
+                showToast(data.message || 'Subscription cancelled immediately');
+            } catch (error) {
+                console.error('Cancellation error:', error);
+                showToast(error.message || 'Error cancelling subscription', 'error');
+            }
+        });
+
+        // Similar update for periodEndCancelBtn
+        document.getElementById('periodEndCancelBtn').addEventListener('click', async function() {
+            if (!currentUser) return;
+            try {
+                const response = await fetch('/api/subscription/cancel', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        cancellation_type: 'period_end',
+                        user_id: currentUser.id
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to schedule subscription cancellation');
+                }
+
+                manageModal.hide();
+                cancelSubscriptionModal.hide();
+                await loadUsers(); // Reload users after successful cancellation
+                showToast(data.message || 'Subscription scheduled for cancellation at period end');
+            } catch (error) {
+                console.error('Cancellation error:', error);
+                showToast(error.message || 'Error scheduling subscription cancellation', 'error');
+            }
+        });
+
+        document.getElementById('toggleStatusBtn').addEventListener('click', async function() {
+            if (!currentUser) return;
+            if (!confirm(`Are you sure you want to ${currentUser.is_active ? 'deactivate' : 'activate'} this user?`)) return;
+            try {
+                const response = await fetch(`/api/admin/users/${currentUser.id}/toggle-status`, { 
+                    method: 'POST' 
+                });
+                if (response.ok) {
+                    manageModal.hide();
+                    loadUsers();
+                    showToast(`User ${currentUser.is_active ? 'deactivated' : 'activated'} successfully`);
+                } else {
+                    throw new Error('Failed to toggle user status');
+                }
+            } catch (error) {
+                showToast('Error changing user status', 'error');
+            }
+        });
+
+        document.getElementById('pauseSubscriptionBtn').addEventListener('click', async function() {
+            if (!currentUser) return;
+            if (!confirm('Are you sure you want to pause this user\'s subscription?')) return;
+            try {
+                const response = await fetch(`/api/admin/users/${currentUser.id}/subscription`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'suspended' })
+                });
+                if (response.ok) {
+                    manageModal.hide();
+                    loadUsers();
+                    showToast('Subscription paused successfully');
+                } else {
+                    throw new Error('Failed to pause subscription');
+                }
+            } catch (error) {
+                showToast('Error pausing subscription', 'error');
+            }
+        });
+
+        // Initial load
+        loadUsers();
+    } catch (error) {
+        console.error('Error initializing DataTable:', error);
+        document.getElementById('usersTable').innerHTML = '<div class="alert alert-danger">Error initializing table. Please refresh the page or contact support.</div>';
     }
-
-    // Event Listeners
-    document.getElementById('refreshBtn').addEventListener('click', loadUsers);
-    
-    // Initialize cancel subscription modal
-    const cancelSubscriptionModal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
-
-    // Update cancel subscription button click handler
-    document.getElementById('cancelSubscriptionBtn').addEventListener('click', function() {
-        if (!currentUser) return;
-        cancelSubscriptionModal.show();
-    });
-
-    // Update cancel subscription handlers with better error handling
-    document.getElementById('immediateCancelBtn').addEventListener('click', async function() {
-        if (!currentUser) return;
-        try {
-            const response = await fetch('/api/subscription/cancel', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    cancellation_type: 'immediate',
-                    user_id: currentUser.id
-                })
-            });
-
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to cancel subscription');
-            }
-
-            manageModal.hide();
-            cancelSubscriptionModal.hide();
-            await loadUsers(); // Reload users after successful cancellation
-            showToast(data.message || 'Subscription cancelled immediately');
-        } catch (error) {
-            console.error('Cancellation error:', error);
-            showToast(error.message || 'Error cancelling subscription', 'error');
-        }
-    });
-
-    // Similar update for periodEndCancelBtn
-    document.getElementById('periodEndCancelBtn').addEventListener('click', async function() {
-        if (!currentUser) return;
-        try {
-            const response = await fetch('/api/subscription/cancel', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    cancellation_type: 'period_end',
-                    user_id: currentUser.id
-                })
-            });
-
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to schedule subscription cancellation');
-            }
-
-            manageModal.hide();
-            cancelSubscriptionModal.hide();
-            await loadUsers(); // Reload users after successful cancellation
-            showToast(data.message || 'Subscription scheduled for cancellation at period end');
-        } catch (error) {
-            console.error('Cancellation error:', error);
-            showToast(error.message || 'Error scheduling subscription cancellation', 'error');
-        }
-    });
-
-    document.getElementById('toggleStatusBtn').addEventListener('click', async function() {
-        if (!currentUser) return;
-        if (!confirm(`Are you sure you want to ${currentUser.is_active ? 'deactivate' : 'activate'} this user?`)) return;
-        try {
-            const response = await fetch(`/api/admin/users/${currentUser.id}/toggle-status`, { 
-                method: 'POST' 
-            });
-            if (response.ok) {
-                manageModal.hide();
-                loadUsers();
-                showToast(`User ${currentUser.is_active ? 'deactivated' : 'activated'} successfully`);
-            } else {
-                throw new Error('Failed to toggle user status');
-            }
-        } catch (error) {
-            showToast('Error changing user status', 'error');
-        }
-    });
-
-    document.getElementById('pauseSubscriptionBtn').addEventListener('click', async function() {
-        if (!currentUser) return;
-        if (!confirm('Are you sure you want to pause this user\'s subscription?')) return;
-        try {
-            const response = await fetch(`/api/admin/users/${currentUser.id}/subscription`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'suspended' })
-            });
-            if (response.ok) {
-                manageModal.hide();
-                loadUsers();
-                showToast('Subscription paused successfully');
-            } else {
-                throw new Error('Failed to pause subscription');
-            }
-        } catch (error) {
-            showToast('Error pausing subscription', 'error');
-        }
-    });
-
-    // Initial load
-    loadUsers();
 });
 </script>
 
