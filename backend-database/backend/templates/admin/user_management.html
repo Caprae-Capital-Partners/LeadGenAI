@@ -4,6 +4,125 @@
 
 {% block additional_styles %}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+<style>
+    /* Table container */
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        color: var(--primary-color) !important;
+        border-radius: 6px;
+        margin: 0 2px;
+        padding: 4px 12px;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        transition: background 0.2s, color 0.2s;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: var(--primary-color) !important;
+        color: #fff !important;
+        border: 1px solid var(--primary-color);
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: var(--secondary-color) !important;
+        color: #fff !important;
+    }
+    table.dataTable {
+        background: var(--card-bg);
+        color: var(--text-color);
+        border-radius: 12px;
+        overflow: hidden;
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    table.dataTable thead th {
+        background: var(--background-color);
+        color: var(--primary-color);
+        font-weight: 700;
+        border-bottom: 2px solid var(--border-color);
+        padding: 14px 10px;
+        font-size: 15px;
+    }
+    table.dataTable tbody td {
+        background: var(--card-bg);
+        color: var(--text-color);
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 10px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    table.dataTable tbody tr:hover {
+        background: #232b3a;
+        transition: background 0.2s;
+    }
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-right: 4px;
+        background: var(--background-color);
+        color: var(--primary-color);
+        border: 1px solid var(--primary-color);
+    }
+    .badge.active {
+        background: var(--success-color);
+        color: #fff;
+        border: none;
+    }
+    .badge.free {
+        background: #64748B;
+        color: #fff;
+        border: none;
+    }
+    .badge.bronze {
+        background: #cd7f32;
+        color: #fff;
+        border: none;
+    }
+    .badge.silver {
+        background: #b0b0b0;
+        color: #232b3a;
+        border: none;
+    }
+    .badge.gold {
+        background: #ffd700;
+        color: #232b3a;
+        border: none;
+    }
+    .badge.platinum {
+        background: #e5e4e2;
+        color: #232b3a;
+        border: none;
+    }
+    .badge.user {
+        background: var(--secondary-color);
+        color: #fff;
+        border: none;
+    }
+    .badge.admin {
+        background: var(--primary-color);
+        color: #fff;
+        border: none;
+    }
+    .badge.developer {
+        background: #22c55e;
+        color: #fff;
+        border: none;
+    }
+    .btn {
+        border-radius: 8px !important;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    .dataTables_length label, .dataTables_filter label {
+        color: var(--text-muted);
+    }
+    .dataTables_info {
+        color: var(--text-muted);
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -210,8 +329,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    console.log('jQuery version:', jQuery.fn.jquery);
-
     // Initialize DataTable only after jQuery is confirmed to be loaded
     try {
         if (typeof jQuery.fn.DataTable === 'undefined') {
@@ -223,29 +340,29 @@ document.addEventListener('DOMContentLoaded', function() {
         let users = [];
         let dataTable = null;
 
-        const usersTable = document.getElementById('usersTable');
-        const manageModal = new bootstrap.Modal(document.getElementById('manageUserModal'));
-        let currentUserId = null;
-        let currentUser = null;
+    const usersTable = document.getElementById('usersTable');
+    const manageModal = new bootstrap.Modal(document.getElementById('manageUserModal'));
+    let currentUserId = null;
+    let currentUser = null;
 
-        // Update stats
-        function updateStats() {
-            const total = users.length;
-            const active = users.filter(u => u.is_active).length;
+    // Update stats
+    function updateStats() {
+        const total = users.length;
+        const active = users.filter(u => u.is_active).length;
             const premium = users.filter(u => u.tier && u.tier !== 'free').length;
-            const expiring = users.filter(u => {
-                if (!u.subscription?.expires_at) return false;
-                const expires = new Date(u.subscription.expires_at);
-                const now = new Date();
-                const diffDays = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
-                return diffDays <= 7 && diffDays > 0;
-            }).length;
+        const expiring = users.filter(u => {
+            if (!u.subscription?.expires_at) return false;
+            const expires = new Date(u.subscription.expires_at);
+            const now = new Date();
+            const diffDays = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
+            return diffDays <= 7 && diffDays > 0;
+        }).length;
 
-            document.getElementById('totalUsers').textContent = total;
-            document.getElementById('activeUsers').textContent = active;
-            document.getElementById('premiumUsers').textContent = premium;
-            document.getElementById('expiringUsers').textContent = expiring;
-        }
+        document.getElementById('totalUsers').textContent = total;
+        document.getElementById('activeUsers').textContent = active;
+        document.getElementById('premiumUsers').textContent = premium;
+        document.getElementById('expiringUsers').textContent = expiring;
+    }
 
         // Update initializeDataTable function to check for jQuery
         function initializeDataTable() {
@@ -260,6 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             try {
                 dataTable = jQuery('#usersTable').DataTable({
+                    ordering: false,
                     pageLength: 10,
                     order: [[0, 'asc']],
                     dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
@@ -287,8 +405,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Update loadUsers function with better error handling and auth headers
-        async function loadUsers() {
-            try {
+    async function loadUsers() {
+        try {
                 const response = await fetch('/api/admin/users', {
                     method: 'GET',
                     headers: {
@@ -322,68 +440,68 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const data = await response.json();
                 users = data.users || [];
-                const tbody = usersTable.querySelector('tbody');
-                tbody.innerHTML = '';
+            const tbody = usersTable.querySelector('tbody');
+            tbody.innerHTML = '';
 
-                users.forEach(user => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="avatar-circle bg-${user.role === 'admin' ? 'primary' : user.role === 'developer' ? 'info' : 'secondary'} me-2">
-                                    ${user.username.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <div class="fw-bold">${user.username}</div>
-                                    <div class="small text-muted">${user.email}</div>
-                                </div>
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle bg-${user.role === 'admin' ? 'primary' : user.role === 'developer' ? 'info' : 'secondary'} me-2">
+                                ${user.username.charAt(0).toUpperCase()}
                             </div>
-                        </td>
-                        <td>
-                            <span class="badge ${user.is_active ? 'bg-success' : 'bg-danger'} rounded-pill">
-                                <i class="fas fa-${user.is_active ? 'check' : 'times'}-circle me-1"></i>
-                                ${user.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="badge ${user.role === 'admin' ? 'bg-primary' : user.role === 'developer' ? 'bg-info' : 'bg-secondary'} rounded-pill">
-                                <i class="fas fa-${user.role === 'admin' ? 'shield-alt' : user.role === 'developer' ? 'code' : 'user'}-me-1"></i>
-                                ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="badge ${user.subscription?.plan === 'premium' ? 'bg-warning' : user.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'} rounded-pill">
-                                <i class="fas fa-${user.subscription?.plan === 'premium' ? 'crown' : 'user'}-me-1"></i>
-                                ${user.subscription?.plan || 'Free'}
-                            </span>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-coins text-warning me-2"></i>
-                                ${user.subscription?.credits || 0}
+                            <div>
+                                <div class="fw-bold">${user.username}</div>
+                                <div class="small text-muted">${user.email}</div>
                             </div>
-                        </td>
-                        <td>
-                            ${user.subscription?.expires_at ? 
-                                `<div class="d-flex align-items-center">
-                                    <i class="fas fa-calendar-alt text-info me-2"></i>
-                                    ${new Date(user.subscription.expires_at).toLocaleDateString()}
-                                </div>` : 
-                                '<span class="text-muted">N/A</span>'
-                            }
-                        </td>
-                        <td class="text-end">
-                            <button class="btn btn-sm btn-outline-primary manage-user" data-user-id="${user.id}">
-                                <i class="fas fa-cog"></i>
-                                <span class="d-none d-md-inline ms-1">Manage</span>
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge ${user.is_active ? 'bg-success' : 'bg-danger'} rounded-pill">
+                            <i class="fas fa-${user.is_active ? 'check' : 'times'}-circle me-1"></i>
+                            ${user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${user.role === 'admin' ? 'bg-primary' : user.role === 'developer' ? 'bg-info' : 'bg-secondary'} rounded-pill">
+                            <i class="fas fa-${user.role === 'admin' ? 'shield-alt' : user.role === 'developer' ? 'code' : 'user'}-me-1"></i>
+                            ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${user.subscription?.plan === 'premium' ? 'bg-warning' : user.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                            <i class="fas fa-${user.subscription?.plan === 'premium' ? 'crown' : 'user'}-me-1"></i>
+                            ${user.subscription?.plan || 'Free'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-coins text-warning me-2"></i>
+                            ${user.subscription?.credits || 0}
+                        </div>
+                    </td>
+                    <td>
+                        ${user.subscription?.expires_at ? 
+                            `<div class="d-flex align-items-center">
+                                <i class="fas fa-calendar-alt text-info me-2"></i>
+                                ${new Date(user.subscription.expires_at).toLocaleDateString()}
+                            </div>` : 
+                            '<span class="text-muted">N/A</span>'
+                        }
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary manage-user" data-user-id="${user.id}">
+                            <i class="fas fa-cog"></i>
+                            <span class="d-none d-md-inline ms-1">Manage</span>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
 
-                // Update stats
-                updateStats();
+            // Update stats
+            updateStats();
 
                 // Initialize or reinitialize DataTable
                 initializeDataTable();
@@ -402,79 +520,79 @@ document.addEventListener('DOMContentLoaded', function() {
                     errorMessage += error.message;
                 }
                 showToast(errorMessage, 'error');
-            }
         }
+    }
 
         // Update modal management with proper focus handling
-        function openManageModal(userId) {
-            currentUserId = userId;
-            currentUser = users.find(u => u.id === userId);
-            if (currentUser) {
-                const infoHtml = `
-                    <div class="mb-3">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="avatar-circle bg-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-3">
-                                ${currentUser.username.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                                <h5 class="mb-1">${currentUser.username}</h5>
-                                <p class="text-muted mb-0">${currentUser.email}</p>
-                            </div>
+    function openManageModal(userId) {
+        currentUserId = userId;
+        currentUser = users.find(u => u.id === userId);
+        if (currentUser) {
+            const infoHtml = `
+                <div class="mb-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-circle bg-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-3">
+                            ${currentUser.username.charAt(0).toUpperCase()}
                         </div>
-                        <div class="row g-3">
-                            <div class="col-6">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-circle text-${currentUser.is_active ? 'success' : 'danger'} me-2"></i>
-                                    <span>${currentUser.is_active ? 'Active' : 'Inactive'}</span>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-${currentUser.role === 'admin' ? 'shield-alt' : currentUser.role === 'developer' ? 'code' : 'user'} text-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-2"></i>
-                                    <span>${currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}</span>
-                                </div>
-                            </div>
+                        <div>
+                            <h5 class="mb-1">${currentUser.username}</h5>
+                            <p class="text-muted mb-0">${currentUser.email}</p>
                         </div>
                     </div>
-                    <hr class="border-secondary">
                     <div class="row g-3">
                         <div class="col-6">
-                            <small class="text-muted d-block">Subscription Plan</small>
-                            <span class="badge ${currentUser.subscription?.plan === 'premium' ? 'bg-warning' : currentUser.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'}">
-                                ${currentUser.subscription?.plan || 'Free'}
-                            </span>
-                        </div>
-                        <div class="col-6">
-                            <small class="text-muted d-block">Credits</small>
                             <div class="d-flex align-items-center">
-                                <i class="fas fa-coins text-warning me-2"></i>
-                                ${currentUser.subscription?.credits || 0}
+                                <i class="fas fa-circle text-${currentUser.is_active ? 'success' : 'danger'} me-2"></i>
+                                <span>${currentUser.is_active ? 'Active' : 'Inactive'}</span>
                             </div>
                         </div>
-                        <div class="col-12">
-                            <small class="text-muted d-block">Expires At</small>
+                        <div class="col-6">
                             <div class="d-flex align-items-center">
-                                <i class="fas fa-calendar-alt text-info me-2"></i>
-                                ${currentUser.subscription?.expires_at ? new Date(currentUser.subscription.expires_at).toLocaleDateString() : 'N/A'}
+                                <i class="fas fa-${currentUser.role === 'admin' ? 'shield-alt' : currentUser.role === 'developer' ? 'code' : 'user'} text-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-2"></i>
+                                <span>${currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}</span>
                             </div>
                         </div>
                     </div>
-                `;
-                document.getElementById('userInfo').innerHTML = infoHtml;
-                
-                // Set toggle status button
-                const toggleBtn = document.getElementById('toggleStatusBtn');
-                toggleBtn.innerHTML = `
-                    <i class="fas fa-${currentUser.is_active ? 'ban' : 'check'}-circle me-2"></i>
-                    ${currentUser.is_active ? 'Deactivate User' : 'Activate User'}
-                `;
-                toggleBtn.className = `btn btn-outline-${currentUser.is_active ? 'warning' : 'success'}`;
-                
+                </div>
+                <hr class="border-secondary">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Subscription Plan</small>
+                        <span class="badge ${currentUser.subscription?.plan === 'premium' ? 'bg-warning' : currentUser.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'}">
+                            ${currentUser.subscription?.plan || 'Free'}
+                        </span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Credits</small>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-coins text-warning me-2"></i>
+                            ${currentUser.subscription?.credits || 0}
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted d-block">Expires At</small>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-calendar-alt text-info me-2"></i>
+                            ${currentUser.subscription?.expires_at ? new Date(currentUser.subscription.expires_at).toLocaleDateString() : 'N/A'}
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('userInfo').innerHTML = infoHtml;
+            
+            // Set toggle status button
+            const toggleBtn = document.getElementById('toggleStatusBtn');
+            toggleBtn.innerHTML = `
+                <i class="fas fa-${currentUser.is_active ? 'ban' : 'check'}-circle me-2"></i>
+                ${currentUser.is_active ? 'Deactivate User' : 'Activate User'}
+            `;
+            toggleBtn.className = `btn btn-outline-${currentUser.is_active ? 'warning' : 'success'}`;
+            
                 // Store the last focused element
                 const lastFocusedElement = document.activeElement;
                 
                 // Show modal
-                manageModal.show();
+            manageModal.show();
                 
                 // Focus the first focusable element in the modal
                 const firstFocusable = manageModal._element.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
@@ -489,34 +607,34 @@ document.addEventListener('DOMContentLoaded', function() {
                         lastFocusedElement.focus();
                     }
                 }, { once: true });
-            }
         }
+    }
 
-        // Add toast notification function
-        function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed bottom-0 end-0 m-3`;
-            toast.setAttribute('role', 'alert');
-            toast.setAttribute('aria-live', 'assertive');
-            toast.setAttribute('aria-atomic', 'true');
-            toast.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
-                        ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    // Add toast notification function
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed bottom-0 end-0 m-3`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                    ${message}
                 </div>
-            `;
-            document.body.appendChild(toast);
-            const bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
-            toast.addEventListener('hidden.bs.toast', () => toast.remove());
-        }
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    }
 
-        // Event Listeners
-        document.getElementById('refreshBtn').addEventListener('click', loadUsers);
-        
+    // Event Listeners
+    document.getElementById('refreshBtn').addEventListener('click', loadUsers);
+    
         // Initialize cancel subscription modal
         const cancelSubscriptionModal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
 
@@ -528,19 +646,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update cancel subscription handlers with better error handling
         document.getElementById('immediateCancelBtn').addEventListener('click', async function() {
-            if (!currentUser) return;
-            try {
+        if (!currentUser) return;
+        try {
                 const response = await fetch('/api/subscription/cancel', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({
+                body: JSON.stringify({ 
                         cancellation_type: 'immediate',
                         user_id: currentUser.id
-                    })
-                });
+                })
+            });
 
                 const data = await response.json();
                 
@@ -584,54 +702,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 cancelSubscriptionModal.hide();
                 await loadUsers(); // Reload users after successful cancellation
                 showToast(data.message || 'Subscription scheduled for cancellation at period end');
-            } catch (error) {
+        } catch (error) {
                 console.error('Cancellation error:', error);
                 showToast(error.message || 'Error scheduling subscription cancellation', 'error');
-            }
-        });
+        }
+    });
 
-        document.getElementById('toggleStatusBtn').addEventListener('click', async function() {
-            if (!currentUser) return;
-            if (!confirm(`Are you sure you want to ${currentUser.is_active ? 'deactivate' : 'activate'} this user?`)) return;
-            try {
-                const response = await fetch(`/api/admin/users/${currentUser.id}/toggle-status`, { 
-                    method: 'POST' 
-                });
-                if (response.ok) {
-                    manageModal.hide();
-                    loadUsers();
-                    showToast(`User ${currentUser.is_active ? 'deactivated' : 'activated'} successfully`);
-                } else {
-                    throw new Error('Failed to toggle user status');
-                }
-            } catch (error) {
-                showToast('Error changing user status', 'error');
+    document.getElementById('toggleStatusBtn').addEventListener('click', async function() {
+        if (!currentUser) return;
+        if (!confirm(`Are you sure you want to ${currentUser.is_active ? 'deactivate' : 'activate'} this user?`)) return;
+        try {
+            const response = await fetch(`/api/admin/users/${currentUser.id}/toggle-status`, { 
+                method: 'POST' 
+            });
+            if (response.ok) {
+                manageModal.hide();
+                loadUsers();
+                showToast(`User ${currentUser.is_active ? 'deactivated' : 'activated'} successfully`);
+            } else {
+                throw new Error('Failed to toggle user status');
             }
-        });
+        } catch (error) {
+            showToast('Error changing user status', 'error');
+        }
+    });
 
-        document.getElementById('pauseSubscriptionBtn').addEventListener('click', async function() {
-            if (!currentUser) return;
-            if (!confirm('Are you sure you want to pause this user\'s subscription?')) return;
-            try {
-                const response = await fetch(`/api/admin/users/${currentUser.id}/subscription`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: 'suspended' })
-                });
-                if (response.ok) {
-                    manageModal.hide();
-                    loadUsers();
-                    showToast('Subscription paused successfully');
-                } else {
-                    throw new Error('Failed to pause subscription');
-                }
-            } catch (error) {
-                showToast('Error pausing subscription', 'error');
+    document.getElementById('pauseSubscriptionBtn').addEventListener('click', async function() {
+        if (!currentUser) return;
+        if (!confirm('Are you sure you want to pause this user\'s subscription?')) return;
+        try {
+            const response = await fetch(`/api/admin/users/${currentUser.id}/subscription`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'suspended' })
+            });
+            if (response.ok) {
+                manageModal.hide();
+                loadUsers();
+                showToast('Subscription paused successfully');
+            } else {
+                throw new Error('Failed to pause subscription');
             }
-        });
+        } catch (error) {
+            showToast('Error pausing subscription', 'error');
+        }
+    });
 
-        // Initial load
-        loadUsers();
+    // Initial load
+    loadUsers();
     } catch (error) {
         console.error('Error initializing DataTable:', error);
         document.getElementById('usersTable').innerHTML = '<div class="alert alert-danger">Error initializing table. Please refresh the page or contact support.</div>';
