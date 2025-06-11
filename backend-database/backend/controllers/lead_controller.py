@@ -574,20 +574,71 @@ class LeadController:
                 query = query.filter(Lead.industry.ilike(f"%{industry}%"))
 
             if location:
-                location_filter = db.or_(
-                    Lead.city.ilike(f"%{location}%"),
-                    Lead.state.ilike(f"%{location}%"),
-                    Lead.street.ilike(f"%{location}%")
-                )
-                not_null_or_empty = db.or_(
-                    Lead.city.isnot(None) & (Lead.city != ''),
-                    Lead.state.isnot(None) & (Lead.state != ''),
-                    Lead.street.isnot(None) & (Lead.street != '')
-                )
-                query = query.filter(location_filter, not_null_or_empty)
+                if ',' in location:
+                    # Split location into city and state
+                    city_part, state_part = [part.strip() for part in location.split(',', 1)]
+                    location_filter = db.and_(
+                        Lead.city.ilike(f"%{city_part}%"),
+                        Lead.state.ilike(f"%{state_part}%")
+                    )
+                    not_null_or_empty = db.and_(
+                        Lead.city.isnot(None) & (Lead.city != ''),
+                        Lead.state.isnot(None) & (Lead.state != '')
+                    )
+                    query = query.filter(location_filter, not_null_or_empty)
+                else:
+                    location_stripped = location.strip()
+                    if len(location_stripped) == 2:
+                        # Treat as state code, exact match
+                        location_filter = Lead.state.ilike(location_stripped)
+                        not_null_or_empty = Lead.state.isnot(None) & (Lead.state != '')
+                        query = query.filter(location_filter, not_null_or_empty)
+                    else:
+                        # Treat as city, exact match
+                        location_filter = Lead.city.ilike(location_stripped)
+                        not_null_or_empty = Lead.city.isnot(None) & (Lead.city != '')
+                        query = query.filter(location_filter, not_null_or_empty)
 
             leads = query.all()
             current_app.logger.info(f"[Lead] Found {len(leads)} leads for industry='{industry}', location='{location}'")
+
+            def filter_leads_by_location(leads, location):
+                location_stripped = location.strip().lower()
+                if ',' in location_stripped:
+                    city_part, state_part = [part.strip().lower() for part in location_stripped.split(',', 1)]
+                    return [
+                        lead for lead in leads
+                        if (lead.city or '').strip().lower() == city_part and (lead.state or '').strip().lower() == state_part
+                    ]
+                elif len(location_stripped) == 2:
+                    # Try state first
+                    state_matches = [
+                        lead for lead in leads
+                        if (lead.state or '').strip().lower() == location_stripped
+                    ]
+                    if state_matches:
+                        return state_matches
+                    # Try city exact match
+                    return [
+                        lead for lead in leads
+                        if (lead.city or '').strip().lower() == location_stripped
+                    ]
+                else:
+                    # Anything else: exact match in both city and state, combine and deduplicate
+                    city_matches = [
+                        lead for lead in leads
+                        if (lead.city or '').strip().lower() == location_stripped
+                    ]
+                    state_matches = [
+                        lead for lead in leads
+                        if (lead.state or '').strip().lower() == location_stripped
+                    ]
+                    # Deduplicate by lead_id
+                    all_matches = {lead.lead_id: lead for lead in city_matches + state_matches}
+                    return list(all_matches.values())
+
+            if location:
+                leads = filter_leads_by_location(leads, location)
 
             processed_results = []
 
