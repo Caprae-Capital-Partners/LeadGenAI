@@ -5,6 +5,7 @@ from models.user_subscription_model import UserSubscription
 from sqlalchemy import func
 from dateutil.relativedelta import relativedelta
 from datetime import datetime
+from utils.email_utils import send_outreach_confirmation_email
 
 
 class SubscriptionController:
@@ -226,6 +227,12 @@ class SubscriptionController:
                             user_sub.is_call_outreach_cust = True
                             db.session.commit()
                             current_app.logger.info(f"[Webhook] User {user_id} subscribed to 'Pro Call Outreach'. is_call_outreach_cust set to True.")
+                            # Send confirmation email
+                            if user:
+                                send_outreach_confirmation_email(user.email, user.username)
+                                current_app.logger.info(f"[Webhook] Sent outreach confirmation email to user {user.username}.")
+                            else:
+                                current_app.logger.warning(f"[Webhook] User object not available for outreach confirmation email,{user.username} despite user_id being present.")
                         else:
                             current_app.logger.warning(f"[Webhook] UserSubscription not found for user {user_id} when processing 'call_outreach' payment.")
                         return jsonify({'status': 'success'}), 200 # Exit after handling call_outreach
