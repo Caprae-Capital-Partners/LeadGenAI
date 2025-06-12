@@ -135,6 +135,7 @@ class SubscriptionController:
         stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
         webhook_secret = current_app.config['STRIPE_WEBHOOK_SECRET']
 
+
         try:
             event = stripe.Webhook.construct_event(
                 payload, sig_header, webhook_secret
@@ -219,6 +220,8 @@ class SubscriptionController:
                         current_app.logger.error(f"[Webhook] Failed to process pause subscription for user {user_id}")
                 # Only proceed if we have both user_id and plan_type for subscription payments
                 elif user_id and plan_type:
+                    from models.user_model import User
+                    user = User.query.get(user_id)
                     # Handle 'call_outreach' plan specifically
                     if plan_type == 'call_outreach':
                         from models.user_subscription_model import UserSubscription
@@ -237,8 +240,6 @@ class SubscriptionController:
                             current_app.logger.warning(f"[Webhook] UserSubscription not found for user {user_id} when processing 'call_outreach' payment.")
                         return jsonify({'status': 'success'}), 200 # Exit after handling call_outreach
 
-                    from models.user_model import User
-                    user = User.query.get(user_id)
                     if user:
                         # Check if this is a pause subscription
                         if plan_type.startswith('pause_'):
