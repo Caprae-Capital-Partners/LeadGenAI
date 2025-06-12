@@ -829,8 +829,36 @@ export default function Home() {
             Your account hasn’t been verified yet. Please check your email for
             the verification link.
           </p>
+
+          {/* Resend Verification Button */}
           <button
             className="mt-4 px-4 py-2 rounded text-white"
+            style={{ backgroundColor: "#4a90e2" }}
+            onClick={async () => {
+              try {
+                await fetch(`${DATABASE_URL}/auth/send-verification`, {
+                  method: "POST",
+                  credentials: "include",
+                });
+                showNotification(
+                  "Verification email resent. Please check your inbox.",
+                  "info"
+                );
+              } catch (err) {
+                console.error("Failed to resend verification email:", err);
+                showNotification(
+                  "Failed to resend verification email.",
+                  "error"
+                );
+              }
+            }}
+          >
+            Resend Verification Link
+          </button>
+
+          {/* OK Button */}
+          <button
+            className="mt-2 px-4 py-2 rounded text-white"
             style={{ backgroundColor: "#7bc3a4" }}
             onClick={handleClose}
           >
@@ -1105,7 +1133,7 @@ export default function Home() {
             </div>
           )}
           {/* Scrollable container with a max height */}
-          <div className="w-full max-h-[600px] overflow-auto relative border rounded-md">
+          <div className="w-full overflow-x-auto relative border rounded-md">
             <Table className="min-w-full text-sm ">
               <TableHeader>
                 <TableRow>

@@ -58,7 +58,7 @@ export default function SubscriptionPage() {
                     return;
                 }
 
-                const res = await fetch(`${DATABASE_URL}/plans/upgrade`, {
+                const res = await fetch(`${DATABASE_URL}/plans/all`, {
                     method: "GET",
                     credentials: "include",
                 });
@@ -176,6 +176,7 @@ export default function SubscriptionPage() {
         }
 
         try {
+            // console.log("Stripe key:", process.env.NEXT_PUBLIC_STRIPE_CODE);
             const res = await fetch(`${DATABASE_URL_NOAPI}/create-checkout-session`, {
                 method: "POST",
                 headers: {
@@ -189,6 +190,8 @@ export default function SubscriptionPage() {
             if (res.ok && data.sessionId) {
                 const stripe = await loadStripe(STRIPE);
                 if (stripe) {
+                    console.log("Stripe Mode:", process.env.STRIPE_MODE);
+                    console.log("Session ID:", data.sessionId);
                     await stripe.redirectToCheckout({ sessionId: data.sessionId });
                 } else {
                     alert("Stripe.js failed to load.");

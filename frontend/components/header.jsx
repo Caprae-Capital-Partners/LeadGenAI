@@ -15,8 +15,13 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2;
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+
 export function Header() {
   const [userEmail, setUserEmail] = useState("");
+  const pathname = usePathname();
+
   
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -46,25 +51,52 @@ export function Header() {
         <nav className="ml-auto flex items-center gap-12 text-base uppercase tracking-wider font-bold">
           <Link
             href="/"
-            className="text-white hover:text-yellow-400 transition-colors"
+            className={cn(
+              "hover:text-yellow-400 transition-colors",
+              pathname === "/" ? "text-yellow-400" : "text-white"
+            )}
           >
             Home
           </Link>
+
           <Link
             href="/scraper"
-            className="text-white hover:text-yellow-400 transition-colors"
+            className={cn(
+              "hover:text-yellow-400 transition-colors",
+              pathname.startsWith("/scraper") ? "text-yellow-400" : "text-white"
+            )}
           >
-            Scraper Tool
+            Scraper
           </Link>
+
+          <Link
+            href="/lead"
+            className={cn(
+              "hover:text-yellow-400 transition-colors",
+              pathname.startsWith("/lead") ? "text-yellow-400" : "text-white"
+            )}
+          >
+            Lead
+          </Link>
+
           <Link
             href="/documentation"
-            className="text-white hover:text-yellow-400 transition-colors"
+            className={cn(
+              "hover:text-yellow-400 transition-colors",
+              pathname.startsWith("/documentation")
+                ? "text-yellow-400"
+                : "text-white"
+            )}
           >
             Documentation
           </Link>
+
           <Link
             href="/contact"
-            className="text-white hover:text-yellow-400 transition-colors"
+            className={cn(
+              "hover:text-yellow-400 transition-colors",
+              pathname.startsWith("/contact") ? "text-yellow-400" : "text-white"
+            )}
           >
             Contact Us
           </Link>
@@ -130,7 +162,7 @@ export function Header() {
 
                     if (res.ok) {
                       sessionStorage.clear(); // ✅ Clear client-side session
-                      localStorage.clear()
+                      localStorage.clear();
                       window.location.href = "/auth"; // ⬅️ Redirect to login
                     } else {
                       const data = await res.json();
