@@ -518,25 +518,26 @@ class SubscriptionController:
         # Only include selected fields
         user_data = {
             'user_id': str(user_obj.user_id),
-            'email': user_obj.email,
-            'username': user_obj.username,
+            'email': user_obj.email
         }
-        subscription_data = {
-            'credits_remaining': user_sub.credits_remaining,
-            'payment_frequency': display_payment_frequency,
-            'plan_name': user_sub.plan_name,
-            'tier_start_timestamp': user_sub.tier_start_timestamp.isoformat() if user_sub.tier_start_timestamp else None,
-            'plan_expiration_timestamp': user_sub.plan_expiration_timestamp.isoformat() if user_sub.plan_expiration_timestamp else None,
-            'is_scheduled_for_cancellation': is_scheduled_for_cancellation,
-            'is_paused': getattr(user_sub, 'is_paused', False),
-            'pause_end_date': user_sub.pause_end_date.isoformat() if getattr(user_sub, 'pause_end_date', None) else None,
-            'original_plan_name': getattr(user_sub, 'original_plan_name', None),
-            'is_cancelled': getattr(user_sub, 'is_cancelled', False),
-            'is_call_outreach_cust': getattr(user_sub, 'is_call_outreach_cust', False),
-            'is_pause': getattr(user_sub, 'is_pause', False),
-            'pause_end_date': getattr(user_sub, 'pause_end_date', None),
 
-        }
+        # Use the to_dict method from the UserSubscription model to get all fields
+        subscription_data = user_sub.to_dict()
+
+        # Add/modify derived fields for display
+        subscription_data['is_scheduled_for_cancellation'] = is_scheduled_for_cancellation
+        subscription_data['payment_frequency'] = display_payment_frequency # Use the cleaned display version
+
+        # Ensure consistent format for timestamp fields
+        if user_sub.tier_start_timestamp:
+            subscription_data['tier_start_timestamp'] = user_sub.tier_start_timestamp.isoformat()
+        if user_sub.plan_expiration_timestamp:
+            subscription_data['plan_expiration_timestamp'] = user_sub.plan_expiration_timestamp.isoformat()
+        if user_sub.pause_end_date:
+            subscription_data['pause_end_date'] = user_sub.pause_end_date.isoformat()
+        if user_sub.canceled_at:
+            subscription_data['canceled_at'] = user_sub.canceled_at.isoformat()
+
         plan_data = None
         if plan:
             plan_data = {
@@ -1018,3 +1019,31 @@ class SubscriptionController:
         except Exception as e:
             current_app.logger.error(f"[Pause] Error checking expired pause subscriptions: {str(e)}")
             db.session.rollback()
+
+    @staticmethod
+    def confirm_appointment_booked(user_id):
+        """
+        Set appointment_used to True for a given user's subscription.
+        """
+        try:
+            from models.user_subscription_model import UserSubscription
+            from models.user_model import db
+
+            user_sub = UserSubscription.query.filter_by(user_id=user_id).first()
+            if user_sub:
+                # Check if the user is a 'call_outreach' customer
+                if not user_sub.is_call_outreach_cust:
+                    current_app.logger.warning(f"[Appointment] User {user_id} is not a call outreach customer and cannot confirm appointment.")
+                    return {'error': 'You are not authorized to confirm an appointment for this service.'}, 403
+
+                user_sub.appointment_used = True
+                db.session.commit()
+                current_app.logger.info(f"[Appointment] User {user_id} has confirmed appointment booked. appointment_used set to True.")
+                return {'message': 'Appointment confirmed successfully.'}, 200
+            else:
+                current_app.logger.warning(f"[Appointment] UserSubscription not found for user {user_id} to confirm appointment.")
+                return {'error': 'User subscription not found.'}, 404
+        except Exception as e:
+            current_app.logger.error(f"[Appointment] Error confirming appointment for user {user_id}: {str(e)}")
+            db.session.rollback()
+            return {'error': 'Internal server error.'}, 500

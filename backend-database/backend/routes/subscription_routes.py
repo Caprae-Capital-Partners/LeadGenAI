@@ -93,7 +93,18 @@ def cancel_subscription():
         current_app.logger.error(f"[Cancel API] Error canceling subscription for user {current_user.user_id}: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-
+@subscription_bp.route('/api/subscription/confirm_appointment', methods=['POST'])
+@login_required
+def confirm_appointment():
+    """Confirm that the user has booked an appointment"""
+    try:
+        # Assuming user_id is available from current_user (Flask-Login)
+        user_id = current_user.user_id
+        response, status_code = SubscriptionController.confirm_appointment_booked(user_id)
+        return jsonify(response), status_code
+    except Exception as e:
+        current_app.logger.error(f"[API] Error confirming appointment for user {current_user.user_id}: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @subscription_bp.route('/webhook', methods=['POST'])
 def subscription_webhook():
