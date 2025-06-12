@@ -95,6 +95,9 @@ export default function Home() {
   const [sourceFilter, setSourceFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
+  const [hasSorted, setHasSorted] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
 
   const router = useRouter();
   const handleSave = async (index) => {
@@ -752,6 +755,13 @@ export default function Home() {
   }, [router]); // Added router to dependency array
 
   useEffect(() => {
+    if (!hasSorted && scrapingHistory.length > 0) {
+      handleSortBy("filled", "most");
+      setHasSorted(true);
+    }
+  }, [scrapingHistory, hasSorted]);
+
+  useEffect(() => {
     let isCancelled = false;
 
     const ensureGrowjoIsRunning = async () => {
@@ -871,7 +881,7 @@ export default function Home() {
       <Header />
       <main className="px-20 py-16 space-y-10">
         <div className="text-2xl font-semibold text-foreground text-white">
-          Hi, {user.username || "there"} Are you ready to scrape?
+          Hi, {user.username || "there"}! Are you ready to scrape?
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -931,20 +941,42 @@ export default function Home() {
                   <CardDescription className="text-base text-muted-foreground mb-1">
                     {stat.label}
                   </CardDescription>
-                  <CardTitle className="text-3xl sm:text-4xl font-extrabold text-foreground leading-snug truncate">
+                  <CardTitle className="text-3xl sm:text-4xl font-extrabold text-foreground leading-snug break-words whitespace-normal">
                     {stat.value}
                   </CardTitle>
                 </div>
 
                 {stat.label === "Subscription" && stat.action && (
-                  <div className="flex-none">
+                  <div className="flex flex-col gap-2">
+                    {/* Upgrade Button */}
                     <Button
                       size="sm"
-                      className="text-sm px-4 py-1.5 font-semibold"
+                      className="text-sm px-4 py-1.5 font-semibold w-full"
                       onClick={stat.action.onClick}
                     >
                       {stat.action.label}
                     </Button>
+
+                    {/* Outreach Appointment Button — shown only if allowed */}
+                    {subscriptionInfo?.subscription?.is_call_outreach_cust &&
+                      !subscriptionInfo?.subscription
+                        ?.is_scheduled_for_cancellation &&
+                      subscriptionInfo?.subscription?.appointment_used ===
+                        false && (
+                        <Button
+                          size="sm"
+                          className="text-sm px-4 py-1.5 font-semibold bg-[#4CAF50] hover:bg-[#3b9441] text-white w-full"
+                          onClick={() => {
+                            window.open(
+                              "https://calendar.app.google/45wvqajrQqNCpdPg6",
+                              "_blank"
+                            );
+                            setShowConfirmModal(true);
+                          }}
+                        >
+                          Outreach Appointment
+                        </Button>
+                      )}
                   </div>
                 )}
               </CardHeader>
@@ -1426,6 +1458,73 @@ export default function Home() {
           />
         </div>
       </main>
+      {subscriptionInfo?.subscription?.is_call_outreach_cust &&
+        !subscriptionInfo?.subscription?.is_scheduled_for_cancellation && (
+          <div className="my-6 flex justify-center">
+            <Button
+              className="bg-[#007BFF] hover:bg-[#0056b3] text-white font-semibold"
+              onClick={() => {
+                // Open links in new tabs
+                window.open(
+                  "https://calendar.app.google/45wvqajrQqNCpdPg6",
+                  "_blank"
+                );
+                window.open("https://forms.gle/QzE1B9iDYJKVArnr6", "_blank");
+                setShowConfirmModal(true);
+              }}
+            >
+              Outreach Appointment
+            </Button>
+          </div>
+        )}
+      {showConfirmModal && (
+        <Popup show={true} onClose={() => setShowConfirmModal(false)}>
+          <div className="text-center">
+            <h2 className="text-lg font-semibold mb-2">
+              Have you scheduled your appointment?
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground">
+              You can only do this once, so please confirm.
+            </p>
+            <div className="flex justify-center gap-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowConfirmModal(false)}
+              >
+                No
+              </Button>
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(
+                      `${DATABASE_URL}/subscription/confirm_appointment`,
+                      {
+                        method: "POST",
+                        credentials: "include",
+                      }
+                    );
+                    if (res.ok) {
+                      setShowConfirmModal(false);
+                      showNotification("Appointment confirmed!", "success");
+                    } else {
+                      showNotification(
+                        "Failed to confirm appointment",
+                        "error"
+                      );
+                    }
+                  } catch (err) {
+                    console.error("Error confirming appointment:", err);
+                    showNotification("Unexpected error", "error");
+                  }
+                }}
+              >
+                Yes, I Did
+              </Button>
+            </div>
+          </div>
+        </Popup>
+      )}
     </>
   );
 }

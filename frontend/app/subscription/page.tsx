@@ -205,7 +205,7 @@ export default function SubscriptionPage() {
         }
     };
 
-
+    
     return (
         <div className="animate-fade-in-down min-h-screen pt-32 pb-16 px-4 sm:px-6 lg:px-8 bg-background text-foreground">
             <div className="max-w-7xl mx-auto space-y-16">
@@ -273,19 +273,26 @@ export default function SubscriptionPage() {
                                                 : plan.id.includes("enterprise")
                                                     ? "bg-blue-200 text-black"
                                                     : "bg-muted text-foreground";
-
-                            const price = typeof plan.price === "number"
+                            
+                            
+                            let price = typeof plan.price === "number"
                                 ? `$${plan.price} /${isAnnual ? "year" : "month"}`
                                 : plan.price;
+
+                            if (plan.id === "student_semester") {
+                                price = "$25 /semester";
+                                                                      }
 
                             const quota = typeof plan.lead_quota === "number"
                                 ? `${plan.lead_quota} leads/${isAnnual ? "year" : "month"}`
                                 : plan.lead_quota;
+                            
+                            const isStudentPlan = plan.id.includes("student");
 
                             return (
                                 <div
                                     key={plan.id}
-                                    className="w-full max-w-sm group relative rounded-[28px] overflow-hidden flex flex-col justify-between min-h-[300px] border-2 border-border bg-muted transition-all duration-300 hover:shadow-2xl hover:scale-[1.03]"
+                                    className={`w-full max-w-sm group relative rounded-[28px] overflow-hidden flex flex-col justify-between min-h-[300px] border-2 border-border transition-all duration-300 hover:shadow-2xl hover:scale-[1.03] ${isStudentPlan ? "bg-[#526282]" : "bg-muted"}`}
                                 >
                                     <div
                                         className={`text-center text-2xl font-bold py-4 border-y border-border bg-muted transition-all duration-300 group-hover:text-3xl group-hover:tracking-wide ${hoverTextColor}`}
@@ -361,6 +368,8 @@ export default function SubscriptionPage() {
                                                     ? "group-hover:text-blue-500"
                                                     : "group-hover:text-foreground";
 
+                            const isStudentPlan = plan.id.includes("student");   
+                                                
                             const buttonHoverColor =
                                 plan.id.includes("gold")
                                     ? "bg-yellow-300 text-black"
@@ -381,7 +390,8 @@ export default function SubscriptionPage() {
                             const quota = typeof plan.lead_quota === "number"
                                 ? `${plan.lead_quota} leads/${isAnnual ? "year" : "month"}`
                                 : plan.lead_quota;
-
+                            
+                            
                             return (
                                 <div
                                     key={plan.id}
