@@ -153,7 +153,7 @@ def view_leads():
     # Log user info
     current_app.logger.info(f'Route hit: / by user_id={user_id}, username={username}, plan={plan}, credits_remaining={credits}')
     print(f"[USER INFO] username: {username}, plan: {plan}, credits_remaining: {credits}")
-    # Ambil parameter dari query string
+    # Get parameters from query string
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     search = request.args.get('search', '')
@@ -163,7 +163,7 @@ def view_leads():
     role = request.args.get('role', '')
     industry = request.args.get('industry', '')
 
-    # Query dengan filter dan pagination
+    # Query with filter and pagination
     query = Lead.query.filter(Lead.deleted == False)
     if search:
         query = query.filter(
@@ -187,7 +187,7 @@ def view_leads():
     if industry:
         query = query.filter(Lead.industry.ilike(f'%{industry}%'))
 
-    # --- Advanced filter ---
+    # Advanced filter
     adv_filters = []
     idx = 0
     while True:
@@ -230,7 +230,7 @@ def view_leads():
             else:
                 expr = or_(expr, adv_expressions[i][0])
         query = query.filter(expr)
-    # --- END advanced filter ---
+    # END advanced filter
 
     paginated = query.order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
     leads = paginated.items
