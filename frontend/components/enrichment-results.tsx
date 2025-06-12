@@ -101,6 +101,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
   const [cityFilter, setCityFilter] = useState("")
   const [stateFilter, setStateFilter] = useState("")
   const [sourceFilter, setSourceFilter] = useState("")
+  const [hasSorted, setHasSorted] = useState(false);
   const [filteredCompanies, setFilteredCompanies] = useState<EnrichedCompany[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const handleFieldChange = (id: string, field: keyof EnrichedCompany, value: any) => {
@@ -354,6 +355,13 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     return pageNumbers;
   };
 
+  useEffect(() => {
+    if (!hasSorted && filteredCompanies.length > 0) {
+      handleSortBy("filled", "most");
+      setHasSorted(true);
+    }
+  }, [filteredCompanies, hasSorted]);
+  
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedCompanies([])

@@ -95,6 +95,8 @@ export default function Home() {
   const [sourceFilter, setSourceFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
+  const [hasSorted, setHasSorted] = useState(false);
+
 
   const router = useRouter();
   const handleSave = async (index) => {
@@ -751,6 +753,13 @@ export default function Home() {
     verifyAndFetchLeads();
   }, [router]); // Added router to dependency array
 
+  useEffect(() => {
+    if (!hasSorted && scrapingHistory.length > 0) {
+      handleSortBy("filled", "most");
+      setHasSorted(true);
+    }
+  }, [scrapingHistory, hasSorted]);
+  
   useEffect(() => {
     let isCancelled = false;
 
