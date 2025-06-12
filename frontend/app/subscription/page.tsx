@@ -44,8 +44,6 @@ export default function SubscriptionPage() {
     useEffect(() => {
         const fetchUpgradePlans = async () => {
             try {
-                const outreachId = "pro_call_outreach";
-
                 const cached = localStorage.getItem("upgradePlans");
                 if (cached) {
                     const parsed = JSON.parse(cached);
@@ -67,7 +65,6 @@ export default function SubscriptionPage() {
                 const userRole = data.user_role?.toLowerCase() || "";
                 const isStudent = userRole === "student";
 
-                // Extract student plans
                 const studentPlans = isStudent
                     ? (data.plans || [])
                         .filter((plan: any) =>
@@ -91,6 +88,7 @@ export default function SubscriptionPage() {
                     const planId = rawPlanName.replace(/\s+/g, "_");
                     const isEnterprise = rawPlanName.includes("enterprise");
                     const isAnnualPlan = planId.includes("annual");
+                    const isOutreachPlan = rawPlanName.includes("pro call outreach");
 
                     const baseParsedPlan = {
                         id: planId,
@@ -108,16 +106,18 @@ export default function SubscriptionPage() {
                                 ? "secondary"
                                 : "outline",
                         recommended: plan.recommended ?? rawPlanName.includes("gold"),
-                        link: plan.link || (isEnterprise ? "https://www.saasquatchleads.com/" : undefined),
+                        link:
+                            plan.link || (isEnterprise ? "https://www.saasquatchleads.com/" : undefined),
                     };
 
-                    if (planId === outreachId) {
+                    if (isOutreachPlan) {
                         const outreachPlanParsed = {
                             ...baseParsedPlan,
-                            id: planId,
+                            id: "call_outreach",
                             price: plan.monthly_price,
                             lead_quota: plan.monthly_lead_quota,
                             isAnnual: false,
+                            plan_id: planId, // Needed for checkout session
                         };
 
                         setOutreachPlan(outreachPlanParsed);
@@ -143,7 +143,9 @@ export default function SubscriptionPage() {
                             ...baseParsedPlan,
                             id: planId,
                             price: isAnnualPlan ? plan.annual_price : plan.monthly_price,
-                            lead_quota: isAnnualPlan ? plan.annual_lead_quota : plan.monthly_lead_quota,
+                            lead_quota: isAnnualPlan
+                                ? plan.annual_lead_quota
+                                : plan.monthly_lead_quota,
                             isAnnual: isAnnualPlan,
                         });
                     }
@@ -164,7 +166,7 @@ export default function SubscriptionPage() {
         };
 
         fetchUpgradePlans();
-    }, []);
+    }, []);      
 
 
 
@@ -466,10 +468,33 @@ export default function SubscriptionPage() {
 
                         <Button
                             className="rounded-full px-6 py-2 text-base font-semibold"
-                            onClick={() => window.location.href = "/contact"}
+                            onClick={async () => {
+                                try {
+                                    const res = await fetch(`${DATABASE_URL_NOAPI}/create-checkout-session`, {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                        },
+                                        credentials: "include",
+                                        body: JSON.stringify({ plan_type: outreachPlan.id }),
+                                    });
+
+                                    if (!res.ok) throw new Error("Failed to create checkout session");
+
+                                    const data = await res.json();
+                                    if (data?.url) {
+                                        window.location.href = data.url; // Redirect to Stripe Checkout
+                                    } else {
+                                        console.error("No URL returned:", data);
+                                    }
+                                } catch (err) {
+                                    console.error("Checkout session error:", err);
+                                }
+                            }}
                         >
                             {outreachPlan.plan_name}
                         </Button>
+
                     </div>
                 )}
 
