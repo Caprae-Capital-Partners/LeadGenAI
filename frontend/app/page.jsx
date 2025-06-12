@@ -759,7 +759,7 @@ export default function Home() {
       setHasSorted(true);
     }
   }, [scrapingHistory, hasSorted]);
-  
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -880,7 +880,7 @@ export default function Home() {
       <Header />
       <main className="px-20 py-16 space-y-10">
         <div className="text-2xl font-semibold text-foreground text-white">
-          Hi, {user.username || "there"} Are you ready to scrape?
+          Hi, {user.username || "there"}! Are you ready to scrape?
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -940,7 +940,7 @@ export default function Home() {
                   <CardDescription className="text-base text-muted-foreground mb-1">
                     {stat.label}
                   </CardDescription>
-                  <CardTitle className="text-3xl sm:text-4xl font-extrabold text-foreground leading-snug truncate">
+                  <CardTitle className="text-3xl sm:text-4xl font-extrabold text-foreground leading-snug break-words whitespace-normal">
                     {stat.value}
                   </CardTitle>
                 </div>
