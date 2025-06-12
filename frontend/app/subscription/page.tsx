@@ -468,35 +468,13 @@ export default function SubscriptionPage() {
 
                         <Button
                             className="rounded-full px-6 py-2 text-base font-semibold"
-                            onClick={async () => {
-                                try {
-                                    const res = await fetch(`${DATABASE_URL_NOAPI}/create-checkout-session`, {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json",
-                                        },
-                                        credentials: "include",
-                                        body: JSON.stringify({ plan_type: outreachPlan.id }),
-                                    });
-
-                                    if (!res.ok) throw new Error("Failed to create checkout session");
-
-                                    const data = await res.json();
-                                    if (data?.url) {
-                                        window.location.href = data.url; // Redirect to Stripe Checkout
-                                    } else {
-                                        console.error("No URL returned:", data);
-                                    }
-                                } catch (err) {
-                                    console.error("Checkout session error:", err);
-                                }
-                            }}
+                            onClick={() => handleSelectPlan(outreachPlan.id)}
                         >
                             {outreachPlan.plan_name}
                         </Button>
-
                     </div>
                 )}
+
 
 
 
