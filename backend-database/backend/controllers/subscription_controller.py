@@ -518,7 +518,8 @@ class SubscriptionController:
         # Only include selected fields
         user_data = {
             'user_id': str(user_obj.user_id),
-            'email': user_obj.email
+            'email': user_obj.email,
+            'username': user_obj.username,
         }
         subscription_data = {
             'credits_remaining': user_sub.credits_remaining,
@@ -526,11 +527,15 @@ class SubscriptionController:
             'plan_name': user_sub.plan_name,
             'tier_start_timestamp': user_sub.tier_start_timestamp.isoformat() if user_sub.tier_start_timestamp else None,
             'plan_expiration_timestamp': user_sub.plan_expiration_timestamp.isoformat() if user_sub.plan_expiration_timestamp else None,
-            'username': user_sub.username,
             'is_scheduled_for_cancellation': is_scheduled_for_cancellation,
             'is_paused': getattr(user_sub, 'is_paused', False),
             'pause_end_date': user_sub.pause_end_date.isoformat() if getattr(user_sub, 'pause_end_date', None) else None,
-            'original_plan_name': getattr(user_sub, 'original_plan_name', None)
+            'original_plan_name': getattr(user_sub, 'original_plan_name', None),
+            'is_cancelled': getattr(user_sub, 'is_cancelled', False),
+            'is_call_outreach_cust': getattr(user_sub, 'is_call_outreach_cust', False),
+            'is_pause': getattr(user_sub, 'is_pause', False),
+            'pause_end_date': getattr(user_sub, 'pause_end_date', None),
+
         }
         plan_data = None
         if plan:
