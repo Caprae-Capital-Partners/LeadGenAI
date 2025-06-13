@@ -8,31 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { SortDropdown } from "@/components/ui/sort-dropdown"
 import { 
   Search, 
   Download, 
   Edit, 
   Mail, 
   FileText, 
-  ExternalLink, 
-  Link as LinkIcon, 
-  MapPin,
-  SortAsc,
-  SortDesc,
   Filter,
-  X,
-  Save
+  ExternalLink as LinkIcon
 } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Pagination,
   PaginationContent,
@@ -62,21 +48,22 @@ interface Person {
   employees: number;
   revenue: string;
   yearFounded: string;
+  businessType: string;
+  address: string;
 }
 
-type SortField = 'name' | 'title' | 'location' | 'company' | 'industry'
-type SortOrder = 'asc' | 'desc'
+type SortOption = "filled" | "company" | "revenue" | "employees" | "owner" | "recent"
 
 export default function PersonsPage() {
   const [persons, setPersons] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [sortField, setSortField] = useState<SortField>('name')
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
   const [exportFormat, setExportFormat] = useState("csv")
+  const [selectedPersons, setSelectedPersons] = useState<string[]>([])
+  const [showFilters, setShowFilters] = useState(false)
 
   // Fetch persons data from API
   useEffect(() => {
@@ -113,7 +100,9 @@ export default function PersonsPage() {
             industry: draftData.industry || 'N/A',
             employees: draftData.employees || 0,
             revenue: draftData.revenue || 'N/A',
-            yearFounded: draftData.year_founded || 'N/A'
+            yearFounded: draftData.year_founded || 'N/A',
+            businessType: draftData.business_type || 'N/A',
+            address: `${draftData.street || ''} ${draftData.city || ''} ${draftData.state || ''}`.trim() || 'N/A'
           }
         })
 
@@ -135,44 +124,103 @@ export default function PersonsPage() {
     person.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     person.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
     person.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.industry.toLowerCase().includes(searchTerm.toLowerCase())
+    person.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    person.businessType.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Handle sorting
-  const sortedPersons = [...filteredPersons].sort((a, b) => {
-    const aValue = a[sortField].toString().toLowerCase()
-    const bValue = b[sortField].toString().toLowerCase()
-    
-    if (sortOrder === 'asc') {
-      return aValue.localeCompare(bValue)
-    } else {
-      return bValue.localeCompare(aValue)
-    }
-  })
-
   // Pagination
-  const totalPages = Math.ceil(sortedPersons.length / itemsPerPage)
+  const totalPages = Math.ceil(filteredPersons.length / itemsPerPage)
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = sortedPersons.slice(indexOfFirstItem, indexOfLastItem)
+  const currentItems = filteredPersons.slice(indexOfFirstItem, indexOfLastItem)
 
   // Reset to first page when search term changes
   useEffect(() => {
     setCurrentPage(1)
   }, [searchTerm])
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortOrder('asc')
-    }
+  // Handle sort functionality
+  const handleSortBy = (sortBy: SortOption, direction: "most" | "least") => {
+    // Count how many non-empty fields each row has
+    const getFilledCount = (person: Person) =>
+      Object.entries(person).filter(([key, value]) => {
+        if (
+          ["id"].includes(key) ||
+          value === null ||
+          value === undefined ||
+          value === "" ||
+          value === "N/A"
+        ) {
+          return false;
+        }
+        return true;
+      }).length;
+
+    // Determine the base array to sort
+    const base = [...persons];
+
+    // Sort based on the selected criteria
+    const sorted = base.sort((a, b) => {
+      if (sortBy === "filled") {
+        const aCount = getFilledCount(a);
+        const bCount = getFilledCount(b);
+        return direction === "most" ? bCount - aCount : aCount - bCount;
+      }
+      
+      if (sortBy === "company") {
+        return direction === "most"
+          ? a.company.localeCompare(b.company)
+          : b.company.localeCompare(a.company);
+      }
+      
+      if (sortBy === "revenue") {
+        // Convert revenue strings to numbers for comparison
+        const aRevenue = parseFloat(a.revenue.replace(/[^0-9.]/g, '')) || 0;
+        const bRevenue = parseFloat(b.revenue.replace(/[^0-9.]/g, '')) || 0;
+        return direction === "most" ? bRevenue - aRevenue : aRevenue - bRevenue;
+      }
+      
+      if (sortBy === "employees") {
+        return direction === "most" ? b.employees - a.employees : a.employees - b.employees;
+      }
+      
+      if (sortBy === "owner") {
+        // Sort by whether they have contact info (email or phone)
+        const aHasContact = (a.email && a.email !== 'N/A') || (a.phone && a.phone !== 'N/A') ? 1 : 0;
+        const bHasContact = (b.email && b.email !== 'N/A') || (b.phone && b.phone !== 'N/A') ? 1 : 0;
+        return direction === "most" ? bHasContact - aHasContact : aHasContact - bHasContact;
+      }
+      
+      if (sortBy === "recent") {
+        // Sort by name as a fallback for "recent" since we don't have date info
+        return direction === "most"
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name);
+      }
+      
+      return 0;
+    });
+
+    // Update the persons state with sorted data
+    setPersons(sorted);
+    setCurrentPage(1); // reset pagination to page 1
+  };
+
+  // Handle checkbox selection
+  const handleSelectPerson = (personId: string) => {
+    setSelectedPersons(prev => 
+      prev.includes(personId) 
+        ? prev.filter(id => id !== personId)
+        : [...prev, personId]
+    )
   }
 
-  const getSortIcon = (field: SortField) => {
-    if (sortField !== field) return null
-    return sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />
+  const handleSelectAll = () => {
+    if (selectedPersons.length === currentItems.length) {
+      setSelectedPersons([])
+    } else {
+      setSelectedPersons(currentItems.map(person => person.id))
+    }
   }
 
   // Generate page numbers for pagination
@@ -216,9 +264,9 @@ export default function PersonsPage() {
   // Export functions - updated to include more fields
   const exportCSV = () => {
     const csvRows = [
-      "Name,Title,Company,Industry,Website,Email,Phone,LinkedIn,Location,Employees,Revenue,Year Founded",
-      ...sortedPersons.map(person =>
-        `"${person.name}","${person.title}","${person.company}","${person.industry}","${person.website}","${person.email}","${person.phone}","${person.linkedin}","${person.location}","${person.employees}","${person.revenue}","${person.yearFounded}"`
+      "Name,Title,Company,Industry,Business Type,Website,Email,Phone,LinkedIn,Address,Employees,Revenue,Year Founded",
+      ...filteredPersons.map(person =>
+        `"${person.name}","${person.title}","${person.company}","${person.industry}","${person.businessType}","${person.website}","${person.email}","${person.phone}","${person.linkedin}","${person.address}","${person.employees}","${person.revenue}","${person.yearFounded}"`
       )
     ]
     const blob = new Blob([csvRows.join("\n")], { type: "text/csv" })
@@ -231,7 +279,7 @@ export default function PersonsPage() {
   }
 
   const exportJSON = () => {
-    const blob = new Blob([JSON.stringify(sortedPersons, null, 2)], { type: "application/json" })
+    const blob = new Blob([JSON.stringify(filteredPersons, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -262,23 +310,9 @@ export default function PersonsPage() {
     }
   }
 
-  const handleWebsite = (person: any) => {
-    if (person.website) {
-      const url = person.website.startsWith('http') ? person.website : `https://${person.website}`
-      window.open(url, '_blank')
-    }
-  }
-
   const handleLinkedIn = (person: any) => {
     if (person.linkedin) {
       window.open(person.linkedin, '_blank')
-    }
-  }
-
-  const handleGoogleMaps = (person: any) => {
-    if (person.location && person.location !== 'N/A') {
-      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(person.location)}`
-      window.open(mapsUrl, '_blank')
     }
   }
 
@@ -308,34 +342,19 @@ export default function PersonsPage() {
                     />
                   </div>
                   
-                  {/* Filter Button */}
-                  <Button variant="outline" size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filter
-                  </Button>
-                  
-                  {/* Sort Dropdown */}
-                  <Select value={`${sortField}-${sortOrder}`} onValueChange={(value) => {
-                    const [field, order] = value.split('-') as [SortField, SortOrder]
-                    setSortField(field)
-                    setSortOrder(order)
-                  }}>
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="name-asc">Name A-Z</SelectItem>
-                      <SelectItem value="name-desc">Name Z-A</SelectItem>
-                      <SelectItem value="title-asc">Title A-Z</SelectItem>
-                      <SelectItem value="title-desc">Title Z-A</SelectItem>
-                      <SelectItem value="company-asc">Company A-Z</SelectItem>
-                      <SelectItem value="company-desc">Company Z-A</SelectItem>
-                      <SelectItem value="industry-asc">Industry A-Z</SelectItem>
-                      <SelectItem value="industry-desc">Industry Z-A</SelectItem>
-                      <SelectItem value="location-asc">Location A-Z</SelectItem>
-                      <SelectItem value="location-desc">Location Z-A</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <SortDropdown onApply={handleSortBy} />
+                    
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowFilters((f) => !f)}
+                      title={showFilters ? "Hide Filters" : "Show Filters"}
+                    >
+                      <Filter className="h-4 w-4" />
+                    </Button>
+                  </div>
                   
                   {/* Export */}
                   <div className="flex items-center gap-2">
@@ -359,10 +378,15 @@ export default function PersonsPage() {
             
             <CardContent>
               {/* Pagination Info and Controls */}
-              {sortedPersons.length > 0 && (
+              {filteredPersons.length > 0 && (
                 <div className="mb-4 flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
-                    Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedPersons.length)} of {sortedPersons.length} persons
+                    Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredPersons.length)} of {filteredPersons.length} persons
+                    {selectedPersons.length > 0 && (
+                      <span className="ml-2 text-blue-600">
+                        ({selectedPersons.length} selected)
+                      </span>
+                    )}
                   </div>
                   
                   <div className="flex items-center gap-4">
@@ -379,41 +403,6 @@ export default function PersonsPage() {
                         <SelectItem value="100">100 per page</SelectItem>
                       </SelectContent>
                     </Select>
-                    
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious 
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            aria-disabled={currentPage === 1}
-                            className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                          />
-                        </PaginationItem>
-                        
-                        {getPageNumbers().map((page, index) => (
-                          <PaginationItem key={index}>
-                            {page === 'ellipsis' ? (
-                              <PaginationEllipsis />
-                            ) : (
-                              <PaginationLink
-                                isActive={page === currentPage}
-                                onClick={() => setCurrentPage(Number(page))}
-                              >
-                                {page}
-                              </PaginationLink>
-                            )}
-                          </PaginationItem>
-                        ))}
-                        
-                        <PaginationItem>
-                          <PaginationNext 
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            aria-disabled={currentPage === totalPages}
-                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
                   </div>
                 </div>
               )}
@@ -437,66 +426,50 @@ export default function PersonsPage() {
                   </div>
                 ) : (
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow>
-                        <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none"
-                          onClick={() => handleSort('name')}
-                        >
-                          <div className="flex items-center gap-2">
-                            Name
-                            {getSortIcon('name')}
-                          </div>
+                        <TableHead className="w-[50px] bg-background">
+                          <Checkbox
+                            checked={selectedPersons.length === currentItems.length && currentItems.length > 0}
+                            onCheckedChange={handleSelectAll}
+                            aria-label="Select all"
+                          />
                         </TableHead>
-                        <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none"
-                          onClick={() => handleSort('title')}
-                        >
-                          <div className="flex items-center gap-2">
-                            Title
-                            {getSortIcon('title')}
-                          </div>
+                        <TableHead className="bg-background">
+                          Name
                         </TableHead>
-                        <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none"
-                          onClick={() => handleSort('company')}
-                        >
-                          <div className="flex items-center gap-2">
-                            Company
-                            {getSortIcon('company')}
-                          </div>
+                        <TableHead className="w-[120px] bg-background">Actions</TableHead>
+                        <TableHead className="bg-background">
+                          Title
                         </TableHead>
-                        <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none"
-                          onClick={() => handleSort('industry')}
-                        >
-                          <div className="flex items-center gap-2">
-                            Industry
-                            {getSortIcon('industry')}
-                          </div>
+                        <TableHead className="w-[120px] bg-background">Links</TableHead>
+                        <TableHead className="bg-background">Phone Number</TableHead>
+                        <TableHead className="bg-background">
+                          Company
                         </TableHead>
-                        <TableHead className="w-[200px]">Actions</TableHead>
-                        <TableHead 
-                          className="cursor-pointer hover:bg-muted/50 select-none"
-                          onClick={() => handleSort('location')}
-                        >
-                          <div className="flex items-center gap-2">
-                            Location
-                            {getSortIcon('location')}
-                          </div>
+                        <TableHead className="bg-background">
+                          Industry
                         </TableHead>
+                        <TableHead className="bg-background">
+                          Business Type
+                        </TableHead>
+                        <TableHead className="bg-background">Address</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {currentItems.length > 0 ? (
                         currentItems.map((person) => (
                           <TableRow key={person.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedPersons.includes(person.id)}
+                                onCheckedChange={() => handleSelectPerson(person.id)}
+                                aria-label={`Select ${person.name}`}
+                              />
+                            </TableCell>
                             <TableCell className="font-medium">
                               {person.name}
                             </TableCell>
-                            <TableCell>{person.title}</TableCell>
-                            <TableCell>{person.company}</TableCell>
-                            <TableCell>{person.industry}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
                                 <Button
@@ -515,6 +488,11 @@ export default function PersonsPage() {
                                 >
                                   <FileText className="h-4 w-4" />
                                 </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell>{person.title}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -527,38 +505,24 @@ export default function PersonsPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleWebsite(person)}
-                                  title="Visit Website"
-                                  disabled={!person.website}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
                                   onClick={() => handleLinkedIn(person)}
                                   title="LinkedIn Profile"
                                   disabled={!person.linkedin}
                                 >
                                   <LinkIcon className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleGoogleMaps(person)}
-                                  title="Google Maps"
-                                  disabled={!person.location || person.location === 'N/A'}
-                                >
-                                  <MapPin className="h-4 w-4" />
-                                </Button>
                               </div>
                             </TableCell>
-                            <TableCell>{person.location}</TableCell>
+                            <TableCell>{person.phone || 'N/A'}</TableCell>
+                            <TableCell>{person.company}</TableCell>
+                            <TableCell>{person.industry}</TableCell>
+                            <TableCell>{person.businessType}</TableCell>
+                            <TableCell>{person.address}</TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={6} className="h-24 text-center">
+                          <TableCell colSpan={10} className="h-24 text-center">
                             {searchTerm ? "No persons found matching your search." : "No persons found."}
                           </TableCell>
                         </TableRow>
@@ -567,6 +531,46 @@ export default function PersonsPage() {
                   </Table>
                 )}
               </div>
+
+              {/* Pagination at the bottom */}
+              {filteredPersons.length > 0 && (
+                <div className="mt-4 flex items-center justify-center">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          aria-disabled={currentPage === 1}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                      
+                      {getPageNumbers().map((page, index) => (
+                        <PaginationItem key={index}>
+                          {page === 'ellipsis' ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              isActive={page === currentPage}
+                              onClick={() => setCurrentPage(Number(page))}
+                            >
+                              {page}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          aria-disabled={currentPage === totalPages}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </CardContent>
           </Card>
         </main>
