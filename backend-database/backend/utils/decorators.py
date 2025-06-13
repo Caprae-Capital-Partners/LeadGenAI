@@ -27,15 +27,16 @@ def role_required(*roles):
     return decorator
 
 def credit_required(cost=1):
-    """Decorator to check if the user has enough credits and deducts them on success, but skips check for non-'user' roles."""
+    """Decorator to check if the user has enough credits and deducts them on success, but skips check for admin and developer roles."""
+    skip_roles = ['admin', 'developer']
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
                 return jsonify({'status': 'error', 'message': 'Authentication required.'}), 401
 
-            # If the user is not a regular user, skip credit check
-            if hasattr(current_user, 'role') and current_user.role != 'user':
+            # If the user's role is in skip_roles, skip credit check
+            if hasattr(current_user, 'role') and current_user.role in skip_roles:
                 return f(*args, **kwargs)
 
             user_id = current_user.get_id()
