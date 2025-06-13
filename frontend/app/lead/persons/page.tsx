@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { SortDropdown } from "@/components/ui/sort-dropdown"
+import { SortDropdown } from "@/app/lead/persons/sort-dropdown"
 import { 
   Search, 
   Download, 
@@ -17,6 +17,7 @@ import {
   Mail, 
   FileText, 
   Filter,
+  X,
   ExternalLink as LinkIcon
 } from "lucide-react"
 import {
@@ -46,13 +47,12 @@ interface Person {
   linkedin: string;
   industry: string;
   employees: number;
-  revenue: string;
   yearFounded: string;
   businessType: string;
   address: string;
 }
 
-type SortOption = "filled" | "company" | "revenue" | "employees" | "owner" | "recent"
+type SortOption = "filled" | "company" | "employees" | "owner" | "recent"
 
 export default function PersonsPage() {
   const [persons, setPersons] = useState<Person[]>([])
@@ -64,6 +64,22 @@ export default function PersonsPage() {
   const [exportFormat, setExportFormat] = useState("csv")
   const [selectedPersons, setSelectedPersons] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
+
+  // Filter states
+  const [titleFilter, setTitleFilter] = useState("")
+  const [companyFilter, setCompanyFilter] = useState("")
+  const [industryFilter, setIndustryFilter] = useState("")
+  const [businessTypeFilter, setBusinessTypeFilter] = useState("")
+  const [addressFilter, setAddressFilter] = useState("")
+
+  // Clear all filters function
+  const clearAllFilters = () => {
+    setTitleFilter("")
+    setCompanyFilter("")
+    setIndustryFilter("")
+    setBusinessTypeFilter("")
+    setAddressFilter("")
+  }
 
   // Fetch persons data from API
   useEffect(() => {
@@ -99,7 +115,6 @@ export default function PersonsPage() {
             linkedin: draftData.owner_linkedin || draftData.company_linkedin || '',
             industry: draftData.industry || 'N/A',
             employees: draftData.employees || 0,
-            revenue: draftData.revenue || 'N/A',
             yearFounded: draftData.year_founded || 'N/A',
             businessType: draftData.business_type || 'N/A',
             address: `${draftData.street || ''} ${draftData.city || ''} ${draftData.state || ''}`.trim() || 'N/A'
@@ -118,15 +133,25 @@ export default function PersonsPage() {
     fetchPersons()
   }, [])
 
-  // Handle search - updated to include more fields
-  const filteredPersons = persons.filter(person =>
-    person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.businessType.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Handle search and filters - updated to include filter logic
+  const filteredPersons = persons.filter(person => {
+    // Search term filter
+    const matchesSearch = person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.businessType.toLowerCase().includes(searchTerm.toLowerCase())
+
+    // Individual filters
+    const matchTitle = person.title?.toLowerCase().includes(titleFilter.toLowerCase())
+    const matchCompany = person.company?.toLowerCase().includes(companyFilter.toLowerCase())
+    const matchIndustry = person.industry?.toLowerCase().includes(industryFilter.toLowerCase())
+    const matchBusinessType = person.businessType?.toLowerCase().includes(businessTypeFilter.toLowerCase())
+    const matchAddress = person.address?.toLowerCase().includes(addressFilter.toLowerCase())
+
+    return matchesSearch && matchTitle && matchCompany && matchIndustry && matchBusinessType && matchAddress
+  })
 
   // Pagination
   const totalPages = Math.ceil(filteredPersons.length / itemsPerPage)
@@ -134,12 +159,12 @@ export default function PersonsPage() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentItems = filteredPersons.slice(indexOfFirstItem, indexOfLastItem)
 
-  // Reset to first page when search term changes
+  // Reset to first page when search term or filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm])
+  }, [searchTerm, titleFilter, companyFilter, industryFilter, businessTypeFilter, addressFilter])
 
-  // Handle sort functionality
+  // Handle sort functionality (removed revenue)
   const handleSortBy = (sortBy: SortOption, direction: "most" | "least") => {
     // Count how many non-empty fields each row has
     const getFilledCount = (person: Person) =>
@@ -171,13 +196,6 @@ export default function PersonsPage() {
         return direction === "most"
           ? a.company.localeCompare(b.company)
           : b.company.localeCompare(a.company);
-      }
-      
-      if (sortBy === "revenue") {
-        // Convert revenue strings to numbers for comparison
-        const aRevenue = parseFloat(a.revenue.replace(/[^0-9.]/g, '')) || 0;
-        const bRevenue = parseFloat(b.revenue.replace(/[^0-9.]/g, '')) || 0;
-        return direction === "most" ? bRevenue - aRevenue : aRevenue - bRevenue;
       }
       
       if (sortBy === "employees") {
@@ -264,9 +282,9 @@ export default function PersonsPage() {
   // Export functions - updated to include more fields
   const exportCSV = () => {
     const csvRows = [
-      "Name,Title,Company,Industry,Business Type,Website,Email,Phone,LinkedIn,Address,Employees,Revenue,Year Founded",
+      "Name,Title,Company,Industry,Business Type,Website,Email,Phone,LinkedIn,Address,Employees,Year Founded",
       ...filteredPersons.map(person =>
-        `"${person.name}","${person.title}","${person.company}","${person.industry}","${person.businessType}","${person.website}","${person.email}","${person.phone}","${person.linkedin}","${person.address}","${person.employees}","${person.revenue}","${person.yearFounded}"`
+        `"${person.name}","${person.title}","${person.company}","${person.industry}","${person.businessType}","${person.website}","${person.email}","${person.phone}","${person.linkedin}","${person.address}","${person.employees}","${person.yearFounded}"`
       )
     ]
     const blob = new Blob([csvRows.join("\n")], { type: "text/csv" })
@@ -374,6 +392,46 @@ export default function PersonsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Filter Section */}
+              {showFilters && (
+                <div className="flex flex-wrap gap-4 my-4">
+                  <Input
+                    placeholder="Title"
+                    value={titleFilter}
+                    onChange={(e) => setTitleFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="Company"
+                    value={companyFilter}
+                    onChange={(e) => setCompanyFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="Industry"
+                    value={industryFilter}
+                    onChange={(e) => setIndustryFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="Business Type"
+                    value={businessTypeFilter}
+                    onChange={(e) => setBusinessTypeFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="Address"
+                    value={addressFilter}
+                    onChange={(e) => setAddressFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                    <X className="h-4 w-4 mr-1" />
+                    Clear All
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             
             <CardContent>
@@ -523,7 +581,7 @@ export default function PersonsPage() {
                       ) : (
                         <TableRow>
                           <TableCell colSpan={10} className="h-24 text-center">
-                            {searchTerm ? "No persons found matching your search." : "No persons found."}
+                            {searchTerm || titleFilter || companyFilter || industryFilter || businessTypeFilter || addressFilter ? "No persons found matching your search and filters." : "No persons found."}
                           </TableCell>
                         </TableRow>
                       )}
