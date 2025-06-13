@@ -1487,25 +1487,6 @@ export default function Home() {
           />
         </div>
       </main>
-      {subscriptionInfo?.subscription?.is_call_outreach_cust &&
-        !subscriptionInfo?.subscription?.is_scheduled_for_cancellation && (
-          <div className="my-6 flex justify-center">
-            <Button
-              className="bg-[#007BFF] hover:bg-[#0056b3] text-white font-semibold"
-              onClick={() => {
-                // Open links in new tabs
-                window.open(
-                  "https://calendar.app.google/45wvqajrQqNCpdPg6",
-                  "_blank"
-                );
-                window.open("https://forms.gle/QzE1B9iDYJKVArnr6", "_blank");
-                setShowConfirmModal(true);
-              }}
-            >
-              Outreach Appointment
-            </Button>
-          </div>
-        )}
       {showConfirmModal && (
         <Popup show={true} onClose={() => setShowConfirmModal(false)}>
           <div className="text-center">
