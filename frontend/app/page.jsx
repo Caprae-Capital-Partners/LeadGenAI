@@ -95,6 +95,8 @@ export default function Home() {
   const [sourceFilter, setSourceFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
+  const [showCookieWarning, setShowCookieWarning] = useState(false);
+
 
   const router = useRouter();
   const handleSave = async (index) => {
@@ -795,16 +797,32 @@ export default function Home() {
       try {
         const res = await axios.get(`${DATABASE_URL}/user/subscription_info`, {
           withCredentials: true,
+          validateStatus: () => true, // let us handle non-2xx responses
         });
+
+        if (
+          res.status === 302 ||
+          res.status === 401 ||
+          res.request?.responseURL?.includes("/auth")
+        ) {
+          console.warn("⚠️ Blocked by third-party cookies or session timeout");
+          setShowCookieWarning(true); // trigger the popup
+          return;
+        }
 
         setSubscriptionInfo(res.data);
       } catch (err) {
         console.error("Error fetching subscription info:", err);
+        showNotification(
+          "Failed to verify your subscription. Please try again later.",
+          "error"
+        );
       }
     };
 
     fetchSubscriptionInfo();
   }, []);
+  
 
   const COLORS = [
     "#1EBE8F", // More vibrant Green-Teal
@@ -866,6 +884,18 @@ export default function Home() {
           </button>
         </div>
       </Popup>
+
+      {/* popup for subscription info 302 */}
+      <Popup
+        show={showCookieWarning}
+        onClose={() => {
+          setShowCookieWarning(false);
+          router.push("/auth");
+        }}
+        title="Third-Party Cookies Blocked"
+        description="Your browser is blocking cookies required to stay logged in. Please enable third-party cookies or allow all cookies."
+        confirmText="OK"
+      />
 
       {/* Main app content */}
       <Header />
