@@ -18,7 +18,15 @@ import {
   FileText, 
   Filter,
   X,
-  ExternalLink as LinkIcon
+  ExternalLink as LinkIcon,
+  Eye,
+  Building,
+  MapPin,
+  Calendar,
+  Users,
+  Globe,
+  Phone,
+  Linkedin
 } from "lucide-react"
 import {
   Pagination,
@@ -29,6 +37,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 // Database URLs
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
@@ -54,6 +68,177 @@ interface Person {
 
 type SortOption = "filled" | "company" | "employees" | "owner" | "recent"
 
+// PopupBig Component
+interface PopupBigProps {
+  show: boolean;
+  onClose: () => void;
+  person: Person | null;
+}
+
+const PopupBig: React.FC<PopupBigProps> = ({ show, onClose, person }) => {
+  if (!person) return null;
+
+  return (
+    <Dialog open={show} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">{person.name}</DialogTitle>
+        </DialogHeader>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+          {/* Person Overview */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Person Overview</h3>
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-semibold text-sm">
+                    {person.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-medium">{person.name}</p>
+                  <p className="text-sm text-gray-600">{person.title}</p>
+                </div>
+              </div>
+
+              {person.email && person.email !== 'N/A' && (
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm">{person.email}</span>
+                </div>
+              )}
+
+              {person.phone && person.phone !== 'N/A' && (
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm">{person.phone}</span>
+                </div>
+              )}
+
+              {person.linkedin && person.linkedin !== 'N/A' && (
+                <div className="flex items-center gap-2">
+                  <Linkedin className="h-4 w-4 text-gray-500" />
+                  <a 
+                    href={person.linkedin} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    LinkedIn Profile
+                  </a>
+                </div>
+              )}
+
+              {person.location && person.location !== 'N/A' && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm">{person.location}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Company Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Company Information</h3>
+            
+            <div className="space-y-3">
+              {person.company && person.company !== 'N/A' && (
+                <div className="flex items-center gap-2">
+                  <Building className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium">{person.company}</span>
+                </div>
+              )}
+
+              {person.industry && person.industry !== 'N/A' && (
+                <div className="flex items-start gap-2">
+                  <span className="text-sm text-gray-600 min-w-16">Industry:</span>
+                  <span className="text-sm">{person.industry}</span>
+                </div>
+              )}
+
+              {person.businessType && person.businessType !== 'N/A' && (
+                <div className="flex items-start gap-2">
+                  <span className="text-sm text-gray-600 min-w-16">Type:</span>
+                  <span className="text-sm">{person.businessType}</span>
+                </div>
+              )}
+
+              {person.employees > 0 && (
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm">{person.employees.toLocaleString()} employees</span>
+                </div>
+              )}
+
+              {person.yearFounded && person.yearFounded !== 'N/A' && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm">Founded in {person.yearFounded}</span>
+                </div>
+              )}
+
+              {person.website && person.website !== 'N/A' && (
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-gray-500" />
+                  <a 
+                    href={person.website.startsWith('http') ? person.website : `https://${person.website}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    {person.website}
+                  </a>
+                </div>
+              )}
+
+              {person.address && person.address !== 'N/A' && (
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
+                  <span className="text-sm">{person.address}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-6 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={() => person.email && window.open(`mailto:${person.email}`, '_blank')}
+            disabled={!person.email || person.email === 'N/A'}
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            Send Email
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={() => person.linkedin && window.open(person.linkedin, '_blank')}
+            disabled={!person.linkedin || person.linkedin === 'N/A'}
+          >
+            <Linkedin className="h-4 w-4 mr-2" />
+            LinkedIn
+          </Button>
+          
+          {person.website && person.website !== 'N/A' && (
+            <Button
+              variant="outline"
+              onClick={() => window.open(person.website.startsWith('http') ? person.website : `https://${person.website}`, '_blank')}
+            >
+              <Globe className="h-4 w-4 mr-2" />
+              Website
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export default function PersonsPage() {
   const [persons, setPersons] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
@@ -64,6 +249,7 @@ export default function PersonsPage() {
   const [exportFormat, setExportFormat] = useState("csv")
   const [selectedPersons, setSelectedPersons] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
+  const [popupData, setPopupData] = useState<Person | null>(null)
 
   // Filter states
   const [titleFilter, setTitleFilter] = useState("")
@@ -279,11 +465,20 @@ export default function PersonsPage() {
     return pageNumbers
   }
 
-  // Export functions - updated to include more fields
+  // Get selected persons for export
+  const getSelectedPersonsData = () => {
+    if (selectedPersons.length === 0) {
+      return filteredPersons; // If nothing selected, export all filtered
+    }
+    return filteredPersons.filter(person => selectedPersons.includes(person.id));
+  }
+
+  // Export functions - updated to export only selected persons
   const exportCSV = () => {
+    const personsToExport = getSelectedPersonsData();
     const csvRows = [
       "Name,Title,Company,Industry,Business Type,Website,Email,Phone,LinkedIn,Address,Employees,Year Founded",
-      ...filteredPersons.map(person =>
+      ...personsToExport.map(person =>
         `"${person.name}","${person.title}","${person.company}","${person.industry}","${person.businessType}","${person.website}","${person.email}","${person.phone}","${person.linkedin}","${person.address}","${person.employees}","${person.yearFounded}"`
       )
     ]
@@ -291,17 +486,18 @@ export default function PersonsPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = "persons.csv"
+    a.download = `persons-${selectedPersons.length > 0 ? 'selected' : 'all'}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   const exportJSON = () => {
-    const blob = new Blob([JSON.stringify(filteredPersons, null, 2)], { type: "application/json" })
+    const personsToExport = getSelectedPersonsData();
+    const blob = new Blob([JSON.stringify(personsToExport, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = "persons.json"
+    a.download = `persons-${selectedPersons.length > 0 ? 'selected' : 'all'}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -332,6 +528,10 @@ export default function PersonsPage() {
     if (person.linkedin) {
       window.open(person.linkedin, '_blank')
     }
+  }
+
+  const handleViewPerson = (person: Person) => {
+    setPopupData(person);
   }
 
   return (
@@ -387,7 +587,7 @@ export default function PersonsPage() {
                     </Select>
                     <Button variant="outline" onClick={handleExport}>
                       <Download className="mr-2 h-4 w-4" />
-                      Export
+                      Export {selectedPersons.length > 0 ? `(${selectedPersons.length})` : 'All'}
                     </Button>
                   </div>
                 </div>
@@ -496,7 +696,7 @@ export default function PersonsPage() {
                         <TableHead className="bg-background">
                           Name
                         </TableHead>
-                        <TableHead className="w-[120px] bg-background">Actions</TableHead>
+                        <TableHead className="w-[140px] bg-background">Actions</TableHead>
                         <TableHead className="bg-background">
                           Title
                         </TableHead>
@@ -530,6 +730,14 @@ export default function PersonsPage() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleViewPerson(person)}
+                                  title="View Details"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -633,6 +841,13 @@ export default function PersonsPage() {
           </Card>
         </main>
       </div>
+
+      {/* PopupBig Component */}
+      <PopupBig 
+        show={!!popupData} 
+        onClose={() => setPopupData(null)} 
+        person={popupData}
+      />
     </div>
   )
 }
