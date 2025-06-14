@@ -578,8 +578,8 @@ class LeadController:
                     # Split location into city and state
                     city_part, state_part = [part.strip() for part in location.split(',', 1)]
                     location_filter = db.and_(
-                        Lead.city.ilike(f"%{city_part}%"),
-                        Lead.state.ilike(f"%{state_part}%")
+                        Lead.city.ilike(city_part),
+                        Lead.state.ilike(state_part)
                     )
                     not_null_or_empty = db.and_(
                         Lead.city.isnot(None) & (Lead.city != ''),
@@ -601,44 +601,6 @@ class LeadController:
 
             leads = query.all()
             current_app.logger.info(f"[Lead] Found {len(leads)} leads for industry='{industry}', location='{location}'")
-
-            def filter_leads_by_location(leads, location):
-                location_stripped = location.strip().lower()
-                if ',' in location_stripped:
-                    city_part, state_part = [part.strip().lower() for part in location_stripped.split(',', 1)]
-                    return [
-                        lead for lead in leads
-                        if (lead.city or '').strip().lower() == city_part and (lead.state or '').strip().lower() == state_part
-                    ]
-                elif len(location_stripped) == 2:
-                    # Try state first
-                    state_matches = [
-                        lead for lead in leads
-                        if (lead.state or '').strip().lower() == location_stripped
-                    ]
-                    if state_matches:
-                        return state_matches
-                    # Try city exact match
-                    return [
-                        lead for lead in leads
-                        if (lead.city or '').strip().lower() == location_stripped
-                    ]
-                else:
-                    # Anything else: exact match in both city and state, combine and deduplicate
-                    city_matches = [
-                        lead for lead in leads
-                        if (lead.city or '').strip().lower() == location_stripped
-                    ]
-                    state_matches = [
-                        lead for lead in leads
-                        if (lead.state or '').strip().lower() == location_stripped
-                    ]
-                    # Deduplicate by lead_id
-                    all_matches = {lead.lead_id: lead for lead in city_matches + state_matches}
-                    return list(all_matches.values())
-
-            if location:
-                leads = filter_leads_by_location(leads, location)
 
             processed_results = []
 
