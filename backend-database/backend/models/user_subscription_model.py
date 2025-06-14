@@ -49,3 +49,13 @@ class UserSubscription(db.Model):
 # Tambahkan relationship setelah import Plan
 from models.plan_model import Plan
 UserSubscription.plan = db.relationship('Plan', backref='user_subscriptions', lazy=True)
+
+#UserSubscription.to_dict = to_dict
+def can_be_reactivated(self):
+    """Check if subscription can be reactivated"""
+    # Can be reactivated if scheduled for cancellation but not yet canceled
+    is_scheduled_for_cancellation = (self.payment_frequency and 
+                                   '_scheduled_cancel' in self.payment_frequency)
+    return is_scheduled_for_cancellation and not self.is_canceled
+
+UserSubscription.can_be_reactivated = can_be_reactivated

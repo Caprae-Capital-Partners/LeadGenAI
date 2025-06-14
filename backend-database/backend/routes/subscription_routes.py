@@ -93,18 +93,24 @@ def cancel_subscription():
         current_app.logger.error(f"[Cancel API] Error canceling subscription for user {current_user.user_id}: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@subscription_bp.route('/api/subscription/confirm_appointment', methods=['POST'])
+@subscription_bp.route('/api/subscription/reactivate', methods=['POST'])
 @login_required
-def confirm_appointment():
-    """Confirm that the user has booked an appointment"""
+def reactivate_subscription():
+    """Reactivate canceled subscription"""
     try:
-        # Assuming user_id is available from current_user (Flask-Login)
-        user_id = current_user.user_id
-        response, status_code = SubscriptionController.confirm_appointment_booked(user_id)
+        current_app.logger.info(f"[Reactivate API] User {current_user.user_id} requesting subscription reactivation")
+
+        response, status_code = SubscriptionController.reactivate_subscription(current_user)
+
+        current_app.logger.info(f"[Reactivate API] Response for user {current_user.user_id}: status={status_code}, response={response}")
         return jsonify(response), status_code
+
     except Exception as e:
-        current_app.logger.error(f"[API] Error confirming appointment for user {current_user.user_id}: {str(e)}")
+        current_app.logger.error(f"[Reactivate API] Error reactivating subscription for user {current_user.user_id}: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
+
+
+
 
 @subscription_bp.route('/webhook', methods=['POST'])
 def subscription_webhook():

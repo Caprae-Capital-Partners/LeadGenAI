@@ -412,18 +412,32 @@ def create_pause_checkout_session():
 # @login_required
 # def upgrade_account():
 #     return render_template('auth/upgrade_account.html')
-
-@auth_bp.route('/cancel_subscription')
+@auth_bp.route('/cancel-subscription')
 @login_required
 def cancel_subscription():
-    from controllers.subscription_controller import SubscriptionController
-    subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
+    """Show cancellation form"""
+    try:
+        # Get current subscription info
+        subscription_info, status_code = SubscriptionController.get_current_user_subscription_info(current_user)
 
-    if status_code != 200:
-        flash('Unable to load subscription information', 'error')
+        if status_code != 200:
+            flash('Unable to retrieve subscription information.', 'error')
+            return redirect(url_for('auth.choose_plan'))
+
+        # Check if user can see this page (either active subscription or scheduled for cancellation)
+        is_scheduled = subscription_info.get('subscription', {}).get('is_scheduled_for_cancellation', False)
+        is_canceled = subscription_info.get('subscription', {}).get('is_canceled', False)
+
+        # Only show this page if user has an active subscription or one scheduled for cancellation
+        if current_user.tier == 'free' and not is_scheduled:
+            flash('You are already on the free plan.', 'info')
+            return redirect(url_for('auth.choose_plan'))
+
+        return render_template('auth/cancel_subscription.html', subscription_info=subscription_info)
+    except Exception as e:
+        current_app.logger.error(f"Error showing cancellation form: {str(e)}")
+        flash('An error occurred. Please try again.', 'error')
         return redirect(url_for('auth.choose_plan'))
-
-    return render_template('auth/cancel_subscription.html', subscription_info=subscription_info)
 
 # def cancel_subscription_page():
 #     """Render the subscription cancellation page"""
