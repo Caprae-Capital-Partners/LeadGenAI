@@ -399,13 +399,7 @@
             {% if current_user.is_authenticated and current_user.role in ['admin', 'developer'] %}
             <a href="https://app.saasquatchleads.com" class="nav-link">Scraper Tool</a>
             <div class="dropdown">
-                <a href="#" class="nav-link dropdown-toggle" id="docDropdown">
-                    Documentation <i></i>
-                </a>
-                <div class="dropdown-menu">
-                    <a href="{{ url_for('main.user_docs') }}" class="dropdown-item">User Documentation</a>
-                    <a href="{{ url_for('main.admin_docs') }}" class="dropdown-item">Admin Documentation</a>
-                </div>
+                <a href="{{ url_for('main.admin_docs') }}" class="nav-link">Admin Documentation</a>
             </div>
             {% else %}
             <a href="{{ url_for('main.user_docs') }}" class="nav-link">Documentation</a>
@@ -522,10 +516,14 @@
                 <i class="bi bi-person"></i>
                 <span>User Management</span>
             </a>
-            <a href="{{ url_for('auth.signup') }}" class="nav-item {% if request.endpoint == 'auth.signup' %}active{% endif %}">
+            <a href="{{ url_for('user_management.user_draft') }}" class="nav-item {% if request.endpoint == 'user_management.user_draft' %}active{% endif %}">
+                <i class="bi bi-file-earmark-person"></i>
+                <span>User Draft</span>
+            </a>
+            <!-- <a href="{{ url_for('auth.signup') }}" class="nav-item {% if request.endpoint == 'auth.signup' %}active{% endif %}">
                 <i class="bi bi-person-plus"></i>
                 <span>Create User</span>
-            </a>
+            </a> -->
         </div>
         {% endif %}
     </nav>

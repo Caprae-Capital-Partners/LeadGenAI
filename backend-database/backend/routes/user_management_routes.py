@@ -5,6 +5,7 @@ from models.user_subscription_model import UserSubscription
 from models.lead_model import db
 from functools import wraps
 from datetime import datetime, timedelta
+from models.user_lead_drafts_model import UserLeadDraft
 
 user_management_bp = Blueprint('user_management', __name__)
 
@@ -167,3 +168,45 @@ def toggle_user_status(user_id):
     user.is_active = not user.is_active
     db.session.commit()
     return jsonify({"message": "User status updated successfully", "is_active": user.is_active})
+
+@user_management_bp.route('/admin/user-drafts')
+@login_required
+@super_admin_required
+def user_draft():
+    users = User.query.all()
+    user_list = []
+    for user in users:
+        drafts = UserLeadDraft.query.filter_by(user_id=user.user_id, is_deleted=False).all()
+        user_list.append({
+            'id': str(user.user_id),
+            'username': user.username,
+            'email': user.email,
+            'tier': user.tier,
+            'drafts': [d.to_dict() for d in drafts]
+        })
+    return render_template('admin/user_draft.html', users=user_list)
+
+@user_management_bp.route('/admin/user-drafts/<user_id>')
+@login_required
+@super_admin_required
+def user_draft_by_user(user_id):
+    drafts = UserLeadDraft.query.filter_by(user_id=user_id).order_by(UserLeadDraft.created_at.desc()).all()
+    draft_list = []
+    for d in drafts:
+        draft_dict = d.to_dict()
+        user = User.query.get(d.user_id)
+        draft_dict['username'] = user.username if user else '-'
+        draft_dict['email'] = user.email if user else '-'
+        draft_dict['tier'] = user.tier if user and hasattr(user, 'tier') else '-'
+        draft_list.append(draft_dict)
+    user = User.query.get(user_id)
+    return render_template('admin/user_draft.html', drafts=draft_list, selected_user=user)
+
+@user_management_bp.route('/api/admin/user-drafts/<user_id>', methods=['GET'])
+@login_required
+@super_admin_required
+def api_admin_user_drafts(user_id):
+    """API: Get all drafts for a specific user (admin only)"""
+    from models.user_lead_drafts_model import UserLeadDraft
+    drafts = UserLeadDraft.query.filter_by(user_id=user_id, is_deleted=False).all()
+    return jsonify([d.to_dict() for d in drafts])
