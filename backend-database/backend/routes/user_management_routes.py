@@ -177,13 +177,11 @@ def user_draft():
     users = User.query.all()
     user_list = []
     for user in users:
-        user_id = user.user_id
-        if isinstance(user_id, str):
-            try:
-                user_id = uuid.UUID(user_id)
-            except Exception:
-                pass
-        drafts = UserLeadDraft.query.filter_by(user_id=user_id, is_deleted=False).all()
+        try:
+            drafts = UserLeadDraft.query.filter_by(user_id=str(user.user_id), is_deleted=False).all()
+        except Exception as e:
+            print(f"Error querying drafts for user_id={user.user_id}: {e}")
+            drafts = []
         user_list.append({
             'id': str(user.user_id),
             'username': user.username,
