@@ -237,7 +237,6 @@ body, .container-fluid, .main-content {
                     <thead>
                         <tr>
                             <th>User</th>
-                            <th>Email</th>
                             <th>Tier</th>
                         </tr>
                     </thead>
@@ -258,7 +257,6 @@ body, .container-fluid, .main-content {
                                     </div>
                                 </div>
                             </td>
-                            <td>{{ user.email }}</td>
                             <td>
                                 <span class="badge {{
                                     'free' if user.tier == 'free' else

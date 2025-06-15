@@ -206,7 +206,16 @@ def user_draft_by_user(user_id):
 @login_required
 @super_admin_required
 def api_admin_user_drafts(user_id):
-    """API: Get all drafts for a specific user (admin only)"""
+    """API: Get all drafts for a specific user (admin only) with pagination"""
     from models.user_lead_drafts_model import UserLeadDraft
-    drafts = UserLeadDraft.query.filter_by(user_id=user_id, is_deleted=False).all()
-    return jsonify([d.to_dict() for d in drafts])
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    pagination = UserLeadDraft.query.filter_by(user_id=user_id, is_deleted=False).order_by(UserLeadDraft.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    drafts = pagination.items
+    return jsonify({
+        "total": pagination.total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pagination.pages,
+        "drafts": [d.to_dict() for d in drafts]
+    })
