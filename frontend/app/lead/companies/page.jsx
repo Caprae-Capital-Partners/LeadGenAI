@@ -36,7 +36,7 @@ import PopupBig from "@/components/ui/popup-big";
 import axios from "axios";
 import { SortDropdown } from "@/components/ui/sort-dropdown";
 import Notif from "@/components/ui/notif";
-import { Globe, Linkedin, MapPin, Edit, Pencil, Mail, StickyNote } from "lucide-react";
+import { Eye, Globe, Linkedin, MapPin, Edit, Pencil, Mail, StickyNote } from "lucide-react";
 import React from "react";
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
@@ -73,6 +73,7 @@ export default function CompaniesPage() {
     //     type: "success",
     // });
     const [popupData, setPopupData] = useState(null); // null means no popup open
+    const [popupTab, setPopupTab] = useState('overview');
     const [isEditing, setIsEditing] = useState(false);
     const router = useRouter();
 
@@ -738,6 +739,31 @@ export default function CompaniesPage() {
         { key: "source", label: "Source" },
     ];
 
+    const overviewFields = [
+        { key: "company", label: "Company" },
+        { key: "industry", label: "Industry" },
+        { key: "productCategory", label: "Product/Service Category" },
+        { key: "businessType", label: "Business Type" },
+        { key: "employees", label: "Employees Count" },
+        { key: "revenue", label: "Revenue" },
+        { key: "yearFounded", label: "Year Founded" },
+        { key: "bbbRating", label: "BBB Rating" },
+        { key: "street", label: "Street" },
+        { key: "city", label: "City" },
+        { key: "state", label: "State" },
+        { key: "companyPhone", label: "Company Phone" },
+        { key: "source", label: "Source" },
+    ];
+
+    const peopleFields = [
+        { key: "ownerFirstName", label: "Owner First Name" },
+        { key: "ownerLastName", label: "Owner Last Name" },
+        { key: "ownerTitle", label: "Owner Title" },
+        { key: "ownerLinkedin", label: "Owner LinkedIn" },
+        { key: "ownerPhoneNumber", label: "Owner Phone Number" },
+        { key: "ownerEmail", label: "Owner Email" },
+    ];
+
     return (
     <div className="flex flex-col h-screen">
         <Header />
@@ -892,12 +918,6 @@ export default function CompaniesPage() {
                         "City",
                         "State",
                         "Company Phone",
-                        "Owner's First Name",
-                        "Owner's Last Name",
-                        "Owner's Title",
-                        "Owner's LinkedIn",
-                        "Owner's Phone Number",
-                        "Owner's Email",
                         "Source",
                         "Created Date",
                         "Updated", // <== Added here
@@ -927,10 +947,6 @@ export default function CompaniesPage() {
                         <TableCell
                             key="company"
                             className="sticky left-[3rem] z-10 bg-inherit px-6 py-2 max-w-[240px] align-top cursor-pointer"
-                            onClick={() => {
-                                setPopupData(row);
-                                setIsEditing(false);
-                            }}
                         >
                             {editingRowIndex === i ? (
                                 <input
@@ -966,6 +982,17 @@ export default function CompaniesPage() {
                         ) : (
                             <div className="flex items-center space-x-3">
                             <button
+                                onClick={() => {
+                                    setPopupData(row);
+                                    setIsEditing(false);
+                                    setPopupTab('overview');
+                                }}
+                                title="View Details"
+                                className="hover:bg-gray-100 rounded p-1"
+                                >
+                                <Eye className="w-4 h-4 text-blue-500" />
+                            </button>
+                            <button
                                 onClick={() => setEditingRowIndex(i)}
                                 title="Edit"
                                 className="hover:bg-gray-100 rounded p-1"
@@ -990,11 +1017,14 @@ export default function CompaniesPage() {
                             )}
 
                             <button
-                                title="Notes"
-                                className="hover:bg-gray-100 rounded p-1"
+                                title="Notes - Coming soon!"
+                                className="hover:bg-gray-100 rounded p-1 group relative"
                                 onClick={() => {}}
                             >
                                 <StickyNote className="w-4 h-4 text-yellow-500" />
+                                <span className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-300 absolute z-10 w-32 p-2 text-xs text-white bg-gray-800 rounded shadow-lg -top-8 -left-1/2">
+                                    Notes feature coming soon!
+                                </span>
                             </button>
                             </div>
                         )}
@@ -1013,12 +1043,6 @@ export default function CompaniesPage() {
                             "city",
                             "state",
                             "companyPhone",
-                            "ownerFirstName",
-                            "ownerLastName",
-                            "ownerTitle",
-                            "ownerLinkedin",
-                            "ownerPhoneNumber",
-                            "ownerEmail",
                             "source",
                             "created",
                             "updated",
@@ -1213,42 +1237,116 @@ export default function CompaniesPage() {
                 </div>
             </div>
 
-            <PopupBig show={!!popupData} onClose={() => setPopupData(null)}>
+            <PopupBig show={!!popupData} onClose={() => {
+            setPopupData(null);
+            setIsEditing(false);
+            setPopupTab('overview');
+            }}>
             {popupData && (
                 <div className="space-y-8">
-                {/* Title */}
+                {/* Title and Tabs */}
                 <div className="border-b pb-4">
                     <h2 className="text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">
                     {popupData.company}
                     </h2>
-                    <p className="text-sm text-muted-foreground">
-                    Company Details Overview
-                    </p>
+                    
+                    {/* Tab Navigation */}
+                    <div className="flex space-x-4 mt-4">
+                    <button
+                        onClick={() => setPopupTab('overview')}
+                        className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+                        popupTab === 'overview'
+                            ? 'border-teal-500 text-teal-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                    >
+                        Overview
+                    </button>
+                    <button
+                        onClick={() => setPopupTab('people')}
+                        className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+                        popupTab === 'people'
+                            ? 'border-teal-500 text-teal-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                    >
+                        People
+                    </button>
+                    </div>
                 </div>
 
-                {/* Fields Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {editableFields.map(({ key, label }) => (
-                    <div key={key} className="space-y-1">
+                {/* Overview Tab Content */}
+                {popupTab === 'overview' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                        { key: "company", label: "Company" },
+                        { key: "industry", label: "Industry" },
+                        { key: "productCategory", label: "Product/Service Category" },
+                        { key: "businessType", label: "Business Type" },
+                        { key: "employees", label: "Employees Count" },
+                        { key: "revenue", label: "Revenue" },
+                        { key: "yearFounded", label: "Year Founded" },
+                        { key: "bbbRating", label: "BBB Rating" },
+                        { key: "street", label: "Street" },
+                        { key: "city", label: "City" },
+                        { key: "state", label: "State" },
+                        { key: "companyPhone", label: "Company Phone" },
+                        { key: "source", label: "Source" },
+                    ].map(({ key, label }) => (
+                        <div key={key} className="space-y-1">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {label}
+                            {label}
                         </label>
                         {isEditing ? (
-                        <Input
+                            <Input
                             value={popupData[key] || ""}
                             onChange={(e) =>
-                            setPopupData({ ...popupData, [key]: e.target.value })
+                                setPopupData({ ...popupData, [key]: e.target.value })
                             }
                             className="text-sm"
-                        />
+                            />
                         ) : (
-                        <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
+                            <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
                             {popupData[key] || <span className="italic text-gray-400">N/A</span>}
-                        </div>
+                            </div>
                         )}
-                    </div>
+                        </div>
                     ))}
-                </div>
+                    </div>
+                )}
+
+                {/* People Tab Content */}
+                {popupTab === 'people' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                        { key: "ownerFirstName", label: "Owner First Name" },
+                        { key: "ownerLastName", label: "Owner Last Name" },
+                        { key: "ownerTitle", label: "Owner Title" },
+                        { key: "ownerLinkedin", label: "Owner LinkedIn" },
+                        { key: "ownerPhoneNumber", label: "Owner Phone Number" },
+                        { key: "ownerEmail", label: "Owner Email" },
+                    ].map(({ key, label }) => (
+                        <div key={key} className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {label}
+                        </label>
+                        {isEditing ? (
+                            <Input
+                            value={popupData[key] || ""}
+                            onChange={(e) =>
+                                setPopupData({ ...popupData, [key]: e.target.value })
+                            }
+                            className="text-sm"
+                            />
+                        ) : (
+                            <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
+                            {popupData[key] || <span className="italic text-gray-400">N/A</span>}
+                            </div>
+                        )}
+                        </div>
+                    ))}
+                    </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-4 pt-4 border-t">
