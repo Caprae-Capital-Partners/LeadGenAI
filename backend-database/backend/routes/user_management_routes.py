@@ -6,6 +6,7 @@ from models.lead_model import db
 from functools import wraps
 from datetime import datetime, timedelta
 from models.user_lead_drafts_model import UserLeadDraft
+import uuid
 
 user_management_bp = Blueprint('user_management', __name__)
 
@@ -176,7 +177,13 @@ def user_draft():
     users = User.query.all()
     user_list = []
     for user in users:
-        drafts = UserLeadDraft.query.filter_by(user_id=user.user_id, is_deleted=False).all()
+        user_id = user.user_id
+        if isinstance(user_id, str):
+            try:
+                user_id = uuid.UUID(user_id)
+            except Exception:
+                pass
+        drafts = UserLeadDraft.query.filter_by(user_id=user_id, is_deleted=False).all()
         user_list.append({
             'id': str(user.user_id),
             'username': user.username,
