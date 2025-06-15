@@ -521,24 +521,19 @@ class SubscriptionController:
             'user_id': str(user_obj.user_id),
             'email': user_obj.email
         }
-
-        # Use the to_dict method from the UserSubscription model to get all fields
-        subscription_data = user_sub.to_dict()
-
-        # Add/modify derived fields for display
-        subscription_data['is_scheduled_for_cancellation'] = is_scheduled_for_cancellation
-        subscription_data['payment_frequency'] = display_payment_frequency # Use the cleaned display version
-
-        # Ensure consistent format for timestamp fields
-        if user_sub.tier_start_timestamp:
-            subscription_data['tier_start_timestamp'] = user_sub.tier_start_timestamp.isoformat()
-        if user_sub.plan_expiration_timestamp:
-            subscription_data['plan_expiration_timestamp'] = user_sub.plan_expiration_timestamp.isoformat()
-        if user_sub.pause_end_date:
-            subscription_data['pause_end_date'] = user_sub.pause_end_date.isoformat()
-        if user_sub.canceled_at:
-            subscription_data['canceled_at'] = user_sub.canceled_at.isoformat()
-
+        subscription_data = {
+            'credits_remaining': user_sub.credits_remaining,
+            'payment_frequency': display_payment_frequency,
+            'plan_name': user_sub.plan_name,
+            'tier_start_timestamp': user_sub.tier_start_timestamp.isoformat() if user_sub.tier_start_timestamp else None,
+            'plan_expiration_timestamp': user_sub.plan_expiration_timestamp.isoformat() if user_sub.plan_expiration_timestamp else None,
+            'username': user_sub.username,
+            'is_scheduled_for_cancellation': is_scheduled_for_cancellation,
+            'is_paused': getattr(user_sub, 'is_paused', False),
+            'pause_end_date': user_sub.pause_end_date.isoformat() if getattr(user_sub, 'pause_end_date', None) else None,
+            'original_plan_name': getattr(user_sub, 'original_plan_name', None),
+            'can_be_reactivated': user_sub.can_be_reactivated() if hasattr(user_sub, 'can_be_reactivated') else is_scheduled_for_cancellation and not getattr(user_sub, 'is_canceled', False)
+        }
         plan_data = None
         if plan:
             plan_data = {
@@ -553,6 +548,7 @@ class SubscriptionController:
             'subscription': subscription_data,
             'plan': plan_data
         }, 200
+
 
     @staticmethod
     def is_subscription_scheduled_for_cancellation(user):
@@ -813,238 +809,98 @@ class SubscriptionController:
             db.session.rollback()
             return {'error': 'Error processing cancellation'}, 500
 
+    
     @staticmethod
-    def create_pause_checkout_session(user, pause_duration):
+    def reactivate_subscription(user):
         """
-        Create a Stripe checkout session for pause subscription
+        Reactivate a subscription that was scheduled for cancellation
+        This only works for subscriptions that have cancel_at_period_end=true
         """
         try:
-            current_app.logger.info(f"[Pause Subscription] Creating pause checkout for user {user.user_id}, duration: {pause_duration}")
-
-            # Validate pause duration
-            valid_durations = ['pause_one_month', 'pause_two_month', 'pause_three_month']
-            if pause_duration not in valid_durations:
-                return {'error': f'Invalid pause duration. Valid options: {valid_durations}'}, 400
-
-            # Get price ID from config - make sure these are configured in your app
-            price_id = current_app.config['STRIPE_PRICES'].get(pause_duration)
-            if not price_id:
-                current_app.logger.error(f"Price ID not found for {pause_duration} in STRIPE_PRICES config")
-                return {'error': f'Price configuration not found for {pause_duration}'}, 400
-
-            # Validate Stripe configuration
-            if not current_app.config.get('STRIPE_SECRET_KEY'):
-                return {'error': 'Payment system not configured'}, 500
-
+            current_app.logger.info(f"reactivate_subscription called for user {user.user_id}")
             stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
-            success_url = "https://app.saasquatchleads.com/payment-success"  # Changed to absolute URL
-            cancel_url = "https://app.saasquatchleads.com/payment-cancel"    # Changed to absolute URL
 
-            # Get current subscription info
+            # Get user subscription info
             from models.user_subscription_model import UserSubscription
+            from models.plan_model import Plan
+
             user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
-
-            # Prepare metadata
-            metadata = {
-                'pause_duration': pause_duration,
-                'user_id': str(user.user_id),
-                'is_pause_subscription': 'true'
-            }
-
-            if user_sub:
-                metadata.update({
-                    'original_plan_id': str(user_sub.plan_id) if user_sub.plan_id else '',
-                    'original_plan_name': user_sub.plan_name if user_sub.plan_name else '',
-                    'original_tier': user.tier
-                })
-
-            # Create the checkout session
-            checkout_session = stripe.checkout.Session.create(
-                payment_method_types=['card'],
-                line_items=[{
-                    'price': price_id,
-                    'quantity': 1,
-                }],
-                mode='payment',  # Changed to 'payment' for one-time charges
-                success_url=success_url,
-                cancel_url=cancel_url,
-                client_reference_id=str(user.user_id),
-                metadata=metadata
-            )
-
-            current_app.logger.info(f"[Pause Subscription] Stripe session created successfully for user {user.user_id}")
-            return {'sessionId': checkout_session.id}, 200
-
-        except Exception as e:
-            import traceback
-            current_app.logger.error(f"[Pause Subscription] Error creating checkout session: {e}\n{traceback.format_exc()}")
-            return {'error': 'Error creating pause checkout session. Please try again later.'}, 500
-    @staticmethod
-    def handle_pause_subscription_success(session_metadata, user_id):
-        """
-        Handle successful pause subscription payment
-        """
-        try:
-            from models.user_subscription_model import UserSubscription
-            from models.plan_model import Plan
-            from datetime import datetime, timedelta
-            from sqlalchemy import func
-
-            user = User.query.get(user_id)
-            if not user:
-                current_app.logger.error(f"[Pause] User {user_id} not found")
-                return False
-
-            user_sub = UserSubscription.query.filter_by(user_id=user_id).first()
             if not user_sub:
-                current_app.logger.error(f"[Pause] UserSubscription not found for user {user_id}")
-                return False
+                current_app.logger.info("No user_sub found for reactivation.")
+                return {'error': 'No subscription found'}, 404
 
-            pause_duration = session_metadata.get('pause_duration')
-            original_plan_id = session_metadata.get('original_plan_id')
-            original_plan_name = session_metadata.get('original_plan_name')
-            original_tier = session_metadata.get('original_tier')
+            # Check if subscription is scheduled for cancellation
+            is_scheduled_for_cancellation = (user_sub.payment_frequency and
+                                           '_scheduled_cancel' in user_sub.payment_frequency)
 
-            current_app.logger.info(f"[Pause] Processing pause for user {user_id}, duration: {pause_duration}")
+            if not is_scheduled_for_cancellation:
+                current_app.logger.info(f"User {user.user_id} subscription is not scheduled for cancellation")
+                return {'error': 'Subscription is not scheduled for cancellation'}, 400
 
-            # Calculate pause end date
-            duration_mapping = {
-                'pause_one_month': 1,
-                'pause_two_month': 2,
-                'pause_three_month': 3
-            }
+            # Check if user is already canceled (immediate cancellation)
+            if user_sub.is_canceled:
+                current_app.logger.info(f"User {user.user_id} subscription is already canceled and cannot be reactivated")
+                return {'error': 'Subscription is already canceled and cannot be reactivated. Please create a new subscription.'}, 400
 
-            months = duration_mapping.get(pause_duration, 1)
-            pause_end_date = datetime.utcnow() + timedelta(days=30 * months)
+            # Try to find and reactivate Stripe subscription
+            customer = None
+            subscription = None
 
-            # Store original subscription info before changing
-            if not user_sub.original_plan_id:  # Only store if not already set
-                user_sub.original_plan_id = user_sub.plan_id
-                user_sub.original_plan_name = user_sub.plan_name
+            # Find customer by email
+            try:
+                customers = stripe.Customer.list(email=user.email, limit=5)
+                if customers.data:
+                    customer = customers.data[0]
+                    current_app.logger.info(f"Found Stripe customer {customer.id} for email {user.email}")
+            except Exception as e:
+                current_app.logger.warning(f"Error searching customer by email: {str(e)}")
 
-            # Set pause status
-            user_sub.is_paused = True
-            user_sub.pause_end_date = pause_end_date
-            user_sub.credits_remaining = 0  # Set credits to 0 during pause
-
-            # Update plan to pause plan or create pause entry
-            pause_plan = Plan.query.filter(func.lower(Plan.plan_name) == 'pause').first()
-            if pause_plan:
-                user_sub.plan_id = pause_plan.plan_id
-                user_sub.plan_name = pause_plan.plan_name
-                current_app.logger.info(f"[Pause] Found existing pause plan, setting plan_id to {pause_plan.plan_id}")
-            else:
-                # Set plan to pause without referencing a specific plan_id
-                user_sub.plan_name = 'Pause'
-                current_app.logger.info(f"[Pause] No pause plan found in database, setting plan_name to 'Pause'")
-
-            # Set user tier to pause
-            user.tier = 'pause'
-
-            db.session.commit()
-            current_app.logger.info(f"[Pause] Successfully paused subscription for user {user_id} until {pause_end_date}")
-            current_app.logger.info(f"[Pause] User tier set to: {user.tier}, plan_name: {user_sub.plan_name}, is_paused: {user_sub.is_paused}")
-            return True
-
-        except Exception as e:
-            import traceback
-            current_app.logger.error(f"[Pause] Error handling pause subscription success: {str(e)}\n{traceback.format_exc()}")
-            db.session.rollback()
-            return False
-
-    @staticmethod
-    def check_and_restore_paused_subscriptions():
-        """
-        Check for expired pause subscriptions and restore them
-        This should be called periodically (e.g., daily cron job)
-        """
-        try:
-            from models.user_subscription_model import UserSubscription
-            from models.plan_model import Plan
-            from datetime import datetime
-
-            # Find all paused subscriptions that should be restored
-            expired_pauses = UserSubscription.query.filter(
-                UserSubscription.is_paused == True,
-                UserSubscription.pause_end_date <= datetime.utcnow()
-            ).all()
-            for user_sub in expired_pauses:
+            # If we found a customer, look for subscriptions
+            if customer:
                 try:
-                    user = User.query.get(user_sub.user_id)
-                    if not user:
-                        continue
-                    # Restore original subscription
-                    if user_sub.original_plan_id:
-                        original_plan = Plan.query.get(user_sub.original_plan_id)
-                        if original_plan:
-                            user_sub.plan_id = original_plan.plan_id
-                            user_sub.plan_name = original_plan.plan_name
-                            user_sub.credits_remaining = original_plan.initial_credits or 0
-
-                            # Map plan name back to tier
-                            tier_mapping = {
-                                'bronze': 'bronze',
-                                'silver': 'silver',
-                                'gold': 'gold',
-                                'platinum': 'platinum',
-                                'bronze_annual': 'bronze_annual',
-                                'silver_annual': 'silver_annual',
-                                'gold_annual': 'gold_annual',
-                                'platinum_annual': 'platinum_annual'
-                            }
-                            user.tier = tier_mapping.get(original_plan.plan_name.lower(), 'free')
-                    else:
-                        # Fallback to free tier
-                        free_plan = Plan.query.filter(func.lower(Plan.plan_name) == 'free').first()
-                        if free_plan:
-                            user_sub.plan_id = free_plan.plan_id
-                            user_sub.plan_name = free_plan.plan_name
-                            user_sub.credits_remaining = free_plan.initial_credits or 10
-                        user.tier = 'free'
-
-                    # Clear pause status
-                    user_sub.is_paused = False
-                    user_sub.pause_end_date = None
-                    user_sub.original_plan_id = None
-                    user_sub.original_plan_name = None
-
-                    current_app.logger.info(f"[Pause] Restored subscription for user {user_sub.user_id}")
-
+                    subscriptions = stripe.Subscription.list(
+                        customer=customer.id,
+                        status='active',
+                        limit=10
+                    )
+                    if subscriptions.data:
+                        for sub in subscriptions.data:
+                            if sub.cancel_at_period_end:
+                                subscription = sub
+                                current_app.logger.info(f"Found subscription {subscription.id} scheduled for cancellation")
+                                break
                 except Exception as e:
-                    current_app.logger.error(f"[Pause] Error restoring subscription for user {user_sub.user_id}: {str(e)}")
-                    continue
+                    current_app.logger.warning(f"Error searching subscriptions: {str(e)}")
 
-            db.session.commit()
-            current_app.logger.info(f"[Pause] Processed {len(expired_pauses)} expired pause subscriptions")
+            # If we have a subscription, reactivate it in Stripe
+            if subscription:
+                try:
+                    current_app.logger.info(f"Found subscription {subscription.id}. Proceeding with reactivation.")
+                    
+                    # Remove the scheduled cancellation
+                    updated_subscription = stripe.Subscription.modify(
+                        subscription.id,
+                        cancel_at_period_end=False
+                    )
+                    
+                    current_app.logger.info(f"Stripe subscription reactivated successfully: cancel_at_period_end={updated_subscription.cancel_at_period_end}")
 
-        except Exception as e:
-            current_app.logger.error(f"[Pause] Error checking expired pause subscriptions: {str(e)}")
-            db.session.rollback()
+                except stripe.error.StripeError as e:
+                    current_app.logger.error(f"Stripe error during reactivation: {str(e)}")
+                    # Continue with local reactivation even if Stripe fails
 
-    @staticmethod
-    def confirm_appointment_booked(user_id):
-        """
-        Set appointment_used to True for a given user's subscription.
-        """
-        try:
-            from models.user_subscription_model import UserSubscription
-            from models.user_model import db
-
-            user_sub = UserSubscription.query.filter_by(user_id=user_id).first()
-            if user_sub:
-                # Check if the user is a 'call_outreach' customer
-                if not user_sub.is_call_outreach_cust:
-                    current_app.logger.warning(f"[Appointment] User {user_id} is not a call outreach customer and cannot confirm appointment.")
-                    return {'error': 'You are not authorized to confirm an appointment for this service.'}, 403
-
-                user_sub.appointment_used = True
+            # Reactivate locally by removing the scheduled cancellation marker
+            if '_scheduled_cancel' in user_sub.payment_frequency:
+                user_sub.payment_frequency = user_sub.payment_frequency.replace('_scheduled_cancel', '')
                 db.session.commit()
-                current_app.logger.info(f"[Appointment] User {user_id} has confirmed appointment booked. appointment_used set to True.")
-                return {'message': 'Appointment confirmed successfully.'}, 200
-            else:
-                current_app.logger.warning(f"[Appointment] UserSubscription not found for user {user_id} to confirm appointment.")
-                return {'error': 'User subscription not found.'}, 404
+                current_app.logger.info(f"Removed scheduled cancellation marker for user {user.user_id}.")
+
+            return {
+                'message': 'Subscription has been successfully reactivated. Your subscription will continue as normal.',
+                'status': 'reactivated'
+            }, 200
+
         except Exception as e:
-            current_app.logger.error(f"[Appointment] Error confirming appointment for user {user_id}: {str(e)}")
+            current_app.logger.error(f"Error reactivating subscription for user {user.user_id}: {str(e)}")
             db.session.rollback()
-            return {'error': 'Internal server error.'}, 500
+            return {'error': 'Error reactivating subscription'}, 500
