@@ -1,5 +1,5 @@
 "use client"
-
+import axios from 'axios';
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
@@ -250,6 +250,13 @@ export default function PersonsPage() {
   const [selectedPersons, setSelectedPersons] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const [popupData, setPopupData] = useState<Person | null>(null)
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
+  const [editedPersons, setEditedPersons] = useState<Person[]>([]);
+  const [notif, setNotif] = useState({
+    show: false,
+    message: "",
+    type: "success",
+});
 
   // Filter states
   const [titleFilter, setTitleFilter] = useState("")
@@ -291,6 +298,7 @@ export default function PersonsPage() {
           
           return {
             id: item.id || item.lead_id || index.toString(),
+            draft_id: item.draft_id,
             name: `${draftData.owner_first_name || ''} ${draftData.owner_last_name || ''}`.trim() || 'N/A',
             title: draftData.owner_title || 'N/A',
             website: draftData.website || '',
@@ -318,6 +326,9 @@ export default function PersonsPage() {
 
     fetchPersons()
   }, [])
+  useEffect(() => {
+    setEditedPersons([...persons]);
+  }, [persons]);
 
   // Handle search and filters - updated to include filter logic
   const filteredPersons = persons.filter(person => {
@@ -508,10 +519,9 @@ export default function PersonsPage() {
   }
 
   // Action handlers
-  const handleEdit = (person: any) => {
-    console.log("Edit person:", person)
-    // Implement edit functionality
-  }
+  const handleEdit = (person: Person, index: number) => {
+    setEditingRowIndex(index);
+}
 
   const handleNotes = (person: any) => {
     console.log("Open notes for:", person)
@@ -533,6 +543,147 @@ export default function PersonsPage() {
   const handleViewPerson = (person: Person) => {
     setPopupData(person);
   }
+ // Function to handle field changes during editing
+const handleFieldChange = (index: number, field: keyof Person, value: string | number) => {
+    const updated = [...editedPersons];
+    updated[index] = {
+        ...updated[index],
+        [field]: value,
+    };
+    setEditedPersons(updated);
+};
+
+// Function to save edited row
+// Function to save edited row - FIXED VERSION
+
+
+const handleSave = async (index: number) => {
+    // Helper to convert camelCase keys into snake_case
+    const toSnake = (str) => str.replace(/([A-Z])/g, "_$1").toLowerCase();
+
+    // Given a plain object with camelCase keys, return a new object
+    // whose keys are all snake_case.
+    const normalizeKeys = (obj) => {
+        const result = {};
+        for (const [k, v] of Object.entries(obj)) {
+            result[toSnake(k)] = v;
+        }
+        return result;
+    };
+
+    try {
+        const person = editedPersons[index];
+        const leadId = person.id;
+        const actualDraftId = person.draft_id;
+
+        console.log("🔧 Attempting to save person:", leadId);
+        console.log("🔧 Full person object:", JSON.stringify(person, null, 2));
+        console.log("🔧 person.draft_id:", person.draft_id);
+        console.log("🔧 Available person properties:", Object.keys(person));
+
+        if (!actualDraftId) {
+            console.log("🔧 Draft ID not found. Full person object keys:", Object.keys(person));
+            throw new Error("Draft ID not found for this person");
+        }
+
+        // Normalize the edited fields so that every key is snake_case:
+        const normalizedPerson = normalizeKeys(person);
+        // Always include user_id in snake_case (if required by your API):
+        // normalizedPerson.user_id = user.id;
+
+        // 1) Always call POST first
+        // const postResponse = await axios.post(
+            // `${DATABASE_URL_NOAPI}/leads/${leadId}/edit`,
+            // normalizedPerson,
+            // { withCredentials: true }
+        // );
+        // console.log("🔧 POST response:", postResponse.data);
+        // showNotification("Draft POST called successfully", "success");
+
+        // If the POST returned a new draft_id, use it; otherwise keep originalDraftId
+        // const newDraftId = postResponse.data?.draft?.draft_id;
+        
+
+        // 2) Now call PUT to update that draft
+        const payload = {
+            draft_data: normalizedPerson,
+            change_summary: "Updated from persons page",
+            phase: "draft",
+            status: "pending",
+        };
+
+        const putUrl = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/drafts/${actualDraftId}`;
+        console.log("🔧 PUT URL:", putUrl);
+        console.log("🔧 PUT Payload:", JSON.stringify(payload, null, 2));
+        console.log("🔧 Using actualDraftId:", actualDraftId);
+
+        try {
+            const putResponse = await axios.put(putUrl, payload, { withCredentials: true });
+            console.log("✅ PUT Success response:", putResponse.data);
+            console.log("✅ PUT Status:", putResponse.status);
+            showNotification("Draft updated successfully", "success");
+        } catch (putError) {
+            console.error("❌ PUT Request failed:", putError);
+            if (axios.isAxiosError(putError)) {
+                console.error("❌ PUT Error status:", putError.response?.status);
+                console.error("❌ PUT Error data:", putError.response?.data);
+                console.error("❌ PUT Error URL:", putError.config?.url);
+            }
+            throw putError; // Re-throw to be caught by outer catch
+        }
+
+        // Reflect changes in local state (ensure draft_id is set)
+        const updatedPersons = [...persons];
+        const mainPersonIndex = persons.findIndex(p => p.id === person.id);
+        if (mainPersonIndex !== -1) {
+            updatedPersons[mainPersonIndex] = {
+                ...person,
+                draft_id: actualDraftId,
+                updated: new Date().toLocaleString(),
+            };
+            setPersons(updatedPersons);
+            setEditedPersons(updatedPersons);
+        }
+
+        setEditingRowIndex(null);
+    } catch (err) {
+        console.error("❌ Error saving person:", err);
+
+        let errorMessage = "Failed to save person.";
+        if (axios.isAxiosError(err)) {
+            if (err.response) {
+                errorMessage = `Save failed: ${err.response.data?.message || err.message}`;
+                console.error("🔧 Error response:", err.response.data);
+            } else {
+                errorMessage = "Network error: Unable to connect to server. Please check your connection.";
+            }
+        } else if (err instanceof Error) {
+            errorMessage = `Save failed: ${err.message}`;
+        }
+
+        showNotification(errorMessage, "error");
+    }
+};
+// Function to discard changes and revert to original data
+const handleDiscard = (index: number) => {
+    const resetPerson = persons[index];
+    const updated = [...editedPersons];
+    updated[index] = resetPerson;
+    setEditedPersons(updated);
+    setEditingRowIndex(null);
+};
+
+// Function to show notifications
+const showNotification = (message: string, type = "success") => {
+    setNotif({ show: true, message, type });
+    setTimeout(() => {
+        setNotif((prev) => ({ ...prev, show: false }));
+    }, 3500);
+};
+
+useEffect(() => {
+  setEditedPersons([...persons]);
+}, [persons]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -726,7 +877,16 @@ export default function PersonsPage() {
                               />
                             </TableCell>
                             <TableCell className="font-medium">
-                              {person.name}
+                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                                <Input
+                                type="text"
+                                className="w-full"
+                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.name || ""}
+                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'name', e.target.value)}
+                                />
+                            ) : (
+                                person.name
+                            )}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
@@ -738,14 +898,37 @@ export default function PersonsPage() {
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
+                                {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                                <div className="flex gap-1">
+                                    <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSave(persons.findIndex(p => p.id === person.id))}
+                                    title="Save"
+                                    className="text-green-600"
+                                    >
+                                    Save
+                                    </Button>
+                                    <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDiscard(persons.findIndex(p => p.id === person.id))}
+                                    title="Discard"
+                                    className="text-red-600"
+                                    >
+                                    Cancel
+                                    </Button>
+                                </div>
+                                ) : (
                                 <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEdit(person)}
-                                  title="Edit"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEdit(person, persons.findIndex(p => p.id === person.id))}
+                                    title="Edit"
                                 >
-                                  <Edit className="h-4 w-4" />
+                                    <Edit className="h-4 w-4" />
                                 </Button>
+)}
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -756,7 +939,18 @@ export default function PersonsPage() {
                                 </Button>
                               </div>
                             </TableCell>
-                            <TableCell>{person.title}</TableCell>
+                            <TableCell>
+                            {editingRowIndex === persons.findIndex(p => p.id === person.id) ? (
+                                <Input
+                                type="text"
+                                className="w-full"
+                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.title || ""}
+                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'title', e.target.value)}
+                                />
+                            ) : (
+                                person.title
+                            )}
+                            </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
                                 <Button
@@ -779,11 +973,66 @@ export default function PersonsPage() {
                                 </Button>
                               </div>
                             </TableCell>
-                            <TableCell>{person.phone || 'N/A'}</TableCell>
-                            <TableCell>{person.company}</TableCell>
-                            <TableCell>{person.industry}</TableCell>
-                            <TableCell>{person.businessType}</TableCell>
-                            <TableCell>{person.address}</TableCell>
+                            <TableCell>
+                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                                <Input
+                                type="text"
+                                className="w-full"
+                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.phone || ""}
+                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'phone', e.target.value)}
+                                />
+                            ) : (
+                                person.phone || 'N/A'
+                            )}
+                            </TableCell>
+                            <TableCell>
+                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                                <Input
+                                type="text"
+                                className="w-full"
+                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.company || ""}
+                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'company', e.target.value)}
+                                />
+                            ) : (
+                                person.company
+                            )}
+                            </TableCell>
+                            <TableCell>
+                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                                <Input
+                                type="text"
+                                className="w-full"
+                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.industry || ""}
+                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'industry', e.target.value)}
+                                />
+                            ) : (
+                                person.industry
+                            )}
+                            </TableCell>
+                            <TableCell>
+                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                                <Input
+                                type="text"
+                                className="w-full"
+                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.businessType || ""}
+                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'businessType', e.target.value)}
+                                />
+                            ) : (
+                                person.businessType
+                            )}
+                            </TableCell>
+                            <TableCell>
+                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                                <Input
+                                type="text"
+                                className="w-full"
+                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.address || ""}
+                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'address', e.target.value)}
+                                />
+                            ) : (
+                                person.address
+                            )}
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
@@ -842,12 +1091,22 @@ export default function PersonsPage() {
         </main>
       </div>
 
-      {/* PopupBig Component */}
-      <PopupBig 
+     {/* PopupBig Component */}
+     <PopupBig 
         show={!!popupData} 
         onClose={() => setPopupData(null)} 
         person={popupData}
       />
+
+      {/* ADD NOTIFICATION HERE - after PopupBig, before closing </div> */}
+      {/* Notification */}
+      {notif.show && (
+        <div className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
+          notif.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}>
+          {notif.message}
+        </div>
+      )}
     </div>
   )
 }
