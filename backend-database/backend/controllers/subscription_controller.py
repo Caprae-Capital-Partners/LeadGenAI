@@ -1,3 +1,4 @@
+# Add function to create Stripe portal session and redirect
 import stripe
 from flask import request, jsonify, current_app, url_for
 from models.user_model import User, db
@@ -421,6 +422,71 @@ class SubscriptionController:
                     # This will be handled by checkout.session.completed for outreach
                     pass
 
+            elif event['type'] == 'customer.updated':
+                # Handle customer updates from portal
+                customer = event['data']['object']
+                current_app.logger.info(f"[Webhook] Customer updated: {customer.get('id')}")
+
+                # Update local user information if needed
+                try:
+                    from models.user_model import User
+                    user = User.query.filter_by(email=customer.get('email')).first()
+                    if user:
+                        # Update any relevant customer information
+                        # Note: Don't use customer email as login credential as per Stripe docs
+                        current_app.logger.info(f"[Webhook] Updated customer info for user {user.user_id}")
+                except Exception as e:
+                    current_app.logger.error(f"[Webhook] Error updating customer info: {str(e)}")
+
+            elif event['type'] == 'payment_method.attached':
+                # Handle payment method additions
+                payment_method = event['data']['object']
+                customer_id = payment_method.get('customer')
+                payment_method_type = payment_method.get('type', 'unknown')
+                current_app.logger.info(f"[Webhook] Payment method ({payment_method_type}) attached to customer {customer_id}")
+
+            elif event['type'] == 'payment_method.detached':
+                # Handle payment method removals
+                payment_method = event['data']['object']
+                customer_id = payment_method.get('customer')
+                payment_method_type = payment_method.get('type', 'unknown')
+                current_app.logger.info(f"[Webhook] Payment method ({payment_method_type}) detached from customer {customer_id}")
+
+            elif event['type'] == 'customer.tax_id.created':
+                # Handle tax ID creation
+                tax_id = event['data']['object']
+                customer_id = tax_id.get('customer')
+                current_app.logger.info(f"[Webhook] Tax ID created for customer {customer_id}")
+
+            elif event['type'] == 'customer.tax_id.updated':
+                # Handle tax ID updates (validation status changes)
+                tax_id = event['data']['object']
+                customer_id = tax_id.get('customer')
+                verification_status = tax_id.get('verification', {}).get('status')
+                current_app.logger.info(f"[Webhook] Tax ID updated for customer {customer_id}, verification status: {verification_status}")
+
+            elif event['type'] == 'customer.tax_id.deleted':
+                # Handle tax ID deletion
+                tax_id = event['data']['object']
+                customer_id = tax_id.get('customer')
+                current_app.logger.info(f"[Webhook] Tax ID deleted for customer {customer_id}")
+
+            elif event['type'] == 'billing_portal.session.created':
+                # Handle portal session creation (for logging/analytics)
+                session = event['data']['object']
+                customer_id = session.get('customer')
+                current_app.logger.info(f"[Webhook] Billing portal session created for customer {customer_id}")
+
+            elif event['type'] == 'billing_portal.configuration.created':
+                # Handle portal configuration creation
+                config = event['data']['object']
+                current_app.logger.info(f"[Webhook] Billing portal configuration created: {config.get('id')}")
+
+            elif event['type'] == 'billing_portal.configuration.updated':
+                # Handle portal configuration updates
+                config = event['data']['object']
+                current_app.logger.info(f"[Webhook] Billing portal configuration updated: {config.get('id')}")
+
             # Add other Stripe event types as needed (e.g., invoice.payment_failed for recurring payments)
 
         except ValueError as e:
@@ -552,8 +618,7 @@ class SubscriptionController:
 
     @staticmethod
     def is_subscription_scheduled_for_cancellation(user):
-        """
-        Check if user's subscription is scheduled for cancellation
+        """Check if user's subscription is scheduled for cancellation
         """
         from models.user_subscription_model import UserSubscription
 
@@ -809,7 +874,7 @@ class SubscriptionController:
             db.session.rollback()
             return {'error': 'Error processing cancellation'}, 500
 
-    
+
     @staticmethod
     def reactivate_subscription(user):
         """
@@ -876,13 +941,13 @@ class SubscriptionController:
             if subscription:
                 try:
                     current_app.logger.info(f"Found subscription {subscription.id}. Proceeding with reactivation.")
-                    
+
                     # Remove the scheduled cancellation
                     updated_subscription = stripe.Subscription.modify(
                         subscription.id,
                         cancel_at_period_end=False
                     )
-                    
+
                     current_app.logger.info(f"Stripe subscription reactivated successfully: cancel_at_period_end={updated_subscription.cancel_at_period_end}")
 
                 except stripe.error.StripeError as e:
