@@ -393,6 +393,8 @@
             <button id="plan-navbar-btn" style="background: none; border: none; color: var(--primary-color); font-weight: 600; margin-right: 12px; padding: 0 8px; cursor: pointer; font-size: 15px;" onclick="showPlanInfoModal()">
                 <span id="navbar-plan-name">...</span>
             </button>
+            <!-- Portal Button -->
+            <a href="{{ url_for('customer_portal.customer_portal') }}" class="nav-link" style="color: var(--primary-color); font-weight: 600;">Portal</a>
             {% endif %}
             <a href="{{ url_for('main.index') }}" class="nav-link">Home</a>
 

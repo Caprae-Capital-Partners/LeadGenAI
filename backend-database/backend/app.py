@@ -12,6 +12,7 @@ from sqlalchemy import event, text
 from flask_cors import CORS
 from routes.subscription_routes import subscription_bp
 from logging_setup import setup_logging
+from routes.customer_portal_routes import customer_portal_bp
 from utils.email_utils import init_mail
 
 def create_app(config_class=config):
@@ -81,6 +82,7 @@ def create_app(config_class=config):
     app.register_blueprint(lead_bp)  # Then register other routes
     app.register_blueprint(subscription_bp)  # Register subscription routes
     app.register_blueprint(credit_bp)
+    app.register_blueprint(customer_portal_bp)
     app.register_blueprint(user_management_bp)
 
     # Create database tables
