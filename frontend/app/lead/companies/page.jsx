@@ -61,17 +61,15 @@ export default function CompaniesPage() {
     const [sourceFilter, setSourceFilter] = useState("");
     const [showFilters, setShowFilters] = useState(false);
     const [selectAll, setSelectAll] = useState(false);
-    // const [scrapingHistory, setScrapingHistory] = useState([]);
-    // const [editedRows, setEditedRows] = useState([]);
-    // const [editingRowIndex, setEditingRowIndex] = useState(null);
-    // const [currentPage, setCurrentPage] = useState(1);
-    // const [itemsPerPage, setItemsPerPage] = useState(25);
-    // const [selectedCompanies, setSelectedCompanies] = useState([]);
-    // const [notif, setNotif] = useState({
-    //     show: false,
-    //     message: "",
-    //     type: "success",
-    // });
+    const [scrapingHistory, setScrapingHistory] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(25);
+    const [selectedCompanies, setSelectedCompanies] = useState([]);
+    const [notif, setNotif] = useState({
+        show: false,
+        message: "",
+        type: "success",
+    });
     const [popupData, setPopupData] = useState(null); // null means no popup open
     const [popupTab, setPopupTab] = useState('overview');
     const [isEditing, setIsEditing] = useState(false);
@@ -128,7 +126,6 @@ export default function CompaniesPage() {
                 item.id === popupData.id ? popupData : item
             );
             setScrapingHistory(updatedList);
-            setEditedRows(updatedList);
             setIsEditing(false);
             showNotification("Changes saved.", "success");
         } else {
@@ -136,106 +133,14 @@ export default function CompaniesPage() {
         }
     };
 
-    const handleSave = async (index) => {
-        // Helper to convert camelCase keys into snake_case
-        const toSnake = (str) => str.replace(/([A-Z])/g, "_$1").toLowerCase();
-
-        // Given a plain object with camelCase keys, return a new object
-        // whose keys are all snake_case.
-        const normalizeKeys = (obj) => {
-        const result = {};
-        for (const [k, v] of Object.entries(obj)) {
-            result[toSnake(k)] = v;
-        }
-        return result;
-        };
-
-        try {
-        const lead = editedRows[index];
-        const leadId = lead.lead_id || lead.id;
-        const originalDraftId = lead.draft_id;
-
-        // Normalize the edited fields so that every key is snake_case:
-        const normalizedLead = normalizeKeys(lead);
-        // Always include user_id in snake_case:
-        normalizedLead.user_id = user.id;
-
-        // 1) Always call POST first
-        const postResponse = await axios.post(
-            `${DATABASE_URL_NOAPI}/leads/${leadId}/edit`,
-            normalizedLead,
-            { withCredentials: true }
-        );
-        showNotification("Draft POST called successfully", "success");
-
-        // If the POST returned a new draft_id, use it; otherwise keep originalDraftId
-        const newDraftId = postResponse.data?.draft?.draft_id;
-        const actualDraftId = newDraftId || originalDraftId;
-
-        // 2) Now call PUT to update that draft
-        const payload = {
-            draft_data: normalizedLead,
-            change_summary: "Updated from homepage",
-            phase: "draft",
-            status: "pending",
-        };
-
-        await axios.put(
-            `${DATABASE_URL}/leads/drafts/${actualDraftId}`,
-            payload,
-            { withCredentials: true }
-        );
-        showNotification("Draft updated successfully", "success");
-
-        // Reflect changes in local state (ensure draft_id is set)
-        const updated = [...scrapingHistory];
-        updated[index] = {
-            ...lead,
-            draft_id: actualDraftId,
-            updated: new Date().toLocaleString(),
-        };
-        setScrapingHistory(updated);
-        setEditedRows(updated);
-        setEditingRowIndex(null);
-        } catch (err) {
-        console.error("❌ Error saving row:", err);
-        showNotification("Failed to save row.", "error");
-        }
-    };
-
-    const handleDiscard = (index) => {
-        const resetRow = scrapingHistory[index];
-        const updated = [...editedRows];
-        updated[index] = resetRow;
-        setEditedRows(updated);
-        setEditingRowIndex(null);
-    };
-
-    const handleFieldChange = (index, field, value) => {
-        const updated = [...editedRows];
-        updated[index] = {
-        ...updated[index],
-        [field]: value,
-        };
-        setEditedRows(updated);
-    };
-
-    const [notif, setNotif] = useState({
-        show: false,
-        message: "",
-        type: "success",
-    });
     const showNotification = (message, type = "success") => {
         setNotif({ show: true, message, type });
 
-        // Automatically hide after X seconds (let Notif handle it visually)
-        // Optional if Notif itself auto-hides — but helpful as backup
+        // Automatically hide after X seconds
         setTimeout(() => {
         setNotif((prev) => ({ ...prev, show: false }));
         }, 3500);
     };
-
-    const [editingRowIndex, setEditingRowIndex] = useState(null);
 
     const clearAllFilters = () => {
         setEmployeesFilter("");
@@ -319,11 +224,9 @@ export default function CompaniesPage() {
         return newObj;
     };
 
-    //
-
     const ExpandableCell = ({ text, onClick }) => {
         const [expanded, setExpanded] = useState(false);
-        const isLong = text.length > 100;
+        const isLong = text && text.length > 100;
         if (!isLong) return <span onClick={onClick}>{text}</span>;
         return (
             <div className="whitespace-pre-wrap">
@@ -340,6 +243,60 @@ export default function CompaniesPage() {
         );
     };
 
+    const handleExportCSV = () => {
+        const headers = [
+        "Company",
+        "Website",
+        "Industry",
+        "Product Category",
+        "Business Type",
+        "Employees",
+        "Revenue",
+        "Year Founded",
+        "BBB Rating",
+        "Street",
+        "City",
+        "State",
+        "Company Phone",
+        "Company LinkedIn",
+        "Owner First Name",
+        "Owner Last Name",
+        "Owner Title",
+        "Owner LinkedIn",
+        "Owner Phone Number",
+        "Owner Email",
+        "Source",
+        "Created At",
+        "Updated At",
+        ];
+
+        const csvContent = [
+        headers.join(","), // Header row
+        ...scrapingHistory.map((row) =>
+            headers
+            .map((h) => {
+                const key =
+                h === "Created At"
+                    ? "created"
+                    : h === "Updated At"
+                    ? "updated"
+                    : toCamelCaseKeys(h);
+                return `"${row[key] || ""}"`;
+            })
+            .join(",")
+        ),
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "scraping_history.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const handleExportCSVWithCredits = async () => {
         try {
         const { data: subscriptionInfo } = await axios.get(
@@ -353,7 +310,7 @@ export default function CompaniesPage() {
             subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
         const availableCredits =
             subscriptionInfo?.subscription?.credits_remaining ?? 0;
-        const requiredCredits = currentItems.length;
+        const requiredCredits = scrapingHistory.length;
 
         if (planName === "free") {
             showNotification(
@@ -371,7 +328,7 @@ export default function CompaniesPage() {
             return;
         }
 
-        handleExportCSV(currentItems, "enriched_results.csv");
+        handleExportCSV();
         } catch (checkErr) {
         console.error("❌ Failed to verify subscription:", checkErr);
         showNotification(
@@ -405,68 +362,6 @@ export default function CompaniesPage() {
         );
         }
     };
-
-    const [scrapingHistory, setScrapingHistory] = useState([]);
-
-    const handleExportCSV = () => {
-        const headers = [
-        "Company",
-        "Website",
-        "Industry",
-        "Product Category",
-        "Business Type",
-        "Employees",
-        "Revenue",
-        "Year Founded",
-        "BBB Rating",
-        "Street",
-        "City",
-        "State",
-        "Company Phone",
-        "Company LinkedIn",
-        "Owner First Name",
-        "Owner Last Name",
-        "Owner Title",
-        "Owner LinkedIn",
-        "Owner Phone Number",
-        "Owner Email",
-        "Source",
-        "Created At",
-        "Updated At",
-        ];
-
-        const csvContent = [
-        headers.join(","), // Header row
-        ...currentItems.map((row) =>
-            headers
-            .map((h) => {
-                const key =
-                h === "Created At"
-                    ? "created"
-                    : h === "Updated At"
-                    ? "updated"
-                    : toCamelCaseKeys(h);
-                return `"${row[key] || ""}"`;
-            })
-            .join(",")
-        ),
-        ].join("\n");
-
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", "scraping_history.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const [editedRows, setEditedRows] = useState([...scrapingHistory]);
-    // duplicate of original data
-    // Example pagination state
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(25);
 
     const filteredScrapingHistory = scrapingHistory.filter((entry) => {
         const matchIndustry = entry.industry
@@ -574,8 +469,6 @@ export default function CompaniesPage() {
     indexOfLastItem
     );
 
-    const [selectedCompanies, setSelectedCompanies] = useState([]);
-
     const handleSelectAll = () => {
         const visibleIds = scrapingHistory
         .slice(indexOfFirstItem, indexOfLastItem)
@@ -588,6 +481,14 @@ export default function CompaniesPage() {
         }
 
         setSelectAll(!selectAll);
+    };
+
+    const handleSelectCompany = (id) => {
+        if (selectedCompanies.includes(id)) {
+        setSelectedCompanies(selectedCompanies.filter(companyId => companyId !== id));
+        } else {
+        setSelectedCompanies([...selectedCompanies, id]);
+        }
     };
 
     const handleSortBy = (sortBy, direction) => {
@@ -629,11 +530,10 @@ export default function CompaniesPage() {
 
         // Push the new order into state:
         setScrapingHistory(sorted);
-        setEditedRows(sorted); // keep the “edited” mirror in sync
         setCurrentPage(1); // reset pagination to page 1
     };
 
-    // Copy the data fetching useEffect
+    // Fetch data on component mount
     useEffect(() => {
     const storedUser = typeof window !== "undefined" 
         ? JSON.parse(sessionStorage.getItem("user") || "{}")
@@ -692,7 +592,6 @@ export default function CompaniesPage() {
         });
 
         setScrapingHistory(parsed);
-        setEditedRows(parsed);
         } catch (error) {
         console.error("Error fetching drafts:", error);
         } finally {
@@ -717,30 +616,10 @@ export default function CompaniesPage() {
     );
     }
 
-    const editableFields = [
-        { key: "company", label: "Company" },
-        { key: "industry", label: "Industry" },
-        { key: "productCategory", label: "Product/Service Category" },
-        { key: "businessType", label: "Business Type" },
-        { key: "employees", label: "Employees Count" },
-        { key: "revenue", label: "Revenue" },
-        { key: "yearFounded", label: "Year Founded" },
-        { key: "bbbRating", label: "BBB Rating" },
-        { key: "street", label: "Street" },
-        { key: "city", label: "City" },
-        { key: "state", label: "State" },
-        { key: "companyPhone", label: "Company Phone" },
-        { key: "ownerFirstName", label: "Owner First Name" },
-        { key: "ownerLastName", label: "Owner Last Name" },
-        { key: "ownerTitle", label: "Owner Title" },
-        { key: "ownerLinkedin", label: "Owner LinkedIn" },
-        { key: "ownerPhoneNumber", label: "Owner Phone Number" },
-        { key: "ownerEmail", label: "Owner Email" },
-        { key: "source", label: "Source" },
-    ];
-
     const overviewFields = [
         { key: "company", label: "Company" },
+        { key: "website", label: "Website" },
+        { key: "companyLinkedin", label: "Company LinkedIn" },
         { key: "industry", label: "Industry" },
         { key: "productCategory", label: "Product/Service Category" },
         { key: "businessType", label: "Business Type" },
@@ -774,11 +653,9 @@ export default function CompaniesPage() {
             
             {/* History Table */}
             <div className="mt-10">
-                {/* 1. Keep the heading here */}
-    
-                {/* 2. Table container */}
+                {/* Table container */}
                 <div className="w-full overflow-x-auto rounded-md border">
-                {/* 3. Toolbar INSIDE the table wrapper, above the table */}
+                {/* Toolbar */}
                 <div className="flex flex-wrap items-center justify-between p-4 border-b bg-surface">
                     {/* Search */}
                     <div className="flex-grow max-w-xs">
@@ -797,7 +674,7 @@ export default function CompaniesPage() {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => setShowFilters((f) => !f)}
+                        onClick={handleToggleFiltersWithCheck}
                         title={showFilters ? "Hide Filters" : "Show Filters"}
                     >
                         <Filter className="h-4 w-4" />
@@ -882,7 +759,7 @@ export default function CompaniesPage() {
                     </Button>
                 </div>
                 )}
-                {/* Scrollable container with a max height */}
+                {/* Scrollable container */}
                 <div className="w-full overflow-x-auto relative border rounded-md">
                 <Table className="min-w-full text-sm ">
                     <TableHeader>
@@ -920,7 +797,7 @@ export default function CompaniesPage() {
                         "Company Phone",
                         "Source",
                         "Created Date",
-                        "Updated", // <== Added here
+                        "Updated",
                         ].map((label, i) => (
                         <TableHead
                             key={i}
@@ -948,38 +825,11 @@ export default function CompaniesPage() {
                             key="company"
                             className="sticky left-[3rem] z-10 bg-inherit px-6 py-2 max-w-[240px] align-top cursor-pointer"
                         >
-                            {editingRowIndex === i ? (
-                                <input
-                                    type="text"
-                                    className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
-                                    value={editedRows[i]?.company ?? ""}
-                                    onChange={(e) =>
-                                        handleFieldChange(i, "company", e.target.value)
-                                    }
-                                />
-                            ) : (
-                                <ExpandableCell text={row.company || "N/A"} />
-                            )}
+                            <ExpandableCell text={row.company || "N/A"} />
                         </TableCell>
 
                         {/* Action Column */}
                         <TableCell className="px-6 py-2">
-                        {editingRowIndex === i ? (
-                            <>
-                            <span
-                                className="text-green-500 hover:underline cursor-pointer mr-2"
-                                onClick={() => handleSave(i)}
-                            >
-                                Save
-                            </span>
-                            <span
-                                className="text-red-500 hover:underline cursor-pointer"
-                                onClick={() => handleDiscard(i)}
-                            >
-                                Discard
-                            </span>
-                            </>
-                        ) : (
                             <div className="flex items-center space-x-3">
                             <button
                                 onClick={() => {
@@ -993,7 +843,11 @@ export default function CompaniesPage() {
                                 <Eye className="w-4 h-4 text-blue-500" />
                             </button>
                             <button
-                                onClick={() => setEditingRowIndex(i)}
+                                onClick={() => {
+                                    setPopupData(row);
+                                    setIsEditing(true);
+                                    setPopupTab('overview');
+                                }}
                                 title="Edit"
                                 className="hover:bg-gray-100 rounded p-1"
                             >
@@ -1004,7 +858,6 @@ export default function CompaniesPage() {
                                 <a
                                 href={`mailto:${row.ownerEmail}`}
                                 onClick={(e) => {
-                                    // fallback if mailto fails
                                     setTimeout(() => {
                                     window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${row.ownerEmail}`, '_blank');
                                     }, 500);
@@ -1027,7 +880,6 @@ export default function CompaniesPage() {
                                 </span>
                             </button>
                             </div>
-                        )}
                         </TableCell>
     
                         {/* Remaining Cells */}
@@ -1071,14 +923,7 @@ export default function CompaniesPage() {
                             return (
                             <React.Fragment key={field}>
                                 <TableCell className="px-6 py-2 max-w-[240px] align-top">
-                                    {editingRowIndex === i ? (
-                                    <input
-                                        type="text"
-                                        className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
-                                        value={editedRows[i]?.[field] ?? ""}
-                                        onChange={(e) => handleFieldChange(i, field, e.target.value)}
-                                    />
-                                    ) : isUrl ? (
+                                    {isUrl ? (
                                     <a
                                         href={rawValue}
                                         target="_blank"
@@ -1278,97 +1123,103 @@ export default function CompaniesPage() {
                 {/* Overview Tab Content */}
                 {popupTab === 'overview' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[
-                        { key: "company", label: "Company" },
-                        { key: "industry", label: "Industry" },
-                        { key: "productCategory", label: "Product/Service Category" },
-                        { key: "businessType", label: "Business Type" },
-                        { key: "employees", label: "Employees Count" },
-                        { key: "revenue", label: "Revenue" },
-                        { key: "yearFounded", label: "Year Founded" },
-                        { key: "bbbRating", label: "BBB Rating" },
-                        { key: "street", label: "Street" },
-                        { key: "city", label: "City" },
-                        { key: "state", label: "State" },
-                        { key: "companyPhone", label: "Company Phone" },
-                        { key: "source", label: "Source" },
-                    ].map(({ key, label }) => (
+                    {overviewFields.map(({ key, label }) => {
+                        const value = popupData[key] || "";
+                        const isLink = key === "website" || key === "companyLinkedin";
+                        return (
                         <div key={key} className="space-y-1">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                             {label}
-                        </label>
-                        {isEditing ? (
+                            </label>
+                            {isEditing ? (
                             <Input
-                            value={popupData[key] || ""}
-                            onChange={(e) =>
+                                value={value}
+                                onChange={(e) =>
                                 setPopupData({ ...popupData, [key]: e.target.value })
-                            }
-                            className="text-sm"
+                                }
+                                className="text-sm"
                             />
-                        ) : (
+                            ) : isLink && value ? (
+                            <a
+                                href={value}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline hover:text-blue-800 break-all"
+                            >
+                                {value}
+                            </a>
+                            ) : (
                             <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
-                            {popupData[key] || <span className="italic text-gray-400">N/A</span>}
+                                {value || <span className="italic text-gray-400">N/A</span>}
                             </div>
-                        )}
+                            )}
                         </div>
-                    ))}
+                        );
+                    })}
                     </div>
                 )}
 
                 {/* People Tab Content */}
                 {popupTab === 'people' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[
-                        { key: "ownerFirstName", label: "Owner First Name" },
-                        { key: "ownerLastName", label: "Owner Last Name" },
-                        { key: "ownerTitle", label: "Owner Title" },
-                        { key: "ownerLinkedin", label: "Owner LinkedIn" },
-                        { key: "ownerPhoneNumber", label: "Owner Phone Number" },
-                        { key: "ownerEmail", label: "Owner Email" },
-                    ].map(({ key, label }) => (
+                    {peopleFields.map(({ key, label }) => {
+                        const value = popupData[key] || "";
+                        const isLink = key === "ownerLinkedin";
+                        return (
                         <div key={key} className="space-y-1">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                             {label}
-                        </label>
-                        {isEditing ? (
+                            </label>
+                            {isEditing ? (
                             <Input
-                            value={popupData[key] || ""}
-                            onChange={(e) =>
+                                value={value}
+                                onChange={(e) =>
                                 setPopupData({ ...popupData, [key]: e.target.value })
-                            }
-                            className="text-sm"
+                                }
+                                className="text-sm"
                             />
-                        ) : (
+                            ) : isLink && value ? (
+                            <a
+                                href={value}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline hover:text-blue-800 break-all"
+                            >
+                                {value}
+                            </a>
+                            ) : (
                             <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
-                            {popupData[key] || <span className="italic text-gray-400">N/A</span>}
+                                {value || <span className="italic text-gray-400">N/A</span>}
                             </div>
-                        )}
+                            )}
                         </div>
-                    ))}
+                        );
+                    })}
                     </div>
                 )}
 
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-4 pt-4 border-t">
                     {!isEditing ? (
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsEditing(true)}
-                        className="ml-auto"
-                    >
-                        Edit
-                    </Button>
+                    // <Button
+                    //     size="sm"
+                    //     variant="outline"
+                    //     onClick={() => setIsEditing(true)}
+                    //     className="ml-auto"
+                    // >
+                    //     Edit
+                    // </Button>
+                    null
                     ) : (
                     <>
-                        <Button
+                        {/* <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => setIsEditing(false)}
                         className="text-red-500 hover:text-red-600"
                         >
                         Cancel
-                        </Button>
+                        </Button> */}
                         <Button size="sm" onClick={handlePopupSave}>
                         Save Changes
                         </Button>
