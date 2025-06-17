@@ -158,6 +158,18 @@
     color: white;
   }
 
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .btn:disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
   .alert {
     padding: 15px;
     margin-bottom: 25px;
@@ -179,6 +191,12 @@
     background-color: #2d1a1a;
     color: #f72585;
     border-color: #e53935;
+  }
+
+  .alert-info {
+    background-color: #1e293b;
+    color: #4cc9f0;
+    border-color: #4cc9f0;
   }
 
   .file-input-wrapper {
@@ -374,6 +392,16 @@
     <div class="container">
         <h1 class="animate__animated animate__fadeIn">Upload Leads</h1>
 
+        <!-- Upload Limit Notice -->
+        <div class="alert alert-info animate__animated animate__fadeInDown" style="margin-bottom: 25px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 16v-4"></path>
+                <path d="M12 8h.01"></path>
+            </svg>
+            <strong>Upload Limit:</strong> You can upload a maximum of 1,000 records per CSV file. Files exceeding this limit will be rejected. <strong>For uploads exceeding 1,000 records, please contact the DB team.</strong>
+        </div>
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -427,6 +455,16 @@
                     <div id="columnMapping" class="column-mapping">
                         <div class="mapping-title">Map CSV Columns to Database Fields</div>
                         
+                        <!-- Field validation alert -->
+                        <div id="fieldValidationAlert" class="alert alert-warning" style="display: none; margin-bottom: 20px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <strong>Duplicate Field Selection:</strong> You have selected the same database field multiple times. Please ensure each field is mapped to only one CSV column.
+                        </div>
+                        
                         <!-- Dynamic mappings will be added here -->
                         <div id="dynamicMappings"></div>
                     </div>
@@ -435,7 +473,7 @@
                     <div id="customFieldsContainer" style="display: none;"></div>
 
                     <div class="button-group">
-                        <button type="submit" class="btn btn-primary pulse-animation">
+                        <button type="submit" class="btn btn-primary pulse-animation" id="uploadButton">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="17 8 12 3 7 8"></polyline>
@@ -469,16 +507,39 @@
             const fileName = document.getElementById('fileName');
 
             if (fileInput.files.length > 0) {
-                fileName.innerHTML = `
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-                        <polyline points="13 2 13 9 20 9"></polyline>
-                    </svg>
-                    Selected file: <strong>${fileInput.files[0].name}</strong> (${(fileInput.files[0].size / 1024).toFixed(2)} KB)
-                `;
+                const file = fileInput.files[0];
                 
-                // Parse CSV and display headers
-                parseCsvHeaders(fileInput.files[0]);
+                // Validate row count first
+                validateRowCount(file).then(rowCount => {
+                    fileName.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                            <polyline points="13 2 13 9 20 9"></polyline>
+                        </svg>
+                        Selected file: <strong>${file.name}</strong> (${(file.size / 1024).toFixed(2)} KB) - <span style="color: var(--success-color);">${rowCount} data rows</span>
+                    `;
+                    
+                    // Parse CSV and display headers
+                    parseCsvHeaders(file);
+                }).catch(error => {
+                    fileName.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                            <polyline points="13 2 13 9 20 9"></polyline>
+                        </svg>
+                        <span style="color: var(--danger-color);">${error}</span>
+                    `;
+                    
+                    // Hide column mapping
+                    document.getElementById('columnMapping').style.display = 'none';
+                    
+                    // Disable upload button
+                    const uploadButton = document.getElementById('uploadButton');
+                    if (uploadButton) {
+                        uploadButton.disabled = true;
+                        uploadButton.title = 'File exceeds row limit';
+                    }
+                });
             } else {
                 fileName.innerHTML = `
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -488,8 +549,16 @@
                     No file selected
                 `;
                 
-                // Hide CSV headers list
+                // Hide CSV headers list and column mapping
                 document.getElementById('csvHeadersList').style.display = 'none';
+                document.getElementById('columnMapping').style.display = 'none';
+                
+                // Reset upload button
+                const uploadButton = document.getElementById('uploadButton');
+                if (uploadButton) {
+                    uploadButton.disabled = false;
+                    uploadButton.title = 'Upload CSV file';
+                }
             }
         }
         
@@ -796,13 +865,6 @@
                     const selectedValue = select.value;
                     const csvHeader = select.getAttribute('data-csv-header');
                     
-                    // if (selectedValue === 'full_name') {
-                    //     // For full name, we need to create a name_column input
-                    //     const nameInput = document.createElement('input');
-                    //     nameInput.type = 'hidden';
-                    //     nameInput.name = 'name_column';
-                    //     nameInput.value = csvHeader;
-                    //     customFieldsContainer.appendChild(nameInput);
                     if (selectedValue === 'first_name') {
                         // For first name
                         const firstNameInput = document.createElement('input');
@@ -862,9 +924,6 @@
                 dynamicFieldsInput.name = 'dynamic_fields_json';
                 dynamicFieldsInput.value = JSON.stringify(dynamicFields);
                 customFieldsContainer.appendChild(dynamicFieldsInput);
-                
-                // Remove validation for required fields - as requested by user
-                // Just let the form submit regardless of mapping
             });
         }
         
@@ -1006,6 +1065,34 @@
                 .map(select => select.value)
                 .filter(value => value); // Remove empty values
             
+            // Check for duplicates
+            const duplicates = selectedValues.filter((value, index) => selectedValues.indexOf(value) !== index);
+            const hasDuplicates = duplicates.length > 0;
+            
+            // Show/hide validation alert
+            const validationAlert = document.getElementById('fieldValidationAlert');
+            if (validationAlert) {
+                if (hasDuplicates) {
+                    validationAlert.style.display = 'block';
+                    // Update alert message with specific duplicate fields
+                    const duplicateFields = [...new Set(duplicates)];
+                    const fieldLabels = duplicateFields.map(field => {
+                        const fieldObj = allLeadFields.find(f => f.name === field);
+                        return fieldObj ? fieldObj.label : field;
+                    });
+                    validationAlert.innerHTML = `
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <strong>Duplicate Field Selection:</strong> The following fields are selected multiple times: <strong>${fieldLabels.join(', ')}</strong>. Please ensure each field is mapped to only one CSV column.
+                    `;
+                } else {
+                    validationAlert.style.display = 'none';
+                }
+            }
+            
             // For each select, disable options that are already selected in other selects
             selects.forEach(select => {
                 const currentValue = select.value;
@@ -1021,6 +1108,54 @@
                     // Disable the option if it's selected in another dropdown
                     option.disabled = selectedValues.includes(option.value);
                 });
+            });
+            
+            // Update upload button state
+            updateUploadButtonState();
+        }
+        
+        function updateUploadButtonState() {
+            const uploadButton = document.getElementById('uploadButton');
+            const validationAlert = document.getElementById('fieldValidationAlert');
+            const hasDuplicates = validationAlert && validationAlert.style.display !== 'none';
+            
+            if (uploadButton) {
+                if (hasDuplicates) {
+                    uploadButton.disabled = true;
+                    uploadButton.title = 'Please fix duplicate field selections before uploading';
+                    uploadButton.classList.add('btn-secondary');
+                    uploadButton.classList.remove('btn-primary');
+                } else {
+                    uploadButton.disabled = false;
+                    uploadButton.title = 'Upload CSV file';
+                    uploadButton.classList.remove('btn-secondary');
+                    uploadButton.classList.add('btn-primary');
+                }
+            }
+        }
+        
+        function validateRowCount(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const content = e.target.result;
+                        const lines = content.split('\n').filter(line => line.trim() !== '');
+                        
+                        // Subtract 1 for header row
+                        const dataRows = lines.length - 1;
+                        
+                        if (dataRows > 1000) {
+                            reject(`File contains ${dataRows} data rows, which exceeds the limit of 1,000 rows. Please reduce the file size and try again.`);
+                        } else {
+                            resolve(dataRows);
+                        }
+                    } catch (error) {
+                        reject('Error reading file: ' + error.message);
+                    }
+                };
+                reader.onerror = () => reject('Error reading file');
+                reader.readAsText(file);
             });
         }
 
@@ -1077,7 +1212,34 @@
                 return;
             }
             
-            // Removed the validation for required fields as requested
+            // Check for duplicate field selections
+            const selects = document.querySelectorAll('#dynamicMappings select');
+            const selectedValues = Array.from(selects)
+                .map(select => select.value)
+                .filter(value => value);
+            
+            const duplicates = selectedValues.filter((value, index) => selectedValues.indexOf(value) !== index);
+            if (duplicates.length > 0) {
+                e.preventDefault();
+                const duplicateFields = [...new Set(duplicates)];
+                const fieldLabels = duplicateFields.map(field => {
+                    const fieldObj = allLeadFields.find(f => f.name === field);
+                    return fieldObj ? fieldObj.label : field;
+                });
+                alert(`Please fix duplicate field selections before uploading. The following fields are selected multiple times: ${fieldLabels.join(', ')}`);
+                return;
+            }
+            
+            // Validate row count again before submission (async)
+            const file = fileInput.files[0];
+            e.preventDefault(); // Prevent default submission
+            
+            validateRowCount(file).then(rowCount => {
+                // If validation passes, submit the form
+                document.getElementById('uploadForm').submit();
+            }).catch(error => {
+                alert(error);
+            });
         });
         
         // Initialize form on document ready
