@@ -436,7 +436,7 @@ export function DataEnhancement() {
 
     return {
       company: company.company,
-      website: preferValue(growjo.company_website, apollo.website_url, company.website),
+      website: preferValue(company.website, growjo.company_website, apollo.website_url),
       industry: preferValue(company.industry, growjo.industry, apollo.industry ),
       productCategory: preferValue(
         growjo.interests,
