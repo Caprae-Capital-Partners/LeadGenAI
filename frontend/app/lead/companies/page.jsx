@@ -33,6 +33,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import PopupBig from "@/components/ui/popup-big";
+import FeedbackPopup from "@/components/FeedbackPopup";
 import axios from "axios";
 import { SortDropdown } from "@/components/ui/sort-dropdown";
 import Notif from "@/components/ui/notif";
@@ -645,6 +646,7 @@ export default function CompaniesPage() {
 
     return (
     <div className="flex flex-col h-screen">
+        <FeedbackPopup />
         <Header />
         <div className="flex flex-1 overflow-hidden">
         <Sidebar />

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import FeedbackPopup from "@/components/FeedbackPopup";
 import { SortDropdown } from "@/app/lead/persons/sort-dropdown"
 import { 
   Search, 
@@ -687,6 +688,7 @@ useEffect(() => {
 
   return (
     <div className="flex flex-col h-screen">
+      <FeedbackPopup />
       {/* Top Header */}
       <Header />
       

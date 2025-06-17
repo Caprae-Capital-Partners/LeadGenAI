@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { loadStripe } from "@stripe/stripe-js";
-
+import FeedbackPopup from "@/components/FeedbackPopup";
 type Plan = {
     id: string;
     plan_name: string;
@@ -210,6 +210,7 @@ export default function SubscriptionPage() {
     
     return (
         <div className="animate-fade-in-down min-h-screen pt-32 pb-16 px-4 sm:px-6 lg:px-8 bg-background text-foreground">
+            <FeedbackPopup />
             <div className="max-w-7xl mx-auto space-y-16">
                 {/* Header */}
                 <div className="text-center">

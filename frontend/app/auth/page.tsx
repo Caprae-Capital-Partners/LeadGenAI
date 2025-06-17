@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import Notif from "@/components/ui/notif";
 import { validateField, validateForm, FormErrors } from "@/lib/formValidation";
 import Link from "next/link";
+import FeedbackPopup from "@/components/FeedbackPopup";
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL!;
 
@@ -306,6 +307,7 @@ export default function AuthPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground flex-col">
+            <FeedbackPopup />
             {showTerms && (
                 <div 
                 className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"

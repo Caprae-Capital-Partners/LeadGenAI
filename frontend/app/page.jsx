@@ -65,6 +65,7 @@ import axios from "axios";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Notif from "@/components/ui/notif";
 import Popup from "@/components/ui/popup";
+import FeedbackPopup from "@/components/FeedbackPopup";
 import { SortDropdown } from "@/components/ui/sort-dropdown";
 
 import { redirect } from "next/navigation";
@@ -831,6 +832,7 @@ export default function Home() {
     </div>
   ) : (
     <>
+    <FeedbackPopup />
       {/* Email-not-verified popup */}
       <Popup show={showPopup} onClose={handleClose}>
         <div className="text-center flex flex-col items-center justify-center">
