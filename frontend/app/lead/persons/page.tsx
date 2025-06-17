@@ -27,7 +27,9 @@ import {
   Users,
   Globe,
   Phone,
-  Linkedin
+  Linkedin,
+  Pencil,
+  StickyNote 
 } from "lucide-react"
 import {
   Pagination,
@@ -212,7 +214,7 @@ const PopupBig: React.FC<PopupBigProps> = ({ show, onClose, person }) => {
             onClick={() => person.email && window.open(`mailto:${person.email}`, '_blank')}
             disabled={!person.email || person.email === 'N/A'}
           >
-            <Mail className="h-4 w-4 mr-2" />
+            <Mail className="h-4 w-4 mr-2 " />
             Send Email
           </Button>
           
@@ -898,7 +900,7 @@ useEffect(() => {
                                   onClick={() => handleViewPerson(person)}
                                   title="View Details"
                                 >
-                                  <Eye className="h-4 w-4" />
+                                  <Eye className="w-4 h-4 text-blue-500" />
                                 </Button>
                                 {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
                                 <div className="flex gap-1">
@@ -922,22 +924,26 @@ useEffect(() => {
                                     </Button>
                                 </div>
                                 ) : (
-                                <Button
+                                    <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleEdit(person, persons.findIndex(p => p.id === person.id))}
                                     title="Edit"
-                                >
-                                    <Edit className="h-4 w-4" />
-                                </Button>
+                                    className="p-1 h-8 w-8"
+                                  >
+                                    <div className="w-6 h-6 text-blue-500 flex items-center justify-center">
+                                      <Pencil className="h-3 w-3 text-blue-500" />
+                                    </div>
+                                  </Button>
+                                  
 )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleNotes(person)}
-                                  title="Notes"
+                                  title="Notes - Coming soon!"
                                 >
-                                  <FileText className="h-4 w-4" />
+                                  < StickyNote className="h-4 w-4 text-yellow-500" />
                                 </Button>
                               </div>
                             </TableCell>
@@ -962,7 +968,7 @@ useEffect(() => {
                                   title="Send Email"
                                   disabled={!person.email}
                                 >
-                                  <Mail className="h-4 w-4" />
+                                  <Mail className="h-4 w-4 text-green-600" />
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -971,7 +977,7 @@ useEffect(() => {
                                   title="LinkedIn Profile"
                                   disabled={!person.linkedin}
                                 >
-                                  <LinkIcon className="h-4 w-4" />
+                                  <Linkedin className="h-4 w-4 text-blue-700" />
                                 </Button>
                               </div>
                             </TableCell>
