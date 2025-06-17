@@ -1124,8 +1124,14 @@ export default function CompaniesPage() {
                 {popupTab === 'overview' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {overviewFields.map(({ key, label }) => {
-                        const value = popupData[key] || "";
+                        let value = popupData[key] || "";
                         const isLink = key === "website" || key === "companyLinkedin";
+                        
+                        // Special handling for website field
+                        if (key === "website" && value && !value.startsWith('http')) {
+                            value = `https://${value}`;
+                        }
+
                         return (
                         <div key={key} className="space-y-1">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1138,19 +1144,20 @@ export default function CompaniesPage() {
                                 setPopupData({ ...popupData, [key]: e.target.value })
                                 }
                                 className="text-sm"
+                                placeholder={isLink ? "https://..." : ""}
                             />
-                            ) : isLink && value ? (
-                            <a
-                                href={value}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 underline hover:text-blue-800 break-all"
-                            >
-                                {value}
-                            </a>
                             ) : (
                             <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
-                                {value || <span className="italic text-gray-400">N/A</span>}
+                                {isLink && value ? (
+                                <a 
+                                    href={value} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline"
+                                >
+                                    {value}
+                                </a>
+                                ) : value || <span className="italic text-gray-400">N/A</span>}
                             </div>
                             )}
                         </div>
@@ -1165,6 +1172,7 @@ export default function CompaniesPage() {
                     {peopleFields.map(({ key, label }) => {
                         const value = popupData[key] || "";
                         const isLink = key === "ownerLinkedin";
+                        
                         return (
                         <div key={key} className="space-y-1">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1177,19 +1185,20 @@ export default function CompaniesPage() {
                                 setPopupData({ ...popupData, [key]: e.target.value })
                                 }
                                 className="text-sm"
+                                placeholder={isLink ? "https://..." : ""}
                             />
-                            ) : isLink && value ? (
-                            <a
-                                href={value}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 underline hover:text-blue-800 break-all"
-                            >
-                                {value}
-                            </a>
                             ) : (
                             <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
-                                {value || <span className="italic text-gray-400">N/A</span>}
+                                {isLink && value ? (
+                                <a 
+                                    href={value} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline"
+                                >
+                                    {value}
+                                </a>
+                                ) : value || <span className="italic text-gray-400">N/A</span>}
                             </div>
                             )}
                         </div>
@@ -1197,7 +1206,6 @@ export default function CompaniesPage() {
                     })}
                     </div>
                 )}
-
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-4 pt-4 border-t">
                     {!isEditing ? (
