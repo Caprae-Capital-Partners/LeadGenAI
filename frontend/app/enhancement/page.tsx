@@ -7,6 +7,7 @@ import { DataEnhancement } from "@/components/data-enhancement";
 import { Header } from "@/components/header";
 import useEmailVerificationGuard from "@/hooks/useEmailVerificationGuard";
 import Popup from "@/components/ui/popup";
+import FeedbackPopup from "@/components/FeedbackPopup";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 
 export default function EnhancementPage() {
@@ -46,6 +47,7 @@ export default function EnhancementPage() {
 
     return (
         <>
+        <FeedbackPopup />
             {/* Email-not-verified popup */}
             <Popup show={showPopup} onClose={handleClose}>
                 <h2 className="text-lg font-semibold">Account Not Verified</h2>
