@@ -158,18 +158,6 @@
     color: white;
   }
 
-  .btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
-    box-shadow: none !important;
-  }
-
-  .btn:disabled:hover {
-    transform: none !important;
-    box-shadow: none !important;
-  }
-
   .alert {
     padding: 15px;
     margin-bottom: 25px;
@@ -191,12 +179,6 @@
     background-color: #2d1a1a;
     color: #f72585;
     border-color: #e53935;
-  }
-
-  .alert-info {
-    background-color: #1e293b;
-    color: #4cc9f0;
-    border-color: #4cc9f0;
   }
 
   .file-input-wrapper {
@@ -314,12 +296,12 @@
     align-items: center;
     justify-content: center;
   }
-  
+
   /* CSV Headers display */
   #csvHeadersList {
     display: none !important;
   }
-  
+
   /* Column Mapping Styling */
   .column-mapping {
     margin-bottom: 25px;
@@ -375,7 +357,7 @@
     color: #555;
     font-size: 14px;
   }
-  
+
   /* Adjust form-select style to match the screenshot */
   .mapping-row .form-select {
     border-radius: 8px;
@@ -391,16 +373,6 @@
 {% block content %}
     <div class="container">
         <h1 class="animate__animated animate__fadeIn">Upload Leads</h1>
-
-        <!-- Upload Limit Notice -->
-        <div class="alert alert-info animate__animated animate__fadeInDown" style="margin-bottom: 25px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M12 16v-4"></path>
-                <path d="M12 8h.01"></path>
-            </svg>
-            <strong>Upload Limit:</strong> You can upload a maximum of 1,000 records per CSV file. Files exceeding this limit will be rejected. <strong>For uploads exceeding 1,000 records, please contact the DB team.</strong>
-        </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -446,7 +418,7 @@
                             No file selected
                         </div>
                     </div>
-                    
+
                     <div id="csvHeadersList">
                         <div class="headers-title">Available CSV Headers:</div>
                         <ul id="headersList"></ul>
@@ -454,17 +426,7 @@
 
                     <div id="columnMapping" class="column-mapping">
                         <div class="mapping-title">Map CSV Columns to Database Fields</div>
-                        
-                        <!-- Field validation alert -->
-                        <div id="fieldValidationAlert" class="alert alert-warning" style="display: none; margin-bottom: 20px;">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                                <line x1="12" y1="9" x2="12" y2="13"></line>
-                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                            </svg>
-                            <strong>Duplicate Field Selection:</strong> You have selected the same database field multiple times. Please ensure each field is mapped to only one CSV column.
-                        </div>
-                        
+
                         <!-- Dynamic mappings will be added here -->
                         <div id="dynamicMappings"></div>
                     </div>
@@ -473,7 +435,7 @@
                     <div id="customFieldsContainer" style="display: none;"></div>
 
                     <div class="button-group">
-                        <button type="submit" class="btn btn-primary pulse-animation" id="uploadButton">
+                        <button type="submit" class="btn btn-primary pulse-animation">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="17 8 12 3 7 8"></polyline>
@@ -507,39 +469,16 @@
             const fileName = document.getElementById('fileName');
 
             if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                
-                // Validate row count first
-                validateRowCount(file).then(rowCount => {
-                    fileName.innerHTML = `
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-                            <polyline points="13 2 13 9 20 9"></polyline>
-                        </svg>
-                        Selected file: <strong>${file.name}</strong> (${(file.size / 1024).toFixed(2)} KB) - <span style="color: var(--success-color);">${rowCount} data rows</span>
-                    `;
-                    
-                    // Parse CSV and display headers
-                    parseCsvHeaders(file);
-                }).catch(error => {
-                    fileName.innerHTML = `
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-                            <polyline points="13 2 13 9 20 9"></polyline>
-                        </svg>
-                        <span style="color: var(--danger-color);">${error}</span>
-                    `;
-                    
-                    // Hide column mapping
-                    document.getElementById('columnMapping').style.display = 'none';
-                    
-                    // Disable upload button
-                    const uploadButton = document.getElementById('uploadButton');
-                    if (uploadButton) {
-                        uploadButton.disabled = true;
-                        uploadButton.title = 'File exceeds row limit';
-                    }
-                });
+                fileName.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                        <polyline points="13 2 13 9 20 9"></polyline>
+                    </svg>
+                    Selected file: <strong>${fileInput.files[0].name}</strong> (${(fileInput.files[0].size / 1024).toFixed(2)} KB)
+                `;
+
+                // Parse CSV and display headers
+                parseCsvHeaders(fileInput.files[0]);
             } else {
                 fileName.innerHTML = `
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -548,20 +487,12 @@
                     </svg>
                     No file selected
                 `;
-                
-                // Hide CSV headers list and column mapping
+
+                // Hide CSV headers list
                 document.getElementById('csvHeadersList').style.display = 'none';
-                document.getElementById('columnMapping').style.display = 'none';
-                
-                // Reset upload button
-                const uploadButton = document.getElementById('uploadButton');
-                if (uploadButton) {
-                    uploadButton.disabled = false;
-                    uploadButton.title = 'Upload CSV file';
-                }
             }
         }
-        
+
         function parseCsvHeaders(file) {
             // First try as binary to check for encoding issues
             const binaryReader = new FileReader();
@@ -571,7 +502,7 @@
                     // This is just a simple check, a more sophisticated solution might be needed
                     const binary = new Uint8Array(e.target.result);
                     let encoding = 'utf-8';
-                    
+
                     // Check for BOM markers and other encoding hints
                     if (binary.length >= 3 && binary[0] === 0xEF && binary[1] === 0xBB && binary[2] === 0xBF) {
                         encoding = 'utf-8'; // UTF-8 with BOM
@@ -583,7 +514,7 @@
                         // If there are non-ASCII characters, try latin1/ISO-8859-1 which can handle all byte values
                         encoding = 'iso-8859-1';
                     }
-                    
+
                     // Now read the file with the detected encoding
                     const textReader = new FileReader();
                     textReader.onload = function(textEvent) {
@@ -597,7 +528,7 @@
                         };
                         fallbackReader.readAsText(file, 'iso-8859-1');
                     };
-                    
+
                     // Try with the detected encoding
                     textReader.readAsText(file, encoding);
                 } catch (error) {
@@ -611,12 +542,12 @@
                 }
             };
             binaryReader.readAsArrayBuffer(file);
-            
+
             // Function to process the CSV content regardless of how it was loaded
             function processCsvContent(contents) {
                 try {
                     const lines = contents.split('\n');
-                    
+
                     if (lines.length > 0) {
                         // Parse the first line to get headers
                         let headers;
@@ -628,22 +559,22 @@
                         } else {
                             headers = lines[0].split(',').map(h => h.trim());
                         }
-                        
+
                         // Update available headers for custom fields
                         updateAvailableCsvHeaders(headers);
-                        
+
                         // Hide csvHeadersList section completely
                         const csvHeadersList = document.getElementById('csvHeadersList');
                         if (csvHeadersList) {
                             csvHeadersList.style.display = 'none';
                         }
-                        
+
                         // Show column mapping interface
                         document.getElementById('columnMapping').style.display = 'block';
-                        
+
                         // Create dynamic mappings for CSV columns
                         createDynamicMappings(headers);
-                        
+
                         // Try to find likely matches
                         autoMatchColumns();
                     }
@@ -653,24 +584,24 @@
                 }
             }
         }
-        
+
         function displayHeaders(headers) {
             // Function kept for compatibility but we're not displaying the headers list
             // Update available headers for custom fields
             updateAvailableCsvHeaders(headers);
         }
-        
+
         function populateColumnSelects(headers) {
             // Get all column select dropdowns
             const selects = document.querySelectorAll('#columnMapping select');
-            
+
             // Clear and populate each dropdown with all headers
             selects.forEach(select => {
                 // Keep only the first option (placeholder)
                 while (select.options.length > 1) {
                     select.remove(1);
                 }
-                
+
                 // Add all headers as options
                 headers.forEach(header => {
                     const option = document.createElement('option');
@@ -680,74 +611,74 @@
                 });
             });
         }
-        
+
         function createDynamicMappings(headers) {
             const dynamicMappings = document.getElementById('dynamicMappings');
             dynamicMappings.innerHTML = ''; // Clear existing mappings
-            
+
             // Define fields we want to hide
-            const hiddenFields = ['score', 'reasoning', 'email_customization_1', 'subject_line_1', 
-                                'email_customization_2', 'subject_line_2', 'linkedin_customization_1', 
+            const hiddenFields = ['score', 'reasoning', 'email_customization_1', 'subject_line_1',
+                                'email_customization_2', 'subject_line_2', 'linkedin_customization_1',
                                 'linkedin_customization_2'];
-            
+
             // Filter out CSV headers that match our hidden fields patterns
             const filteredHeaders = headers.filter(header => {
                 // Check if this header matches any of our hidden field patterns
-                const matchesHiddenPattern = 
+                const matchesHiddenPattern =
                     header.toLowerCase().includes('score') ||
                     header.toLowerCase().includes('reasoning') ||
                     header.toLowerCase().includes('r/y/g') ||
                     header.toLowerCase().includes('email customization') ||
                     header.toLowerCase().includes('subject line') ||
                     header.toLowerCase().includes('linkedin customization');
-                
+
                 // Keep headers that don't match hidden patterns
                 return !matchesHiddenPattern;
             });
-            
+
             // Create a mapping row for each filtered CSV header
             filteredHeaders.forEach((header, index) => {
                 const row = document.createElement('div');
                 row.className = 'mapping-row';
-                
+
                 const csvColumn = document.createElement('div');
                 csvColumn.className = 'csv-column';
                 csvColumn.textContent = header;
-                
+
                 const dbColumn = document.createElement('div');
                 dbColumn.className = 'db-column';
-                
+
                 const select = document.createElement('select');
                 select.name = `field_mapping_${index}`;
                 select.className = 'form-select';
                 select.setAttribute('data-csv-header', header);
-                
+
                 // Add default empty option
                 const defaultOption = document.createElement('option');
                 defaultOption.value = '';
                 defaultOption.textContent = 'Select Database Field';
                 select.appendChild(defaultOption);
-                
+
                 // Add all database fields
                 allLeadFields.forEach(field => {
-                    
+
                     if (hiddenFields.includes(field.name)) {
-                        return; 
+                        return;
                     }
-                    
+
                     const option = document.createElement('option');
                     option.value = field.name;
                     option.textContent = field.label;
-                    
+
                     // Auto-select if the field name matches the CSV header
-                    if (field.name.toLowerCase() === header.toLowerCase() || 
+                    if (field.name.toLowerCase() === header.toLowerCase() ||
                         field.label.toLowerCase() === header.toLowerCase()) {
                         option.selected = true;
                     }
-                    
+
                     select.appendChild(option);
                 });
-                
+
                 // Special cases for required fields
                 // if (header.toLowerCase().includes('name') && !header.toLowerCase().includes('first') && !header.toLowerCase().includes('last')) {
                 //     // For full name field
@@ -774,36 +705,36 @@
                     phoneInput.value = header;
                     dbColumn.appendChild(phoneInput);
                 }
-                
+
                 dbColumn.appendChild(select);
-                
+
                 row.appendChild(csvColumn);
                 row.appendChild(dbColumn);
-                
+
                 dynamicMappings.appendChild(row);
-                
+
                 // Add change event listener to update selection and create hidden fields
                 select.addEventListener('change', function() {
                     updateFieldSelection(this);
                     updateAvailableOptions();
                 });
             });
-            
+
             // Initialize the selected values and update available options
             document.querySelectorAll('#dynamicMappings select').forEach(select => {
                 updateFieldSelection(select);
             });
             updateAvailableOptions();
-            
+
             // Add compatibility inputs to the form
             addCompatibilityInputs();
         }
-        
+
         function updateFieldSelection(select) {
             const csvHeader = select.getAttribute('data-csv-header');
             const selectedValue = select.value;
             const dbColumn = select.parentNode;
-            
+
             // Remove any existing hidden inputs for special fields
             const existingInputs = dbColumn.querySelectorAll('input[type="hidden"]');
             existingInputs.forEach(input => {
@@ -811,7 +742,7 @@
                     input.remove();
                 }
             });
-            
+
             // Create hidden inputs for required fields
             // if (selectedValue === 'full_name') {
             //     const nameInput = document.createElement('input');
@@ -844,27 +775,34 @@
                 phoneInput.value = csvHeader;
                 dbColumn.appendChild(phoneInput);
             }
-            
-            // For other fields, we'll collect them on form submit  
+
+            // For other fields, we'll collect them on form submit
         }
-        
+
         function addCompatibilityInputs() {
             const form = document.getElementById('uploadForm');
-            
+
             // Event listener to create the dynamic field inputs before submission
             form.addEventListener('submit', function(e) {
                 // Create dynamic field inputs for the selections made
                 const dynamicSelects = document.querySelectorAll('#dynamicMappings select');
                 const customFieldsContainer = document.getElementById('customFieldsContainer');
                 customFieldsContainer.innerHTML = ''; // Clear existing fields
-                
+
                 // Collect all mappings, including dynamic fields
                 const dynamicFields = [];
-                
+
                 dynamicSelects.forEach(select => {
                     const selectedValue = select.value;
                     const csvHeader = select.getAttribute('data-csv-header');
-                    
+
+                    // if (selectedValue === 'full_name') {
+                    //     // For full name, we need to create a name_column input
+                    //     const nameInput = document.createElement('input');
+                    //     nameInput.type = 'hidden';
+                    //     nameInput.name = 'name_column';
+                    //     nameInput.value = csvHeader;
+                    //     customFieldsContainer.appendChild(nameInput);
                     if (selectedValue === 'first_name') {
                         // For first name
                         const firstNameInput = document.createElement('input');
@@ -893,98 +831,106 @@
                         phoneInput.name = 'phone_column';
                         phoneInput.value = csvHeader;
                         customFieldsContainer.appendChild(phoneInput);
-                    } else if (selectedValue && 
-                        selectedValue !== 'email' && 
+                    } else if (selectedValue &&
+                        selectedValue !== 'email' &&
                         selectedValue !== 'phone') {
-                        
+
                         // For custom fields
                         dynamicFields.push({
                             name: selectedValue,
                             value: csvHeader
                         });
-                        
+
                         const nameInput = document.createElement('input');
                         nameInput.type = 'hidden';
                         nameInput.name = 'dynamic_field_name[]';
                         nameInput.value = selectedValue;
-                        
+
                         const valueInput = document.createElement('input');
                         valueInput.type = 'hidden';
                         valueInput.name = 'dynamic_field_value[]';
                         valueInput.value = csvHeader;
-                        
+
                         customFieldsContainer.appendChild(nameInput);
                         customFieldsContainer.appendChild(valueInput);
                     }
                 });
-                
+
                 // Add all dynamic fields as a JSON field for better handling
                 const dynamicFieldsInput = document.createElement('input');
                 dynamicFieldsInput.type = 'hidden';
                 dynamicFieldsInput.name = 'dynamic_fields_json';
                 dynamicFieldsInput.value = JSON.stringify(dynamicFields);
                 customFieldsContainer.appendChild(dynamicFieldsInput);
+
+                // Remove validation for required fields - as requested by user
+                // Just let the form submit regardless of mapping
             });
         }
-        
+
         function autoMatchColumns() {
             // Auto-match fields based on name patterns with more flexible matching
             const fieldPatterns = {
+              "company": ["company", "sadfasdf"],
                 "first_name": ["first name", "fname", "first", "first name", "firstname"],
                 "last_name": ["last name", "lname", "last", "last name", "lastname"],
-                "email": ["email", "e-mail", "mail", "contact email", "g-mail", "email address", "emailaddress"],
+                // "owner_email": ["owner email","sdfasd"],
+                "email": ["email", "e-mail", "owner email","mail", "contact email", "g-mail", "email address", "emailaddress"],
                 "phone": ["phone", "telephone", "contact number", "mobile", "cell", "phone number", "phone number", "phonenumber", "phone_number"],
-                "company": ["company", "business", "organization", "company name", "companyname"],
                 "title": ["title", "job title", "position", "job position", "jobtitle"],
                 "city": ["city", "town", "location", "cityname"],
                 "state": ["state", "province", "region", "state/province", "statename"],
                 "website": ["website", "web", "url", "site", "weburl", "web_url"],
+                "company_linkedin": ["Company LinkedIn", "safasf"],
                 "industry": ["industry", "sector", "field", "industry sector", "industries"],
-                "company_linkedin": ["company linkedin", "linkedin profile", "linkedin url", "company linkedin url", "linkedin", "linkedin_url", "companylinkedin"],
-                "owner_linkedin": ["owner's linkedin", "founder linkedin", "ceo linkedin", "owner linkedin", "ownerlinkedin", "owner_linkedin"],
                 "revenue": ["revenue", "annual revenue", "yearly revenue", "revenue range", "revenues"],
-                "business_type": ["business type", "company type", "organization type", "business type", "business_type", "businesstype", "b2b", "b2c", "b2b2c"],
                 "product_service_category": ["product", "service", "category", "product/service", "product category", "product/service category", "productcategory", "product_category", "productservice"],
-                "associated_members": ["associated", "member", "associate", "team member", "associated members", "associatedmembers", "associated_members", "team members"],
+                "business_type": ["business type", "sadfasd"],
                 "employees_range": ["employees", "employee count", "staff", "team size", "headcount", "employee range", "employeesrange", "employees_range", "employee_count", "employeecount"],
-                "rev_source": ["rev source", "revenue source", "income source", "revenue stream", "revsource", "revenue_source", "revenuesource"],
                 "year_founded": ["founded", "established", "year founded", "start year", "yearfounded", "year_founded", "founding year"],
+                "owner_linkedin": ["LinkedIn URL","owner's linkedin", "founder linkedin", "ceo linkedin", "owner linkedin", "ownerlinkedin", "owner_linkedin"],
+                "owner_phone_number": ["Owner Phone Number"],
+                "company_phone": ["Company Phone", "asdfasdf"],
+                "rev_source": ["rev source", "revenue source", "income source", "revenue stream", "revsource", "revenue_source", "revenuesource"],
+
+
+                "associated_members": ["associated", "member", "associate", "team member", "associated members", "associatedmembers", "associated_members", "team members"],
                 "owner_age": ["owner age", "founder age", "ceo age", "ownerage", "owner_age", "age"],
                 "additional_notes": ["notes", "comment", "additional notes", "remark", "observation", "additionalnotes", "additional_notes"],
                 "score": ["score", "rating", "rank", "grade", "r/y/g", "ryg", "r y g"],
                 "reasoning": ["reasoning", "reason", "explanation", "justification", "reasoning for r/y/g", "reasoning for ryg"],
-                "email_customization_1": ["email customization #1", "email template", "email 1", "first email", "email personalization", "emailcustomization1", "email_customization_1"],
-                "subject_line_1": ["subject line #1", "subject #1", "email subject", "first subject", "subjectline1", "subject_line_1"],
-                "email_customization_2": ["email customization #2", "follow up email", "second email", "email 2", "emailcustomization2", "email_customization_2"],
-                "subject_line_2": ["subject line #2", "subject 2", "follow up subject", "second subject", "subjectline2", "subject_line_2"],
-                "linkedin_customization_1": ["linkedin customization #1", "linkedin message", "linkedin 1", "first linkedin", "linkedin custom", "linkedincustomization1", "linkedin_customization_1"],
-                "linkedin_customization_2": ["linkedin customization #2", "follow up linkedin", "second linkedin", "linkedin 2", "linkedincustomization2", "linkedin_customization_2"]
+                // "email_customization_1": ["email customization #1", "email template", "email 1", "first email", "email personalization", "emailcustomization1", "email_customization_1"],
+                // "subject_line_1": ["subject line #1", "subject #1", "email subject", "first subject", "subjectline1", "subject_line_1"],
+                // "email_customization_2": ["email customization #2", "follow up email", "second email", "email 2", "emailcustomization2", "email_customization_2"],
+                // "subject_line_2": ["subject line #2", "subject 2", "follow up subject", "second subject", "subjectline2", "subject_line_2"],
+                // "linkedin_customization_1": ["linkedin customization #1", "linkedin message", "linkedin 1", "first linkedin", "linkedin custom", "linkedincustomization1", "linkedin_customization_1"],
+                // "linkedin_customization_2": ["linkedin customization #2", "follow up linkedin", "second linkedin", "linkedin 2", "linkedincustomization2", "linkedin_customization_2"]
             };
 
             // Get all select dropdowns
             const allSelects = document.querySelectorAll('#dynamicMappings select');
-            
+
             // For each select dropdown
             allSelects.forEach(select => {
                 const csvHeader = select.getAttribute('data-csv-header');
                 const normalizedHeader = csvHeader.toLowerCase().replace(/[^a-z0-9]/g, ''); // Remove special chars for better matching
-                
+
                 // Try to find a matching field pattern
                 let matchFound = false;
-                
+
                 Object.entries(fieldPatterns).forEach(([fieldName, patterns]) => {
                     if (!matchFound) {
                         // Check for exact matches first
-                        if (patterns.some(pattern => 
+                        if (patterns.some(pattern =>
                             normalizedHeader === pattern.toLowerCase().replace(/[^a-z0-9]/g, ''))) {
                             select.value = fieldName;
                             matchFound = true;
                             updateFieldSelection(select);
                             return;
                         }
-                        
+
                         // Then check for partial matches
-                        if (patterns.some(pattern => 
+                        if (patterns.some(pattern =>
                             normalizedHeader.includes(pattern.toLowerCase().replace(/[^a-z0-9]/g, '')) ||
                             pattern.toLowerCase().replace(/[^a-z0-9]/g, '').includes(normalizedHeader))) {
                             select.value = fieldName;
@@ -994,37 +940,37 @@
                         }
                     }
                 });
-                
+
                 // If no match found, try to find the closest match using Levenshtein distance
                 if (!matchFound) {
                     let bestMatch = null;
                     let bestScore = Infinity;
-                    
+
                     Object.entries(fieldPatterns).forEach(([fieldName, patterns]) => {
                         patterns.forEach(pattern => {
                             const patternNormalized = pattern.toLowerCase().replace(/[^a-z0-9]/g, '');
                             const distance = levenshteinDistance(normalizedHeader, patternNormalized);
                             const maxLength = Math.max(normalizedHeader.length, patternNormalized.length);
                             const similarity = 1 - (distance / maxLength);
-                            
+
                             if (similarity > 0.8 && similarity > bestScore) { // 80% similarity threshold
                                 bestScore = similarity;
                                 bestMatch = fieldName;
                             }
                         });
                     });
-                    
+
                     if (bestMatch) {
                         select.value = bestMatch;
                         updateFieldSelection(select);
                     }
                 }
             });
-            
+
             // Update available options after auto-matching
             updateAvailableOptions();
         }
-        
+
         // Levenshtein distance function for fuzzy matching
         function levenshteinDistance(a, b) {
             if (a.length === 0) return b.length;
@@ -1057,46 +1003,18 @@
 
             return matrix[b.length][a.length];
         }
-        
+
         function updateAvailableOptions() {
             // Get all currently selected values
             const selects = document.querySelectorAll('#dynamicMappings select');
             const selectedValues = Array.from(selects)
                 .map(select => select.value)
                 .filter(value => value); // Remove empty values
-            
-            // Check for duplicates
-            const duplicates = selectedValues.filter((value, index) => selectedValues.indexOf(value) !== index);
-            const hasDuplicates = duplicates.length > 0;
-            
-            // Show/hide validation alert
-            const validationAlert = document.getElementById('fieldValidationAlert');
-            if (validationAlert) {
-                if (hasDuplicates) {
-                    validationAlert.style.display = 'block';
-                    // Update alert message with specific duplicate fields
-                    const duplicateFields = [...new Set(duplicates)];
-                    const fieldLabels = duplicateFields.map(field => {
-                        const fieldObj = allLeadFields.find(f => f.name === field);
-                        return fieldObj ? fieldObj.label : field;
-                    });
-                    validationAlert.innerHTML = `
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                            <line x1="12" y1="9" x2="12" y2="13"></line>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                        <strong>Duplicate Field Selection:</strong> The following fields are selected multiple times: <strong>${fieldLabels.join(', ')}</strong>. Please ensure each field is mapped to only one CSV column.
-                    `;
-                } else {
-                    validationAlert.style.display = 'none';
-                }
-            }
-            
+
             // For each select, disable options that are already selected in other selects
             selects.forEach(select => {
                 const currentValue = select.value;
-                
+
                 // Go through all options
                 Array.from(select.options).forEach(option => {
                     // Skip the empty option and the currently selected option
@@ -1104,58 +1022,10 @@
                         option.disabled = false;
                         return;
                     }
-                    
+
                     // Disable the option if it's selected in another dropdown
                     option.disabled = selectedValues.includes(option.value);
                 });
-            });
-            
-            // Update upload button state
-            updateUploadButtonState();
-        }
-        
-        function updateUploadButtonState() {
-            const uploadButton = document.getElementById('uploadButton');
-            const validationAlert = document.getElementById('fieldValidationAlert');
-            const hasDuplicates = validationAlert && validationAlert.style.display !== 'none';
-            
-            if (uploadButton) {
-                if (hasDuplicates) {
-                    uploadButton.disabled = true;
-                    uploadButton.title = 'Please fix duplicate field selections before uploading';
-                    uploadButton.classList.add('btn-secondary');
-                    uploadButton.classList.remove('btn-primary');
-                } else {
-                    uploadButton.disabled = false;
-                    uploadButton.title = 'Upload CSV file';
-                    uploadButton.classList.remove('btn-secondary');
-                    uploadButton.classList.add('btn-primary');
-                }
-            }
-        }
-        
-        function validateRowCount(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const content = e.target.result;
-                        const lines = content.split('\n').filter(line => line.trim() !== '');
-                        
-                        // Subtract 1 for header row
-                        const dataRows = lines.length - 1;
-                        
-                        if (dataRows > 1000) {
-                            reject(`File contains ${dataRows} data rows, which exceeds the limit of 1,000 rows. Please reduce the file size and try again.`);
-                        } else {
-                            resolve(dataRows);
-                        }
-                    } catch (error) {
-                        reject('Error reading file: ' + error.message);
-                    }
-                };
-                reader.onerror = () => reject('Error reading file');
-                reader.readAsText(file);
             });
         }
 
@@ -1163,14 +1033,14 @@
         function updateAvailableCsvHeaders(headers) {
           availableCsvHeaders = headers || [];
         }
-        
+
         // Add dynamic custom fields functionality
         const allLeadFields = [
           // {name: "full_name", label: "Full Name"},
           {name: "first_name", label: "First Name"},
           {name: "last_name", label: "Last Name"},
           {name: "email", label: "Email"},
-          {name: "owner_email", label: "Owner Email"},
+          // {name: "owner_email", label: "Owner Email"},
           {name: "phone", label: "Phone"},
           {name: "company", label: "Company"},
           {name: "company_phone", label: "Company Phone"},
@@ -1196,10 +1066,10 @@
           {name: "additional_notes", label: "Notes"},
           {name: "status", label: "Status"}
         ];
-        
+
         // Keep track of available CSV headers
         let availableCsvHeaders = [];
-        
+
         document.getElementById('uploadForm').addEventListener('submit', function(e) {
             const fileInput = document.getElementById('file');
             if (fileInput.files.length === 0) {
@@ -1211,37 +1081,9 @@
                 }, 1000);
                 return;
             }
-            
-            // Check for duplicate field selections
-            const selects = document.querySelectorAll('#dynamicMappings select');
-            const selectedValues = Array.from(selects)
-                .map(select => select.value)
-                .filter(value => value);
-            
-            const duplicates = selectedValues.filter((value, index) => selectedValues.indexOf(value) !== index);
-            if (duplicates.length > 0) {
-                e.preventDefault();
-                const duplicateFields = [...new Set(duplicates)];
-                const fieldLabels = duplicateFields.map(field => {
-                    const fieldObj = allLeadFields.find(f => f.name === field);
-                    return fieldObj ? fieldObj.label : field;
-                });
-                alert(`Please fix duplicate field selections before uploading. The following fields are selected multiple times: ${fieldLabels.join(', ')}`);
-                return;
-            }
-            
-            // Validate row count again before submission (async)
-            const file = fileInput.files[0];
-            e.preventDefault(); // Prevent default submission
-            
-            validateRowCount(file).then(rowCount => {
-                // If validation passes, submit the form
-                document.getElementById('uploadForm').submit();
-            }).catch(error => {
-                alert(error);
-            });
+
         });
-        
+
         // Initialize form on document ready
         document.addEventListener('DOMContentLoaded', function() {
             // Add compatibility inputs
