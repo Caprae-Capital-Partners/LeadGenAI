@@ -702,24 +702,29 @@ def api_cancel_user_subscription(user_id):
     feedback = data.get('feedback')
     comment = data.get('comment')
 
-    if str(user_id) == str(current_user.user_id):
-        return jsonify({"error": "You cannot cancel your own account via this admin route. Please use the user-facing cancellation route."}), 400
-
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
     try:
+        current_app.logger.info(f"[Admin Cancel] Admin {current_user.user_id} ({current_user.email}) attempting to cancel subscription for user {user_id} with cancellation_type={cancellation_type}, feedback={feedback}, comment={comment}")
+        if str(user_id) == str(current_user.user_id):
+            current_app.logger.warning(f"[Admin Cancel] Admin {current_user.user_id} tried to cancel their own subscription via admin route.")
+            return jsonify({"error": "You cannot cancel your own account via this admin route. Please use the user-facing cancellation route."}), 400
+
+        user = User.query.get(user_id)
+        if not user:
+            current_app.logger.warning(f"[Admin Cancel] User {user_id} not found for cancellation.")
+            return jsonify({"error": "User not found"}), 404
+
         # Ensure the target user has a subscription to cancel
         from models.user_subscription_model import UserSubscription
         user_sub = UserSubscription.query.filter_by(user_id=user.user_id).first()
         if not user_sub or user.tier == 'free':
+            current_app.logger.warning(f"[Admin Cancel] User {user_id} does not have an active paid subscription to cancel.")
             return jsonify({"error": f"User {user.username} does not have an active paid subscription to cancel."}), 400
 
         response, status_code = SubscriptionController.cancel_subscription(user, cancellation_type, feedback, comment)
+        current_app.logger.info(f"[Admin Cancel] Cancellation result for user {user_id}: {response}, status {status_code}")
         return jsonify(response), status_code
     except Exception as e:
-        current_app.logger.error(f"Error canceling subscription for user {user_id} via API: {str(e)}")
+        current_app.logger.error(f"[Admin Cancel] Error canceling subscription for user {user_id} by admin {current_user.user_id}: {str(e)}")
         db.session.rollback() # Ensure rollback in case of error
         return jsonify({"error": f"Failed to cancel subscription: {str(e)}"}), 500
 
@@ -728,18 +733,21 @@ def api_cancel_user_subscription(user_id):
 @role_required('admin', 'developer')
 def api_reactivate_user_subscription(user_id):
     """API: Reactivate user subscription (admin/developer only)"""
-
-    if str(user_id) == str(current_user.user_id):
-        return jsonify({"error": "You cannot reactivate your own account via this admin route."}), 400
-
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
     try:
+        current_app.logger.info(f"[Admin Reactivation] Admin {current_user.user_id} ({current_user.email}) attempting to reactivate subscription for user {user_id}")
+        if str(user_id) == str(current_user.user_id):
+            current_app.logger.warning(f"[Admin Reactivation] Admin {current_user.user_id} tried to reactivate their own subscription via admin route.")
+            return jsonify({"error": "You cannot reactivate your own account via this admin route."}), 400
+
+        user = User.query.get(user_id)
+        if not user:
+            current_app.logger.warning(f"[Admin Reactivation] User {user_id} not found for reactivation.")
+            return jsonify({"error": "User not found"}), 404
+
         response, status_code = SubscriptionController.reactivate_subscription(user)
+        current_app.logger.info(f"[Admin Reactivation] Reactivation result for user {user_id}: {response}, status {status_code}")
         return jsonify(response), status_code
     except Exception as e:
-        current_app.logger.error(f"Error reactivating subscription for user {user_id} via API: {str(e)}")
+        current_app.logger.error(f"[Admin Reactivation] Error reactivating subscription for user {user_id} by admin {current_user.user_id}: {str(e)}")
         db.session.rollback()
         return jsonify({"error": f"Failed to reactivate subscription: {str(e)}"}), 500
