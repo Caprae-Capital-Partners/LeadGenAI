@@ -99,8 +99,8 @@ def upload_csv():
     # Collect dynamic field mappings
     dynamic_field_names = request.form.getlist('dynamic_field_name[]')
     dynamic_field_values = request.form.getlist('dynamic_field_value[]')
-    dynamic_fields = {name: value for name, value in zip(dynamic_field_names, dynamic_field_values) if name and value}
 
+    dynamic_fields = {name: value for name, value in zip(dynamic_field_names, dynamic_field_values) if name and value}
     try:
         current_app.logger.info(f"[Lead] Starting CSV upload: {file.filename}")
         added, skipped_duplicates, skipped_empty_company, errors = UploadController.process_csv_file(
@@ -136,7 +136,8 @@ def upload_csv():
         flash(message, 'success')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"[Lead] Error during upload: {str(e)}")
+        # current_app.logger.ERROR(f"[Lead] Error during upload: {str(e)}")
+        # current_app.logger.info(f"[Lead] Error during upload: {str(e)}")
         flash(f'Error during upload: {str(e)}', 'danger')
 
     return redirect(url_for('lead.view_leads'))
@@ -1761,3 +1762,12 @@ def view_drafts():
     username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
     current_app.logger.info(f'Route hit: /drafts by user_id={user_id}, username={username}')
     return render_template('leads/view_drafts.html')
+
+@lead_bp.route('/leads/<string:lead_id>/contacts', methods=['GET'])
+@login_required
+def view_lead_contacts(lead_id):
+    """Display contacts for a specific lead"""
+    user_id = getattr(current_user, 'user_id', None)
+    username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
+    current_app.logger.info(f'Route hit: /leads/{lead_id}/contacts by user_id={user_id}, username={username}')
+    return render_template('contacts.html', lead_id=lead_id)
