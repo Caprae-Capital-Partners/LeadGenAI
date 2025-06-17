@@ -518,7 +518,7 @@
                 <i class="bi bi-person"></i>
                 <span>User Management</span>
             </a>
-            <a href="#" class="nav-item disabled" style="pointer-events: none; opacity: 0.6; cursor: not-allowed;">
+            <a href="{{ url_for('user_management.user_draft') }}" class="nav-item {% if request.endpoint == 'user_management.user_draft' %}active{% endif %}">
                 <i class="bi bi-file-earmark-person"></i>
                 <span>User Draft <span style="font-size:12px;color:#facc15;margin-left:8px;">(Coming Soon)</span></span>
             </a>
