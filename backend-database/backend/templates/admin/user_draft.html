@@ -337,16 +337,13 @@ $(document).ready(function() {
             var userId = tr.data('userid');
             row.child('<div style="color:#fff;padding:16px;">Loading drafts...</div>').show();
             tr.addClass('shown');
-            $.get('/api/admin/user-drafts/' + userId, function(response) {
+            $.get('/api/admin/user-drafts/' + userId, function(drafts) {
                 var html = '';
-                if (response.drafts && response.drafts.length) {
-                    html = buildDraftsTable(response.drafts);
+                if (drafts.length) {
+                    html = buildDraftsTable(drafts);
                 } else {
                     html = '<div style="color:#fff;padding:16px;">No drafts found for this user.</div>';
                 }
-                row.child('<div style="padding:8px 0 0 0;">'+html+'</div>').show();
-            }).fail(function(xhr, status, error) {
-                var html = '<div style="color:#fff;padding:16px;">Error loading drafts: ' + error + '</div>';
                 row.child('<div style="padding:8px 0 0 0;">'+html+'</div>').show();
             });
         }
