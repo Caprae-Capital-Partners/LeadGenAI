@@ -178,15 +178,27 @@ def user_draft():
     user_list = []
     for user in users:
         try:
-            drafts = UserLeadDraft.query.filter_by(user_id=str(user.user_id), is_deleted=False).all()
+            # Convert user.user_id to UUID object for proper comparison
+            drafts = UserLeadDraft.query.filter_by(user_id=user.user_id, is_deleted=False).all()
         except Exception as e:
             print(f"Error querying drafts for user_id={user.user_id}: {e}")
             drafts = []
+        
+        # Get user tier from subscription if available
+        user_tier = 'free'  # default tier
+        try:
+            subscription = UserSubscription.query.filter_by(user_id=user.user_id).first()
+            if subscription and subscription.plan_name:
+                user_tier = subscription.plan_name.lower()
+        except Exception as e:
+            print(f"Error getting subscription for user_id={user.user_id}: {e}")
+        
         user_list.append({
             'id': str(user.user_id),
-            'username': user.username,
-            'email': user.email,
-            'tier': user.tier,
+            'username': user.username or 'Unknown',
+            'email': user.email or 'No email',
+            'tier': user_tier,
+            'has_draft': len(drafts) > 0,
             'drafts': [d.to_dict() for d in drafts]
         })
     return render_template('admin/user_draft.html', users=user_list)
@@ -195,15 +207,33 @@ def user_draft():
 @login_required
 @super_admin_required
 def user_draft_by_user(user_id):
-    drafts = UserLeadDraft.query.filter_by(user_id=user_id).order_by(UserLeadDraft.created_at.desc()).all()
+    try:
+        # Convert string user_id to UUID for proper comparison
+        user_uuid = uuid.UUID(user_id)
+        drafts = UserLeadDraft.query.filter_by(user_id=user_uuid).order_by(UserLeadDraft.created_at.desc()).all()
+    except (ValueError, TypeError) as e:
+        print(f"Error converting user_id {user_id} to UUID: {e}")
+        drafts = []
+    
     draft_list = []
     for d in drafts:
         draft_dict = d.to_dict()
         user = User.query.get(d.user_id)
+        
+        # Get user tier from subscription if available
+        user_tier = 'free'  # default tier
+        try:
+            subscription = UserSubscription.query.filter_by(user_id=d.user_id).first()
+            if subscription and subscription.plan_name:
+                user_tier = subscription.plan_name.lower()
+        except Exception as e:
+            print(f"Error getting subscription for user_id={d.user_id}: {e}")
+        
         draft_dict['username'] = user.username if user else '-'
         draft_dict['email'] = user.email if user else '-'
-        draft_dict['tier'] = user.tier if user and hasattr(user, 'tier') else '-'
+        draft_dict['tier'] = user_tier
         draft_list.append(draft_dict)
+    
     user = User.query.get(user_id)
     return render_template('admin/user_draft.html', drafts=draft_list, selected_user=user)
 
@@ -213,14 +243,26 @@ def user_draft_by_user(user_id):
 def api_admin_user_drafts(user_id):
     """API: Get all drafts for a specific user (admin only) with pagination"""
     from models.user_lead_drafts_model import UserLeadDraft
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    pagination = UserLeadDraft.query.filter_by(user_id=user_id, is_deleted=False).order_by(UserLeadDraft.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
-    drafts = pagination.items
-    return jsonify({
-        "total": pagination.total,
-        "page": page,
-        "per_page": per_page,
-        "pages": pagination.pages,
-        "drafts": [d.to_dict() for d in drafts]
-    })
+    try:
+        # Convert string user_id to UUID for proper comparison
+        user_uuid = uuid.UUID(user_id)
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        pagination = UserLeadDraft.query.filter_by(user_id=user_uuid, is_deleted=False).order_by(UserLeadDraft.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        drafts = pagination.items
+        return jsonify({
+            "total": pagination.total,
+            "page": page,
+            "per_page": per_page,
+            "pages": pagination.pages,
+            "drafts": [d.to_dict() for d in drafts]
+        })
+    except (ValueError, TypeError) as e:
+        current_app.logger.error(f"Error converting user_id {user_id} to UUID: {e}")
+        return jsonify({
+            "total": 0,
+            "page": 1,
+            "per_page": 10,
+            "pages": 0,
+            "drafts": []
+        }), 400
