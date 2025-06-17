@@ -46,6 +46,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+const overviewFields = [
+    { key: "name", label: "Name" },
+    { key: "title", label: "Title" },
+    { key: "company", label: "Company" },
+    { key: "industry", label: "Industry" },
+    { key: "businessType", label: "Business Type" },
+    { key: "website", label: "Website" },
+    { key: "employees", label: "Employees Count" },
+    { key: "yearFounded", label: "Year Founded" },
+    { key: "address", label: "Address" },
+    { key: "location", label: "Location" }
+  ];
+  
+  const contactFields = [
+    { key: "email", label: "Email" },
+    { key: "phone", label: "Phone Number" },
+    { key: "linkedin", label: "LinkedIn Profile" }
+  ];
 
 // Database URLs
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
@@ -72,175 +90,200 @@ interface Person {
 type SortOption = "filled" | "company" | "employees" | "owner" | "recent"
 
 // PopupBig Component
+// Enhanced PopupBig Component with Editing Functionality
 interface PopupBigProps {
-  show: boolean;
-  onClose: () => void;
-  person: Person | null;
-}
-
-const PopupBig: React.FC<PopupBigProps> = ({ show, onClose, person }) => {
-  if (!person) return null;
-
-  return (
-    <Dialog open={show} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{person.name}</DialogTitle>
-        </DialogHeader>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-          {/* Person Overview */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Person Overview</h3>
-            
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold text-sm">
-                    {person.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <p className="font-medium">{person.name}</p>
-                  <p className="text-sm text-gray-600">{person.title}</p>
-                </div>
+    show: boolean;
+    onClose: () => void;
+    person: Person | null;
+    isEditing: boolean;
+    popupTab: string;
+    setPopupTab: (tab: string) => void;
+    setPopupData: (person: Person) => void;
+    onSave: () => void;
+  }
+  
+  const PopupBig: React.FC<PopupBigProps> = ({ 
+    show, 
+    onClose, 
+    person, 
+    isEditing, 
+    popupTab, 
+    setPopupTab, 
+    setPopupData, 
+    onSave 
+  }) => {
+    if (!person) return null;
+  
+    const handleClose = () => {
+      onClose();
+      setPopupTab('overview');
+    };
+  
+    return (
+      <Dialog open={show} onOpenChange={handleClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">{person.name}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-8">
+            {/* Tab Navigation */}
+            <div className="border-b pb-4">
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setPopupTab('overview')}
+                  className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+                    popupTab === 'overview'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => setPopupTab('contact')}
+                  className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+                    popupTab === 'contact'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Contact Info
+                </button>
               </div>
-
-              {person.email && person.email !== 'N/A' && (
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">{person.email}</span>
-                </div>
-              )}
-
-              {person.phone && person.phone !== 'N/A' && (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">{person.phone}</span>
-                </div>
-              )}
-
-              {person.linkedin && person.linkedin !== 'N/A' && (
-                <div className="flex items-center gap-2">
-                  <Linkedin className="h-4 w-4 text-gray-500" />
-                  <a 
-                    href={person.linkedin} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline"
+            </div>
+  
+            {/* Overview Tab Content */}
+            {popupTab === 'overview' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {overviewFields.map(({ key, label }) => {
+                  let value = person[key as keyof Person] || "";
+                  const isLink = key === "website" || key === "linkedin";
+                  
+                  // Special handling for website field
+                  if (key === "website" && value && !value.toString().startsWith('http')) {
+                    value = `https://${value}`;
+                  }
+  
+                  return (
+                    <div key={key} className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">
+                        {label}
+                      </label>
+                      {isEditing ? (
+                        <Input
+                          value={value.toString()}
+                          onChange={(e) =>
+                            setPopupData({ ...person, [key]: e.target.value })
+                          }
+                          className="text-sm"
+                          placeholder={isLink ? "https://..." : ""}
+                        />
+                      ) : (
+                        <div className="px-3 py-2 rounded-md border border-gray-200 bg-gray-50 text-sm text-gray-900">
+                          {isLink && value ? (
+                            <a 
+                              href={value.toString()} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              {value.toString()}
+                            </a>
+                          ) : value || <span className="italic text-gray-400">N/A</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+  
+            {/* Contact Tab Content */}
+            {popupTab === 'contact' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {contactFields.map(({ key, label }) => {
+                  const value = person[key as keyof Person] || "";
+                  const isLink = key === "linkedin";
+                  
+                  return (
+                    <div key={key} className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">
+                        {label}
+                      </label>
+                      {isEditing ? (
+                        <Input
+                          value={value.toString()}
+                          onChange={(e) =>
+                            setPopupData({ ...person, [key]: e.target.value })
+                          }
+                          className="text-sm"
+                          placeholder={isLink ? "https://..." : ""}
+                        />
+                      ) : (
+                        <div className="px-3 py-2 rounded-md border border-gray-200 bg-gray-50 text-sm text-gray-900">
+                          {isLink && value ? (
+                            <a 
+                              href={value.toString()} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              {value.toString()}
+                            </a>
+                          ) : value || <span className="italic text-gray-400">N/A</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+  
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-4 pt-4 border-t">
+              {isEditing ? (
+                <Button size="sm" onClick={onSave}>
+                  Save Changes
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => person.email && window.open(`mailto:${person.email}`, '_blank')}
+                    disabled={!person.email || person.email === 'N/A'}
                   >
-                    LinkedIn Profile
-                  </a>
-                </div>
-              )}
-
-              {person.location && person.location !== 'N/A' && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">{person.location}</span>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Send Email
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => person.linkedin && window.open(person.linkedin, '_blank')}
+                    disabled={!person.linkedin || person.linkedin === 'N/A'}
+                  >
+                    <Linkedin className="h-4 w-4 mr-2" />
+                    LinkedIn
+                  </Button>
+                  
+                  {person.website && person.website !== 'N/A' && (
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(person.website.startsWith('http') ? person.website : `https://${person.website}`, '_blank')}
+                    >
+                      <Globe className="h-4 w-4 mr-2" />
+                      Website
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
 
-          {/* Company Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Company Information</h3>
-            
-            <div className="space-y-3">
-              {person.company && person.company !== 'N/A' && (
-                <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium">{person.company}</span>
-                </div>
-              )}
-
-              {person.industry && person.industry !== 'N/A' && (
-                <div className="flex items-start gap-2">
-                  <span className="text-sm text-gray-600 min-w-16">Industry:</span>
-                  <span className="text-sm">{person.industry}</span>
-                </div>
-              )}
-
-              {person.businessType && person.businessType !== 'N/A' && (
-                <div className="flex items-start gap-2">
-                  <span className="text-sm text-gray-600 min-w-16">Type:</span>
-                  <span className="text-sm">{person.businessType}</span>
-                </div>
-              )}
-
-              {person.employees > 0 && (
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">{person.employees.toLocaleString()} employees</span>
-                </div>
-              )}
-
-              {person.yearFounded && person.yearFounded !== 'N/A' && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">Founded in {person.yearFounded}</span>
-                </div>
-              )}
-
-              {person.website && person.website !== 'N/A' && (
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-gray-500" />
-                  <a 
-                    href={person.website.startsWith('http') ? person.website : `https://${person.website}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    {person.website}
-                  </a>
-                </div>
-              )}
-
-              {person.address && person.address !== 'N/A' && (
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
-                  <span className="text-sm">{person.address}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 mt-6 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={() => person.email && window.open(`mailto:${person.email}`, '_blank')}
-            disabled={!person.email || person.email === 'N/A'}
-          >
-            <Mail className="h-4 w-4 mr-2 " />
-            Send Email
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={() => person.linkedin && window.open(person.linkedin, '_blank')}
-            disabled={!person.linkedin || person.linkedin === 'N/A'}
-          >
-            <Linkedin className="h-4 w-4 mr-2" />
-            LinkedIn
-          </Button>
-          
-          {person.website && person.website !== 'N/A' && (
-            <Button
-              variant="outline"
-              onClick={() => window.open(person.website.startsWith('http') ? person.website : `https://${person.website}`, '_blank')}
-            >
-              <Globe className="h-4 w-4 mr-2" />
-              Website
-            </Button>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 export default function PersonsPage() {
   const [persons, setPersons] = useState<Person[]>([])
@@ -253,6 +296,8 @@ export default function PersonsPage() {
   const [selectedPersons, setSelectedPersons] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const [popupData, setPopupData] = useState<Person | null>(null)
+  const [popupTab, setPopupTab] = useState('overview')
+  const [isEditing, setIsEditing] = useState(false)
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
   const [editedPersons, setEditedPersons] = useState<Person[]>([]);
   const [notif, setNotif] = useState({
@@ -440,6 +485,27 @@ export default function PersonsPage() {
       setSelectedPersons(currentItems.map(person => person.id))
     }
   }
+  const handlePopupSave = async () => {
+    if (!popupData) return;
+  
+    try {
+      const personIndex = persons.findIndex(p => p.id === popupData.id);
+      if (personIndex === -1) return;
+  
+      await handleSave(personIndex);
+  
+      // Update the popup data to reflect changes
+      const updatedPersons = [...persons];
+      updatedPersons[personIndex] = popupData;
+      setPersons(updatedPersons);
+      setEditedPersons(updatedPersons);
+  
+      setIsEditing(false);
+      showNotification("Changes saved successfully.", "success");
+    } catch (error) {
+      showNotification("Failed to save changes.", "error");
+    }
+  };
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -523,7 +589,9 @@ export default function PersonsPage() {
 
   // Action handlers
   const handleEdit = (person: Person, index: number) => {
-    setEditingRowIndex(index);
+    setPopupData(person);
+    setIsEditing(true);
+    setPopupTab('overview');
 }
 
   const handleNotes = (person: any) => {
@@ -1101,9 +1169,18 @@ useEffect(() => {
 
      {/* PopupBig Component */}
      <PopupBig 
-        show={!!popupData} 
-        onClose={() => setPopupData(null)} 
+        show={!!popupData}
+        onClose={() => {
+            setPopupData(null);
+            setIsEditing(false);
+            setPopupTab('overview');
+        }}
         person={popupData}
+        isEditing={isEditing}
+        popupTab={popupTab}
+        setPopupTab={setPopupTab}
+        setPopupData={setPopupData}
+        onSave={handlePopupSave}
       />
 
       {/* ADD NOTIFICATION HERE - after PopupBig, before closing </div> */}
