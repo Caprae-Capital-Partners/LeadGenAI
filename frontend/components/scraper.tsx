@@ -98,9 +98,9 @@ export function Scraper() {
     const value = e.target.value;
     setIndustry(value);
 
-    if (value) {
+    if (value.length >= 3) {
       const filtered = industries.filter((ind) =>
-        ind.toLowerCase().includes(value.toLowerCase())
+        ind.toLowerCase().startsWith(value.toLowerCase())
       );
       setFilteredIndustries(filtered);
       setShowDropdown(true);
