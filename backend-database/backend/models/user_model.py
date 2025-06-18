@@ -5,6 +5,7 @@ from datetime import datetime
 import hashlib
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Enum as SqlEnum
 
 class User(UserMixin, db.Model):
     """User model for authentication"""
@@ -18,6 +19,7 @@ class User(UserMixin, db.Model):
     tier = db.Column(db.String(50), default='free', nullable=False)
     company = db.Column(db.String(100))  # New field for company
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(SqlEnum('active', 'cancelled', 's_cancelled', 'pause', name='userstatus'), default='active', nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     linkedin_url = db.Column(db.String(255), nullable=True)
 
@@ -87,6 +89,7 @@ class User(UserMixin, db.Model):
             "company": self.company,
             "linkedin_url": self.linkedin_url,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "status": self.status,
             "is_active": self.is_active,
             "is_email_verified": self.is_email_verified,
             "email_verification_sent_at": self.email_verification_sent_at.isoformat() if self.email_verification_sent_at else None,

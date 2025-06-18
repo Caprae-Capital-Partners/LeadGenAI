@@ -746,8 +746,8 @@ class SubscriptionController:
                             invoice_now=False
                         )
                         current_app.logger.info(f"Subscription {subscription.id} canceled immediately in Stripe.")
-                        user.is_active = False
-                        # user.status = 'cancelled'
+                        # user.is_active = False
+                        user.status = 'cancelled'
                         return SubscriptionController._handle_local_cancellation(user, user_sub)
 
                     elif cancellation_type == 'period_end':
@@ -786,8 +786,8 @@ class SubscriptionController:
                             # If no period end available, just mark as scheduled locally
                             if '_scheduled_cancel' not in user_sub.payment_frequency:
                                 user_sub.payment_frequency = f"{user_sub.payment_frequency}_scheduled_cancel"
-                                # user.status = 's_cancelled'
-                                user.is_active = False
+                                user.status = 's_cancelled'
+                                # user.is_active = False
                                 db.session.commit()
                             return {
                                 'message': 'Subscription has been scheduled for cancellation at the end of your billing period.',
@@ -881,8 +881,8 @@ class SubscriptionController:
             user_sub.canceled_at = datetime.utcnow()
             current_app.logger.info(f"Set is_canceled=True and canceled_at for user {user.user_id} in user_subscriptions.")
 
-            user.is_active = False
-            # user.status = 'cancelled'
+            # user.is_active = False
+            user.status = 'cancelled'
 
             db.session.commit()
             current_app.logger.info(f"Successfully canceled subscription locally for user {user.user_id}")
@@ -991,8 +991,8 @@ class SubscriptionController:
             # Reactivate locally by removing the scheduled cancellation marker
             if '_scheduled_cancel' in user_sub.payment_frequency:
                 user_sub.payment_frequency = user_sub.payment_frequency.replace('_scheduled_cancel', '')
-                user.is_active = False
-                # user.status = 'active'
+                # user.is_active = False
+                user.status = 'active'
                 db.session.commit()
                 current_app.logger.info(f"Removed scheduled cancellation marker for user {user.user_id} and set status to active.")
 
