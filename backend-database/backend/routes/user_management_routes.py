@@ -174,7 +174,10 @@ def toggle_user_status(user_id):
 @login_required
 @super_admin_required
 def user_draft():
-    users = User.query.all()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    pagination = User.query.paginate(page=page, per_page=per_page, error_out=False)
+    users = pagination.items
     user_list = []
     for user in users:
         try:
@@ -183,14 +186,13 @@ def user_draft():
             print(f"Error querying drafts for user_id={user.user_id}: {e}")
             import traceback; traceback.print_exc()
             drafts = []
-        
         user_list.append({
             'id': str(user.user_id),
             'username': user.username,
             'email': user.email,
             'tier': user.tier,
         })
-    return render_template('admin/user_draft.html', users=user_list)
+    return render_template('admin/user_draft.html', users=user_list, page=page, per_page=per_page, total=pagination.total, pages=pagination.pages)
 
 @user_management_bp.route('/admin/user-drafts/<user_id>')
 @login_required
