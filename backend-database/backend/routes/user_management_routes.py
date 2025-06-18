@@ -178,7 +178,7 @@ def user_draft():
     user_list = []
     for user in users:
         try:
-            drafts = UserLeadDraft.query.filter_by(user_id=str(user.user_id), is_deleted=False).all()
+            drafts = UserLeadDraft.query.filter_by(user_id=current_user.user_id, is_deleted=False).all()
         except Exception as e:
             print(f"Error querying drafts for user_id={user.user_id}: {e}")
             drafts = []
@@ -196,7 +196,7 @@ def user_draft():
 @login_required
 @super_admin_required
 def user_draft_by_user(user_id):
-    drafts = UserLeadDraft.query.filter_by(user_id=user_id).order_by(UserLeadDraft.created_at.desc()).all()
+    drafts = UserLeadDraft.query.filter_by(user_id=current_user.user_id, is_deleted=False).all()
     
     draft_list = []
     for d in drafts:
