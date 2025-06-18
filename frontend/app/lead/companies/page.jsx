@@ -37,11 +37,284 @@ import FeedbackPopup from "@/components/FeedbackPopup";
 import axios from "axios";
 import { SortDropdown } from "@/components/ui/sort-dropdown";
 import Notif from "@/components/ui/notif";
-import { Eye, Globe, Linkedin, MapPin, Edit, Pencil, Mail, StickyNote } from "lucide-react";
+import { Eye, Globe, Linkedin, MapPin, Edit, Pencil, Mail, StickyNote, MessageSquare, Star } from "lucide-react";
 import React from "react";
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 const DATABASE_URL_NOAPI = DATABASE_URL?.replace(/\/api\/?$/, "");
+
+const dummyData = [
+{
+    id: "1",
+    lead_id: "1",
+    draft_id: "draft_1",
+    company: "Acme Corporation",
+    website: "https://acme.com",
+    industry: "Manufacturing",
+    productCategory: "Industrial Supplies",
+    businessType: "B2B",
+    employees: "250",
+    revenue: "$50M",
+    yearFounded: "1985",
+    bbbRating: "A+",
+    street: "123 Industrial Way",
+    city: "Springfield",
+    state: "IL",
+    companyPhone: "(555) 123-4567",
+    companyLinkedin: "https://linkedin.com/company/acme-corp",
+    ownerFirstName: "John",
+    ownerLastName: "Doe",
+    ownerTitle: "CEO",
+    ownerLinkedin: "https://linkedin.com/in/johndoe",
+    ownerPhoneNumber: "(555) 987-6543",
+    ownerEmail: "john.doe@acme.com",
+    source: "Manual Entry",
+    created: "2023-05-15T10:30:00Z",
+    updated: "2023-06-20T14:45:00Z",
+    sourceType: "database"
+},
+{
+    id: "2",
+    lead_id: "2",
+    draft_id: "draft_2",
+    company: "TechSolutions Inc.",
+    website: "https://techsolutions.com",
+    industry: "Information Technology",
+    productCategory: "Software Development",
+    businessType: "B2B",
+    employees: "120",
+    revenue: "$25M",
+    yearFounded: "2010",
+    bbbRating: "A",
+    street: "456 Tech Boulevard",
+    city: "San Francisco",
+    state: "CA",
+    companyPhone: "(415) 555-7890",
+    companyLinkedin: "https://linkedin.com/company/techsolutions",
+    ownerFirstName: "Sarah",
+    ownerLastName: "Johnson",
+    ownerTitle: "CTO",
+    ownerLinkedin: "https://linkedin.com/in/sarahjohnson",
+    ownerPhoneNumber: "(415) 555-1234",
+    ownerEmail: "sarah.johnson@techsolutions.com",
+    source: "Web Scraper",
+    created: "2023-04-10T09:15:00Z",
+    updated: "2023-05-18T11:20:00Z",
+    sourceType: "database"
+},
+{
+    id: "3",
+    lead_id: "3",
+    draft_id: "draft_3",
+    company: "GreenEarth Organics",
+    website: "https://greenearth.com",
+    industry: "Agriculture",
+    productCategory: "Organic Produce",
+    businessType: "B2C",
+    employees: "75",
+    revenue: "$12M",
+    yearFounded: "2005",
+    bbbRating: "A+",
+    street: "789 Farm Road",
+    city: "Portland",
+    state: "OR",
+    companyPhone: "(503) 555-4567",
+    companyLinkedin: "https://linkedin.com/company/greenearth",
+    ownerFirstName: "Michael",
+    ownerLastName: "Brown",
+    ownerTitle: "Founder",
+    ownerLinkedin: "https://linkedin.com/in/michaelbrown",
+    ownerPhoneNumber: "(503) 555-8901",
+    ownerEmail: "michael.brown@greenearth.com",
+    source: "Trade Show",
+    created: "2023-03-22T14:00:00Z",
+    updated: "2023-04-30T16:30:00Z",
+    sourceType: "database"
+},
+{
+    id: "4",
+    lead_id: "4",
+    draft_id: "draft_4",
+    company: "UrbanStyle Apparel",
+    website: "https://urbanstyle.com",
+    industry: "Fashion",
+    productCategory: "Clothing",
+    businessType: "B2C",
+    employees: "200",
+    revenue: "$40M",
+    yearFounded: "2015",
+    bbbRating: "A-",
+    street: "321 Fashion Avenue",
+    city: "New York",
+    state: "NY",
+    companyPhone: "(212) 555-6789",
+    companyLinkedin: "https://linkedin.com/company/urbanstyle",
+    ownerFirstName: "Jessica",
+    ownerLastName: "Williams",
+    ownerTitle: "Creative Director",
+    ownerLinkedin: "https://linkedin.com/in/jessicawilliams",
+    ownerPhoneNumber: "(212) 555-2345",
+    ownerEmail: "jessica.williams@urbanstyle.com",
+    source: "Social Media",
+    created: "2023-02-18T11:45:00Z",
+    updated: "2023-03-25T13:15:00Z",
+    sourceType: "database"
+},
+{
+    id: "5",
+    lead_id: "5",
+    draft_id: "draft_5",
+    company: "BlueOcean Consulting",
+    website: "https://blueocean.com",
+    industry: "Professional Services",
+    productCategory: "Business Consulting",
+    businessType: "B2B",
+    employees: "50",
+    revenue: "$15M",
+    yearFounded: "2018",
+    bbbRating: "A",
+    street: "654 Corporate Lane",
+    city: "Boston",
+    state: "MA",
+    companyPhone: "(617) 555-3456",
+    companyLinkedin: "https://linkedin.com/company/blueocean",
+    ownerFirstName: "David",
+    ownerLastName: "Miller",
+    ownerTitle: "Managing Partner",
+    ownerLinkedin: "https://linkedin.com/in/davidmiller",
+    ownerPhoneNumber: "(617) 555-7890",
+    ownerEmail: "david.miller@blueocean.com",
+    source: "Referral",
+    created: "2023-01-05T08:30:00Z",
+    updated: "2023-02-12T10:45:00Z",
+    sourceType: "database"
+}
+];
+
+const LinkedInMessageGenerator = ({ 
+  company, 
+  onClose,
+  onGenerate,
+  generatedMessage,
+  isGenerating,
+  settings,
+  onSettingsChange
+}) => {
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">LinkedIn Message Generator</h2>
+        <button 
+          onClick={onClose}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        <div className="p-4 border rounded-lg text-white bg-gray-600">
+          <p className="font-medium">Company:</p>
+          <p className="text-lg">{company.company}</p>
+          {company.ownerLinkedin && (
+            <p className="text-sm text-white mt-1">
+              Recipient: <a href={company.ownerLinkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600">
+                {company.ownerFirstName} {company.ownerLastName}
+              </a>
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tone</label>
+            <Select 
+              value={settings.tone}
+              onValueChange={(value) => onSettingsChange({...settings, tone: value})}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select tone" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="professional">Professional</SelectItem>
+                <SelectItem value="friendly">Friendly</SelectItem>
+                <SelectItem value="direct">Direct</SelectItem>
+                <SelectItem value="casual">Casual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Focus</label>
+            <Select 
+              value={settings.focus}
+              onValueChange={(value) => onSettingsChange({...settings, focus: value})}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select focus" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="partnership">Partnership</SelectItem>
+                <SelectItem value="collaboration">Collaboration</SelectItem>
+                <SelectItem value="networking">Networking</SelectItem>
+                <SelectItem value="sales">Sales</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Additional Context</label>
+            <Input 
+              value={settings.extraContext}
+              onChange={(e) => onSettingsChange({...settings, extraContext: e.target.value})}
+              placeholder="Any special notes or context"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <Button 
+            onClick={onGenerate}
+            disabled={isGenerating}
+            className="flex-1"
+          >
+            {isGenerating ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Generating...
+              </div>
+            ) : "Generate Message"}
+          </Button>
+        </div>
+
+        {generatedMessage && (
+          <div className="mt-4 space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Generated Message</label>
+            <div className="p-4 border rounded-lg text-white bg-gray-600 whitespace-pre-wrap">
+              {generatedMessage}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => {
+                navigator.clipboard.writeText(generatedMessage);
+                // You might want to show a notification here
+              }}>
+                Copy to Clipboard
+              </Button>
+              <Button onClick={() => {
+                window.open(
+                  `https://www.linkedin.com/messaging/compose/?to=${company.ownerLinkedin?.split('/in/')[1]}`,
+                  '_blank'
+                );
+              }}>
+                Open in LinkedIn
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function CompaniesPage() {
     const [user, setUser] = useState(null);
@@ -74,6 +347,16 @@ export default function CompaniesPage() {
     const [popupData, setPopupData] = useState(null); // null means no popup open
     const [popupTab, setPopupTab] = useState('overview');
     const [isEditing, setIsEditing] = useState(false);
+
+    // Add to your existing state declarations
+    const [linkedinPopupData, setLinkedinPopupData] = useState(null);
+    const [generatedMessage, setGeneratedMessage] = useState("");
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [messageSettings, setMessageSettings] = useState({
+    tone: "professional",
+    focus: "partnership",
+    extraContext: ""
+    });
     const router = useRouter();
 
     const saveLeadToAPI = async (lead) => {
@@ -549,52 +832,57 @@ export default function CompaniesPage() {
         });
 
         if (!draftsRes.ok) {
-            const errorText = await draftsRes.text();
-            console.warn("⚠️ Drafts fetch failed:", errorText);
-            return;
+            throw new Error("API request failed");
         }
 
         const data = await draftsRes.json();
         const parsed = data.map((entry) => {
             const draftData = entry.draft_data || {};
             return {
-                id: entry.lead_id || entry.id || "",
-                lead_id: entry.lead_id || entry.id || "",
-                draft_id: entry.draft_id || "",
-                company: draftData.company || "N/A",
-                website: draftData.website || "",
-                industry: draftData.industry || "",
-                productCategory: draftData.product_category || "",
-                businessType: draftData.business_type || "",
-                employees: draftData.employees || "",
-                revenue: draftData.revenue || "",
-                yearFounded: draftData.year_founded?.toString() || "",
-                bbbRating: draftData.bbb_rating || "",
-                street: draftData.street || "",
-                city: draftData.city || "",
-                state: draftData.state || "",
-                companyPhone: draftData.company_phone || "",
-                companyLinkedin: draftData.company_linkedin || "",
-                ownerFirstName: draftData.owner_first_name || "",
-                ownerLastName: draftData.owner_last_name || "",
-                ownerTitle: draftData.owner_title || "",
-                ownerLinkedin: draftData.owner_linkedin || "",
-                ownerPhoneNumber: draftData.owner_phone_number || "",
-                ownerEmail: draftData.owner_email || "",
-                source: draftData.source || "",
-                created: entry.created_at
+            id: entry.lead_id || entry.id || "",
+            lead_id: entry.lead_id || entry.id || "",
+            draft_id: entry.draft_id || "",
+            company: draftData.company || "N/A",
+            website: draftData.website || "",
+            industry: draftData.industry || "",
+            productCategory: draftData.product_category || "",
+            businessType: draftData.business_type || "",
+            employees: draftData.employees || "",
+            revenue: draftData.revenue || "",
+            yearFounded: draftData.year_founded?.toString() || "",
+            bbbRating: draftData.bbb_rating || "",
+            street: draftData.street || "",
+            city: draftData.city || "",
+            state: draftData.state || "",
+            companyPhone: draftData.company_phone || "",
+            companyLinkedin: draftData.company_linkedin || "",
+            ownerFirstName: draftData.owner_first_name || "",
+            ownerLastName: draftData.owner_last_name || "",
+            ownerTitle: draftData.owner_title || "",
+            ownerLinkedin: draftData.owner_linkedin || "",
+            ownerPhoneNumber: draftData.owner_phone_number || "",
+            ownerEmail: draftData.owner_email || "",
+            source: draftData.source || "",
+            created: entry.created_at
                 ? new Date(entry.created_at).toLocaleString()
                 : "N/A",
-                updated: entry.updated_at
+            updated: entry.updated_at
                 ? new Date(entry.updated_at).toLocaleString()
                 : "N/A",
-                sourceType: "database",
+            sourceType: "database",
             };
         });
 
         setScrapingHistory(parsed);
         } catch (error) {
-        console.error("Error fetching drafts:", error);
+        console.error("Error fetching drafts, using dummy data:", error);
+        // Use dummy data when API fails
+        setScrapingHistory(dummyData.map(item => ({
+            ...item,
+            created: new Date(item.created).toLocaleString(),
+            updated: new Date(item.updated).toLocaleString()
+        })));
+        showNotification("Using sample data while API is unavailable", "info");
         } finally {
         setIsLoading(false);
         }
@@ -643,6 +931,12 @@ export default function CompaniesPage() {
         { key: "ownerPhoneNumber", label: "Owner Phone Number" },
         { key: "ownerEmail", label: "Owner Email" },
     ];
+
+    // Replace your current LinkedIn message button click handler with this:
+    const handleLinkedInMessageClick = (company) => {
+        setLinkedinPopupData(company);
+        setGeneratedMessage(""); // Clear any previous message
+    };
 
     return (
     <div className="flex flex-col h-screen">
@@ -844,6 +1138,15 @@ export default function CompaniesPage() {
                                 >
                                 <Eye className="w-4 h-4 text-blue-500" />
                             </button>
+                            {row.ownerLinkedin && (
+                            <button
+                                onClick={() => handleLinkedInMessageClick(row)}
+                                title="Send LinkedIn Message"
+                                className="hover:bg-gray-100 rounded p-1"
+                            >
+                                <MessageSquare className="w-4 h-4 text-blue-700" />
+                            </button>
+                            )}
                             <button
                                 onClick={() => {
                                     setPopupData(row);
@@ -856,21 +1159,6 @@ export default function CompaniesPage() {
                                 <Pencil className="w-4 h-4 text-blue-600" />
                             </button>
 
-                            {row.ownerEmail && (
-                                <a
-                                href={`mailto:${row.ownerEmail}`}
-                                onClick={(e) => {
-                                    setTimeout(() => {
-                                    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${row.ownerEmail}`, '_blank');
-                                    }, 500);
-                                }}
-                                title="Send Email"
-                                className="hover:bg-gray-100 rounded p-1"
-                                >
-                                <Mail className="w-4 h-4 text-green-600" />
-                                </a>
-                            )}
-
                             <button
                                 title="Notes - Coming soon!"
                                 className="hover:bg-gray-100 rounded p-1 group relative"
@@ -882,6 +1170,20 @@ export default function CompaniesPage() {
                                 </span>
                             </button>
                             </div>
+
+                            <button
+                            title="Favorite - Coming soon!"
+                            className="hover:bg-gray-100 rounded p-1 group relative"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                showNotification("Favorite feature coming soon!", "info");
+                            }}
+                            >
+                            <Star className="w-4 h-4 text-yellow-500" />
+                            <span className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-300 absolute z-10 w-32 p-2 text-xs text-white bg-gray-800 rounded shadow-lg -top-8 -left-1/2">
+                                Favorite feature coming soon!
+                            </span>
+                            </button>
                         </TableCell>
     
                         {/* Remaining Cells */}
@@ -963,6 +1265,20 @@ export default function CompaniesPage() {
                                             title="LinkedIn"
                                         >
                                             <Linkedin className="h-4 w-4 text-blue-700" />
+                                        </a>
+                                        )}
+                                        {row.ownerEmail && (
+                                        <a
+                                            href={`mailto:${row.ownerEmail}`}
+                                            onClick={(e) => {
+                                            setTimeout(() => {
+                                                window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${row.ownerEmail}`, '_blank');
+                                            }, 500);
+                                            }}
+                                            title="Send Email"
+                                            className="inline-block p-1 rounded hover:bg-gray-200"
+                                        >
+                                            <Mail className="h-4 w-4 text-green-600" />
                                         </a>
                                         )}
                                         {(row.street || row.city || row.state) && (
@@ -1237,6 +1553,55 @@ export default function CompaniesPage() {
                     )}
                 </div>
                 </div>
+            )}
+            </PopupBig>
+            <PopupBig show={!!linkedinPopupData} onClose={() => setLinkedinPopupData(null)}>
+            {linkedinPopupData && (
+                <LinkedInMessageGenerator
+                company={linkedinPopupData}
+                onClose={() => setLinkedinPopupData(null)}
+                onGenerate={async () => {
+                    setIsGenerating(true);
+                    
+                    // Mock API call - replace with real API when ready
+                    try {
+                    // This is where you'll call the real API
+                    // const response = await axios.post('/api/generate-linkedin-message', {
+                    //   company_name: linkedinPopupData.company,
+                    //   website_url: linkedinPopupData.website,
+                    //   user_linkedin_url: "https://linkedin.com/in/user", // You'll need to get this from user profile
+                    //   founder_linkedin_url: linkedinPopupData.ownerLinkedin,
+                    //   extra_context: messageSettings.extraContext,
+                    //   tone: messageSettings.tone,
+                    //   focus: messageSettings.focus
+                    // });
+                    // setGeneratedMessage(response.data.message);
+                    
+                    // Mock response for now
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    const mockMessage = `Hi ${linkedinPopupData.ownerFirstName || 'there'},
+
+            I came across ${linkedinPopupData.company} and was impressed by your work in ${linkedinPopupData.industry || 'your industry'}. I'd love to connect and explore potential ${messageSettings.focus} opportunities.
+
+            ${messageSettings.extraContext ? `\n${messageSettings.extraContext}\n` : ''}
+            Looking forward to your thoughts!
+
+            Best regards,
+            [Your Name]`;
+                    
+                    setGeneratedMessage(mockMessage);
+                    } catch (error) {
+                    console.error("Error generating message:", error);
+                    // You might want to show an error notification here
+                    } finally {
+                    setIsGenerating(false);
+                    }
+                }}
+                generatedMessage={generatedMessage}
+                isGenerating={isGenerating}
+                settings={messageSettings}
+                onSettingsChange={setMessageSettings}
+                />
             )}
             </PopupBig>
 
