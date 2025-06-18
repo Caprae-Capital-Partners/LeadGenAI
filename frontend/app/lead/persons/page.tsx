@@ -29,7 +29,8 @@ import {
   Phone,
   Linkedin,
   Pencil,
-  StickyNote 
+  StickyNote,
+  MessageSquare  
 } from "lucide-react"
 import {
   Pagination,
@@ -46,24 +47,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-const overviewFields = [
-    { key: "name", label: "Name" },
-    { key: "title", label: "Title" },
-    { key: "company", label: "Company" },
-    { key: "industry", label: "Industry" },
-    { key: "businessType", label: "Business Type" },
-    { key: "website", label: "Website" },
-    { key: "employees", label: "Employees Count" },
-    { key: "yearFounded", label: "Year Founded" },
-    { key: "address", label: "Address" },
-    { key: "location", label: "Location" }
-  ];
-  
-  const contactFields = [
-    { key: "email", label: "Email" },
-    { key: "phone", label: "Phone Number" },
-    { key: "linkedin", label: "LinkedIn Profile" }
-  ];
 
 // Database URLs
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
@@ -72,6 +55,7 @@ const DATABASE_URL_NOAPI = DATABASE_URL?.replace(/\/api\/?$/, "");
 // Person interface - updated to match actual data structure
 interface Person {
   id: string;
+  draft_id?: string; // Added optional draft_id
   name: string;
   title: string;
   website: string;
@@ -85,207 +69,369 @@ interface Person {
   yearFounded: string;
   businessType: string;
   address: string;
+  updated?: string; // Added optional updated field
 }
 
 type SortOption = "filled" | "company" | "employees" | "owner" | "recent"
 
-// PopupBig Component
-// Enhanced PopupBig Component with Editing Functionality
-interface PopupBigProps {
-    show: boolean;
-    onClose: () => void;
-    person: Person | null;
-    isEditing: boolean;
-    popupTab: string;
-    setPopupTab: (tab: string) => void;
-    setPopupData: (person: Person) => void;
-    onSave: () => void;
-  }
-  
-  const PopupBig: React.FC<PopupBigProps> = ({ 
-    show, 
-    onClose, 
-    person, 
-    isEditing, 
-    popupTab, 
-    setPopupTab, 
-    setPopupData, 
-    onSave 
-  }) => {
-    if (!person) return null;
-  
-    const handleClose = () => {
-      onClose();
-      setPopupTab('overview');
-    };
-  
-    return (
-      <Dialog open={show} onOpenChange={handleClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">{person.name}</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-8">
-            {/* Tab Navigation */}
-            <div className="border-b pb-4">
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => setPopupTab('overview')}
-                  className={`pb-2 px-1 border-b-2 font-medium text-sm ${
-                    popupTab === 'overview'
-                      ? 'border-teal-500 text-teal-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Overview
-                </button>
-                <button
-                  onClick={() => setPopupTab('contact')}
-                  className={`pb-2 px-1 border-b-2 font-medium text-sm ${
-                    popupTab === 'contact'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Contact Info
-                </button>
+// Message settings interface
+interface MessageSettings {
+  tone: string;
+  focus: string;
+  extraContext: string;
+}
+
+// Constants moved to top level
+const overviewFields = [
+  { key: "name", label: "Name" },
+  { key: "title", label: "Title" },
+  { key: "company", label: "Company" },
+  { key: "industry", label: "Industry" },
+  { key: "businessType", label: "Business Type" },
+  { key: "website", label: "Website" },
+  { key: "employees", label: "Employees Count" },
+  { key: "yearFounded", label: "Year Founded" },
+  { key: "address", label: "Address" },
+  { key: "location", label: "Location" }
+];
+
+const contactFields = [
+  { key: "email", label: "Email" },
+  { key: "phone", label: "Phone Number" },
+  { key: "linkedin", label: "LinkedIn Profile" }
+];
+
+// EmailMessageGenerator Component
+interface EmailMessageGeneratorProps {
+  person: Person;
+  onClose: () => void;
+  onGenerate: () => Promise<void>;
+  generatedMessage: string;
+  isGenerating: boolean;
+  settings: MessageSettings;
+  onSettingsChange: (settings: MessageSettings) => void;
+}
+
+const EmailMessageGenerator: React.FC<EmailMessageGeneratorProps> = ({ 
+  person, 
+  onClose,
+  onGenerate,
+  generatedMessage,
+  isGenerating,
+  settings,
+  onSettingsChange
+}) => {
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Email Message Generator</h2>
+        <button 
+          onClick={onClose}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        <div className="p-4 border rounded-lg text-white bg-gray-600">
+          <p className="font-medium">Person:</p>
+          <p className="text-lg">{person.name}</p>
+          <p className="text-sm text-white mt-1">Company: {person.company}</p>
+          {person.email && (
+            <p className="text-sm text-white mt-1">
+              Email: <span className="text-blue-200">{person.email}</span>
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tone</label>
+            <Select 
+              value={settings.tone}
+              onValueChange={(value) => onSettingsChange({...settings, tone: value})}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select tone" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="professional">Professional</SelectItem>
+                <SelectItem value="friendly">Friendly</SelectItem>
+                <SelectItem value="direct">Direct</SelectItem>
+                <SelectItem value="casual">Casual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Focus</label>
+            <Select 
+              value={settings.focus}
+              onValueChange={(value) => onSettingsChange({...settings, focus: value})}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select focus" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="partnership">Partnership</SelectItem>
+                <SelectItem value="collaboration">Collaboration</SelectItem>
+                <SelectItem value="networking">Networking</SelectItem>
+                <SelectItem value="sales">Sales</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Additional Context</label>
+            <Input 
+              value={settings.extraContext}
+              onChange={(e) => onSettingsChange({...settings, extraContext: e.target.value})}
+              placeholder="Any special notes or context"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <Button 
+            onClick={onGenerate}
+            disabled={isGenerating}
+            className="flex-1"
+          >
+            {isGenerating ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Generating...
               </div>
+            ) : "Generate Message"}
+          </Button>
+        </div>
+
+        {generatedMessage && (
+          <div className="mt-4 space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Generated Message</label>
+            <div className="p-4 border rounded-lg text-white bg-gray-600 whitespace-pre-wrap">
+              {generatedMessage}
             </div>
-  
-            {/* Overview Tab Content */}
-            {popupTab === 'overview' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {overviewFields.map(({ key, label }) => {
-                  let value = person[key as keyof Person] || "";
-                  const isLink = key === "website" || key === "linkedin";
-                  
-                  // Special handling for website field
-                  if (key === "website" && value && !value.toString().startsWith('http')) {
-                    value = `https://${value}`;
-                  }
-  
-                  return (
-                    <div key={key} className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {label}
-                      </label>
-                      {isEditing ? (
-                        <Input
-                          value={value.toString()}
-                          onChange={(e) =>
-                            setPopupData({ ...person, [key]: e.target.value })
-                          }
-                          className="text-sm"
-                          placeholder={isLink ? "https://..." : ""}
-                        />
-                      ) : (
-                        <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
-                          {isLink && value ? (
-                            <a 
-                              href={value.toString()} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline"
-                            >
-                              {value.toString()}
-                            </a>
-                          ) : value || <span className="italic text-gray-400">N/A</span>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-  
-            {/* Contact Tab Content */}
-            {popupTab === 'contact' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {contactFields.map(({ key, label }) => {
-                  const value = person[key as keyof Person] || "";
-                  const isLink = key === "linkedin";
-                  
-                  return (
-                    <div key={key} className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">
-                        {label}
-                      </label>
-                      {isEditing ? (
-                        <Input
-                          value={value.toString()}
-                          onChange={(e) =>
-                            setPopupData({ ...person, [key]: e.target.value })
-                          }
-                          className="text-sm"
-                          placeholder={isLink ? "https://..." : ""}
-                        />
-                      ) : (
-                        <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
-                          {isLink && value ? (
-                            <a 
-                              href={value.toString()} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline"
-                            >
-                              {value.toString()}
-                            </a>
-                          ) : value || <span className="italic text-gray-400">N/A</span>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-  
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-4 pt-4 border-t">
-              {isEditing ? (
-                <Button size="sm" onClick={onSave}>
-                  Save Changes
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => person.email && window.open(`mailto:${person.email}`, '_blank')}
-                    disabled={!person.email || person.email === 'N/A'}
-                  >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Send Email
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={() => person.linkedin && window.open(person.linkedin, '_blank')}
-                    disabled={!person.linkedin || person.linkedin === 'N/A'}
-                  >
-                    <Linkedin className="h-4 w-4 mr-2" />
-                    LinkedIn
-                  </Button>
-                  
-                  {person.website && person.website !== 'N/A' && (
-                    <Button
-                      variant="outline"
-                      onClick={() => window.open(person.website.startsWith('http') ? person.website : `https://${person.website}`, '_blank')}
-                    >
-                      <Globe className="h-4 w-4 mr-2" />
-                      Website
-                    </Button>
-                  )}
-                </div>
-              )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => {
+                navigator.clipboard.writeText(generatedMessage);
+                // You might want to show a notification here
+              }}>
+                Copy to Clipboard
+              </Button>
+              <Button onClick={() => {
+                if (person.email) {
+                  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${person.email}`, '_blank');
+                }
+              }}>
+                Open in Email
+              </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    );
+        )}
+      </div>
+    </div>
+  );
+};
+
+// PopupBig Component
+interface PopupBigProps {
+  show: boolean;
+  onClose: () => void;
+  person: Person | null;
+  isEditing: boolean;
+  popupTab: string;
+  setPopupTab: (tab: string) => void;
+  setPopupData: (person: Person) => void;
+  onSave: () => void;
+}
+
+const PopupBig: React.FC<PopupBigProps> = ({ 
+  show, 
+  onClose, 
+  person, 
+  isEditing, 
+  popupTab, 
+  setPopupTab, 
+  setPopupData, 
+  onSave 
+}) => {
+  if (!person) return null;
+
+  const handleClose = () => {
+    onClose();
+    setPopupTab('overview');
   };
 
+  return (
+    <Dialog open={show} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">{person.name}</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-8">
+          {/* Tab Navigation */}
+          <div className="border-b pb-4">
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setPopupTab('overview')}
+                className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+                  popupTab === 'overview'
+                    ? 'border-teal-500 text-teal-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => setPopupTab('contact')}
+                className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+                  popupTab === 'contact'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Contact Info
+              </button>
+            </div>
+          </div>
 
+          {/* Overview Tab Content */}
+          {popupTab === 'overview' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {overviewFields.map(({ key, label }) => {
+                let value = person[key as keyof Person] || "";
+                const isLink = key === "website" || key === "linkedin";
+                
+                // Special handling for website field
+                if (key === "website" && value && !value.toString().startsWith('http')) {
+                  value = `https://${value}`;
+                }
+
+                return (
+                  <div key={key} className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {label}
+                    </label>
+                    {isEditing ? (
+                      <Input
+                        value={value.toString()}
+                        onChange={(e) =>
+                          setPopupData({ ...person, [key]: e.target.value })
+                        }
+                        className="text-sm"
+                        placeholder={isLink ? "https://..." : ""}
+                      />
+                    ) : (
+                      <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
+                        {isLink && value ? (
+                          <a 
+                            href={value.toString()} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {value.toString()}
+                          </a>
+                        ) : value || <span className="italic text-gray-400">N/A</span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Contact Tab Content */}
+          {popupTab === 'contact' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {contactFields.map(({ key, label }) => {
+                const value = person[key as keyof Person] || "";
+                const isLink = key === "linkedin";
+                
+                return (
+                  <div key={key} className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      {label}
+                    </label>
+                    {isEditing ? (
+                      <Input
+                        value={value.toString()}
+                        onChange={(e) =>
+                          setPopupData({ ...person, [key]: e.target.value })
+                        }
+                        className="text-sm"
+                        placeholder={isLink ? "https://..." : ""}
+                      />
+                    ) : (
+                      <div className="px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-zinc-800 text-sm text-gray-900 dark:text-white">
+                        {isLink && value ? (
+                          <a 
+                            href={value.toString()} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {value.toString()}
+                          </a>
+                        ) : value || <span className="italic text-gray-400">N/A</span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-4 pt-4 border-t">
+            {isEditing ? (
+              <Button size="sm" onClick={onSave}>
+                Save Changes
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => person.email && window.open(`mailto:${person.email}`, '_blank')}
+                  disabled={!person.email || person.email === 'N/A'}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Email
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => person.linkedin && window.open(person.linkedin, '_blank')}
+                  disabled={!person.linkedin || person.linkedin === 'N/A'}
+                >
+                  <Linkedin className="h-4 w-4 mr-2" />
+                  LinkedIn
+                </Button>
+                
+                {person.website && person.website !== 'N/A' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(person.website.startsWith('http') ? person.website : `https://${person.website}`, '_blank')}
+                  >
+                    <Globe className="h-4 w-4 mr-2" />
+                    Website
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Main PersonsPage Component
 export default function PersonsPage() {
+  // State declarations
   const [persons, setPersons] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -298,13 +444,25 @@ export default function PersonsPage() {
   const [popupData, setPopupData] = useState<Person | null>(null)
   const [popupTab, setPopupTab] = useState('overview')
   const [isEditing, setIsEditing] = useState(false)
-  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
-  const [editedPersons, setEditedPersons] = useState<Person[]>([]);
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null)
+  const [editedPersons, setEditedPersons] = useState<Person[]>([])
+  
+  // Email popup states
+  const [emailPopupData, setEmailPopupData] = useState<Person | null>(null)
+  const [generatedMessage, setGeneratedMessage] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [messageSettings, setMessageSettings] = useState<MessageSettings>({
+    tone: "professional",
+    focus: "partnership",
+    extraContext: ""
+  })
+
+  // Notification state
   const [notif, setNotif] = useState({
     show: false,
     message: "",
     type: "success",
-});
+  })
 
   // Filter states
   const [titleFilter, setTitleFilter] = useState("")
@@ -374,11 +532,12 @@ export default function PersonsPage() {
 
     fetchPersons()
   }, [])
+
   useEffect(() => {
     setEditedPersons([...persons]);
   }, [persons]);
 
-  // Handle search and filters - updated to include filter logic
+  // Handle search and filters
   const filteredPersons = persons.filter(person => {
     // Search term filter
     const matchesSearch = person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -409,13 +568,13 @@ export default function PersonsPage() {
     setCurrentPage(1)
   }, [searchTerm, titleFilter, companyFilter, industryFilter, businessTypeFilter, addressFilter])
 
-  // Handle sort functionality (removed revenue)
+  // Handle sort functionality
   const handleSortBy = (sortBy: SortOption, direction: "most" | "least") => {
     // Count how many non-empty fields each row has
     const getFilledCount = (person: Person) =>
       Object.entries(person).filter(([key, value]) => {
         if (
-          ["id"].includes(key) ||
+          ["id", "draft_id", "updated"].includes(key) ||
           value === null ||
           value === undefined ||
           value === "" ||
@@ -469,6 +628,12 @@ export default function PersonsPage() {
     setCurrentPage(1); // reset pagination to page 1
   };
 
+  // Handle email message click
+  const handleEmailMessageClick = (person: Person) => {
+    setEmailPopupData(person);
+    setGeneratedMessage(""); // Clear any previous message
+  };
+
   // Handle checkbox selection
   const handleSelectPerson = (personId: string) => {
     setSelectedPersons(prev => 
@@ -485,21 +650,23 @@ export default function PersonsPage() {
       setSelectedPersons(currentItems.map(person => person.id))
     }
   }
+
+  // Handle popup save
   const handlePopupSave = async () => {
     if (!popupData) return;
-  
+
     try {
       const personIndex = persons.findIndex(p => p.id === popupData.id);
       if (personIndex === -1) return;
-  
+
       await handleSave(personIndex);
-  
+
       // Update the popup data to reflect changes
       const updatedPersons = [...persons];
       updatedPersons[personIndex] = popupData;
       setPersons(updatedPersons);
       setEditedPersons(updatedPersons);
-  
+
       setIsEditing(false);
       showNotification("Changes saved successfully.", "success");
     } catch (error) {
@@ -509,7 +676,7 @@ export default function PersonsPage() {
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
-    const pageNumbers = []
+    const pageNumbers: (number | string)[] = []
     
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) {
@@ -553,7 +720,7 @@ export default function PersonsPage() {
     return filteredPersons.filter(person => selectedPersons.includes(person.id));
   }
 
-  // Export functions - updated to export only selected persons
+  // Export functions
   const exportCSV = () => {
     const personsToExport = getSelectedPersonsData();
     const csvRows = [
@@ -589,23 +756,21 @@ export default function PersonsPage() {
 
   // Action handlers
   const handleEdit = (person: Person, index: number) => {
-    setPopupData(person);
-    setIsEditing(true);
-    setPopupTab('overview');
-}
+    setEditingRowIndex(index);
+  }
 
-  const handleNotes = (person: any) => {
+  const handleNotes = (person: Person) => {
     console.log("Open notes for:", person)
     // Implement notes functionality
   }
 
-  const handleEmail = (person: any) => {
+  const handleEmail = (person: Person) => {
     if (person.email) {
       window.open(`mailto:${person.email}`, '_blank')
     }
   }
 
-  const handleLinkedIn = (person: any) => {
+  const handleLinkedIn = (person: Person) => {
     if (person.linkedin) {
       window.open(person.linkedin, '_blank')
     }
@@ -614,48 +779,46 @@ export default function PersonsPage() {
   const handleViewPerson = (person: Person) => {
     setPopupData(person);
   }
- // Function to handle field changes during editing
-const handleFieldChange = (index: number, field: keyof Person, value: string | number) => {
+
+  // Function to handle field changes during editing
+  const handleFieldChange = (index: number, field: keyof Person, value: string | number) => {
     const updated = [...editedPersons];
     updated[index] = {
-        ...updated[index],
-        [field]: value,
+      ...updated[index],
+      [field]: value,
     };
     setEditedPersons(updated);
-};
+  };
 
-// Function to save edited row
-// Function to save edited row - FIXED VERSION
-
-
-const handleSave = async (index: number) => {
+  // Function to save edited row
+  const handleSave = async (index: number) => {
     // Helper to convert camelCase keys into snake_case
-    const toSnake = (str) => str.replace(/([A-Z])/g, "_$1").toLowerCase();
+    const toSnake = (str: string) => str.replace(/([A-Z])/g, "_$1").toLowerCase();
 
     // Given a plain object with camelCase keys, return a new object
     // whose keys are all snake_case.
-    const normalizeKeys = (obj) => {
-        const result = {};
-        for (const [k, v] of Object.entries(obj)) {
-            result[toSnake(k)] = v;
-        }
-        return result;
+    const normalizeKeys = (obj: any) => {
+      const result: any = {};
+      for (const [k, v] of Object.entries(obj)) {
+        result[toSnake(k)] = v;
+      }
+      return result;
     };
 
     try {
-        const person = editedPersons[index];
-        const leadId = person.id;
-        const actualDraftId = person.draft_id;
+      const person = editedPersons[index];
+      const leadId = person.id;
+      const actualDraftId = person.draft_id;
 
-        console.log("🔧 Attempting to save person:", leadId);
-        console.log("🔧 Full person object:", JSON.stringify(person, null, 2));
-        console.log("🔧 person.draft_id:", person.draft_id);
-        console.log("🔧 Available person properties:", Object.keys(person));
+      console.log("🔧 Attempting to save person:", leadId);
+      console.log("🔧 Full person object:", JSON.stringify(person, null, 2));
+      console.log("🔧 person.draft_id:", person.draft_id);
 
-        if (!actualDraftId) {
-            console.log("🔧 Draft ID not found. Full person object keys:", Object.keys(person));
-            throw new Error("Draft ID not found for this person");
-        }
+      if (!actualDraftId) {
+        throw new Error("Draft ID not found for this person");
+      }
+
+      // Normalize the edite
 
         // Normalize the edited fields so that every key is snake_case:
         const normalizedPerson = normalizeKeys(person);
@@ -756,7 +919,7 @@ useEffect(() => {
   setEditedPersons([...persons]);
 }, [persons]);
 
-  return (
+return (
     <div className="flex flex-col h-screen">
       <FeedbackPopup />
       {/* Top Header */}
@@ -815,7 +978,7 @@ useEffect(() => {
                   </div>
                 </div>
               </div>
-
+  
               {/* Filter Section */}
               {showFilters && (
                 <div className="flex flex-wrap gap-4 my-4">
@@ -916,24 +1079,14 @@ useEffect(() => {
                             aria-label="Select all"
                           />
                         </TableHead>
-                        <TableHead className="bg-background">
-                          Name
-                        </TableHead>
+                        <TableHead className="bg-background">Name</TableHead>
                         <TableHead className="w-[140px] bg-background">Actions</TableHead>
-                        <TableHead className="bg-background">
-                          Title
-                        </TableHead>
+                        <TableHead className="bg-background">Title</TableHead>
                         <TableHead className="w-[120px] bg-background">Links</TableHead>
                         <TableHead className="bg-background">Phone Number</TableHead>
-                        <TableHead className="bg-background">
-                          Company
-                        </TableHead>
-                        <TableHead className="bg-background">
-                          Industry
-                        </TableHead>
-                        <TableHead className="bg-background">
-                          Business Type
-                        </TableHead>
+                        <TableHead className="bg-background">Company</TableHead>
+                        <TableHead className="bg-background">Industry</TableHead>
+                        <TableHead className="bg-background">Business Type</TableHead>
                         <TableHead className="bg-background">Address</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -949,50 +1102,52 @@ useEffect(() => {
                               />
                             </TableCell>
                             <TableCell className="font-medium">
-                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
                                 <Input
-                                type="text"
-                                className="w-full"
-                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.name || ""}
-                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'name', e.target.value)}
+                                  type="text"
+                                  className="w-full"
+                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.name || ""}
+                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'name', e.target.value)}
                                 />
-                            ) : (
+                              ) : (
                                 person.name
-                            )}
+                              )}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleViewPerson(person)}
-                                  title="View Details"
-                                >
-                                  <Eye className="w-4 h-4 text-blue-500" />
-                                </Button>
+                                {person.email && person.email !== 'N/A' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEmailMessageClick(person)}
+                                    title="Generate Email Message"
+                                  >
+                                    <MessageSquare className="w-4 h-4 text-green-600" />
+                                  </Button>
+                                )}
                                 {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
-                                <div className="flex gap-1">
+                                  <div className="flex gap-1">
                                     <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleSave(persons.findIndex(p => p.id === person.id))}
-                                    title="Save"
-                                    className="text-green-600"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleSave(persons.findIndex(p => p.id === person.id))}
+                                      title="Save"
+                                      className="text-green-600"
                                     >
-                                    Save
+                                      Save
                                     </Button>
                                     <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDiscard(persons.findIndex(p => p.id === person.id))}
-                                    title="Discard"
-                                    className="text-red-600"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDiscard(persons.findIndex(p => p.id === person.id))}
+                                      title="Discard"
+                                      className="text-red-600"
                                     >
-                                    Cancel
+                                      Cancel
                                     </Button>
-                                </div>
+                                  </div>
                                 ) : (
-                                    <Button
+                                  <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleEdit(person, persons.findIndex(p => p.id === person.id))}
@@ -1003,29 +1158,28 @@ useEffect(() => {
                                       <Pencil className="h-3 w-3 text-blue-500" />
                                     </div>
                                   </Button>
-                                  
-)}
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleNotes(person)}
                                   title="Notes - Coming soon!"
                                 >
-                                  < StickyNote className="h-4 w-4 text-yellow-500" />
+                                  <StickyNote className="h-4 w-4 text-yellow-500" />
                                 </Button>
                               </div>
                             </TableCell>
                             <TableCell>
-                            {editingRowIndex === persons.findIndex(p => p.id === person.id) ? (
+                              {editingRowIndex === persons.findIndex(p => p.id === person.id) ? (
                                 <Input
-                                type="text"
-                                className="w-full"
-                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.title || ""}
-                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'title', e.target.value)}
+                                  type="text"
+                                  className="w-full"
+                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.title || ""}
+                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'title', e.target.value)}
                                 />
-                            ) : (
+                              ) : (
                                 person.title
-                            )}
+                              )}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
@@ -1050,64 +1204,64 @@ useEffect(() => {
                               </div>
                             </TableCell>
                             <TableCell>
-                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
                                 <Input
-                                type="text"
-                                className="w-full"
-                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.phone || ""}
-                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'phone', e.target.value)}
+                                  type="text"
+                                  className="w-full"
+                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.phone || ""}
+                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'phone', e.target.value)}
                                 />
-                            ) : (
+                              ) : (
                                 person.phone || 'N/A'
-                            )}
+                              )}
                             </TableCell>
                             <TableCell>
-                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
                                 <Input
-                                type="text"
-                                className="w-full"
-                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.company || ""}
-                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'company', e.target.value)}
+                                  type="text"
+                                  className="w-full"
+                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.company || ""}
+                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'company', e.target.value)}
                                 />
-                            ) : (
+                              ) : (
                                 person.company
-                            )}
+                              )}
                             </TableCell>
                             <TableCell>
-                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
                                 <Input
-                                type="text"
-                                className="w-full"
-                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.industry || ""}
-                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'industry', e.target.value)}
+                                  type="text"
+                                  className="w-full"
+                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.industry || ""}
+                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'industry', e.target.value)}
                                 />
-                            ) : (
+                              ) : (
                                 person.industry
-                            )}
+                              )}
                             </TableCell>
                             <TableCell>
-                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
                                 <Input
-                                type="text"
-                                className="w-full"
-                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.businessType || ""}
-                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'businessType', e.target.value)}
+                                  type="text"
+                                  className="w-full"
+                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.businessType || ""}
+                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'businessType', e.target.value)}
                                 />
-                            ) : (
+                              ) : (
                                 person.businessType
-                            )}
+                              )}
                             </TableCell>
                             <TableCell>
-                            {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
                                 <Input
-                                type="text"
-                                className="w-full"
-                                value={editedPersons[persons.findIndex(p => p.id === person.id)]?.address || ""}
-                                onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'address', e.target.value)}
+                                  type="text"
+                                  className="w-full"
+                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.address || ""}
+                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'address', e.target.value)}
                                 />
-                            ) : (
+                              ) : (
                                 person.address
-                            )}
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
@@ -1122,7 +1276,7 @@ useEffect(() => {
                   </Table>
                 )}
               </div>
-
+  
               {/* Pagination at the bottom */}
               {filteredPersons.length > 0 && (
                 <div className="mt-4 flex items-center justify-center">
@@ -1166,14 +1320,14 @@ useEffect(() => {
           </Card>
         </main>
       </div>
-
-     {/* PopupBig Component */}
-     <PopupBig 
+  
+      {/* PopupBig Component */}
+      <PopupBig 
         show={!!popupData}
         onClose={() => {
-            setPopupData(null);
-            setIsEditing(false);
-            setPopupTab('overview');
+          setPopupData(null);
+          setIsEditing(false);
+          setPopupTab('overview');
         }}
         person={popupData}
         isEditing={isEditing}
@@ -1182,7 +1336,43 @@ useEffect(() => {
         setPopupData={setPopupData}
         onSave={handlePopupSave}
       />
-
+  
+      {/* Email Popup Dialog */}
+      {emailPopupData && (
+        <Dialog open={!!emailPopupData} onOpenChange={() => setEmailPopupData(null)}>
+          <DialogContent className="max-w-2xl">
+            <EmailMessageGenerator
+              person={emailPopupData}
+              onClose={() => setEmailPopupData(null)}
+              onGenerate={async () => {
+                setIsGenerating(true);
+                try {
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  const mockMessage = `Hi ${emailPopupData.name || 'there'},
+  
+  I came across your profile and was impressed by your work at ${emailPopupData.company} in ${emailPopupData.industry || 'your industry'}. I'd love to connect and explore potential ${messageSettings.focus} opportunities.
+  ${messageSettings.extraContext ? `\n${messageSettings.extraContext}\n` : ''}
+  Looking forward to your thoughts!
+  
+  Best regards,
+  [Your Name]`;
+            
+            setGeneratedMessage(mockMessage);
+          } catch (error) {
+            console.error("Error generating message:", error);
+            showNotification("Error generating message", "error");
+          } finally {
+            setIsGenerating(false);
+          }
+        }}
+        generatedMessage={generatedMessage}
+        isGenerating={isGenerating}
+        settings={messageSettings}
+        onSettingsChange={setMessageSettings}
+      />
+    </DialogContent>
+  </Dialog>
+)}
       {/* ADD NOTIFICATION HERE - after PopupBig, before closing </div> */}
       {/* Notification */}
       {notif.show && (
