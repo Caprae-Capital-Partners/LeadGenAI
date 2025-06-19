@@ -67,6 +67,7 @@ import Notif from "@/components/ui/notif";
 import Popup from "@/components/ui/popup";
 import FeedbackPopup from "@/components/FeedbackPopup";
 import { SortDropdown } from "@/components/ui/sort-dropdown";
+import Footer from "@/components/footer";
 
 import { redirect } from "next/navigation";
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
@@ -1460,6 +1461,7 @@ export default function Home() {
           />
         </div>
       </main>
+      <Footer />
       {subscriptionInfo?.subscription?.is_call_outreach_cust &&
         !subscriptionInfo?.subscription?.is_scheduled_for_cancellation && (
           <div className="my-6 flex justify-center">
