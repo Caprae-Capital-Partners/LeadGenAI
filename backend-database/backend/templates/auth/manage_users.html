@@ -6,11 +6,64 @@
 <style>
     .user-management-container {
         padding: 30px;
-        max-width: 1100px;
+        width: 100%;
+        max-width: 1400px;
         margin: 0 auto;
         background: var(--card-bg);
         color: var(--text-color);
         border-radius: 12px;
+        box-sizing: border-box;
+    }
+
+    .search-container {
+        margin-bottom: 24px;
+        display: flex;
+        gap: 12px;
+        width: 100%;
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--background-color);
+        color: var(--text-color);
+        font-size: 14px;
+        transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(58, 129, 123, 0.1);
+    }
+
+    .search-input::placeholder {
+        color: var(--text-muted);
+    }
+
+    .search-button {
+        padding: 12px 24px;
+        background: var(--primary-color);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .search-button:hover {
+        background: var(--secondary-color);
+    }
+
+    .search-button svg {
+        width: 16px;
+        height: 16px;
     }
 
     .user-card {
@@ -34,9 +87,12 @@
 
     .user-table {
         width: 100%;
-        border-collapse: collapse;
+        min-width: 1000px;
+        border-collapse: separate;
+        border-spacing: 0;
         background: var(--card-bg);
         color: var(--text-color);
+        margin-bottom: 0;
     }
 
     .user-table th {
@@ -128,16 +184,18 @@
         width: 100%;
         height: 100%;
         overflow: auto;
-        background-color: rgba(0,0,0,0.4);
+        background-color: rgba(0, 0, 0, 0.7);
     }
 
     .modal-content {
-        background-color: #fefefe;
+        background-color: var(--card-bg);
         margin: 15% auto;
         padding: 20px;
         border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        color: var(--text-color);
         width: 400px;
+        border: 1px solid var(--border-color);
     }
 
     .modal-header {
@@ -147,7 +205,7 @@
     .modal-title {
         font-size: 18px;
         font-weight: 600;
-        color: #212529;
+        color: var(--text-color);
         margin: 0;
     }
 
@@ -163,14 +221,14 @@
 
     .close {
         float: right;
-        color: #aaa;
+        color: var(--text-muted);
         font-size: 28px;
         font-weight: bold;
         cursor: pointer;
     }
 
     .close:hover {
-        color: black;
+        color: var(--text-color);
     }
 
     .form-group {
@@ -182,15 +240,81 @@
         margin-bottom: 8px;
         font-size: 14px;
         font-weight: 500;
-        color: #212529;
+        color: var(--text-color);
     }
 
+    input[type="text"], 
+    input[type="email"], 
+    input[type="password"],
+    select,
     .form-select {
         width: 100%;
         padding: 10px;
-        border: 1px solid #ced4da;
+        border: 1px solid var(--border-color);
         border-radius: 4px;
         font-size: 14px;
+        background-color: var(--card-bg);
+        color: var(--text-color);
+    }
+
+    input[type="text"]:disabled,
+    input[type="email"]:disabled,
+    input[type="password"]:disabled,
+    select:disabled,
+    .form-select:disabled {
+        background-color: var(--background-color);
+        color: var(--text-muted);
+        cursor: not-allowed;
+    }
+
+    .form-select option {
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        padding: 8px;
+    }
+
+    .user-table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        border-radius: 8px;
+        background: var(--card-bg);
+        margin-bottom: 20px;
+    }
+
+    .alert-container {
+        margin-bottom: 20px;
+    }
+
+    .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        border: 1px solid var(--border-color);
+        background-color: var(--card-bg);
+    }
+
+    .alert-success {
+        color: #10b981;
+        border-color: #10b981;
+        background-color: rgba(16, 185, 129, 0.1);
+    }
+
+    .alert-danger {
+        color: #ef4444;
+        border-color: #ef4444;
+        background-color: rgba(239, 68, 68, 0.1);
+    }
+
+    .alert-warning {
+        color: #f59e0b;
+        border-color: #f59e0b;
+        background-color: rgba(245, 158, 11, 0.1);
+    }
+
+    .alert-info {
+        color: #3b82f6;
+        border-color: #3b82f6;
+        background-color: rgba(59, 130, 246, 0.1);
     }
 </style>
 {% endblock %}
@@ -212,6 +336,22 @@
         </a>
     </div>
 
+    <!-- Search Bar -->
+    <div class="search-container">
+        <input type="text" 
+               id="userSearch" 
+               class="search-input" 
+               placeholder="Search by username, email, or company..."
+               onkeyup="searchUsers()">
+        <!-- <button class="search-button" onclick="searchUsers()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            Search
+        </button> -->
+    </div>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="alert-container">
@@ -225,99 +365,103 @@
     <!-- Admin and Developer Users -->
     <div class="user-card">
         <h2 class="section-heading">Administrators & Developers</h2>
-        <table class="user-table">
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                {% if user.is_staff() %}
-                <tr>
-                    <td>{{ user.username }}</td>
-                    <td>{{ user.email }}</td>
-                    <td>
-                        <span class="role-badge {{ user.role }}">{{ user.role }}</span>
-                    </td>
-                    <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
-                    <td class="actions-cell">
-                        <button class="btn-user btn-edit-role" onclick="openEditModal('{{ user.user_id }}', '{{ user.username }}', '{{ user.role }}')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                            Edit Role
-                        </button>
+        <div class="user-table-wrapper">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    {% if user.is_staff() %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <span class="role-badge {{ user.role }}">{{ user.role }}</span>
+                        </td>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="actions-cell">
+                            <button class="btn-user btn-edit-role" onclick="openEditModal('{{ user.user_id }}', '{{ user.username }}', '{{ user.role }}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                Edit Role
+                            </button>
 
-                        {% if user.user_id != current_user.user_id %}
-                        <button class="btn-user btn-delete-user" onclick="if(confirm('Are you sure you want to delete user {{ user.username }}?')) { deleteUser('{{ user.user_id }}') }">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                <line x1="10" y1="11" x2="10" y2="17"></line>
-                                <line x1="14" y1="11" x2="14" y2="17"></line>
-                            </svg>
-                            Delete
-                        </button>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endif %}
-                {% endfor %}
-            </tbody>
-        </table>
+                            {% if user.user_id != current_user.user_id %}
+                            <button class="btn-user btn-delete-user" onclick="if(confirm('Are you sure you want to delete user {{ user.username }}?')) { deleteUser('{{ user.user_id }}') }">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                                Delete
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Regular Users -->
     <div class="user-card">
         <h2 class="section-heading">Regular Users</h2>
-        <table class="user-table">
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Company</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                {% if user.role == 'user' %}
-                <tr>
-                    <td>{{ user.username }}</td>
-                    <td>{{ user.email }}</td>
-                    <td>{{ user.company or '-' }}</td>
-                    <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
-                    <td class="actions-cell">
-                        <button class="btn-user btn-edit-role" onclick="openEditModal('{{ user.user_id }}', '{{ user.username }}', '{{ user.role }}')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                            Edit Role
-                        </button>
+        <div class="user-table-wrapper">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Company</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    {% if user.role == 'user' %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.company or '-' }}</td>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="actions-cell">
+                            <button class="btn-user btn-edit-role" onclick="openEditModal('{{ user.user_id }}', '{{ user.username }}', '{{ user.role }}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                Edit Role
+                            </button>
 
-                        <button class="btn-user btn-delete-user" onclick="if(confirm('Are you sure you want to delete user {{ user.username }}?')) { deleteUser('{{ user.user_id }}') }">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                <line x1="10" y1="11" x2="10" y2="17"></line>
-                                <line x1="14" y1="11" x2="14" y2="17"></line>
-                            </svg>
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-                {% endif %}
-                {% endfor %}
-            </tbody>
-        </table>
+                            <button class="btn-user btn-delete-user" onclick="if(confirm('Are you sure you want to delete user {{ user.username }}?')) { deleteUser('{{ user.user_id }}') }">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Edit Role Modal -->
@@ -381,5 +525,36 @@
     function deleteUser(userId) {
         window.location.href = "{{ url_for('auth.delete_user') }}?user_id=" + userId;
     }
+
+    function searchUsers() {
+        const searchInput = document.getElementById('userSearch').value.toLowerCase();
+        const tables = document.querySelectorAll('.user-table');
+        
+        tables.forEach(table => {
+            const rows = table.getElementsByTagName('tr');
+            
+            for (let i = 1; i < rows.length; i++) { // Start from 1 to skip header
+                const row = rows[i];
+                const username = row.cells[0].textContent.toLowerCase();
+                const email = row.cells[1].textContent.toLowerCase();
+                const companyOrRole = row.cells[2].textContent.toLowerCase();
+                
+                if (username.includes(searchInput) || 
+                    email.includes(searchInput) || 
+                    companyOrRole.includes(searchInput)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Add event listener for Enter key on search input
+    document.getElementById('userSearch').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchUsers();
+        }
+    });
 </script>
 {% endblock %}

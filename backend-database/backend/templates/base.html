@@ -387,34 +387,26 @@
             </a>
         </div>
         <div class="navbar-menu">
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('main.index') }}" class="nav-link">Home</a>
+            
+            <a href="https://app.saasquatchleads.com" class="nav-link">Scraper Tool</a>
 
             <!-- Plan Button (minimal, inline, no border) -->
-            {% if current_user.is_authenticated %}
             <button id="plan-navbar-btn" style="background: none; border: none; color: var(--primary-color); font-weight: 600; margin-right: 12px; padding: 0 8px; cursor: pointer; font-size: 15px;" onclick="showPlanInfoModal()">
                 <span id="navbar-plan-name">...</span>
             </button>
+
             <!-- Portal Button -->
             <a href="{{ url_for('customer_portal.customer_portal') }}" class="nav-link" style="color: var(--primary-color); font-weight: 600;">Portal</a>
-            {% endif %}
-            <a href="{{ url_for('main.index') }}" class="nav-link">Home</a>
 
-            {% if current_user.is_authenticated and current_user.role in ['admin', 'developer'] %}
-            <a href="https://app.saasquatchleads.com" class="nav-link">Scraper Tool</a>
-            <div class="dropdown">
-                <a href="{{ url_for('main.admin_docs') }}" class="nav-link">Admin Documentation</a>
+            <div class="user-menu">
+                <span class="username">{{ current_user.username }}</span>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-outline">
+                    <i class="bi bi-box-arrow-right"></i>
+                    Logout
+                </a>
             </div>
-            {% else %}
-            <a href="{{ url_for('main.user_docs') }}" class="nav-link">Documentation</a>
-            {% endif %}
-
-            {% if current_user.is_authenticated %}
-                <div class="user-menu">
-                    <span class="username">{{ current_user.username }}</span>
-                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline">
-                        <i class="bi bi-box-arrow-right"></i>
-                        Logout
-                    </a>
-                </div>
             {% else %}
                 <div class="auth-buttons">
                     <a href="{{ url_for('auth.login') }}" class="btn btn-outline">Login</a>
@@ -440,7 +432,7 @@
             <div class="nav-section-title">MAIN</div>
             <a href="{{ url_for('lead.view_leads') }}" class="nav-item {% if request.endpoint == 'lead.view_leads' %}active{% endif %}">
                 <i class="bi bi-pencil-square"></i>
-                <span>Edit & Export Leads</span>
+                <span>View Leads</span>
             </a>
             {% if current_user.is_authenticated and (current_user.is_admin() or current_user.role == 'developer') %}
             <a href="{{ url_for('main.audit_log') }}" class="nav-item {% if request.endpoint == 'main.audit_log' %}active{% endif %}">
@@ -483,7 +475,7 @@
         </div>
 
         <!-- Documentation Section -->
-        <div class="nav-section">
+        <!-- <div class="nav-section">
             <div class="nav-section-title">DOCUMENTATION</div>
             <a href="{{ url_for('main.user_docs') }}" class="nav-item {% if request.endpoint == 'main.user_docs' %}active{% endif %}">
                 <i class="bi bi-file-text"></i>
@@ -495,7 +487,7 @@
                 <span>Admin Guide</span>
             </a>
             {% endif %}
-        </div>
+        </div> -->
 
         <!-- System Section -->
         <!-- <div class="nav-section">
@@ -512,20 +504,16 @@
             <div class="nav-section-title">USER MANAGEMENT</div>
             <a href="{{ url_for('auth.manage_users') }}" class="nav-item {% if request.endpoint == 'auth.manage_users' %}active{% endif %}">
                 <i class="bi bi-people"></i>
-                <span>Manage Users</span>
+                <span>User Roles & Access</span>
             </a>
             <a href="{{ url_for('user_management.user_management') }}" class="nav-item {% if request.endpoint == 'user_management.user_management' %}active{% endif %}">
                 <i class="bi bi-person"></i>
-                <span>User Management</span>
+                <span>User Subscriptions</span>
             </a>
             <a href="{{ url_for('user_management.user_draft') }}" class="nav-item {% if request.endpoint == 'user_management.user_draft' %}active{% endif %}">
                 <i class="bi bi-file-earmark-person"></i>
-                <span>User Draft</span>
+                <span>User Lead Drafts</span>
             </a>
-            <!-- <a href="{{ url_for('auth.signup') }}" class="nav-item {% if request.endpoint == 'auth.signup' %}active{% endif %}">
-                <i class="bi bi-person-plus"></i>
-                <span>Create User</span>
-            </a> -->
         </div>
         {% endif %}
     </nav>

@@ -5,44 +5,105 @@
     .container {
         max-width: 100%;
         padding: 20px;
-        background: #1E293B;
+        background: var(--background-color);
     }
+
+    .filters-container {
+        background: var(--card-bg);
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        border: 1px solid var(--border-color);
+    }
+
+    .filter-input {
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--background-color);
+        color: var(--text-color);
+        font-size: 14px;
+        width: 200px;
+    }
+
+    .filter-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(58, 129, 123, 0.1);
+    }
+
+    .filter-input::placeholder {
+        color: var(--text-muted);
+    }
+
+    label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--text-color);
+        font-size: 14px;
+    }
+
+    .btn-apply-filter {
+        padding: 8px 16px;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-apply-filter:hover {
+        background: var(--secondary-color);
+    }
+
     .table-container {
-        background: #1E293B;
-        border-radius: 16px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        background: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         overflow: auto;
         margin-bottom: 20px;
+        border: 1px solid var(--border-color);
     }
+
     table {
         width: 100%;
         min-width: max-content;
         border-collapse: separate;
         border-spacing: 0;
     }
+
     thead {
         position: sticky;
         top: 0;
         z-index: 10;
-        background-color: #1E293B;
+        background: var(--card-bg);
     }
+
     th {
-        background: #1E293B;
+        background: var(--card-bg);
         padding: 16px;
         text-align: left;
         font-weight: 500;
-        color: #64748B;
-        border-bottom: 1px solid #273549;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border-color);
         font-size: 13px;
         white-space: nowrap;
     }
+
     td {
         padding: 16px;
-        border-bottom: 1px solid #273549;
-        color: #fff;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-color);
         font-size: 14px;
         white-space: nowrap;
     }
+
+    tr:hover td {
+        background: var(--background-color);
+    }
+
     .truncate {
         max-width: 250px;
         overflow: hidden;
@@ -51,26 +112,36 @@
         cursor: pointer;
         transition: all 0.2s ease;
     }
+
     .truncate:hover {
         max-width: 500px;
         white-space: normal;
-        background-color: #fffde7;
+        background: var(--background-color);
         z-index: 10;
         position: relative;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
     }
+
     .date-col {
         width: 180px;
         text-align: center;
         font-weight: 500;
-        background: #1E293B;
+        background: var(--card-bg);
+    }
+
+    h1 {
+        color: var(--text-color);
+        margin-bottom: 24px;
     }
 </style>
 {% endblock %}
 {% block content %}
 <div class="container">
     <h1>Audit Log</h1>
-    <form method="get" class="filters-container" style="margin-bottom: 24px;">
+    <form method="get" class="filters-container">
         <div style="display: flex; gap: 16px; align-items: flex-end;">
             <div>
                 <label>Changed By (username):</label>
@@ -84,7 +155,7 @@
                 <label>Show Last N:</label>
                 <input type="number" name="limit" value="{{ limit }}" min="1" max="1000" class="filter-input" style="width: 80px;">
             </div>
-            <button type="submit" class="btn btn-apply-filter">Apply Filter</button>
+            <button type="submit" class="btn-apply-filter">Apply Filter</button>
         </div>
     </form>
     <div class="table-container">
@@ -114,7 +185,7 @@
                     <td class="date-col">{{ log.changed_at.strftime('%Y-%m-%d %H:%M:%S') if log.changed_at else '-' }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="8" style="text-align:center;">No audit log entries found.</td></tr>
+                <tr><td colspan="8" style="text-align:center; color: var(--text-muted);">No audit log entries found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -175,24 +175,71 @@ def toggle_user_status(user_id):
 @super_admin_required
 def user_draft():
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    pagination = User.query.paginate(page=page, per_page=per_page, error_out=False)
+    per_page = request.args.get('per_page', 10, type=int)
+    search = request.args.get('search', '', type=str)
+    
+    # First get the base query
+    query = User.query
+    
+    # Apply search filter if search term exists
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter((User.username.ilike(search_pattern)) | (User.email.ilike(search_pattern)))
+    
+    # Get total before pagination for accurate count
+    total = query.count()
+    
+    # Then apply pagination
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     users = pagination.items
+    
     user_list = []
     for user in users:
         try:
-            drafts = UserLeadDraft.query.filter_by(user_id=user.user_id, is_deleted=False).all()
+            # Check if user has any drafts
+            has_drafts = UserLeadDraft.query.filter_by(user_id=user.user_id, is_deleted=False).first() is not None
+            user_list.append({
+                'id': str(user.user_id),
+                'username': user.username,
+                'email': user.email,
+                'tier': user.tier,
+                'has_draft': has_drafts  # Add this flag
+            })
         except Exception as e:
             print(f"Error querying drafts for user_id={user.user_id}: {e}")
             import traceback; traceback.print_exc()
-            drafts = []
-        user_list.append({
-            'id': str(user.user_id),
-            'username': user.username,
-            'email': user.email,
-            'tier': user.tier,
-        })
-    return render_template('admin/user_draft.html', users=user_list, page=page, per_page=per_page, total=pagination.total, pages=pagination.pages)
+            user_list.append({
+                'id': str(user.user_id),
+                'username': user.username,
+                'email': user.email,
+                'tier': user.tier,
+                'has_draft': False
+            })
+    
+    # Calculate total pages
+    pages = (total + per_page - 1) // per_page
+    
+    # Calculate pagination display range
+    max_display = 2
+    start_page = max(1, page - max_display)
+    end_page = min(pages, start_page + max_display * 2)
+    start_page = max(1, end_page - max_display * 2)
+    
+    # Calculate start and end index for showing entries
+    start_index = (page - 1) * per_page + 1
+    end_index = min((page - 1) * per_page + per_page, total)
+    
+    return render_template('admin/user_draft.html', 
+                         users=user_list, 
+                         page=page, 
+                         per_page=per_page, 
+                         total=total, 
+                         pages=pages,
+                         start_page=start_page,
+                         end_page=end_page,
+                         start_index=start_index,
+                         end_index=end_index,
+                         search=search)
 
 @user_management_bp.route('/admin/user-drafts/<user_id>')
 @login_required
