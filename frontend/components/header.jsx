@@ -17,10 +17,14 @@ const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL_P2;
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Inbox as InboxIcon } from "lucide-react";
+import PopupBig from "@/components/ui/popup-big"; // Adjust path if needed
+import Inbox from "@/components/inbox"; // adjust path if needed
 
 export function Header() {
   const [userEmail, setUserEmail] = useState("");
   const pathname = usePathname();
+  const [showInbox, setShowInbox] = useState(false);
 
   
   useEffect(() => {
@@ -141,6 +145,16 @@ export function Header() {
                   <span>Profile</span>
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setShowInbox(true)}
+                className="hover:bg-dark-hover focus:bg-dark-hover cursor-pointer"
+              >
+                <div className="flex items-center w-full">
+                  <InboxIcon className="mr-2 h-4 w-4 text-yellow-400" />
+                  <span>Inbox</span>
+                </div>
+              </DropdownMenuItem>
+
               <DropdownMenuSeparator className="bg-dark-border" />
               <DropdownMenuItem
                 onClick={async () => {
@@ -183,6 +197,10 @@ export function Header() {
           </DropdownMenu>
         </nav>
       </div>
+      <PopupBig show={showInbox} onClose={() => setShowInbox(false)}>
+        <h2 className="text-2xl font-bold mb-4">Inbox</h2>
+        <Inbox />
+      </PopupBig>
     </header>
   );
 }
