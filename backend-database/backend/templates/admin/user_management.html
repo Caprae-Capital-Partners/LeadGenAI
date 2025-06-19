@@ -1375,14 +1375,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tierBadgeEl && tierIconEl) {
             tierBadgeEl.className = `badge ${getTierBadgeClass(user.tier)}`;
             tierIconEl.className = `fas fa-${getTierIcon(user.tier)} me-1`;
-        }
-        
+                }
+
         // Update all text content
         Object.entries(elements).forEach(([id, value]) => {
             const element = document.getElementById(id);
             if (element) {
                 element.textContent = value;
-            }
+                    }
         });
         
         // Update action buttons visibility based on user status
@@ -1454,12 +1454,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({ 
+                body: JSON.stringify({ 
                         cancellation_type: cancelType,
                         feedback: feedback,
                         comment: feedback // Use feedback as comment
-                    })
-                });
+                })
+            });
 
                 const data = await response.json();
                 
@@ -1529,7 +1529,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         throw new Error('Only subscriptions that are scheduled for cancellation can be reactivated');
                     }
                     throw new Error(data.error || 'Failed to reactivate subscription');
-                }
+        }
 
                 // Hide reactivate confirmation modal
                 if (reactivateConfirmModal) {
@@ -1566,8 +1566,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     button.classList.remove('loading');
                     button.disabled = false;
                 }
-            }
-        });
+        }
+    });
     }
 
     // Initial load

@@ -3,10 +3,15 @@ from controllers.auth_controller import AuthController
 from controllers.subscription_controller import SubscriptionController
 from flask_login import login_required, current_user, login_user, logout_user
 from utils.decorators import role_required
-from models.user_model import User, db
+from models.user_model import User
 from werkzeug.security import generate_password_hash, check_password_hash
 import datetime
 import os
+from models.user_subscription_model import UserSubscription
+from models.edit_lead_drafts_model import EditLeadDraft
+from models.user_lead_drafts_model import UserLeadDraft
+from models.lead_model import Lead, db
+from models.audit_logs_model import AuditLog
 
 
 
@@ -131,40 +136,96 @@ def update_user_role():
 
     return redirect(url_for('auth.manage_users'))
 
-@auth_bp.route('/delete_user')
+@auth_bp.route('/api/auth/check_user_data/<string:user_id>', methods=['GET'])
 @login_required
 @role_required('admin', 'developer')
-def delete_user():
-    """Delete user - only accessible to admins"""
-    user_id = request.args.get('user_id')
-
-    if not user_id:
-        flash('User ID is required', 'danger')
-        return redirect(url_for('auth.manage_users'))
-
+def check_user_data(user_id):
+    """Check what data a user has before deletion"""
     try:
-        user = User.query.get(user_id)
+        # Get the user
+        user = User.query.filter_by(user_id=user_id).first()
         if not user:
-            flash('User not found', 'danger')
-            return redirect(url_for('auth.manage_users'))
+            return jsonify({'error': 'User not found'}), 404
 
-        # Prevent self-deletion
-        if str(user_id) == str(current_user.user_id):
-            flash('You cannot delete your own account', 'danger')
-            return redirect(url_for('auth.manage_users'))
+        # Count associated data
+        drafts_count = db.session.query(EditLeadDraft).filter_by(user_id=user_id).count()
+        user_lead_drafts_count = db.session.query(UserLeadDraft).filter_by(user_id=user_id).count()
+        audit_logs_count = db.session.query(AuditLog).filter_by(user_id=user_id).count()
+        subscription_count = db.session.query(UserSubscription).filter_by(user_id=user_id).count()
+
+        has_data = drafts_count > 0 or user_lead_drafts_count > 0 or audit_logs_count > 0 or subscription_count > 0
+
+        return jsonify({
+            'has_data': has_data,
+            'drafts_count': drafts_count,
+            'user_lead_drafts_count': user_lead_drafts_count,
+            'leads_count': 0,  # Leads are not user-specific
+            'audit_logs_count': audit_logs_count,
+            'subscription_count': subscription_count
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error checking user data for {user_id}: {str(e)}")
+        return jsonify({'error': 'An error occurred while checking user data'}), 500
+
+@auth_bp.route('/api/auth/delete_user/<string:user_id>', methods=['DELETE'])
+@login_required
+@role_required('admin', 'developer')
+def delete_user(user_id):
+    """Delete a user and all their associated data"""
+    try:
+        # Get the user to delete
+        user = User.query.filter_by(user_id=user_id).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Don't allow deleting yourself
+        if user.user_id == current_user.user_id:
+            return jsonify({'error': 'Cannot delete your own account'}), 403
 
         username = user.username
-        # Delete all user subscriptions before deleting user
-        from models.user_subscription_model import UserSubscription
-        UserSubscription.query.filter_by(user_id=user.user_id).delete()
-        db.session.delete(user)
-        db.session.commit()
-        flash(f'User {username} has been deleted', 'success')
+        
+        # Delete all associated data in the correct order to avoid foreign key violations
+        try:
+            # Delete drafts first (these are user-specific)
+            drafts_deleted = EditLeadDraft.query.filter_by(user_id=user_id).delete()
+            
+            # Delete user lead drafts (these are user-specific)
+            user_lead_drafts_deleted = UserLeadDraft.query.filter_by(user_id=user_id).delete()
+            
+            # Delete audit logs (these are user-specific)
+            audit_logs_deleted = AuditLog.query.filter_by(user_id=user_id).delete()
+            
+            # Delete user subscription using delete() method
+            subscription_deleted = UserSubscription.query.filter_by(user_id=user_id).delete()
+            
+            # Finally delete the user
+            db.session.delete(user)
+            
+            # Commit all changes
+            db.session.commit()
+            
+            return jsonify({
+                'message': f'User "{username}" and all associated data deleted successfully',
+                'user_id': user_id,
+                'deleted_data': {
+                    'drafts': drafts_deleted,
+                    'user_lead_drafts': user_lead_drafts_deleted,
+                    'leads': 0,  # Leads are not user-specific
+                    'audit_logs': audit_logs_deleted,
+                    'subscription': subscription_deleted
+                }
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error during data deletion for user {user_id}: {str(e)}")
+            return jsonify({'error': f'Error deleting user data: {str(e)}'}), 500
+
     except Exception as e:
         db.session.rollback()
-        flash(f'Error deleting user: {str(e)}', 'danger')
-
-    return redirect(url_for('auth.manage_users'))
+        current_app.logger.error(f"Error deleting user {user_id}: {str(e)}")
+        return jsonify({'error': 'An error occurred while deleting the user'}), 500
 
 @auth_bp.route('/api/ping-auth', methods=["GET"])
 @login_required

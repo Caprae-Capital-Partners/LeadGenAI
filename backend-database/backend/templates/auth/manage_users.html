@@ -362,6 +362,9 @@
         {% endif %}
     {% endwith %}
 
+    <!-- Add Toast Container -->
+    <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;"></div>
+
     <!-- Admin and Developer Users -->
     <div class="user-card">
         <h2 class="section-heading">Administrators & Developers</h2>
@@ -396,7 +399,7 @@
                             </button>
 
                             {% if user.user_id != current_user.user_id %}
-                            <button class="btn-user btn-delete-user" onclick="if(confirm('Are you sure you want to delete user {{ user.username }}?')) { deleteUser('{{ user.user_id }}') }">
+                            <button class="btn-user btn-delete-user" data-user-id="{{ user.user_id }}" onclick="deleteUser('{{ user.user_id }}', '{{ user.username }}')">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="3 6 5 6 21 6"></polyline>
                                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -446,7 +449,7 @@
                                 Edit Role
                             </button>
 
-                            <button class="btn-user btn-delete-user" onclick="if(confirm('Are you sure you want to delete user {{ user.username }}?')) { deleteUser('{{ user.user_id }}') }">
+                            <button class="btn-user btn-delete-user" data-user-id="{{ user.user_id }}" onclick="deleteUser('{{ user.user_id }}', '{{ user.username }}')">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="3 6 5 6 21 6"></polyline>
                                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -521,9 +524,132 @@
         }
     }
 
-    // Delete User
-    function deleteUser(userId) {
-        window.location.href = "{{ url_for('auth.delete_user') }}?user_id=" + userId;
+    // Toast notification function
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type}`;
+        toast.style.minWidth = '350px';
+        toast.style.maxWidth = '500px';
+        toast.style.marginBottom = '10px';
+        toast.style.whiteSpace = 'pre-line'; // Allow line breaks
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        toast.style.transition = 'all 0.3s ease-in-out';
+        toast.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <span style="flex: 1; margin-right: 10px;">${message}</span>
+                <button type="button" class="close" style="font-size: 20px; background: none; border: none; color: inherit; flex-shrink: 0;" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+        `;
+        document.getElementById('toastContainer').appendChild(toast);
+        
+        // Trigger animation
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 50);
+
+        // Auto remove after delay
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 8000); // Show for 8 seconds for longer messages
+    }
+
+    // Delete User with confirmation and error handling
+    async function deleteUser(userId, username) {
+        try {
+            // First, check what data the user has
+            const checkResponse = await fetch(`/api/auth/check_user_data/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const checkData = await checkResponse.json();
+            let confirmationMessage = `Are you sure you want to delete user "${username}"?`;
+
+            if (checkData.has_data) {
+                confirmationMessage += '\n\nThis user has the following data that will also be deleted:\n';
+                if (checkData.drafts_count > 0) {
+                    confirmationMessage += `• ${checkData.drafts_count} edit draft(s)\n`;
+                }
+                if (checkData.user_lead_drafts_count > 0) {
+                    confirmationMessage += `• ${checkData.user_lead_drafts_count} lead draft(s)\n`;
+                }
+                if (checkData.audit_logs_count > 0) {
+                    confirmationMessage += `• ${checkData.audit_logs_count} audit log(s)\n`;
+                }
+                if (checkData.subscription_count > 0) {
+                    confirmationMessage += `• ${checkData.subscription_count} subscription record(s)\n`;
+                }
+                confirmationMessage += '\nThis action cannot be undone!';
+            } else {
+                confirmationMessage += '\n\nThis action cannot be undone!';
+            }
+
+            if (!confirm(confirmationMessage)) {
+                return;
+            }
+
+            const response = await fetch(`/api/auth/delete_user/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                showToast(data.error || 'Failed to delete user', 'danger');
+                return;
+            }
+
+            // Show detailed success message
+            let successMessage = data.message;
+            if (data.deleted_data) {
+                const deletedItems = [];
+                if (data.deleted_data.drafts > 0) {
+                    deletedItems.push(`${data.deleted_data.drafts} edit draft(s)`);
+                }
+                if (data.deleted_data.user_lead_drafts > 0) {
+                    deletedItems.push(`${data.deleted_data.user_lead_drafts} lead draft(s)`);
+                }
+                if (data.deleted_data.audit_logs > 0) {
+                    deletedItems.push(`${data.deleted_data.audit_logs} audit log(s)`);
+                }
+                if (data.deleted_data.subscription > 0) {
+                    deletedItems.push('subscription data');
+                }
+                
+                if (deletedItems.length > 0) {
+                    successMessage += `\nDeleted: ${deletedItems.join(', ')}`;
+                }
+            }
+
+            // Remove the user's row from both tables
+            const tables = document.querySelectorAll('.user-table');
+            tables.forEach(table => {
+                const rows = table.getElementsByTagName('tr');
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.querySelector(`button[data-user-id="${userId}"]`)) {
+                        row.remove();
+                        break;
+                    }
+                }
+            });
+
+            showToast(successMessage, 'success');
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            showToast('An error occurred while deleting the user', 'danger');
+        }
     }
 
     function searchUsers() {
