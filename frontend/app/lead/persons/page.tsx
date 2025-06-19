@@ -30,7 +30,8 @@ import {
   Linkedin,
   Pencil,
   StickyNote,
-  MessageSquare  
+  MessageSquare,
+Star,  
 } from "lucide-react"
 import {
   Pagination,
@@ -1213,6 +1214,19 @@ return (
                                 >
                                   <StickyNote className="h-4 w-4 text-yellow-500" />
                                 </Button>
+                                <button
+          title="Favorite - Coming soon!"
+          className="hover:bg-gray-100 rounded p-1 group relative"
+          onClick={(e) => {
+            e.preventDefault();
+            showNotification("Favorite feature coming soon!", "info");
+          }}
+        >
+          <Star className="w-4 h-4 text-yellow-500" />
+          <span className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-300 absolute z-10 w-32 p-2 text-xs text-white bg-gray-800 rounded shadow-lg -top-8 -left-1/2">
+            Favorite feature coming soon!
+          </span>
+        </button>
                               </div>
                             </TableCell>
                             <TableCell>
