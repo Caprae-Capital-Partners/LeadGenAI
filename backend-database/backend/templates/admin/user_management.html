@@ -736,14 +736,14 @@ tr:hover .fas {
                                         <div>
                                             <h5 class="mb-1" id="modalUsername"></h5>
                                             <p class="text-muted mb-0" id="modalEmail"></p>
-                                        </div>
-                                    </div>
+                            </div>
+                        </div>
                                     <div class="row g-3">
                                         <div class="col-6">
                                             <div class="d-flex align-items-center">
                                                 <i class="fas fa-circle text-success me-2" id="modalStatusIcon"></i>
                                                 <span id="modalStatus"></span>
-                                            </div>
+                    </div>
                                         </div>
                                         <div class="col-6">
                                             <div class="d-flex align-items-center">
@@ -792,7 +792,7 @@ tr:hover .fas {
                                     <button class="btn btn-outline-danger subscription-action" id="cancelSubscriptionBtn">
                                         <i class="fas fa-times-circle me-2"></i>Cancel Subscription
                                     </button>
-                                    
+                    
                                     <!-- Reactivate Subscription Button -->
                                     <button class="btn btn-outline-success subscription-action" id="reactivateSubscriptionBtn">
                                         <i class="fas fa-redo-alt me-2"></i>Reactivate Subscription
@@ -836,8 +836,8 @@ tr:hover .fas {
                 <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-danger" id="confirmCancelBtn">
                     <i class="fas fa-times-circle me-2"></i>Cancel Subscription
-                </button>
-            </div>
+                    </button>
+                </div>
         </div>
     </div>
 </div>
@@ -1161,11 +1161,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 let statusClass = 'bg-success';
                 let statusIcon = 'check-circle';
                 
+                // Check both user.status and subscription state
+                const isScheduledCancelled = user.status === 's_cancelled' || 
+                    (user.subscription && (
+                        user.subscription.is_scheduled_for_cancellation || 
+                        user.subscription.payment_frequency?.includes('_scheduled_cancel')
+                    ));
+                
                 if (user.status === 'cancelled') {
                     statusDisplay = 'Cancelled';
                     statusClass = 'bg-danger';
                     statusIcon = 'times-circle';
-                } else if (user.status === 's_cancelled') {
+                } else if (isScheduledCancelled) {
                     statusDisplay = 'Scheduled Cancelled';
                     statusClass = 'bg-warning';
                     statusIcon = 'clock';
@@ -1273,15 +1280,19 @@ document.addEventListener('DOMContentLoaded', function() {
             // Check if user has a paid subscription (not free tier)
             const hasPaidSubscription = user.tier && user.tier !== 'free' && user.tier !== null;
             const isCanceled = user.status === 'cancelled';
-            const isScheduledCanceled = user.status === 's_cancelled';
+            const isScheduledCancelled = user.status === 's_cancelled' || 
+                (user.subscription && (
+                    user.subscription.is_scheduled_for_cancellation || 
+                    user.subscription.payment_frequency?.includes('_scheduled_cancel')
+                ));
             
             // Show cancel button if user has paid subscription and not canceled
-            if (hasPaidSubscription && !isCanceled && !isScheduledCanceled) {
+            if (hasPaidSubscription && !isCanceled && !isScheduledCancelled) {
                 cancelBtn.style.display = 'block';
                 reactivateBtn.style.display = 'none';
             } 
             // Show reactivate button if subscription is scheduled for cancellation
-            else if (hasPaidSubscription && isScheduledCanceled) {
+            else if (hasPaidSubscription && isScheduledCancelled) {
                 cancelBtn.style.display = 'none';
                 reactivateBtn.style.display = 'block';
             } 
@@ -1327,7 +1338,7 @@ document.addEventListener('DOMContentLoaded', function() {
             statusDisplay = 'Cancelled';
             statusClass = 'danger';
             statusIcon = 'times-circle';
-        } else if (user.status === 's_cancelled') {
+        } else if (user.status === 's_cancelled' || user.subscription?.is_scheduled_for_cancellation) {
             statusDisplay = 'Scheduled Cancelled';
             statusClass = 'warning';
             statusIcon = 'clock';
@@ -1431,18 +1442,22 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const button = this;
                 button.classList.add('loading');
+                button.disabled = true;
+                
+                const cancelType = document.getElementById('cancelType').value;
+                const feedback = document.getElementById('cancelFeedback').value;
                 
                 // Use admin endpoint to cancel user subscription
                 const response = await fetch(`/api/auth/user/${currentUser.id}/cancel_subscription`, {
                     method: 'POST',
-                    headers: {
+                    headers: { 
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({
-                        cancellation_type: document.getElementById('cancelType').value,
-                        feedback: document.getElementById('cancelFeedback').value,
-                        comment: document.getElementById('cancelFeedback').value // Use feedback as comment
+                    body: JSON.stringify({ 
+                        cancellation_type: cancelType,
+                        feedback: feedback,
+                        comment: feedback // Use feedback as comment
                     })
                 });
 
@@ -1452,13 +1467,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(data.error || 'Failed to cancel subscription');
                 }
 
-                if (cancelConfirmModal) cancelConfirmModal.hide();
-                if (manageModal) manageModal.hide();
+                // Hide cancel confirmation modal
+                if (cancelConfirmModal) {
+                    cancelConfirmModal.hide();
+                }
                 
                 // Reload users to get updated data
                 await loadUsers();
                 
-                // Refresh modal content with updated user data
+                // Find and update current user data
                 const updatedUsers = await fetch('/api/admin/users', {
                     headers: {
                         'Accept': 'application/json',
@@ -1471,16 +1488,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 const updatedUser = updatedUsers.find(u => u.id === currentUser.id);
                 if (updatedUser) {
                     currentUser = updatedUser;
-                    // Refresh modal content
+                    // Update modal content with new data
                     openManageModal(currentUser.id);
                 }
                 
                 showToast(data.message || 'Subscription cancelled successfully', 'success');
             } catch (error) {
                 console.error('Error cancelling subscription:', error);
-                showToast(error.message || 'Failed to cancel subscription', 'error');
+                showToast(error.message || 'Failed to cancel subscription', 'danger');
             } finally {
-                button.classList.remove('loading');
+                if (button) {
+                    button.classList.remove('loading');
+                    button.disabled = false;
+                }
             }
         });
     }
@@ -1495,7 +1515,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Use admin endpoint to reactivate user subscription
                 const response = await fetch(`/api/auth/user/${currentUser.id}/reactivate_subscription`, {
                     method: 'POST',
-                    headers: {
+                    headers: { 
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     }
@@ -1537,7 +1557,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 showToast(data.message || 'Subscription reactivated successfully', 'success');
-            } catch (error) {
+        } catch (error) {
                 console.error('Error reactivating subscription:', error);
                 showToast(error.message || 'Failed to reactivate subscription', 'danger');
             } finally {
