@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}User Management{% endblock %}
+{% block title %}User Subscription Management{% endblock %}
 
 {% block additional_styles %}
 {{ super() }}
@@ -313,6 +313,296 @@ table.dataTable tbody td {
     gap: 2rem;
     margin-top: 1.5rem;
 }
+
+/* Table Styling Enhancement */
+.table {
+    margin: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    border: 1px solid var(--card-border);
+}
+
+.table thead th {
+    background: var(--card-bg);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 1.2rem 1rem;
+    color: #94a3b8 !important;
+    border-bottom: 2px solid var(--border-color) !important;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease-in-out;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.05) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    font-size: 0.95rem;
+}
+
+/* Badge Enhancement */
+.badge {
+    padding: 0.5rem 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Avatar Enhancement */
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border: 2px solid rgba(255,255,255,0.1);
+    transition: all 0.2s ease;
+}
+
+.avatar-circle:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+/* Action Button Enhancement */
+.btn-manage {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+.btn-manage:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+/* Status Badge Enhancement */
+.badge.bg-success {
+    background: rgba(34, 197, 94, 0.15) !important;
+    color: #4ade80 !important;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge.bg-danger {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge.bg-warning {
+    background: rgba(234, 179, 8, 0.15) !important;
+    color: #facc15 !important;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.badge.bg-info {
+    background: rgba(6, 182, 212, 0.15) !important;
+    color: #67e8f9 !important;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.badge.bg-secondary {
+    background: rgba(148, 163, 184, 0.15) !important;
+    color: #cbd5e1 !important;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+/* Table Card Enhancement */
+.card {
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(8px);
+}
+
+.card-header {
+    border-bottom: 1px solid var(--card-border);
+    padding: 1.2rem 1.5rem;
+}
+
+/* Search Box Enhancement */
+.dataTables_filter input {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.5rem 1rem;
+    color: var(--text-color);
+    transition: all 0.2s ease;
+}
+
+.dataTables_filter input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    outline: none;
+}
+
+/* Pagination Enhancement */
+.dataTables_paginate .paginate_button {
+    margin: 0 2px;
+    border-radius: 8px !important;
+    transition: all 0.2s ease;
+}
+
+.dataTables_paginate .paginate_button:hover {
+    background: rgba(59, 130, 246, 0.1) !important;
+    border-color: rgba(59, 130, 246, 0.2) !important;
+    color: #60a5fa !important;
+}
+
+.dataTables_paginate .paginate_button.current {
+    background: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    color: white !important;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Table Loading State */
+.table-loading {
+    position: relative;
+}
+
+.table-loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: white;
+}
+
+/* Empty State Enhancement */
+.dataTables_empty {
+    padding: 3rem !important;
+    font-size: 1.1rem;
+    color: #94a3b8;
+    text-align: center;
+    background: var(--card-bg) !important;
+}
+
+/* Row Alternating Colors */
+.table tbody tr:nth-child(odd) {
+    background: rgba(255,255,255,0.02);
+}
+
+.table tbody tr:nth-child(even) {
+    background: rgba(0,0,0,0.02);
+}
+
+/* Icons Enhancement */
+.fas {
+    transition: all 0.2s ease;
+}
+
+tr:hover .fas {
+    transform: scale(1.1);
+}
+
+/* New styles for subscription action buttons */
+.subscription-action {
+    padding: 0.8rem 1.2rem;
+    font-weight: 500;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.subscription-action::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, rgba(255,255,255,0), rgba(255,255,255,0.1), rgba(255,255,255,0));
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.subscription-action:hover::before {
+    transform: translateX(100%);
+}
+
+.subscription-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Button specific styles */
+.btn-outline-danger {
+    border-width: 2px;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-outline-success {
+    border-width: 2px;
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.btn-outline-warning {
+    border-width: 2px;
+    background: rgba(234, 179, 8, 0.1);
+}
+
+/* Loading state */
+.subscription-action.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.subscription-action.loading::after {
+    content: '';
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+@keyframes spin {
+    to { transform: translateY(-50%) rotate(360deg); }
+}
 </style>
 {% endblock %}
 
@@ -321,8 +611,8 @@ table.dataTable tbody td {
     <!-- Header Section -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-0 text-light">User Management</h1>
-            <p class="text-muted">Manage user accounts, subscriptions, and access</p>
+            <h1 class="h3 mb-0 text-light">User Subscription Management</h1>
+            <p class="text-muted">Manage user subscriptions</p>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-primary" id="refreshBtn">
@@ -397,12 +687,6 @@ table.dataTable tbody td {
 
     <!-- Users Table Card -->
     <div class="card bg-dark border-secondary">
-        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center py-3">
-            <div>
-                <i class="fas fa-users me-2"></i>
-                <span class="h5 mb-0 text-light">Users List</span>
-            </div>
-        </div>
         <div class="card-body p-0">
             <div class="table">
                 <table class="table table-dark mb-0" id="usersTable">
@@ -411,7 +695,7 @@ table.dataTable tbody td {
                             <th class="border-0">User</th>
                             <th class="border-0">Status</th>
                             <th class="border-0">Role</th>
-                            <th class="border-0">Subscription</th>
+                            <th class="border-0">Tier</th>
                             <th class="border-0">Credits</th>
                             <th class="border-0">Expires</th>
                             <th class="border-0 text-end">Actions</th>
@@ -427,7 +711,7 @@ table.dataTable tbody td {
 </div>
 
 <!-- Manage User Modal -->
-<div class="modal fade" id="manageUserModal" tabindex="-1" aria-labelledby="manageUserModalLabel" aria-hidden="true">
+<div class="modal fade" id="manageUserModal" tabindex="-1" aria-labelledby="manageUserModalLabel">
     <div class="modal-dialog modal-lg">
         <div class="modal-content bg-dark text-light border-secondary">
             <div class="modal-header bg-dark border-secondary">
@@ -445,29 +729,74 @@ table.dataTable tbody td {
                             <div class="card-header bg-dark border-secondary">
                                 <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>User Information</h6>
                             </div>
-                            <div class="card-body" id="userInfo">
-                                <!-- User info will be populated here -->
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="avatar-circle me-3" id="modalUserAvatar"></div>
+                                        <div>
+                                            <h5 class="mb-1" id="modalUsername"></h5>
+                                            <p class="text-muted mb-0" id="modalEmail"></p>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-circle text-success me-2" id="modalStatusIcon"></i>
+                                                <span id="modalStatus"></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-user me-2" id="modalRoleIcon"></i>
+                                                <span id="modalRole"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr class="border-secondary">
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Tier</small>
+                                        <span class="badge" id="modalTierBadge">
+                                            <i class="fas me-1" id="modalTierIcon"></i>
+                                            <span id="modalTier"></span>
+                                        </span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Credits</small>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-coins text-warning me-2"></i>
+                                            <span id="modalCredits">0</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <small class="text-muted d-block">Expires At</small>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-calendar-alt text-info me-2"></i>
+                                            <span id="modalExpiresAt">N/A</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <!-- Subscription Card -->
+                    <!-- Subscription Actions Card -->
                     <div class="col-md-6">
                         <div class="card bg-dark border-secondary h-100">
                             <div class="card-header bg-dark border-secondary">
-                                <h6 class="mb-0"><i class="fas fa-crown me-2"></i>Subscription Details</h6>
+                                <h6 class="mb-0"><i class="fas fa-crown me-2"></i>Subscription Actions</h6>
                             </div>
                             <div class="card-body">
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-outline-danger" id="cancelSubscriptionBtn" disabled tabindex="-1" aria-disabled="true">
-                                        <i class="fas fa-times-circle me-2"></i>Cancel Subscription (Soon)
+                                <div class="d-grid gap-3">
+                                    <!-- Cancel Subscription Button -->
+                                    <button class="btn btn-outline-danger subscription-action" id="cancelSubscriptionBtn">
+                                        <i class="fas fa-times-circle me-2"></i>Cancel Subscription
                                     </button>
-                                    <button class="btn btn-outline-warning" id="toggleStatusBtn" disabled tabindex="-1" aria-disabled="true">
-                                        Deactivate User (Soon)
+                                    
+                                    <!-- Reactivate Subscription Button -->
+                                    <button class="btn btn-outline-success subscription-action" id="reactivateSubscriptionBtn">
+                                        <i class="fas fa-redo-alt me-2"></i>Reactivate Subscription
                                     </button>
-                                    <button class="btn btn-outline-secondary" id="pauseSubscriptionBtn" disabled tabindex="-1" aria-disabled="true">
-                                        <i class="fas fa-pause-circle me-2"></i>Pause Subscription (Soon)
-                                    </button>
-                    
                                 </div>
                             </div>
                         </div>
@@ -478,27 +807,60 @@ table.dataTable tbody td {
     </div>
 </div>
 
-<!-- Add Cancel Subscription Modal -->
-<div class="modal fade" id="cancelSubscriptionModal" tabindex="-1" aria-labelledby="cancelSubscriptionModalLabel" aria-hidden="true">
+<!-- Add Cancel Confirmation Modal -->
+<div class="modal fade" id="cancelConfirmModal" tabindex="-1" aria-labelledby="cancelConfirmModalLabel">
     <div class="modal-dialog">
-        <div class="modal-content bg-dark text-light border-secondary">
-            <div class="modal-header bg-dark border-secondary">
-                <h5 class="modal-title" id="cancelSubscriptionModalLabel">
-                    <i class="fas fa-times-circle me-2"></i>
+        <div class="modal-content bg-dark border-danger">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title text-danger" id="cancelConfirmModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
                     Cancel Subscription
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="mb-4">How would you like to cancel the subscription?</p>
-                <div class="d-grid gap-2">
-                    <button class="btn btn-outline-danger" id="immediateCancelBtn">
-                        <i class="fas fa-ban me-2"></i>Cancel Immediately
-                    </button>
-                    <button class="btn btn-outline-warning" id="periodEndCancelBtn">
-                        <i class="fas fa-clock me-2"></i>Cancel at Period End
-                    </button>
+                <p>How would you like to cancel this subscription?</p>
+                <div class="mb-3">
+                    <label class="form-label" for="cancelType">Cancellation Type</label>
+                    <select class="form-select bg-dark text-light" id="cancelType">
+                        <option value="immediate">Cancel Immediately</option>
+                        <option value="period_end">Cancel at Period End</option>
+                    </select>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label" for="cancelFeedback">Feedback (Optional)</label>
+                    <textarea class="form-control bg-dark text-light" id="cancelFeedback" rows="2" placeholder="Reason for cancellation..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-danger">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" id="confirmCancelBtn">
+                    <i class="fas fa-times-circle me-2"></i>Cancel Subscription
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Reactivate Confirmation Modal -->
+<div class="modal fade" id="reactivateConfirmModal" tabindex="-1" aria-labelledby="reactivateConfirmModalLabel">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-success">
+            <div class="modal-header border-success">
+                <h5 class="modal-title text-success" id="reactivateConfirmModalLabel">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Reactivate Subscription
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to reactivate this subscription?</p>
+            </div>
+            <div class="modal-footer border-success">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="confirmReactivateBtn">
+                    <i class="fas fa-check-circle me-2"></i>Reactivate
+                </button>
             </div>
         </div>
     </div>
@@ -589,21 +951,123 @@ document.addEventListener('DOMContentLoaded', function() {
         let dataTable = null;
 
     const usersTable = document.getElementById('usersTable');
-    const manageModal = new bootstrap.Modal(document.getElementById('manageUserModal'));
+    const manageModalElement = document.getElementById('manageUserModal');
+    const cancelConfirmModalElement = document.getElementById('cancelConfirmModal');
+    const reactivateConfirmModalElement = document.getElementById('reactivateConfirmModal');
+    
+    let manageModal = null;
+    let cancelConfirmModal = null;
+    let reactivateConfirmModal = null;
+    
+    // Initialize modals only if elements exist
+    if (manageModalElement) {
+        manageModal = new bootstrap.Modal(manageModalElement);
+        // Add event listener to clean up when modal is hidden
+        manageModalElement.addEventListener('hidden.bs.modal', function () {
+            // Reset form fields
+            const cancelType = document.getElementById('cancelType');
+            const cancelFeedback = document.getElementById('cancelFeedback');
+            if (cancelType) cancelType.value = 'immediate';
+            if (cancelFeedback) cancelFeedback.value = '';
+            
+            // Remove loading states
+            const buttons = document.querySelectorAll('.subscription-action.loading');
+            buttons.forEach(btn => btn.classList.remove('loading'));
+        });
+    }
+    if (cancelConfirmModalElement) {
+        cancelConfirmModal = new bootstrap.Modal(cancelConfirmModalElement);
+        // Add event listener to clean up when modal is hidden
+        cancelConfirmModalElement.addEventListener('hidden.bs.modal', function () {
+            // Remove loading state from confirm button
+            const confirmBtn = document.getElementById('confirmCancelBtn');
+            if (confirmBtn) confirmBtn.classList.remove('loading');
+        });
+    }
+    if (reactivateConfirmModalElement) {
+        reactivateConfirmModal = new bootstrap.Modal(reactivateConfirmModalElement);
+        // Add event listener to clean up when modal is hidden
+        reactivateConfirmModalElement.addEventListener('hidden.bs.modal', function () {
+            // Remove loading state from confirm button
+            const confirmBtn = document.getElementById('confirmReactivateBtn');
+            if (confirmBtn) confirmBtn.classList.remove('loading');
+        });
+    }
+    
     let currentUserId = null;
     let currentUser = null;
+
+    // Helper functions for tier display
+    function getTierBadgeClass(tier) {
+        if (!tier || tier === 'free') return 'bg-secondary';
+        
+        const tierClasses = {
+            'bronze': 'bg-warning',
+            'silver': 'bg-secondary',
+            'gold': 'bg-warning',
+            'platinum': 'bg-info',
+            'bronze_annual': 'bg-warning',
+            'silver_annual': 'bg-secondary',
+            'gold_annual': 'bg-warning',
+            'platinum_annual': 'bg-info',
+            'pause_one_month': 'bg-warning',
+            'pause_two_month': 'bg-warning',
+            'pause_three_month': 'bg-warning',
+            'student_monthly': 'bg-success',
+            'student_semester': 'bg-success',
+            'student_annual': 'bg-success',
+            'call_outreach': 'bg-primary'
+        };
+        
+        return tierClasses[tier] || 'bg-secondary';
+    }
+    
+    function getTierIcon(tier) {
+        if (!tier || tier === 'free') return 'user';
+        
+        const tierIcons = {
+            'bronze': 'medal',
+            'silver': 'medal',
+            'gold': 'medal',
+            'platinum': 'crown',
+            'bronze_annual': 'medal',
+            'silver_annual': 'medal',
+            'gold_annual': 'medal',
+            'platinum_annual': 'crown',
+            'pause_one_month': 'pause-circle',
+            'pause_two_month': 'pause-circle',
+            'pause_three_month': 'pause-circle',
+            'student_monthly': 'graduation-cap',
+            'student_semester': 'graduation-cap',
+            'student_annual': 'graduation-cap',
+            'call_outreach': 'phone'
+        };
+        
+        return tierIcons[tier] || 'user';
+    }
 
     // Update stats
     function updateStats() {
         const total = users.length;
-        const active = users.filter(u => u.is_active).length;
-            const premium = users.filter(u => u.tier && u.tier !== 'free').length;
+        const active = users.filter(u => u.status === 'active' && u.is_active).length;
+        
+        // Define premium tiers to count
+        const premiumTiers = [
+            'bronze', 'silver', 'gold', 'platinum',
+            'bronze_annual', 'silver_annual', 'gold_annual', 'platinum_annual',
+            'pause_one_month', 'pause_two_month', 'pause_three_month',
+            'student_monthly', 'student_semester', 'student_annual',
+            'call_outreach'
+        ];
+        
+        const premium = users.filter(u => u.tier && premiumTiers.includes(u.tier) && u.status === 'active').length;
+        
         const expiring = users.filter(u => {
             if (!u.subscription?.expires_at) return false;
             const expires = new Date(u.subscription.expires_at);
             const now = new Date();
             const diffDays = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
-            return diffDays <= 7 && diffDays > 0;
+            return diffDays <= 7 && diffDays > 0 && u.status === 'active';
         }).length;
 
         document.getElementById('totalUsers').textContent = total;
@@ -692,6 +1156,29 @@ document.addEventListener('DOMContentLoaded', function() {
             tbody.innerHTML = '';
 
             users.forEach(user => {
+                // Determine status based on user.status field and subscription state
+                let statusDisplay = 'Active';
+                let statusClass = 'bg-success';
+                let statusIcon = 'check-circle';
+                
+                if (user.status === 'cancelled') {
+                    statusDisplay = 'Cancelled';
+                    statusClass = 'bg-danger';
+                    statusIcon = 'times-circle';
+                } else if (user.status === 's_cancelled') {
+                    statusDisplay = 'Scheduled Cancelled';
+                    statusClass = 'bg-warning';
+                    statusIcon = 'clock';
+                } else if (user.status === 'pause') {
+                    statusDisplay = 'Paused';
+                    statusClass = 'bg-info';
+                    statusIcon = 'pause-circle';
+                } else if (!user.is_active) {
+                    statusDisplay = 'Inactive';
+                    statusClass = 'bg-secondary';
+                    statusIcon = 'ban';
+                }
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>
@@ -706,9 +1193,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </td>
                     <td>
-                        <span class="badge ${user.is_active ? 'bg-success' : 'bg-danger'} rounded-pill">
-                            <i class="fas fa-${user.is_active ? 'check' : 'times'}-circle me-1"></i>
-                            ${user.is_active ? 'Active' : 'Inactive'}
+                        <span class="badge ${statusClass} rounded-pill">
+                            <i class="fas fa-${statusIcon} me-1"></i>
+                            ${statusDisplay}
                         </span>
                     </td>
                     <td>
@@ -718,9 +1205,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         </span>
                     </td>
                     <td>
-                        <span class="badge ${user.subscription?.plan === 'premium' ? 'bg-warning' : user.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'} rounded-pill">
-                            <i class="fas fa-${user.subscription?.plan === 'premium' ? 'crown' : 'user'}-me-1"></i>
-                            ${user.subscription?.plan || 'Free'}
+                        <span class="badge ${getTierBadgeClass(user.tier)} rounded-pill">
+                            <i class="fas fa-${getTierIcon(user.tier)} me-1"></i>
+                            ${user.tier || 'Free'}
                         </span>
                     </td>
                     <td>
@@ -739,13 +1226,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     </td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary manage-user" data-user-id="${user.id}">
+                        <button class="btn btn-manage" data-user-id="${user.id}">
                             <i class="fas fa-cog"></i>
                             <span class="d-none d-md-inline ms-1">Manage</span>
                         </button>
                     </td>
                 `;
                 tbody.appendChild(row);
+                
+                // Add event listener to the manage button
+                const manageBtn = row.querySelector('.btn-manage');
+                if (manageBtn) {
+                    manageBtn.addEventListener('click', () => openManageModal(user.id));
+                }
             });
 
             // Update stats
@@ -771,91 +1264,121 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-        // Update modal management with proper focus handling
-    function openManageModal(userId) {
-        currentUserId = userId;
-        currentUser = users.find(u => u.id === userId);
-        if (currentUser) {
-            const infoHtml = `
-                <div class="mb-3">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="avatar-circle bg-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-3">
-                            ${currentUser.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                            <h5 class="mb-1">${currentUser.username}</h5>
-                            <p class="text-muted mb-0">${currentUser.email}</p>
-                        </div>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-circle text-${currentUser.is_active ? 'success' : 'danger'} me-2"></i>
-                                <span>${currentUser.is_active ? 'Active' : 'Inactive'}</span>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-${currentUser.role === 'admin' ? 'shield-alt' : currentUser.role === 'developer' ? 'code' : 'user'} text-${currentUser.role === 'admin' ? 'primary' : currentUser.role === 'developer' ? 'info' : 'secondary'} me-2"></i>
-                                <span>${currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <hr class="border-secondary">
-                <div class="row g-3">
-                    <div class="col-6">
-                        <small class="text-muted d-block">Subscription Plan</small>
-                        <span class="badge ${currentUser.subscription?.plan === 'premium' ? 'bg-warning' : currentUser.subscription?.plan === 'enterprise' ? 'bg-danger' : 'bg-secondary'}">
-                            ${currentUser.subscription?.plan || 'Free'}
-                        </span>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">Credits</small>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-coins text-warning me-2"></i>
-                            ${currentUser.subscription?.credits || 0}
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <small class="text-muted d-block">Expires At</small>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-calendar-alt text-info me-2"></i>
-                            ${currentUser.subscription?.expires_at ? new Date(currentUser.subscription.expires_at).toLocaleDateString() : 'N/A'}
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.getElementById('userInfo').innerHTML = infoHtml;
+    // Update button visibility based on subscription status
+    function updateActionButtons(user) {
+        const cancelBtn = document.getElementById('cancelSubscriptionBtn');
+        const reactivateBtn = document.getElementById('reactivateSubscriptionBtn');
+        
+        if (cancelBtn && reactivateBtn) {
+            // Check if user has a paid subscription (not free tier)
+            const hasPaidSubscription = user.tier && user.tier !== 'free' && user.tier !== null;
+            const isCanceled = user.status === 'cancelled';
+            const isScheduledCanceled = user.status === 's_cancelled';
             
-            // Set toggle status button
-            const toggleBtn = document.getElementById('toggleStatusBtn');
-            toggleBtn.innerHTML = `
-                <i class="fas fa-${currentUser.is_active ? 'ban' : 'check'}-circle me-2"></i>
-                ${currentUser.is_active ? 'Deactivate User' : 'Activate User'}
-            `;
-            toggleBtn.className = `btn btn-outline-${currentUser.is_active ? 'warning' : 'success'}`;
-            
-                // Store the last focused element
-                const lastFocusedElement = document.activeElement;
-                
-                // Show modal
-            manageModal.show();
-                
-                // Focus the first focusable element in the modal
-                const firstFocusable = manageModal._element.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-                if (firstFocusable) {
-                    firstFocusable.focus();
-                }
-
-                // Handle modal hidden event
-                manageModal._element.addEventListener('hidden.bs.modal', function () {
-                    // Restore focus to the last focused element
-                    if (lastFocusedElement) {
-                        lastFocusedElement.focus();
-                    }
-                }, { once: true });
+            // Show cancel button if user has paid subscription and not canceled
+            if (hasPaidSubscription && !isCanceled && !isScheduledCanceled) {
+                cancelBtn.style.display = 'block';
+                reactivateBtn.style.display = 'none';
+            } 
+            // Show reactivate button if subscription is scheduled for cancellation
+            else if (hasPaidSubscription && isScheduledCanceled) {
+                cancelBtn.style.display = 'none';
+                reactivateBtn.style.display = 'block';
+            } 
+            // Hide both buttons in all other cases
+            else {
+                cancelBtn.style.display = 'none';
+                reactivateBtn.style.display = 'none';
+            }
         }
+    }
+
+    // Function to open manage modal
+    function openManageModal(userId) {
+        const user = users.find(u => u.id === userId);
+        if (!user || !manageModal) return;
+        
+        currentUserId = userId;
+        currentUser = user;
+        
+        // Update user avatar and basic info
+        const avatarDiv = document.getElementById('modalUserAvatar');
+        if (avatarDiv) {
+            avatarDiv.className = `avatar-circle bg-${user.role === 'admin' ? 'primary' : user.role === 'developer' ? 'info' : 'secondary'}`;
+            avatarDiv.textContent = user.username.charAt(0).toUpperCase();
+        }
+        
+        // Update user information
+        const elements = {
+            'modalUsername': user.username,
+            'modalEmail': user.email,
+            'modalRole': user.role.charAt(0).toUpperCase() + user.role.slice(1),
+            'modalTier': user.tier || 'Free',
+            'modalCredits': user.subscription?.credits || '0',
+            'modalExpiresAt': user.subscription?.expires_at ? new Date(user.subscription.expires_at).toLocaleDateString() : 'N/A'
+        };
+        
+        // Update status display
+        let statusDisplay = 'Active';
+        let statusClass = 'success';
+        let statusIcon = 'check-circle';
+        
+        if (user.status === 'cancelled') {
+            statusDisplay = 'Cancelled';
+            statusClass = 'danger';
+            statusIcon = 'times-circle';
+        } else if (user.status === 's_cancelled') {
+            statusDisplay = 'Scheduled Cancelled';
+            statusClass = 'warning';
+            statusIcon = 'clock';
+        } else if (user.status === 'pause') {
+            statusDisplay = 'Paused';
+            statusClass = 'info';
+            statusIcon = 'pause-circle';
+        } else if (!user.is_active) {
+            statusDisplay = 'Inactive';
+            statusClass = 'secondary';
+            statusIcon = 'ban';
+        }
+        
+        // Update status elements
+        const statusIconEl = document.getElementById('modalStatusIcon');
+        if (statusIconEl) {
+            statusIconEl.className = `fas fa-${statusIcon} text-${statusClass} me-2`;
+        }
+        
+        const statusEl = document.getElementById('modalStatus');
+        if (statusEl) {
+            statusEl.textContent = statusDisplay;
+        }
+        
+        // Update role icon
+        const roleIconEl = document.getElementById('modalRoleIcon');
+        if (roleIconEl) {
+            roleIconEl.className = `fas fa-${user.role === 'admin' ? 'shield-alt' : user.role === 'developer' ? 'code' : 'user'} text-${user.role === 'admin' ? 'primary' : user.role === 'developer' ? 'info' : 'secondary'} me-2`;
+        }
+        
+        // Update tier badge
+        const tierBadgeEl = document.getElementById('modalTierBadge');
+        const tierIconEl = document.getElementById('modalTierIcon');
+        if (tierBadgeEl && tierIconEl) {
+            tierBadgeEl.className = `badge ${getTierBadgeClass(user.tier)}`;
+            tierIconEl.className = `fas fa-${getTierIcon(user.tier)} me-1`;
+        }
+        
+        // Update all text content
+        Object.entries(elements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        });
+        
+        // Update action buttons visibility based on user status
+        updateActionButtons(user);
+        
+        // Show modal
+        manageModal.show();
     }
 
     // Add toast notification function
@@ -883,30 +1406,45 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event Listeners
     document.getElementById('refreshBtn').addEventListener('click', loadUsers);
     
-        // Initialize cancel subscription modal
-        const cancelSubscriptionModal = new bootstrap.Modal(document.getElementById('cancelSubscriptionModal'));
-
-        // Update cancel subscription button click handler
-        document.getElementById('cancelSubscriptionBtn').addEventListener('click', function() {
-            if (!currentUser) return;
-            cancelSubscriptionModal.show();
+    // Add event listeners only if elements exist
+    const cancelBtn = document.getElementById('cancelSubscriptionBtn');
+    const reactivateBtn = document.getElementById('reactivateSubscriptionBtn');
+    const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+    const confirmReactivateBtn = document.getElementById('confirmReactivateBtn');
+    
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            if (!currentUser || !cancelConfirmModal) return;
+            cancelConfirmModal.show();
         });
-
-        // Update cancel subscription handlers with better error handling
-        document.getElementById('immediateCancelBtn').addEventListener('click', async function() {
-        if (!currentUser) return;
-        try {
-                const response = await fetch('/api/subscription/cancel', {
+    }
+    
+    if (reactivateBtn) {
+        reactivateBtn.addEventListener('click', function() {
+            if (!currentUser || !reactivateConfirmModal) return;
+            reactivateConfirmModal.show();
+        });
+    }
+    
+    if (confirmCancelBtn) {
+        confirmCancelBtn.addEventListener('click', async function() {
+            try {
+                const button = this;
+                button.classList.add('loading');
+                
+                // Use admin endpoint to cancel user subscription
+                const response = await fetch(`/api/auth/user/${currentUser.id}/cancel_subscription`, {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                body: JSON.stringify({ 
-                        cancellation_type: 'immediate',
-                        user_id: currentUser.id
-                })
-            });
+                    body: JSON.stringify({
+                        cancellation_type: document.getElementById('cancelType').value,
+                        feedback: document.getElementById('cancelFeedback').value,
+                        comment: document.getElementById('cancelFeedback').value // Use feedback as comment
+                    })
+                });
 
                 const data = await response.json();
                 
@@ -914,87 +1452,103 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(data.error || 'Failed to cancel subscription');
                 }
 
-                manageModal.hide();
-                cancelSubscriptionModal.hide();
-                await loadUsers(); // Reload users after successful cancellation
-                showToast(data.message || 'Subscription cancelled immediately');
-            } catch (error) {
-                console.error('Cancellation error:', error);
-                showToast(error.message || 'Error cancelling subscription', 'error');
-            }
-        });
-
-        // Similar update for periodEndCancelBtn
-        document.getElementById('periodEndCancelBtn').addEventListener('click', async function() {
-            if (!currentUser) return;
-            try {
-                const response = await fetch('/api/subscription/cancel', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
+                if (cancelConfirmModal) cancelConfirmModal.hide();
+                if (manageModal) manageModal.hide();
+                
+                // Reload users to get updated data
+                await loadUsers();
+                
+                // Refresh modal content with updated user data
+                const updatedUsers = await fetch('/api/admin/users', {
+                    headers: {
+                        'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({
-                        cancellation_type: 'period_end',
-                        user_id: currentUser.id
-                    })
+                    credentials: 'same-origin'
+                }).then(res => res.json()).then(data => data.users || []);
+                
+                // Find and update current user data
+                const updatedUser = updatedUsers.find(u => u.id === currentUser.id);
+                if (updatedUser) {
+                    currentUser = updatedUser;
+                    // Refresh modal content
+                    openManageModal(currentUser.id);
+                }
+                
+                showToast(data.message || 'Subscription cancelled successfully', 'success');
+            } catch (error) {
+                console.error('Error cancelling subscription:', error);
+                showToast(error.message || 'Failed to cancel subscription', 'error');
+            } finally {
+                button.classList.remove('loading');
+            }
+        });
+    }
+    
+    if (confirmReactivateBtn) {
+        confirmReactivateBtn.addEventListener('click', async function() {
+            const button = this;  // Store button reference
+            try {
+                button.classList.add('loading');
+                button.disabled = true;  // Disable button while processing
+                
+                // Use admin endpoint to reactivate user subscription
+                const response = await fetch(`/api/auth/user/${currentUser.id}/reactivate_subscription`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
                 });
 
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Failed to schedule subscription cancellation');
+                    // Check specific error cases
+                    if (response.status === 400 && data.error === 'Subscription is not scheduled for cancellation') {
+                        throw new Error('Only subscriptions that are scheduled for cancellation can be reactivated');
+                    }
+                    throw new Error(data.error || 'Failed to reactivate subscription');
                 }
 
-                manageModal.hide();
-                cancelSubscriptionModal.hide();
-                await loadUsers(); // Reload users after successful cancellation
-                showToast(data.message || 'Subscription scheduled for cancellation at period end');
-        } catch (error) {
-                console.error('Cancellation error:', error);
-                showToast(error.message || 'Error scheduling subscription cancellation', 'error');
-        }
-    });
-
-    document.getElementById('toggleStatusBtn').addEventListener('click', async function() {
-        if (!currentUser) return;
-        if (!confirm(`Are you sure you want to ${currentUser.is_active ? 'deactivate' : 'activate'} this user?`)) return;
-        try {
-            const response = await fetch(`/api/admin/users/${currentUser.id}/toggle-status`, { 
-                method: 'POST' 
-            });
-            if (response.ok) {
-                manageModal.hide();
-                loadUsers();
-                showToast(`User ${currentUser.is_active ? 'deactivated' : 'activated'} successfully`);
-            } else {
-                throw new Error('Failed to toggle user status');
+                // Hide reactivate confirmation modal
+                if (reactivateConfirmModal) {
+                    reactivateConfirmModal.hide();
+                }
+                
+                // Reload users to get updated data
+                await loadUsers();
+                
+                // Find and update current user data
+                const updatedUsers = await fetch('/api/admin/users', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                }).then(res => res.json()).then(data => data.users || []);
+                
+                // Find and update current user data
+                const updatedUser = updatedUsers.find(u => u.id === currentUser.id);
+                if (updatedUser) {
+                    currentUser = updatedUser;
+                    // Update modal content with new data and refresh button visibility
+                    openManageModal(currentUser.id);
+                }
+                
+                showToast(data.message || 'Subscription reactivated successfully', 'success');
+            } catch (error) {
+                console.error('Error reactivating subscription:', error);
+                showToast(error.message || 'Failed to reactivate subscription', 'danger');
+            } finally {
+                // Always cleanup button state
+                if (button) {
+                    button.classList.remove('loading');
+                    button.disabled = false;
+                }
             }
-        } catch (error) {
-            showToast('Error changing user status', 'error');
-        }
-    });
-
-    document.getElementById('pauseSubscriptionBtn').addEventListener('click', async function() {
-        if (!currentUser) return;
-        if (!confirm('Are you sure you want to pause this user\'s subscription?')) return;
-        try {
-            const response = await fetch(`/api/admin/users/${currentUser.id}/subscription`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'suspended' })
-            });
-            if (response.ok) {
-                manageModal.hide();
-                loadUsers();
-                showToast('Subscription paused successfully');
-            } else {
-                throw new Error('Failed to pause subscription');
-            }
-        } catch (error) {
-            showToast('Error pausing subscription', 'error');
-        }
-    });
+        });
+    }
 
     // Initial load
     loadUsers();

@@ -48,12 +48,15 @@ def get_users():
                     'email': user.email,
                     'is_active': user.is_active,
                     'role': user.role,
+                    'tier': user.tier,
+                    'status': user.status,
                     'created_at': user.created_at.isoformat() if user.created_at else None,
                     'subscription': {
                         'plan': subscription.plan_name if subscription else None,
                         'status': 'active' if subscription and subscription.plan_expiration_timestamp and subscription.plan_expiration_timestamp > datetime.utcnow() else 'inactive',
                         'credits': subscription.credits_remaining if subscription else 0,
-                        'expires_at': subscription.plan_expiration_timestamp.isoformat() if subscription and subscription.plan_expiration_timestamp else None
+                        'expires_at': subscription.plan_expiration_timestamp.isoformat() if subscription and subscription.plan_expiration_timestamp else None,
+                        'is_canceled': subscription.is_canceled if subscription else False
                     } if subscription else None
                 }
                 user_list.append(user_data)
