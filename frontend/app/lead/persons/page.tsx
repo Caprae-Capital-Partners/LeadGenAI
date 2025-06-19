@@ -124,15 +124,17 @@ const EmailMessageGenerator: React.FC<EmailMessageGeneratorProps> = ({
 }) => {
   return (
     <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Email Message Generator</h2>
-        <button 
-          onClick={onClose}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
+      <div className="flex justify-between items-center mb-4">
+  <h2 className="text-2xl font-bold">Email Message Generator</h2>
+  <Button 
+    variant="ghost"
+    size="sm"
+    onClick={onClose}
+    className="h-8 w-8 p-0"
+  >
+    <X className="h-4 w-4" />
+  </Button>
+</div>
 
       <div className="space-y-4">
         <div className="p-4 border rounded-lg text-white bg-gray-600">
@@ -209,12 +211,12 @@ const EmailMessageGenerator: React.FC<EmailMessageGeneratorProps> = ({
         </div>
 
         {generatedMessage && (
-          <div className="mt-4 space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Generated Message</label>
-            <div className="p-4 border rounded-lg text-white bg-gray-600 whitespace-pre-wrap">
-              {generatedMessage}
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
+  <div className="mt-4 space-y-2">
+    <label className="block text-sm font-medium text-gray-700">Generated Message</label>
+    <div className="p-4 border rounded-lg text-white bg-gray-600 whitespace-pre-wrap max-h-60 overflow-y-auto">
+      {generatedMessage}
+    </div>
+    <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => {
                 navigator.clipboard.writeText(generatedMessage);
                 // You might want to show a notification here
@@ -1398,22 +1400,25 @@ return (
       onSave={handlePopupSave}
     />
 
-    {/* Email Popup Dialog */}
-    {emailPopupData && (
-      <Dialog open={!!emailPopupData} onOpenChange={() => setEmailPopupData(null)}>
-        <DialogContent className="max-w-2xl">
-          <EmailMessageGenerator
-            person={emailPopupData}
-            onClose={() => setEmailPopupData(null)}
-            onGenerate={() => generateEmailMessage(emailPopupData, messageSettings)}
-            generatedMessage={generatedMessage}
-            isGenerating={isGenerating}
-            settings={messageSettings}
-            onSettingsChange={setMessageSettings}
-          />
-        </DialogContent>
-      </Dialog>
-    )}
+   {/* Email Popup Dialog */}
+{emailPopupData && (
+  <Dialog open={!!emailPopupData} onOpenChange={() => setEmailPopupData(null)}>
+    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Email Message Generator</DialogTitle>
+      </DialogHeader>
+      <EmailMessageGenerator
+        person={emailPopupData}
+        onClose={() => setEmailPopupData(null)}
+        onGenerate={() => generateEmailMessage(emailPopupData, messageSettings)}
+        generatedMessage={generatedMessage}
+        isGenerating={isGenerating}
+        settings={messageSettings}
+        onSettingsChange={setMessageSettings}
+      />
+    </DialogContent>
+  </Dialog>
+)}
 
     {/* Notification */}
     {notif.show && (
