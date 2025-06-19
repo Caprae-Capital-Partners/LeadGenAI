@@ -3,11 +3,12 @@ import React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { EnrichmentResults } from "../components/enrichment-results"
+import { PeopleEnrichmentResults } from "../components/people-enrichment-results"
 import { Button } from "../components/ui/button"
 import { Checkbox } from "../components/ui/checkbox"
 import { Input } from "../components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
-import { Search, Filter, Download, X, ExternalLink } from "lucide-react"
+import { Search, Filter, Download, X, ExternalLink, ChevronDown, Building, Users, Database } from "lucide-react"
 import { useLeads } from "./LeadsProvider"
 import type { ApolloCompany, GrowjoCompany, ApolloPerson } from "../types/enrichment"
 import axios from "axios"
@@ -221,6 +222,13 @@ export function DataEnhancement() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
+
+  // Dropdown state for enrichment options
+  const [enrichmentType, setEnrichmentType] = useState<"company" | "people" | "both">("company")
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [peopleSubDropdownOpen, setPeopleSubDropdownOpen] = useState(false)
+  const [selectedDataSource, setSelectedDataSource] = useState<"growjo" | "apollo" | "both">("apollo")
+  const [showPeopleResults, setShowPeopleResults] = useState(false)
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -491,11 +499,37 @@ export function DataEnhancement() {
     source: lead.source,
     sourceType: lead.source_type,
   });
+
   const [dbOnlyMode, setDbOnlyMode] = useState(true);
   const [fromDatabaseLeads, setFromDatabaseLeads] = useState<string[]>([]); // lowercase names
   const { enrichedCompanies, setEnrichedCompanies } = useEnrichment();
   const [leadToDraftMap, setLeadToDraftMap] = useState<Record<string, { draft_id: string, company: string }>>({});
   const draftMap: Record<string, { draft_id: string; company: string }> = {};
+
+  // Helper functions for dropdown enrichment
+  const handleStartEnrichmentDropdown = (type: "company" | "people" | "both", dataSource?: "growjo" | "apollo" | "both") => {
+    setEnrichmentType(type)
+    if (dataSource) {
+      setSelectedDataSource(dataSource)
+    }
+    setDropdownOpen(false)
+    setPeopleSubDropdownOpen(false)
+    
+    // Call the existing enrichment function
+    setMergedView(false);
+    handleStartEnrichment(false);
+  }
+
+  const handlePeopleEnrichment = (dataSource: "growjo" | "apollo" | "both") => {
+    setSelectedDataSource(dataSource)
+    setDropdownOpen(false)
+    setPeopleSubDropdownOpen(false)
+    setShowPeopleResults(true)
+  }
+
+  const handleBackFromPeopleResults = () => {
+    setShowPeopleResults(false)
+  }
 
   const handleStartEnrichment = async (
     forceScrape = false,
@@ -635,7 +669,7 @@ export function DataEnhancement() {
         }
       }
 
-      // ── Step 4: Determine “toScrape” ──
+      // ── Step 4: Determine "toScrape" ──
       const toScrape = forceScrape
         ? selected
         : selected.filter(c => !existingNames.has(c.company.toLowerCase()));
@@ -652,7 +686,7 @@ export function DataEnhancement() {
         }
 
         if (!isInitialized) {
-          // Show a persistent “please wait…” notification
+          // Show a persistent "please wait…" notification
           showNotification("Initializing scraper, please wait...", "info");
 
           try {
@@ -666,12 +700,12 @@ export function DataEnhancement() {
             return;
           }
 
-          // Hide that “Initializing…” notification now that init is done
+          // Hide that "Initializing…" notification now that init is done
           setNotif(prev => ({ ...prev, show: false }));
         }
       }
 
-      // ── Step 6: Loop through “toScrape” ──
+      // ── Step 6: Loop through "toScrape" ──
       for (const company of toScrape) {
         try {
           const lead_id_before = company.lead_id || "";
@@ -846,484 +880,598 @@ export function DataEnhancement() {
 
 
   return (
+    <>
+      {/* Show People Enrichment Results */}
+      {showPeopleResults && (
+        <PeopleEnrichmentResults
+          onBack={handleBackFromPeopleResults}
+          selectedCompanies={selectedCompanies.map(id => id.toString())}
+          dataSource={selectedDataSource}
+        />
+      )}
 
-    <div className="space-y-6">
-      <Button
-        onClick={handleBack}
-        className="text-sm text-blue-600 hover:underline mb-4"
-      >
-        Back
-      </Button>
-      <div>
-        <h1 className="text-3xl font-bold">Data Enhancement</h1>
-        <p className="text-muted-foreground">Enrich company data with additional information</p>
-      </div>
+      {/* Main Data Enhancement View */}
+      {!showPeopleResults && (
+        <div className="space-y-6">
+          <Button
+            onClick={handleBack}
+            className="text-sm text-blue-600 hover:underline mb-4"
+          >
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Data Enhancement</h1>
+            <p className="text-muted-foreground">Enrich company data with additional information</p>
+          </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Companies</CardTitle>
-          <CardDescription>Select companies to enrich with additional data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Search companies..." className="pl-8" />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className="h-4 w-4" />
-                {showFilters ? "Hide Filters" : "Show Filters"}
-              </Button>
-            </div>
-            {showFilters && (
-              <div className="flex flex-wrap gap-4 my-4">
-                <Input
-                  placeholder="Industry (e.g. Software)"
-                  value={industryFilter}
-                  onChange={(e) => setIndustryFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="City (e.g. Los Angeles)"
-                  value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="State (e.g. CA)"
-                  value={stateFilter}
-                  onChange={(e) => setStateFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="BBB Rating (e.g. A+)"
-                  value={bbbRatingFilter}
-                  onChange={(e) => setBbbRatingFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setIndustryFilter("")
-                    setCityFilter("")
-                    setStateFilter("")
-                    setBbbRatingFilter("")
-                  }}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Clear Filters
-                </Button>
-              </div>
-            )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Companies</CardTitle>
+              <CardDescription>Select companies to enrich with additional data</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input type="search" placeholder="Search companies..." className="pl-8" />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                    <Filter className="h-4 w-4" />
+                    {showFilters ? "Hide Filters" : "Show Filters"}
+                  </Button>
+                </div>
+                {showFilters && (
+                  <div className="flex flex-wrap gap-4 my-4">
+                    <Input
+                      placeholder="Industry (e.g. Software)"
+                      value={industryFilter}
+                      onChange={(e) => setIndustryFilter(e.target.value)}
+                      className="w-[240px]"
+                    />
+                    <Input
+                      placeholder="City (e.g. Los Angeles)"
+                      value={cityFilter}
+                      onChange={(e) => setCityFilter(e.target.value)}
+                      className="w-[240px]"
+                    />
+                    <Input
+                      placeholder="State (e.g. CA)"
+                      value={stateFilter}
+                      onChange={(e) => setStateFilter(e.target.value)}
+                      className="w-[240px]"
+                    />
+                    <Input
+                      placeholder="BBB Rating (e.g. A+)"
+                      value={bbbRatingFilter}
+                      onChange={(e) => setBbbRatingFilter(e.target.value)}
+                      className="w-[240px]"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIndustryFilter("")
+                        setCityFilter("")
+                        setStateFilter("")
+                        setBbbRatingFilter("")
+                      }}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Clear Filters
+                    </Button>
+                  </div>
+                )}
 
-            <div className="w-full overflow-x-auto rounded-md border">
-              <div className="w-full overflow-x-auto rounded-md border">
-                <Table className="w-full table-fixed">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12 bg-[#1e263a]">
-                        <Checkbox
-                          checked={selectAll}
-                          onCheckedChange={handleSelectAll}
-                          aria-label="Select all"
-                        />
-                      </TableHead>
+                <div className="w-full overflow-x-auto rounded-md border">
+                  <div className="w-full overflow-x-auto rounded-md border">
+                    <Table className="w-full table-fixed">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12 bg-[#1e263a]">
+                            <Checkbox
+                              checked={selectAll}
+                              onCheckedChange={handleSelectAll}
+                              aria-label="Select all"
+                            />
+                          </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('company')}
-                      >
-                        <div className="flex items-center">
-                          Company
-                          {sortConfig?.key === 'company' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                          <TableHead
+                            className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                            onClick={() => requestSort('company')}
+                          >
+                            <div className="flex items-center">
+                              Company
+                              {sortConfig?.key === 'company' && (
+                                <span className="ml-2">
+                                  {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
+                          </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('industry')}
-                      >
-                        <div className="flex items-center">
-                          Industry
-                          {sortConfig?.key === 'industry' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                          <TableHead
+                            className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                            onClick={() => requestSort('industry')}
+                          >
+                            <div className="flex items-center">
+                              Industry
+                              {sortConfig?.key === 'industry' && (
+                                <span className="ml-2">
+                                  {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
+                          </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('street')}
-                      >
-                        <div className="flex items-center">
-                          Street
-                          {sortConfig?.key === 'street' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                          <TableHead
+                            className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                            onClick={() => requestSort('street')}
+                          >
+                            <div className="flex items-center">
+                              Street
+                              {sortConfig?.key === 'street' && (
+                                <span className="ml-2">
+                                  {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
+                          </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('city')}
-                      >
-                        <div className="flex items-center">
-                          City
-                          {sortConfig?.key === 'city' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                          <TableHead
+                            className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                            onClick={() => requestSort('city')}
+                          >
+                            <div className="flex items-center">
+                              City
+                              {sortConfig?.key === 'city' && (
+                                <span className="ml-2">
+                                  {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
+                          </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('state')}
-                      >
-                        <div className="flex items-center">
-                          State
-                          {sortConfig?.key === 'state' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                          <TableHead
+                            className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                            onClick={() => requestSort('state')}
+                          >
+                            <div className="flex items-center">
+                              State
+                              {sortConfig?.key === 'state' && (
+                                <span className="ml-2">
+                                  {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
+                          </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('bbb_rating')}
-                      >
-                        <div className="flex items-center">
-                          BBB Rating
-                          {sortConfig?.key === 'bbb_rating' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                          <TableHead
+                            className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                            onClick={() => requestSort('bbb_rating')}
+                          >
+                            <div className="flex items-center">
+                              BBB Rating
+                              {sortConfig?.key === 'bbb_rating' && (
+                                <span className="ml-2">
+                                  {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
+                          </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('business_phone')}
-                      >
-                        <div className="flex items-center">
-                          Company Phone
-                          {sortConfig?.key === 'business_phone' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                          <TableHead
+                            className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                            onClick={() => requestSort('business_phone')}
+                          >
+                            <div className="flex items-center">
+                              Company Phone
+                              {sortConfig?.key === 'business_phone' && (
+                                <span className="ml-2">
+                                  {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
+                          </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('website')}
-                      >
-                        <div className="flex items-center">
-                          Website
-                          {sortConfig?.key === 'website' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <>
-                      {currentItems.length > 0 &&
-                        currentItems.map((company) => (
-                          <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
-                            <TableCell>
-                              <Checkbox
-                                checked={selectedCompanies.includes(company.id)}
-                                onCheckedChange={() => handleSelectCompany(company.id)}
-                                aria-label={`Select ${company.company}`}
-                              />
-                            </TableCell>
-                            <TableCell className="font-medium">{company.company}</TableCell>
-                            <TableCell>{company.industry}</TableCell>
-                            <TableCell>{company.street}</TableCell>
-                            <TableCell>{company.city}</TableCell>
-                            <TableCell>{company.state}</TableCell>
-                            <TableCell>{company.bbb_rating}</TableCell>
-                            <TableCell>{company.business_phone}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {company.website && company.website !== "N/A" && company.website !== "NA" ? (
-                                  <a
-                                    href={
-                                      company.website.toString().startsWith("http")
-                                        ? company.website
-                                        : `https://${company.website}`
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-500 hover:text-blue-700"
-                                    title="Open website in new tab"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {cleanUrlForDisplay(company.website)}
-                                  </a>
-                                ) : (
-                                  <span className="text-gray-500">N/A</span>
-                                )}
+                          <TableHead
+                            className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
+                            onClick={() => requestSort('website')}
+                          >
+                            <div className="flex items-center">
+                              Website
+                              {sortConfig?.key === 'website' && (
+                                <span className="ml-2">
+                                  {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <>
+                          {currentItems.length > 0 &&
+                            currentItems.map((company) => (
+                              <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
+                                <TableCell>
+                                  <Checkbox
+                                    checked={selectedCompanies.includes(company.id)}
+                                    onCheckedChange={() => handleSelectCompany(company.id)}
+                                    aria-label={`Select ${company.company}`}
+                                  />
+                                </TableCell>
+                                <TableCell className="font-medium">{company.company}</TableCell>
+                                <TableCell>{company.industry}</TableCell>
+                                <TableCell>{company.street}</TableCell>
+                                <TableCell>{company.city}</TableCell>
+                                <TableCell>{company.state}</TableCell>
+                                <TableCell>{company.bbb_rating}</TableCell>
+                                <TableCell>{company.business_phone}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {company.website && company.website !== "N/A" && company.website !== "NA" ? (
+                                      <a
+                                        href={
+                                          company.website.toString().startsWith("http")
+                                            ? company.website
+                                            : `https://${company.website}`
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-500 hover:text-blue-700"
+                                        title="Open website in new tab"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {cleanUrlForDisplay(company.website)}
+                                      </a>
+                                    ) : (
+                                      <span className="text-gray-500">N/A</span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+
+                          {/* {loading && (
+                          <TableRow key="loading-row">
+                            <TableCell colSpan={9} className="text-center py-8">
+                              <div className="flex justify-center">
+                                <Loader />
                               </div>
+                              <div className="mt-4 text-sm text-muted-foreground">Scraping and enriching data… please wait</div>
                             </TableCell>
                           </TableRow>
-                        ))}
+                        )} */}
 
-                      {/* {loading && (
-                      <TableRow key="loading-row">
-                        <TableCell colSpan={9} className="text-center py-8">
-                          <div className="flex justify-center">
-                            <Loader />
-                          </div>
-                          <div className="mt-4 text-sm text-muted-foreground">Scraping and enriching data… please wait</div>
-                        </TableCell>
-                      </TableRow>
-                    )} */}
-
-                      {!loading && currentItems.length === 0 && (
-                        <TableRow key="no-results">
-                          <TableCell colSpan={9} className="text-center">
-                            No results found.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-
-
-            {/* Pagination controls */}
-            {sortedFilteredLeads.length > 0 && (
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results for {searchCriteria.industry} in {searchCriteria.location}
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1); // Reset to first page when changing items per page
-                  }}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Items per page" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25 per page</SelectItem>
-                      <SelectItem value="50">50 per page</SelectItem>
-                      <SelectItem value="100">100 per page</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          aria-disabled={currentPage === 1}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-
-                      {getPageNumbers().map((page, index) => (
-                        <PaginationItem key={index}>
-                          {page === 'ellipsis' ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              isActive={page === currentPage}
-                              onClick={() => setCurrentPage(Number(page))}
-                            >
-                              {page}
-                            </PaginationLink>
+                          {!loading && currentItems.length === 0 && (
+                            <TableRow key="no-results">
+                              <TableCell colSpan={9} className="text-center">
+                                No results found.
+                              </TableCell>
+                            </TableRow>
                           )}
-                        </PaginationItem>
-                      ))}
-
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                          aria-disabled={currentPage === totalPages}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
+                        </>
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
+
+
+                {/* Pagination controls */}
+                {sortedFilteredLeads.length > 0 && (
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results for {searchCriteria.industry} in {searchCriteria.location}
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                        setItemsPerPage(Number(value));
+                        setCurrentPage(1); // Reset to first page when changing items per page
+                      }}>
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue placeholder="Items per page" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="25">25 per page</SelectItem>
+                          <SelectItem value="50">50 per page</SelectItem>
+                          <SelectItem value="100">100 per page</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                              aria-disabled={currentPage === 1}
+                              className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                            />
+                          </PaginationItem>
+
+                          {getPageNumbers().map((page, index) => (
+                            <PaginationItem key={index}>
+                              {page === 'ellipsis' ? (
+                                <PaginationEllipsis />
+                              ) : (
+                                <PaginationLink
+                                  isActive={page === currentPage}
+                                  onClick={() => setCurrentPage(Number(page))}
+                                >
+                                  {page}
+                                </PaginationLink>
+                              )}
+                            </PaginationItem>
+                          ))}
+
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                              aria-disabled={currentPage === totalPages}
+                              className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  </div>
+                )}
+                {/* Results section */}
               </div>
-            )}
-            {/* Results section */}
-          </div>
-        </CardContent>
+            </CardContent>
 
-      </Card>
-      <div className="flex flex-col items-end mt-4 gap-2">
-        {/* Enrichment button and optional progress */}
-        <div className="flex items-center gap-4">
-          {loading && (
-            <div className="text-sm font-medium text-muted-foreground">
-              {/* Progress: {progress}% */}
-            </div>
-          )}
-          <Button
-            onClick={() => {
-              setMergedView(false);
-              handleStartEnrichment(false);
-            }}
-            disabled={selectedCompanies.length === 0 || loading}
-          >
-            {loading ? "Enriching..." : "Start Enrichment"}
-          </Button>
-        </div>
-        {/* Selection summary */}
-        <div className="text-sm text-muted-foreground">
-          <span className="text-foreground font-semibold">{selectedCompanies.length}</span>
-          <span className="mx-1">of</span>
-          <span className="text-foreground">{sortedFilteredLeads.length}</span> selected
-        </div>
-      </div>
-
-      {/*
-  Replace the nested ternary with a single block that always renders
-  the fetched and scraped results, and shows a loader banner at the top
-  when loading===true.
-*/}
-      <div className="mt-6 space-y-8">
-        {/* ── LOADER BANNER ── */}
-        {loading && (
-          <div className="flex flex-col items-center py-4">
-            <Loader />
-            <p className="mt-2 text-sm text-muted-foreground">
-              Scraping and enriching data… please wait
-            </p>
-          </div>
-        )}
-
-        {/* ── DATABASE RESULTS ── */}
-        {!mergedView && hasEnrichedOnce && dbEnrichedCompanies.length > 0 && (
-          <div>
-            <h2 className="text-3xl font-bold mb-4">Fetched from Database</h2>
-            <EnrichmentResults
-              enrichedCompanies={dbEnrichedCompanies}
-              rowClassName={() => "bg-teal-50"}
-            />
-
-            {/* … re-enrich button … */}
-            {fromDatabaseLeads.length > 0 && !loading && (
-              <div className="mt-3 flex justify-end">
+          </Card>
+          <div className="flex flex-col items-end mt-4 gap-2">
+            {/* Enrichment button and optional progress */}
+            <div className="flex items-center gap-4">
+              {loading && (
+                <div className="text-sm font-medium text-muted-foreground">
+                  {/* Progress: {progress}% */}
+                </div>
+              )}
+              
+              {/* Custom Dropdown Implementation */}
+              <div className="relative">
                 <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    setMergedView(false);
-                    const toReselect = normalizedLeads.filter(c =>
-                      fromDatabaseLeads.includes(c.company.toLowerCase())
-                    );
-                    setSelectedCompanies(toReselect.map(c => c.id));
-                    await handleStartEnrichment(true, toReselect);
-                  }}
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  disabled={selectedCompanies.length === 0 || loading}
+                  className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed gap-2 min-w-[180px]"
                 >
-                  Re-enrich those companies
+                  <Database className="h-4 w-4" />
+                  {loading ? "Enriching..." : "Start Enrichment"}
+                  <ChevronDown className={`h-4 w-4 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
                 </Button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-[#1A2133] border border-[#2E3A59] rounded-md shadow-lg z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => handleStartEnrichmentDropdown("company")}
+                        className="w-full px-3 py-2 text-left hover:bg-[#2A3349] text-gray-300 hover:text-white transition-colors flex items-start gap-2"
+                      >
+                        <Building className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <div className="text-sm font-medium">Enrich Company Data</div>
+                          <div className="text-[11px] text-gray-400 mt-0.5">Revenue, employees, industry details</div>
+                        </div>
+                      </button>
+
+                      {/* People Enrichment with Sub-dropdown */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setPeopleSubDropdownOpen(!peopleSubDropdownOpen)}
+                          className="w-full px-3 py-2 text-left hover:bg-[#2A3349] text-gray-300 hover:text-white transition-colors flex items-start gap-2"
+                        >
+                          <Users className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <div className="text-sm font-medium">Enrich People</div>
+                          </div>
+                          <ChevronDown
+                            className={`h-3 w-3 mt-1 transition-transform ${peopleSubDropdownOpen ? "rotate-180" : ""}`}
+                          />
+                        </button>
+
+                        {peopleSubDropdownOpen && (
+                          <div className="absolute top-full left-0 mt-1 w-44 bg-[#1A2133] border border-[#2E3A59] rounded-md shadow-lg z-60">
+                            <div className="py-1">
+                              <button
+                                onClick={() => handlePeopleEnrichment("apollo")}
+                                className="w-full px-3 py-2 text-left hover:bg-[#2A3349] text-gray-300 hover:text-white transition-colors flex items-start gap-2"
+                              >
+                                <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                                  <span className="text-[10px] font-bold text-white">A</span>
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium">Enrich from Apollo</div>
+                                </div>
+                              </button>
+
+                              <button
+                                onClick={() => handlePeopleEnrichment("growjo")}
+                                className="w-full px-3 py-2 text-left hover:bg-[#2A3349] text-gray-300 hover:text-white transition-colors flex items-start gap-2"
+                              >
+                                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                                  <span className="text-[10px] font-bold text-white">G</span>
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium">Enrich from Growjo</div>
+                                </div>
+                              </button>
+
+                              <button
+                                onClick={() => handlePeopleEnrichment("both")}
+                                className="w-full px-3 py-2 text-left hover:bg-[#2A3349] text-gray-300 hover:text-white transition-colors flex items-start gap-2"
+                              >
+                                <div className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                                  <span className="text-[10px] font-bold text-white">B</span>
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium">Enrich from Both</div>
+                                </div>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => handleStartEnrichmentDropdown("both")}
+                        className="w-full px-3 py-2 text-left hover:bg-[#2A3349] text-gray-300 hover:text-white transition-colors flex items-start gap-2"
+                      >
+                        <Database className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <div className="text-sm font-medium">Enrich Both</div>
+                          <div className="text-[11px] text-gray-400 mt-0.5">Complete company and people data</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Selection summary */}
+            <div className="text-sm text-muted-foreground">
+              <span className="text-foreground font-semibold">{selectedCompanies.length}</span>
+              <span className="mx-1">of</span>
+              <span className="text-foreground">{sortedFilteredLeads.length}</span> selected
+            </div>
+          </div>
+
+          {/*
+    Replace the nested ternary with a single block that always renders
+    the fetched and scraped results, and shows a loader banner at the top
+    when loading===true.
+  */}
+          <div className="mt-6 space-y-8">
+            {/* ── LOADER BANNER ── */}
+            {loading && (
+              <div className="flex flex-col items-center py-4">
+                <Loader />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Scraping and enriching data… please wait
+                </p>
+              </div>
+            )}
+
+            {/* ── DATABASE RESULTS ── */}
+            {!mergedView && hasEnrichedOnce && dbEnrichedCompanies.length > 0 && (
+              <div>
+                <h2 className="text-3xl font-bold mb-4">Fetched from Database</h2>
+                <EnrichmentResults
+                  enrichedCompanies={dbEnrichedCompanies}
+                  rowClassName={() => "bg-teal-50"}
+                />
+
+                {/* … re-enrich button … */}
+                {fromDatabaseLeads.length > 0 && !loading && (
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      variant="destructive"
+                      onClick={async () => {
+                        setMergedView(false);
+                        const toReselect = normalizedLeads.filter(c =>
+                          fromDatabaseLeads.includes(c.company.toLowerCase())
+                        );
+                        setSelectedCompanies(toReselect.map(c => c.id));
+                        await handleStartEnrichment(true, toReselect);
+                      }}
+                    >
+                      Re-enrich those companies
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── SCRAPED RESULTS ── */}
+            {!mergedView && hasEnrichedOnce && scrapedEnrichedCompanies.length > 0 && (
+              <div>
+                <h2 className="text-3xl font-bold mb-4">Freshly Scraped</h2>
+                <EnrichmentResults
+                  enrichedCompanies={scrapedEnrichedCompanies}
+                  rowClassName={() => "bg-yellow-50"}
+                />
+              </div>
+            )}
+
+            {/* ── COMBINED TABLE BUTTON ── */}
+            {!loading &&
+              !mergedView &&
+              hasEnrichedOnce &&
+              (dbEnrichedCompanies.length > 0 || scrapedEnrichedCompanies.length > 0) && (
+                <div className="flex justify-center">
+                  <Button onClick={() => setMergedView(true)}>
+                    Show The Final Table
+                  </Button>
+                </div>
+              )}
+
+            {/* ── MERGED VIEW ── */}
+            {mergedView && hasEnrichedOnce && (
+              <div>
+                <h2 className="text-3xl font-bold mt-6 mb-4">All Enriched Results</h2>
+                <EnrichmentResults
+                  enrichedCompanies={[
+                    ...dbEnrichedCompanies,
+                    ...scrapedEnrichedCompanies,
+                  ]}
+                />
               </div>
             )}
           </div>
-        )}
 
-        {/* ── SCRAPED RESULTS ── */}
-        {!mergedView && hasEnrichedOnce && scrapedEnrichedCompanies.length > 0 && (
-          <div>
-            <h2 className="text-3xl font-bold mb-4">Freshly Scraped</h2>
-            <EnrichmentResults
-              enrichedCompanies={scrapedEnrichedCompanies}
-              rowClassName={() => "bg-yellow-50"}
-            />
+          <div className="flex justify-end mb-4">
+            <Button
+              onClick={() => {
+                sessionStorage.removeItem("leads");
+                sessionStorage.removeItem("enrichedResults");
+                sessionStorage.removeItem("subscriptionInfo");
+                sessionStorage.removeItem("leadToDraftMap");
+                router.push("/");
+              }}
+            >
+              Finish and Go Back to Home
+            </Button>
           </div>
-        )}
-
-        {/* ── COMBINED TABLE BUTTON ── */}
-        {!loading &&
-          !mergedView &&
-          hasEnrichedOnce &&
-          (dbEnrichedCompanies.length > 0 || scrapedEnrichedCompanies.length > 0) && (
-            <div className="flex justify-center">
-              <Button onClick={() => setMergedView(true)}>
-                Show The Final Table
+          <Popup show={showTokenPopup} onClose={() => setShowTokenPopup(false)}>
+            <h2 className="text-lg font-bold mb-2">Insufficient Credits</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              You don't have enough enrichment tokens to continue. Please upgrade your plan or deselect some companies.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setShowTokenPopup(false)}>
+                Cancel
               </Button>
+              <Button onClick={() => router.push("/subscription")}>Upgrade Plan</Button>
             </div>
+          </Popup>
+
+          <Notif
+            show={notif.show}
+            message={notif.message}
+            type={notif.type}
+            onClose={() => setNotif(prev => ({ ...prev, show: false }))}
+          />
+
+          {/* Click outside to close dropdown */}
+          {(dropdownOpen || peopleSubDropdownOpen) && (
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => {
+                setDropdownOpen(false)
+                setPeopleSubDropdownOpen(false)
+              }}
+            />
           )}
 
-        {/* ── MERGED VIEW ── */}
-        {mergedView && hasEnrichedOnce && (
-          <div>
-            <h2 className="text-3xl font-bold mt-6 mb-4">All Enriched Results</h2>
-            <EnrichmentResults
-              enrichedCompanies={[
-                ...dbEnrichedCompanies,
-                ...scrapedEnrichedCompanies,
-              ]}
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="flex justify-end mb-4">
-        <Button
-          onClick={() => {
-            sessionStorage.removeItem("leads");
-            sessionStorage.removeItem("enrichedResults");
-            sessionStorage.removeItem("subscriptionInfo");
-            sessionStorage.removeItem("leadToDraftMap");
-            router.push("/");
-          }}
-        >
-          Finish and Go Back to Home
-        </Button>
-      </div>
-      <Popup show={showTokenPopup} onClose={() => setShowTokenPopup(false)}>
-        <h2 className="text-lg font-bold mb-2">Insufficient Credits</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          You don't have enough enrichment tokens to continue. Please upgrade your plan or deselect some companies.
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setShowTokenPopup(false)}>
-            Cancel
-          </Button>
-          <Button onClick={() => router.push("/subscription")}>Upgrade Plan</Button>
         </div>
-      </Popup>
-
-      <Notif
-        show={notif.show}
-        message={notif.message}
-        type={notif.type}
-        onClose={() => setNotif(prev => ({ ...prev, show: false }))}
-      />
-
-    </div>
+      )}
+    </>
   )
 }
