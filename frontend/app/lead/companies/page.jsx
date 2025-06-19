@@ -204,12 +204,12 @@ const LinkedInMessageGenerator = ({
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">LinkedIn Message Generator</h2>
-        <button 
+        {/* <button 
           onClick={onClose}
           className="text-gray-500 hover:text-gray-700"
         >
           <X className="h-5 w-5" />
-        </button>
+        </button> */}
       </div>
 
       <div className="space-y-4">
