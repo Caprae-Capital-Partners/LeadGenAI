@@ -227,7 +227,7 @@ const LinkedInMessageGenerator = ({
 
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tone</label>
+            <label className="block text-sm font-medium text-white mb-1">Tone</label>
             <Select 
               value={settings.tone}
               onValueChange={(value) => onSettingsChange({...settings, tone: value})}
@@ -245,7 +245,7 @@ const LinkedInMessageGenerator = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Focus</label>
+            <label className="block text-sm font-medium text-white mb-1">Focus</label>
             <Select 
               value={settings.focus}
               onValueChange={(value) => onSettingsChange({...settings, focus: value})}
@@ -263,7 +263,7 @@ const LinkedInMessageGenerator = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Additional Context</label>
+            <label className="block text-sm font-medium text-white mb-1">Additional Context (Optional)</label>
             <Input 
               value={settings.extraContext}
               onChange={(e) => onSettingsChange({...settings, extraContext: e.target.value})}
@@ -1058,10 +1058,10 @@ export default function CompaniesPage() {
                 {/* Scrollable container */}
                 <div className="w-full overflow-x-auto relative border rounded-md">
                 <Table className="min-w-full text-sm ">
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
                         {/* Sticky Checkbox Column */}
-                        <TableHead className="sticky top-0 left-0 z-40 bg-[#1e263a] px-6 py-3 w-12 text-base font-bold text-white">
+                        <TableHead className="sticky top-0 left-0 z-40 bg-background px-6 py-3 w-12 text-base font-bold text-white">
                         <Checkbox
                             checked={selectAll}
                             onCheckedChange={handleSelectAll}
@@ -1069,11 +1069,11 @@ export default function CompaniesPage() {
                         </TableHead>
     
                         {/* Sticky Company Column */}
-                        <TableHead className="sticky top-0 left-[3rem] z-30 bg-[#1e263a] text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">
+                        <TableHead className="sticky top-0 left-[3rem] z-30 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">
                         Company
                         </TableHead>
 
-                        <TableHead className="sticky top-0 z-20 bg-[#1e263a] text-base font-bold text-white px-6 py-3 whitespace-nowrap">
+                        <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">
                         Actions
                         </TableHead>
     
@@ -1097,7 +1097,7 @@ export default function CompaniesPage() {
                         ].map((label, i) => (
                         <TableHead
                             key={i}
-                            className="sticky top-0 z-20 bg-[#1e263a] text-base font-bold text-white px-6 py-3 whitespace-nowrap"
+                            className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap"
                         >
                             {label}
                         </TableHead>
