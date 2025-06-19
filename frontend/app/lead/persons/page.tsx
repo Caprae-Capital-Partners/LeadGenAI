@@ -816,283 +816,329 @@ export default function PersonsPage() {
 
       if (!actualDraftId) {
         throw new Error("Draft ID not found for this person");
-      }
-
-      // Normalize the edite
-
-        // Normalize the edited fields so that every key is snake_case:
-        const normalizedPerson = normalizeKeys(person);
-        // Always include user_id in snake_case (if required by your API):
-        // normalizedPerson.user_id = user.id;
-
-        // 1) Always call POST first
-        // const postResponse = await axios.post(
-            // `${DATABASE_URL_NOAPI}/leads/${leadId}/edit`,
-            // normalizedPerson,
-            // { withCredentials: true }
-        // );
-        // console.log("🔧 POST response:", postResponse.data);
-        // showNotification("Draft POST called successfully", "success");
-
-        // If the POST returned a new draft_id, use it; otherwise keep originalDraftId
-        // const newDraftId = postResponse.data?.draft?.draft_id;
-        
-
-        // 2) Now call PUT to update that draft
-        const payload = {
-            draft_data: normalizedPerson,
-            change_summary: "Updated from persons page",
-            phase: "draft",
-            status: "pending",
-        };
-
-        const putUrl = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/drafts/${actualDraftId}`;
-        console.log("🔧 PUT URL:", putUrl);
-        console.log("🔧 PUT Payload:", JSON.stringify(payload, null, 2));
-        console.log("🔧 Using actualDraftId:", actualDraftId);
-
-        try {
-            const putResponse = await axios.put(putUrl, payload, { withCredentials: true });
-            console.log("✅ PUT Success response:", putResponse.data);
-            console.log("✅ PUT Status:", putResponse.status);
-            showNotification("Draft updated successfully", "success");
-        } catch (putError) {
-            console.error("❌ PUT Request failed:", putError);
-            if (axios.isAxiosError(putError)) {
-                console.error("❌ PUT Error status:", putError.response?.status);
-                console.error("❌ PUT Error data:", putError.response?.data);
-                console.error("❌ PUT Error URL:", putError.config?.url);
-            }
-            throw putError; // Re-throw to be caught by outer catch
-        }
-
-        // Reflect changes in local state (ensure draft_id is set)
-        const updatedPersons = [...persons];
-        const mainPersonIndex = persons.findIndex(p => p.id === person.id);
-        if (mainPersonIndex !== -1) {
-            updatedPersons[mainPersonIndex] = {
-                ...person,
-                draft_id: actualDraftId,
-                updated: new Date().toLocaleString(),
-            };
-            setPersons(updatedPersons);
-            setEditedPersons(updatedPersons);
-        }
-
-        setEditingRowIndex(null);
-    } catch (err) {
-        console.error("❌ Error saving person:", err);
-
-        let errorMessage = "Failed to save person.";
-        if (axios.isAxiosError(err)) {
-            if (err.response) {
-                errorMessage = `Save failed: ${err.response.data?.message || err.message}`;
-                console.error("🔧 Error response:", err.response.data);
-            } else {
-                errorMessage = "Network error: Unable to connect to server. Please check your connection.";
-            }
-        } else if (err instanceof Error) {
-            errorMessage = `Save failed: ${err.message}`;
-        }
-
-        showNotification(errorMessage, "error");
     }
+
+    // Normalize the edited fields so that every key is snake_case
+    const normalizedPerson = normalizeKeys(person);
+
+    // Create payload for the draft update
+    const payload = {
+      draft_data: normalizedPerson,
+      change_summary: "Updated from persons page",
+      phase: "draft",
+      status: "pending",
+    };
+
+    const putUrl = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/drafts/${actualDraftId}`;
+    console.log("🔧 PUT URL:", putUrl);
+    console.log("🔧 PUT Payload:", JSON.stringify(payload, null, 2));
+
+    try {
+      const putResponse = await axios.put(putUrl, payload, { withCredentials: true });
+      console.log("✅ PUT Success response:", putResponse.data);
+      
+      // Update local state with the saved changes
+      updatePersonInState(person.id, {
+        ...person,
+        draft_id: actualDraftId,
+        updated: new Date().toLocaleString(),
+      });
+
+      setEditingRowIndex(null);
+      showNotification("Changes saved successfully", "success");
+      
+    } catch (putError) {
+      console.error("❌ PUT Request failed:", putError);
+      if (axios.isAxiosError(putError)) {
+        console.error("❌ PUT Error status:", putError.response?.status);
+        console.error("❌ PUT Error data:", putError.response?.data);
+      }
+      throw putError;
+    }
+
+  } catch (err) {
+    console.error("❌ Error saving person:", err);
+
+    let errorMessage = "Failed to save person.";
+    if (axios.isAxiosError(err)) {
+      if (err.response) {
+        errorMessage = `Save failed: ${err.response.data?.message || err.message}`;
+      } else {
+        errorMessage = "Network error: Unable to connect to server.";
+      }
+    } else if (err instanceof Error) {
+      errorMessage = `Save failed: ${err.message}`;
+    }
+
+    showNotification(errorMessage, "error");
+  }
 };
+
+// Helper function to update person in state (eliminates duplication)
+const updatePersonInState = (personId: string, updatedPerson: Person) => {
+  const updateArray = (arr: Person[]) => 
+    arr.map(p => p.id === personId ? updatedPerson : p);
+  
+  setPersons(updateArray);
+  setEditedPersons(updateArray);
+};
+
 // Function to discard changes and revert to original data
 const handleDiscard = (index: number) => {
-    const resetPerson = persons[index];
-    const updated = [...editedPersons];
-    updated[index] = resetPerson;
-    setEditedPersons(updated);
-    setEditingRowIndex(null);
+  const originalPerson = persons[index];
+  const updated = [...editedPersons];
+  updated[index] = originalPerson;
+  setEditedPersons(updated);
+  setEditingRowIndex(null);
 };
 
 // Function to show notifications
 const showNotification = (message: string, type = "success") => {
-    setNotif({ show: true, message, type });
-    setTimeout(() => {
-        setNotif((prev) => ({ ...prev, show: false }));
-    }, 3500);
+  setNotif({ show: true, message, type });
+  setTimeout(() => {
+    setNotif(prev => ({ ...prev, show: false }));
+  }, 3500);
 };
 
+// Sync editedPersons with persons when persons change
 useEffect(() => {
   setEditedPersons([...persons]);
 }, [persons]);
 
+// Helper function to get person index by ID
+const getPersonIndex = (personId: string) => 
+  persons.findIndex(p => p.id === personId);
+
+// Helper function to get current row index
+const getCurrentRowIndex = (personId: string) => 
+  currentItems.findIndex(p => p.id === personId);
+
+// Generate AI email message
+const generateEmailMessage = async (person: Person, settings: MessageSettings) => {
+  setIsGenerating(true);
+  try {
+    // Simulate AI generation (replace with actual API call)
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const toneMap = {
+      professional: "I hope this message finds you well",
+      friendly: "I hope you're having a great day",
+      direct: "I'm reaching out to discuss",
+      casual: "Hey there"
+    };
+
+    const focusMap = {
+      partnership: "exploring potential partnership opportunities",
+      collaboration: "discussing collaboration possibilities", 
+      networking: "connecting and expanding our professional networks",
+      sales: "sharing how we might help your business grow"
+    };
+
+    const greeting = toneMap[settings.tone as keyof typeof toneMap] || toneMap.professional;
+    const purpose = focusMap[settings.focus as keyof typeof focusMap] || focusMap.partnership;
+
+    const message = `Subject: ${settings.focus.charAt(0).toUpperCase() + settings.focus.slice(1)} Opportunity
+
+Hi ${person.name},
+
+${greeting}. I came across your profile and was impressed by your role as ${person.title} at ${person.company}${person.industry && person.industry !== 'N/A' ? ` in the ${person.industry} industry` : ''}.
+
+I'm interested in ${purpose} that could be mutually beneficial for both our organizations.
+
+${settings.extraContext ? `${settings.extraContext}\n\n` : ''}Would you be open to a brief conversation to explore this further?
+
+Best regards,
+[Your Name]`;
+
+    setGeneratedMessage(message);
+  } catch (error) {
+    console.error("Error generating message:", error);
+    showNotification("Error generating message", "error");
+  } finally {
+    setIsGenerating(false);
+  }
+};
+
 return (
-    <div className="flex flex-col h-screen">
-      <FeedbackPopup />
-      {/* Top Header */}
-      <Header />
-      
-      {/* Below: Sidebar + Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 p-6 overflow-auto">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Persons</CardTitle>
-                <div className="flex items-center gap-4">
-                  {/* Search Bar */}
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Search persons, companies, industries..."
-                      className="w-80 pl-8"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <SortDropdown onApply={handleSortBy} />
-                    
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setShowFilters((f) => !f)}
-                      title={showFilters ? "Hide Filters" : "Show Filters"}
-                    >
-                      <Filter className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  {/* Export */}
-                  <div className="flex items-center gap-2">
-                    <Select value={exportFormat} onValueChange={setExportFormat}>
-                      <SelectTrigger className="w-20">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="csv">CSV</SelectItem>
-                        <SelectItem value="json">JSON</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" onClick={handleExport}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Export {selectedPersons.length > 0 ? `(${selectedPersons.length})` : 'All'}
-                    </Button>
-                  </div>
+  <div className="flex flex-col h-screen">
+    <FeedbackPopup />
+    {/* Top Header */}
+    <Header />
+    
+    {/* Below: Sidebar + Main content */}
+    <div className="flex flex-1 overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 p-6 overflow-auto">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Persons</CardTitle>
+              <div className="flex items-center gap-4">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search persons, companies, industries..."
+                    className="w-80 pl-8"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
-              </div>
-  
-              {/* Filter Section */}
-              {showFilters && (
-                <div className="flex flex-wrap gap-4 my-4">
-                  <Input
-                    placeholder="Title"
-                    value={titleFilter}
-                    onChange={(e) => setTitleFilter(e.target.value)}
-                    className="w-[240px]"
-                  />
-                  <Input
-                    placeholder="Company"
-                    value={companyFilter}
-                    onChange={(e) => setCompanyFilter(e.target.value)}
-                    className="w-[240px]"
-                  />
-                  <Input
-                    placeholder="Industry"
-                    value={industryFilter}
-                    onChange={(e) => setIndustryFilter(e.target.value)}
-                    className="w-[240px]"
-                  />
-                  <Input
-                    placeholder="Business Type"
-                    value={businessTypeFilter}
-                    onChange={(e) => setBusinessTypeFilter(e.target.value)}
-                    className="w-[240px]"
-                  />
-                  <Input
-                    placeholder="Address"
-                    value={addressFilter}
-                    onChange={(e) => setAddressFilter(e.target.value)}
-                    className="w-[240px]"
-                  />
-                  <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                    <X className="h-4 w-4 mr-1" />
-                    Clear All
+                
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  <SortDropdown onApply={handleSortBy} />
+                  
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowFilters(f => !f)}
+                    title={showFilters ? "Hide Filters" : "Show Filters"}
+                  >
+                    <Filter className="h-4 w-4" />
                   </Button>
                 </div>
-              )}
-            </CardHeader>
-            
-            <CardContent>
-              {/* Pagination Info and Controls */}
-              {filteredPersons.length > 0 && (
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredPersons.length)} of {filteredPersons.length} persons
-                    {selectedPersons.length > 0 && (
-                      <span className="ml-2 text-blue-600">
-                        ({selectedPersons.length} selected)
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                      setItemsPerPage(Number(value))
-                      setCurrentPage(1)
-                    }}>
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="25">25 per page</SelectItem>
-                        <SelectItem value="50">50 per page</SelectItem>
-                        <SelectItem value="100">100 per page</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                
+                {/* Export */}
+                <div className="flex items-center gap-2">
+                  <Select value={exportFormat} onValueChange={setExportFormat}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="csv">CSV</SelectItem>
+                      <SelectItem value="json">JSON</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" onClick={handleExport}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export {selectedPersons.length > 0 ? `(${selectedPersons.length})` : 'All'}
+                  </Button>
                 </div>
-              )}
-              
-              {/* Persons Table */}
-              <div className="rounded-md border">
-                {loading ? (
-                  <div className="p-8 text-center">
-                    <div className="text-lg">Loading persons data...</div>
-                  </div>
-                ) : error ? (
-                  <div className="p-8 text-center text-red-500">
-                    <div className="text-lg">{error}</div>
-                    <Button 
-                      variant="outline" 
-                      className="mt-4"
-                      onClick={() => window.location.reload()}
-                    >
-                      Retry
-                    </Button>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10">
-                      <TableRow>
-                        <TableHead className="w-[50px] bg-background">
-                          <Checkbox
-                            checked={selectedPersons.length === currentItems.length && currentItems.length > 0}
-                            onCheckedChange={handleSelectAll}
-                            aria-label="Select all"
-                          />
-                        </TableHead>
-                        <TableHead className="bg-background">Name</TableHead>
-                        <TableHead className="w-[140px] bg-background">Actions</TableHead>
-                        <TableHead className="bg-background">Title</TableHead>
-                        <TableHead className="w-[120px] bg-background">Links</TableHead>
-                        <TableHead className="bg-background">Phone Number</TableHead>
-                        <TableHead className="bg-background">Company</TableHead>
-                        <TableHead className="bg-background">Industry</TableHead>
-                        <TableHead className="bg-background">Business Type</TableHead>
-                        <TableHead className="bg-background">Address</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {currentItems.length > 0 ? (
-                        currentItems.map((person) => (
+              </div>
+            </div>
+
+            {/* Filter Section */}
+            {showFilters && (
+              <div className="flex flex-wrap gap-4 my-4">
+                <Input
+                  placeholder="Title"
+                  value={titleFilter}
+                  onChange={(e) => setTitleFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Company"
+                  value={companyFilter}
+                  onChange={(e) => setCompanyFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Industry"
+                  value={industryFilter}
+                  onChange={(e) => setIndustryFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Business Type"
+                  value={businessTypeFilter}
+                  onChange={(e) => setBusinessTypeFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Input
+                  placeholder="Address"
+                  value={addressFilter}
+                  onChange={(e) => setAddressFilter(e.target.value)}
+                  className="w-[240px]"
+                />
+                <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                  <X className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
+              </div>
+            )}
+          </CardHeader>
+          
+          <CardContent>
+            {/* Pagination Info and Controls */}
+            {filteredPersons.length > 0 && (
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredPersons.length)} of {filteredPersons.length} persons
+                  {selectedPersons.length > 0 && (
+                    <span className="ml-2 text-blue-600">
+                      ({selectedPersons.length} selected)
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25 per page</SelectItem>
+                      <SelectItem value="50">50 per page</SelectItem>
+                      <SelectItem value="100">100 per page</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            
+            {/* Persons Table */}
+            <div className="rounded-md border">
+              {loading ? (
+                <div className="p-8 text-center">
+                  <div className="text-lg">Loading persons data...</div>
+                </div>
+              ) : error ? (
+                <div className="p-8 text-center text-red-500">
+                  <div className="text-lg">{error}</div>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => window.location.reload()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow>
+                      <TableHead className="w-[50px] bg-background">
+                        <Checkbox
+                          checked={selectedPersons.length === currentItems.length && currentItems.length > 0}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
+                      <TableHead className="bg-background">Name</TableHead>
+                      <TableHead className="w-[140px] bg-background">Actions</TableHead>
+                      <TableHead className="bg-background">Title</TableHead>
+                      <TableHead className="w-[120px] bg-background">Links</TableHead>
+                      <TableHead className="bg-background">Phone Number</TableHead>
+                      <TableHead className="bg-background">Company</TableHead>
+                      <TableHead className="bg-background">Industry</TableHead>
+                      <TableHead className="bg-background">Business Type</TableHead>
+                      <TableHead className="bg-background">Address</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentItems.length > 0 ? (
+                      currentItems.map((person) => {
+                        const personIndex = getPersonIndex(person.id);
+                        const currentRowIndex = getCurrentRowIndex(person.id);
+                        const isEditing = editingRowIndex === currentRowIndex;
+                        const editedPerson = editedPersons[personIndex];
+
+                        return (
                           <TableRow key={person.id}>
                             <TableCell>
                               <Checkbox
@@ -1102,12 +1148,12 @@ return (
                               />
                             </TableCell>
                             <TableCell className="font-medium">
-                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {isEditing ? (
                                 <Input
                                   type="text"
                                   className="w-full"
-                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.name || ""}
-                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'name', e.target.value)}
+                                  value={editedPerson?.name || ""}
+                                  onChange={(e) => handleFieldChange(personIndex, 'name', e.target.value)}
                                 />
                               ) : (
                                 person.name
@@ -1125,12 +1171,12 @@ return (
                                     <MessageSquare className="w-4 h-4 text-green-600" />
                                   </Button>
                                 )}
-                                {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                                {isEditing ? (
                                   <div className="flex gap-1">
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => handleSave(persons.findIndex(p => p.id === person.id))}
+                                      onClick={() => handleSave(personIndex)}
                                       title="Save"
                                       className="text-green-600"
                                     >
@@ -1139,7 +1185,7 @@ return (
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => handleDiscard(persons.findIndex(p => p.id === person.id))}
+                                      onClick={() => handleDiscard(personIndex)}
                                       title="Discard"
                                       className="text-red-600"
                                     >
@@ -1150,7 +1196,7 @@ return (
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleEdit(person, persons.findIndex(p => p.id === person.id))}
+                                    onClick={() => handleEdit(person, personIndex)}
                                     title="Edit"
                                     className="p-1 h-8 w-8"
                                   >
@@ -1170,12 +1216,12 @@ return (
                               </div>
                             </TableCell>
                             <TableCell>
-                              {editingRowIndex === persons.findIndex(p => p.id === person.id) ? (
+                              {isEditing ? (
                                 <Input
                                   type="text"
                                   className="w-full"
-                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.title || ""}
-                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'title', e.target.value)}
+                                  value={editedPerson?.title || ""}
+                                  onChange={(e) => handleFieldChange(personIndex, 'title', e.target.value)}
                                 />
                               ) : (
                                 person.title
@@ -1204,184 +1250,165 @@ return (
                               </div>
                             </TableCell>
                             <TableCell>
-                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {isEditing ? (
                                 <Input
                                   type="text"
                                   className="w-full"
-                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.phone || ""}
-                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'phone', e.target.value)}
+                                  value={editedPerson?.phone || ""}
+                                  onChange={(e) => handleFieldChange(personIndex, 'phone', e.target.value)}
                                 />
                               ) : (
                                 person.phone || 'N/A'
                               )}
                             </TableCell>
                             <TableCell>
-                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {isEditing ? (
                                 <Input
                                   type="text"
                                   className="w-full"
-                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.company || ""}
-                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'company', e.target.value)}
+                                  value={editedPerson?.company || ""}
+                                  onChange={(e) => handleFieldChange(personIndex, 'company', e.target.value)}
                                 />
                               ) : (
                                 person.company
                               )}
                             </TableCell>
                             <TableCell>
-                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {isEditing ? (
                                 <Input
                                   type="text"
                                   className="w-full"
-                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.industry || ""}
-                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'industry', e.target.value)}
+                                  value={editedPerson?.industry || ""}
+                                  onChange={(e) => handleFieldChange(personIndex, 'industry', e.target.value)}
                                 />
                               ) : (
                                 person.industry
                               )}
                             </TableCell>
                             <TableCell>
-                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {isEditing ? (
                                 <Input
                                   type="text"
                                   className="w-full"
-                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.businessType || ""}
-                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'businessType', e.target.value)}
+                                  value={editedPerson?.businessType || ""}
+                                  onChange={(e) => handleFieldChange(personIndex, 'businessType', e.target.value)}
                                 />
                               ) : (
                                 person.businessType
                               )}
                             </TableCell>
                             <TableCell>
-                              {editingRowIndex === currentItems.findIndex(p => p.id === person.id) ? (
+                              {isEditing ? (
                                 <Input
                                   type="text"
                                   className="w-full"
-                                  value={editedPersons[persons.findIndex(p => p.id === person.id)]?.address || ""}
-                                  onChange={(e) => handleFieldChange(persons.findIndex(p => p.id === person.id), 'address', e.target.value)}
+                                  value={editedPerson?.address || ""}
+                                  onChange={(e) => handleFieldChange(personIndex, 'address', e.target.value)}
                                 />
                               ) : (
                                 person.address
                               )}
                             </TableCell>
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={10} className="h-24 text-center">
-                            {searchTerm || titleFilter || companyFilter || industryFilter || businessTypeFilter || addressFilter ? "No persons found matching your search and filters." : "No persons found."}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </div>
-  
-              {/* Pagination at the bottom */}
-              {filteredPersons.length > 0 && (
-                <div className="mt-4 flex items-center justify-center">
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious 
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          aria-disabled={currentPage === 1}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                      
-                      {getPageNumbers().map((page, index) => (
-                        <PaginationItem key={index}>
-                          {page === 'ellipsis' ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              isActive={page === currentPage}
-                              onClick={() => setCurrentPage(Number(page))}
-                            >
-                              {page}
-                            </PaginationLink>
-                          )}
-                        </PaginationItem>
-                      ))}
-                      
-                      <PaginationItem>
-                        <PaginationNext 
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                          aria-disabled={currentPage === totalPages}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
+                        );
+                      })
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={10} className="h-24 text-center">
+                          {searchTerm || titleFilter || companyFilter || industryFilter || businessTypeFilter || addressFilter ? "No persons found matching your search and filters." : "No persons found."}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               )}
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-  
-      {/* PopupBig Component */}
-      <PopupBig 
-        show={!!popupData}
-        onClose={() => {
-          setPopupData(null);
-          setIsEditing(false);
-          setPopupTab('overview');
-        }}
-        person={popupData}
-        isEditing={isEditing}
-        popupTab={popupTab}
-        setPopupTab={setPopupTab}
-        setPopupData={setPopupData}
-        onSave={handlePopupSave}
-      />
-  
-      {/* Email Popup Dialog */}
-      {emailPopupData && (
-        <Dialog open={!!emailPopupData} onOpenChange={() => setEmailPopupData(null)}>
-          <DialogContent className="max-w-2xl">
-            <EmailMessageGenerator
-              person={emailPopupData}
-              onClose={() => setEmailPopupData(null)}
-              onGenerate={async () => {
-                setIsGenerating(true);
-                try {
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-                  const mockMessage = `Hi ${emailPopupData.name || 'there'},
-  
-  I came across your profile and was impressed by your work at ${emailPopupData.company} in ${emailPopupData.industry || 'your industry'}. I'd love to connect and explore potential ${messageSettings.focus} opportunities.
-  ${messageSettings.extraContext ? `\n${messageSettings.extraContext}\n` : ''}
-  Looking forward to your thoughts!
-  
-  Best regards,
-  [Your Name]`;
-            
-            setGeneratedMessage(mockMessage);
-          } catch (error) {
-            console.error("Error generating message:", error);
-            showNotification("Error generating message", "error");
-          } finally {
-            setIsGenerating(false);
-          }
-        }}
-        generatedMessage={generatedMessage}
-        isGenerating={isGenerating}
-        settings={messageSettings}
-        onSettingsChange={setMessageSettings}
-      />
-    </DialogContent>
-  </Dialog>
-)}
-      {/* ADD NOTIFICATION HERE - after PopupBig, before closing </div> */}
-      {/* Notification */}
-      {notif.show && (
-        <div className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
-          notif.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-        }`}>
-          {notif.message}
-        </div>
-      )}
+            </div>
+
+            {/* Pagination at the bottom */}
+            {filteredPersons.length > 0 && (
+              <div className="mt-4 flex items-center justify-center">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        aria-disabled={currentPage === 1}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                    
+                    {getPageNumbers().map((page, index) => (
+                      <PaginationItem key={index}>
+                        {page === 'ellipsis' ? (
+                          <PaginationEllipsis />
+                        ) : (
+                          <PaginationLink
+                            isActive={page === currentPage}
+                            onClick={() => setCurrentPage(Number(page))}
+                          >
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        aria-disabled={currentPage === totalPages}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
     </div>
-  )
+
+    {/* PopupBig Component */}
+    <PopupBig 
+      show={!!popupData}
+      onClose={() => {
+        setPopupData(null);
+        setIsEditing(false);
+        setPopupTab('overview');
+      }}
+      person={popupData}
+      isEditing={isEditing}
+      popupTab={popupTab}
+      setPopupTab={setPopupTab}
+      setPopupData={setPopupData}
+      onSave={handlePopupSave}
+    />
+
+    {/* Email Popup Dialog */}
+    {emailPopupData && (
+      <Dialog open={!!emailPopupData} onOpenChange={() => setEmailPopupData(null)}>
+        <DialogContent className="max-w-2xl">
+          <EmailMessageGenerator
+            person={emailPopupData}
+            onClose={() => setEmailPopupData(null)}
+            onGenerate={() => generateEmailMessage(emailPopupData, messageSettings)}
+            generatedMessage={generatedMessage}
+            isGenerating={isGenerating}
+            settings={messageSettings}
+            onSettingsChange={setMessageSettings}
+          />
+        </DialogContent>
+      </Dialog>
+    )}
+
+    {/* Notification */}
+    {notif.show && (
+      <div className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
+        notif.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+      }`}>
+        {notif.message}
+      </div>
+    )}
+  </div>
+);
 }
