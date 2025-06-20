@@ -21,6 +21,8 @@ from models.edit_lead_drafts_model import EditLeadDraft
 from models.user_lead_drafts_model import UserLeadDraft
 import uuid
 from sqlalchemy import Integer
+from collections import namedtuple
+from sqlalchemy.orm.attributes import flag_modified
 
 
 # Create blueprint
@@ -164,95 +166,155 @@ def view_leads():
     role = request.args.get('role', '')
     industry = request.args.get('industry', '')
 
-    # Query with filter and pagination
-    query = Lead.query.filter(Lead.deleted == False)
-    if search:
-        query = query.filter(
-            db.or_(
-                Lead.company.ilike(f'%{search}%'),
-                Lead.owner_first_name.ilike(f'%{search}%'),
-                Lead.owner_last_name.ilike(f'%{search}%'),
-                Lead.owner_email.ilike(f'%{search}%')
+    if current_user.role in ['admin', 'developer']:
+        # Query with filter and pagination
+        query = Lead.query.filter(Lead.deleted == False)
+        if search:
+            query = query.filter(
+                db.or_(
+                    Lead.company.ilike(f'%{search}%'),
+                    Lead.owner_first_name.ilike(f'%{search}%'),
+                    Lead.owner_last_name.ilike(f'%{search}%'),
+                    Lead.owner_email.ilike(f'%{search}%')
+                )
             )
-        )
-    if company:
-        query = query.filter(Lead.company.ilike(f'%{company}%'))
-    if status:
-        query = query.filter(Lead.status == status)
-    if location:
-        query = query.filter(
-            (Lead.city.ilike(f'%{location}%')) | (Lead.state.ilike(f'%{location}%'))
-        )
-    if role:
-        query = query.filter(Lead.owner_title.ilike(f'%{role}%'))
-    if industry:
-        query = query.filter(Lead.industry.ilike(f'%{industry}%'))
+        if company:
+            query = query.filter(Lead.company.ilike(f'%{company}%'))
+        if status:
+            query = query.filter(Lead.status == status)
+        if location:
+            query = query.filter(
+                (Lead.city.ilike(f'%{location}%')) | (Lead.state.ilike(f'%{location}%'))
+            )
+        if role:
+            query = query.filter(Lead.owner_title.ilike(f'%{role}%'))
+        if industry:
+            query = query.filter(Lead.industry.ilike(f'%{industry}%'))
 
-    # Advanced filter
-    adv_filters = []
-    idx = 0
-    while True:
-        field = request.args.get(f'adv_field_{idx}')
-        operator = request.args.get(f'adv_operator_{idx}')
-        value = request.args.get(f'adv_value_{idx}')
-        logic = request.args.get(f'adv_logic_{idx}')
-        if not field or not operator or not value:
-            break
-        adv_filters.append({'field': field, 'operator': operator, 'value': value, 'logic': logic})
-        idx += 1
-    adv_expressions = []
-    for f in adv_filters:
-        col = getattr(Lead, f['field'], None)
-        if not col:
-            continue
-        val = f['value']
-        op = f['operator']
-        if op == 'equals':
-            expr = col == val
-        elif op == 'contains':
-            expr = col.ilike(f'%{val}%')
-        elif op == 'starts':
-            expr = col.ilike(f'{val}%')
-        elif op == 'ends':
-            expr = col.ilike(f'%{val}')
-        elif op == 'greater':
-            expr = col > val
-        elif op == 'less':
-            expr = col < val
-        else:
-            expr = col == val
-        adv_expressions.append((expr, f['logic']))
-    if adv_expressions:
-        expr = adv_expressions[0][0]
-        for i in range(1, len(adv_expressions)):
-            logic = adv_expressions[i][1]
-            if logic == 'AND':
-                expr = and_(expr, adv_expressions[i][0])
+        # Advanced filter
+        adv_filters = []
+        idx = 0
+        while True:
+            field = request.args.get(f'adv_field_{idx}')
+            operator = request.args.get(f'adv_operator_{idx}')
+            value = request.args.get(f'adv_value_{idx}')
+            logic = request.args.get(f'adv_logic_{idx}')
+            if not field or not operator or not value:
+                break
+            adv_filters.append({'field': field, 'operator': operator, 'value': value, 'logic': logic})
+            idx += 1
+        adv_expressions = []
+        for f in adv_filters:
+            col = getattr(Lead, f['field'], None)
+            if not col:
+                continue
+            val = f['value']
+            op = f['operator']
+            if op == 'equals':
+                expr = col == val
+            elif op == 'contains':
+                expr = col.ilike(f'%{val}%')
+            elif op == 'starts':
+                expr = col.ilike(f'{val}%')
+            elif op == 'ends':
+                expr = col.ilike(f'%{val}')
+            elif op == 'greater':
+                expr = col > val
+            elif op == 'less':
+                expr = col < val
             else:
-                expr = or_(expr, adv_expressions[i][0])
-        query = query.filter(expr)
-    # END advanced filter
+                expr = col == val
+            adv_expressions.append((expr, f['logic']))
+        if adv_expressions:
+            expr = adv_expressions[0][0]
+            for i in range(1, len(adv_expressions)):
+                logic = adv_expressions[i-1][1]
+                if logic == 'AND':
+                    expr = and_(expr, adv_expressions[i][0])
+                else:
+                    expr = or_(expr, adv_expressions[i][0])
+            query = query.filter(expr)
+        # END advanced filter
 
-    paginated = query.order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
-    leads = paginated.items
+        paginated = query.order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
+        leads = paginated.items
+        total = paginated.total
+        pages = paginated.pages
 
-    print(f"Page: {page}, Per Page: {per_page}, Leads: {[lead.lead_id for lead in leads]}")
+        # Filter options (get from all data, not only current page)
+        all_leads = LeadController.get_all_leads()
+        locations = sorted(set(
+            (lead.city.strip() + ', ' + lead.state.strip()).title() if lead.city and lead.state else (lead.city or lead.state or '').strip().title()
+            for lead in all_leads if (lead.city or lead.state)
+        ))
+        roles = sorted(set(lead.owner_title for lead in all_leads if lead.owner_title))
+        statuses = sorted(set(lead.status for lead in all_leads if lead.status))
+        industries = sorted(set(lead.industry for lead in all_leads if lead.industry))
+        business_types = sorted(set(lead.business_type for lead in all_leads if lead.business_type))
+        employee_sizes = sorted(set(lead.employees for lead in all_leads if lead.employees))
+        revenue_ranges = sorted(set(lead.revenue for lead in all_leads if lead.revenue))
+        sources = sorted(set(lead.source for lead in all_leads if lead.source))
+    else:
+        # For 'user' role, show their drafts
+        from models.user_lead_drafts_model import UserLeadDraft
 
-    # Filter options (get from all data, not only current page)
-    all_leads = LeadController.get_all_leads()
-    locations = sorted(set(
-        (lead.city.strip() + ', ' + lead.state.strip()).title() if lead.city and lead.state else (lead.city or lead.state or '').strip().title()
-        for lead in all_leads if (lead.city or lead.state)
-    ))
-    roles = sorted(set(lead.owner_title for lead in all_leads if lead.owner_title))
-    statuses = sorted(set(lead.status for lead in all_leads if lead.status))
+        query = UserLeadDraft.query.filter(
+            UserLeadDraft.user_id == current_user.user_id,
+            UserLeadDraft.is_deleted == False
+        )
 
-    # Get additional filter options
-    industries = sorted(set(lead.industry for lead in all_leads if lead.industry))
-    business_types = sorted(set(lead.business_type for lead in all_leads if lead.business_type))
-    employee_sizes = sorted(set(lead.employees for lead in all_leads if lead.employees))
-    revenue_ranges = sorted(set(lead.revenue for lead in all_leads if lead.revenue))
-    sources = sorted(set(lead.source for lead in all_leads if lead.source))
+        # Apply filters to drafts
+        if search:
+            query = query.filter(
+                or_(
+                    UserLeadDraft.draft_data['company'].astext.ilike(f'%{search}%'),
+                    UserLeadDraft.draft_data['owner_first_name'].astext.ilike(f'%{search}%'),
+                    UserLeadDraft.draft_data['owner_last_name'].astext.ilike(f'%{search}%'),
+                    UserLeadDraft.draft_data['owner_email'].astext.ilike(f'%{search}%')
+                )
+            )
+
+        paginated = query.order_by(UserLeadDraft.updated_at.desc()).paginate(page=page, per_page=per_page)
+        drafts = paginated.items
+        total = paginated.total
+        pages = paginated.pages
+
+        lead_fields = [c.name for c in Lead.__table__.columns]
+        LeadObject = namedtuple('LeadObject', lead_fields)
+
+        leads = []
+        for draft in drafts:
+            lead_data = draft.draft_data.copy()
+            lead_data['lead_id'] = draft.lead_id
+            lead_data['created_at'] = draft.created_at
+            lead_data['updated_at'] = draft.updated_at
+            
+            for field in lead_fields:
+                if field not in lead_data:
+                    lead_data[field] = None
+            
+            lead_data_for_object = {k: v for k,v in lead_data.items() if k in lead_fields}
+            
+            leads.append(LeadObject(**lead_data_for_object))
+
+        all_user_drafts = UserLeadDraft.query.filter(
+            UserLeadDraft.user_id == current_user.user_id,
+            UserLeadDraft.is_deleted == False
+        ).all()
+        
+        all_draft_data = [d.draft_data for d in all_user_drafts]
+
+        locations = sorted(set(
+            ((d.get('city') or '').strip() + ', ' + (d.get('state') or '').strip()).title()
+            for d in all_draft_data if d and (d.get('city') or d.get('state'))
+        ))
+        roles = sorted(set(d.get('owner_title') for d in all_draft_data if d and d.get('owner_title')))
+        statuses = sorted(set(d.get('status') for d in all_draft_data if d and d.get('status')))
+        industries = sorted(set(d.get('industry') for d in all_draft_data if d and d.get('industry')))
+        business_types = sorted(set(d.get('business_type') for d in all_draft_data if d and d.get('business_type')))
+        employee_sizes = sorted(set(d.get('employees') for d in all_draft_data if d and d.get('employees')))
+        revenue_ranges = sorted(set(d.get('revenue') for d in all_draft_data if d and d.get('revenue')))
+        sources = sorted(set(d.get('source') for d in all_draft_data if d and d.get('source')))
 
     return render_template('leads.html',
         leads=leads,
@@ -266,8 +328,8 @@ def view_leads():
         sources=sources,
         page=page,
         per_page=per_page,
-        total=paginated.total,
-        pages=paginated.pages,
+        total=total,
+        pages=pages,
         search=search,
         company=company,
         status=status,
@@ -301,24 +363,38 @@ def edit_lead(lead_id):
 @lead_bp.route('/update_status/<string:lead_id>', methods=['POST'])
 #@login_required
 def update_status(lead_id):
-    """Update lead status - All roles can update status"""
+    """Update lead status - handles both Leads for admins and Drafts for users."""
     user_id = getattr(current_user, 'user_id', None)
     username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
     current_app.logger.info(f'Route hit: /update_status/{lead_id} by user_id={user_id}, username={username}')
+    
+    new_status = request.form.get('status')
+    if not new_status:
+        flash('No status provided', 'danger')
+        return redirect(url_for('lead.view_leads'))
+
     try:
-        lead = Lead.query.filter_by(lead_id=lead_id).first_or_404()
-        new_status = request.form.get('status')
-        if new_status:
+        if current_user.role in ['admin', 'developer']:
+            lead = Lead.query.filter_by(lead_id=lead_id, deleted=False).first_or_404()
             lead.status = new_status
             db.session.commit()
-            current_app.logger.info(f'Lead status updated: {lead_id} to {new_status}')
             flash('Status updated successfully', 'success')
-        else:
-            current_app.logger.warning(f'No status provided for lead: {lead_id}')
-            flash('No status provided', 'danger')
+        else: # 'user' role
+            draft = UserLeadDraft.query.filter_by(user_id=current_user.user_id, lead_id=lead_id, is_deleted=False).first_or_404()
+            
+            draft_data = draft.draft_data or {}
+            draft_data['status'] = new_status
+            draft.draft_data = draft_data
+            
+            flag_modified(draft, "draft_data")
+            db.session.commit()
+            flash('Draft status updated successfully', 'success')
+
+    except NotFound:
+        flash('Item not found.', 'danger')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'Error updating status for lead {lead_id}: {str(e)}')
+        current_app.logger.error(f'Error updating status for lead/draft {lead_id}: {str(e)}')
         flash(f'Error updating status: {str(e)}', 'danger')
 
     return redirect(url_for('lead.view_leads'))
@@ -327,24 +403,35 @@ def update_status(lead_id):
 #@login_required
 @role_required('admin', 'developer', 'user')
 def delete_lead(lead_id):
-    """Soft delete lead - Admin and Developer only"""
+    """Soft delete lead for admins, or soft delete draft for users."""
     user_id = getattr(current_user, 'user_id', None)
     username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
     current_app.logger.info(f'Route hit: /leads/{lead_id}/delete by user_id={user_id}, username={username}')
+    
     try:
-        success, message = LeadController.delete_lead(lead_id, current_user)
+        if current_user.role in ['admin', 'developer']:
+            success, message = LeadController.delete_lead(lead_id, current_user)
+        else: # 'user' role
+            draft = UserLeadDraft.query.filter_by(user_id=current_user.user_id, lead_id=lead_id, is_deleted=False).first_or_404()
+            draft.is_deleted = True
+            db.session.commit()
+            success = True
+            message = "Draft deleted successfully."
+
         if success:
-            current_app.logger.info(f'Lead deleted: {lead_id}')
+            current_app.logger.info(f'Delete action successful for {lead_id} by user {username}. Message: {message}')
         else:
-            current_app.logger.warning(f'Failed to delete lead: {lead_id} - {message}')
+            current_app.logger.warning(f'Failed to delete {lead_id} by user {username}. Message: {message}')
         return jsonify({'success': success, 'message': message})
+
     except NotFound:
-        current_app.logger.error(f'Lead not found or already deleted: {lead_id}')
-        return jsonify({'success': False, 'message': 'Lead not found or already deleted.'}), 404
+        current_app.logger.error(f'Item not found for deletion: {lead_id}')
+        return jsonify({'success': False, 'message': 'Item not found.'}), 404
     except Exception as e:
         import traceback
-        current_app.logger.error(f'Error deleting lead {lead_id}: {str(e)}')
+        current_app.logger.error(f'Error deleting lead/draft {lead_id}: {str(e)}')
         print(traceback.format_exc())
+        db.session.rollback() # Make sure to rollback
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @lead_bp.route('/leads/delete-multiple', methods=['POST'])

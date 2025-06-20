@@ -685,6 +685,9 @@ tr:hover .fas {
         </div>
     </div>
 
+    <!-- Tier Stats Cards -->
+    <div id="tierStatsCards" class="row g-3 mb-4"></div>
+
     <!-- Users Table Card -->
     <div class="card bg-dark border-secondary">
         <div class="card-body p-0">
@@ -1083,6 +1086,49 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('expiringUsers').textContent = expiring;
     }
 
+    // Update tier stats cards
+    function updateTierStatsCards() {
+        const tiersToShow = [
+            { name: 'Bronze', keys: ['bronze', 'bronze_annual'], icon: 'medal', color: 'warning' },
+            { name: 'Silver', keys: ['silver', 'silver_annual'], icon: 'medal', color: 'secondary' },
+            { name: 'Gold', keys: ['gold', 'gold_annual'], icon: 'medal', color: 'warning' },
+            { name: 'Platinum', keys: ['platinum', 'platinum_annual'], icon: 'crown', color: 'info' },
+            { name: 'Student', keys: ['student_monthly', 'student_semester', 'student_annual'], icon: 'graduation-cap', color: 'success' },
+            { name: 'Call Outreach', keys: ['call_outreach'], icon: 'phone', color: 'primary' },
+            { name: 'Paused', keys: ['pause_one_month', 'pause_two_month', 'pause_three_month'], icon: 'pause-circle', color: 'info' },
+            { name: 'Free', keys: ['free', null, undefined, ''], icon: 'user', color: 'secondary' }
+        ];
+
+        const container = document.getElementById('tierStatsCards');
+        if (!container) return;
+        container.innerHTML = '';
+
+        tiersToShow.forEach(tierInfo => {
+            const count = users.filter(u => u.status === 'active' && tierInfo.keys.includes(u.tier)).length;
+
+            if (count > 0) {
+                const cardHtml = `
+                <div class="col-md-3">
+                    <div class="card bg-dark border-${tierInfo.color} h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted mb-1">${tierInfo.name} Users</h6>
+                                    <h3 class="mb-0 text-light">${count}</h3>
+                                </div>
+                                <div class="bg-${tierInfo.color} bg-opacity-25 p-3 rounded">
+                                    <i class="fas fa-${tierInfo.icon} fa-2x text-${tierInfo.color}"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
+            }
+        });
+    }
+
         // Update initializeDataTable function to check for jQuery
         function initializeDataTable() {
             if (typeof jQuery === 'undefined') {
@@ -1259,6 +1305,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Update stats
             updateStats();
+            updateTierStatsCards();
 
                 // Initialize or reinitialize DataTable
                 initializeDataTable();

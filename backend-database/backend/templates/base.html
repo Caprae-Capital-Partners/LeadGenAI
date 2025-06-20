@@ -443,6 +443,7 @@
         </div>
 
         <!-- Import Section -->
+        {% if current_user.is_authenticated and current_user.role in ['admin', 'developer'] %}
         <div class="nav-section">
             <div class="nav-section-title">IMPORT</div>
             <a href="{{ url_for('lead.form') }}" class="nav-item {% if request.endpoint == 'lead.form' %}active{% endif %}">
@@ -454,6 +455,7 @@
                 <span>Bulk Import</span>
             </a>
         </div>
+        {% endif %}
 
         <!-- Drafts Section -->
         <div class="nav-section">
