@@ -124,22 +124,16 @@ const EmailMessageGenerator: React.FC<EmailMessageGeneratorProps> = ({
 }) => {
   return (
     <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center mb-4">
-  <h2 className="text-2xl font-bold">Email Message Generator</h2>
-  <Button 
-    variant="ghost"
-    size="sm"
-    onClick={onClose}
-    className="h-8 w-8 p-0"
-  >
-    <X className="h-4 w-4" />
-  </Button>
-</div>
+      <div className="mb-4">
+        {/* Removed duplicate title */}
+      </div>
 
       <div className="space-y-4">
         <div className="p-4 border rounded-lg text-white bg-gray-600">
-          <p className="font-medium">Person:</p>
-          <p className="text-lg">{person.name}</p>
+          <div className="flex items-baseline gap-2">
+            <p className="font-medium">Person:</p>
+            <p className="text-lg">{person.name}</p>
+          </div>
           <p className="text-sm text-white mt-1">Company: {person.company}</p>
           {person.email && (
             <p className="text-sm text-white mt-1">
@@ -259,22 +253,13 @@ interface LinkedInMessageGeneratorProps {
   }) => {
     return (
       <div className="space-y-6 p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">LinkedIn Message Generator</h2>
-          <Button 
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="h-8 w-8 p-0"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-  
+        {/* Removed duplicate title */}
         <div className="space-y-4">
           <div className="p-4 border rounded-lg text-white bg-blue-600">
-            <p className="font-medium">Person:</p>
-            <p className="text-lg">{person.name}</p>
+            <div className="flex items-baseline gap-2">
+              <p className="font-medium">Person:</p>
+              <p className="text-lg">{person.name}</p>
+            </div>
             <p className="text-sm text-white mt-1">Company: {person.company}</p>
             {person.linkedin && (
               <p className="text-sm text-white mt-1">
@@ -982,40 +967,19 @@ export default function PersonsPage() {
   const generateEmailMessage = async (person: Person, settings: MessageSettings) => {
     setIsGenerating(true);
     try {
-      // Simulate AI generation (replace with actual API call)
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const toneMap = {
-        professional: "I hope this message finds you well",
-        friendly: "I hope you're having a great day",
-        direct: "I'm reaching out to discuss",
-        casual: "Hey there"
-      };
-
-      const focusMap = {
-        partnership: "exploring potential partnership opportunities",
-        collaboration: "discussing collaboration possibilities", 
-        networking: "connecting and expanding our professional networks",
-        sales: "sharing how we might help your business grow"
-      };
-
-      const greeting = toneMap[settings.tone as keyof typeof toneMap] || toneMap.professional;
-      const purpose = focusMap[settings.focus as keyof typeof focusMap] || focusMap.partnership;
-
-      const message = `Subject: ${settings.focus.charAt(0).toUpperCase() + settings.focus.slice(1)} Opportunity
-
-Hi ${person.name},
-
-${greeting}. I came across your profile and was impressed by your role as ${person.title} at ${person.company}${person.industry && person.industry !== 'N/A' ? ` in the ${person.industry} industry` : ''}.
-
-I'm interested in ${purpose} that could be mutually beneficial for both our organizations.
-
-${settings.extraContext ? `${settings.extraContext}\n\n` : ''}Would you be open to a brief conversation to explore this further?
-
-Best regards,
-[Your Name]`;
-
-      setGeneratedMessage(message);
+      const response = await axios.post(
+        `${DATABASE_URL_NOAPI}/emailgen/scrape`,
+        {
+          company_name: person.company,
+          homepage_url: person.website,
+          // Optionally, you can send more context if your backend supports it
+          // tone: settings.tone,
+          // focus: settings.focus,
+          // extra_context: settings.extraContext,
+        },
+        { withCredentials: true }
+      );
+      setGeneratedMessage(response.data.email || "No email message returned.");
     } catch (error) {
       console.error("Error generating message:", error);
       showNotification("Error generating message", "error");
@@ -1023,48 +987,30 @@ Best regards,
       setIsGenerating(false);
     }
   };
+
   const generateLinkedInMessage = async (person: Person, settings: MessageSettings) => {
-      setLinkedinIsGenerating(true);
-      try {
-        // Simulate AI generation (replace with actual API call)
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const toneMap = {
-          professional: "I hope this message finds you well",
-          friendly: "I hope you're doing great",
-          direct: "I'm reaching out to discuss",
-          casual: "Hey"
-        };
-    
-        const focusMap = {
-          partnership: "exploring potential partnership opportunities",
-          collaboration: "discussing collaboration possibilities", 
-          networking: "connecting and expanding our professional networks",
-          sales: "sharing how we might help your business grow"
-        };
-    
-        const greeting = toneMap[settings.tone as keyof typeof toneMap] || toneMap.professional;
-        const purpose = focusMap[settings.focus as keyof typeof focusMap] || focusMap.partnership;
-    
-        const message = `Hi ${person.name},
-    
-${greeting}. I came across your profile and was impressed by your role as ${person.title} at ${person.company}${person.industry && person.industry !== 'N/A' ? ` in the ${person.industry} industry` : ''}.
-    
-I'm interested in ${purpose} that could be mutually beneficial for both our organizations.
-    
-${settings.extraContext ? `${settings.extraContext}\n\n` : ''}Would you be open to a brief conversation to explore this further?
-    
-Best regards,
-[Your Name]`;
-      
-        setLinkedinGeneratedMessage(message);
-      } catch (error) {
-        console.error("Error generating LinkedIn message:", error);
-        showNotification("Error generating LinkedIn message", "error");
-      } finally {
-        setLinkedinIsGenerating(false);
-      }
-    };
+    setLinkedinIsGenerating(true);
+    try {
+      const response = await axios.post(
+        `${DATABASE_URL_NOAPI}/emailgen/scrape`,
+        {
+          company_name: person.company,
+          homepage_url: person.website,
+          // Optionally, you can send more context if your backend supports it
+          // tone: settings.tone,
+          // focus: settings.focus,
+          // extra_context: settings.extraContext,
+        },
+        { withCredentials: true }
+      );
+      setLinkedinGeneratedMessage(response.data.linkedin_message || "No LinkedIn message returned.");
+    } catch (error) {
+      console.error("Error generating LinkedIn message:", error);
+      showNotification("Error generating LinkedIn message", "error");
+    } finally {
+      setLinkedinIsGenerating(false);
+    }
+  };
 
 return (
   <div className="flex flex-col h-screen">
@@ -1263,7 +1209,7 @@ return (
                                     onClick={() => handleEmailMessageClick(person)}
                                     title="Generate Email Message"
                                   >
-                                    <MessageSquare className="w-4 h-4 text-green-600" />
+                                    <Mail className="w-4 h-4 text-green-600" />
                                   </Button>
                                 )}
                                 {person.linkedin && person.linkedin !== 'N/A' && (
@@ -1273,7 +1219,7 @@ return (
                                         onClick={() => handleLinkedInMessageClick(person)}
                                         title="Generate LinkedIn Message"
                                     >
-                                        <MessageSquare className="w-4 h-4 text-blue-600" />
+                                        <Linkedin className="w-4 h-4 text-blue-700" />
                                     </Button>
                                 )}
                                 <Button
@@ -1430,7 +1376,7 @@ return (
   <Dialog open={!!emailPopupData} onOpenChange={() => setEmailPopupData(null)}>
     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>Email Message Generator</DialogTitle>
+        <DialogTitle className="text-2xl text-center">Email Message Generator</DialogTitle>
       </DialogHeader>
       <EmailMessageGenerator
         person={emailPopupData}
@@ -1449,7 +1395,7 @@ return (
   <Dialog open={!!linkedinPopupData} onOpenChange={() => setLinkedinPopupData(null)}>
     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>LinkedIn Message Generator</DialogTitle>
+        <DialogTitle className="text-2xl text-center">LinkedIn Message Generator</DialogTitle>
       </DialogHeader>
       <LinkedInMessageGenerator
         person={linkedinPopupData}
