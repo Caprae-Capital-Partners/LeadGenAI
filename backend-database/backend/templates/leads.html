@@ -964,11 +964,13 @@
             const location = document.getElementById('locationFilter') ? document.getElementById('locationFilter').value : '';
             const role = document.getElementById('roleFilter') ? document.getElementById('roleFilter').value : '';
             const industry = document.getElementById('industryFilter') ? document.getElementById('industryFilter').value : '';
+            const status = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : '';
             let params = new URLSearchParams(window.location.search);
 
             if (location) params.set('location', location); else params.delete('location');
             if (role) params.set('role', role); else params.delete('role');
             if (industry) params.set('industry', industry); else params.delete('industry');
+            if (status) params.set('status', status); else params.delete('status');
 
             // Advanced filter
             // Hapus semua adv_field/operator/value/logic lama
