@@ -973,6 +973,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // Remove loading states
             const buttons = document.querySelectorAll('.subscription-action.loading');
             buttons.forEach(btn => btn.classList.remove('loading'));
+            
+            // Reset reactivate button visibility
+            const reactivateBtn = document.getElementById('reactivateSubscriptionBtn');
+            if (reactivateBtn) {
+                reactivateBtn.style.display = 'none';
+                reactivateBtn.disabled = true;
+            }
         });
     }
     if (cancelConfirmModalElement) {
@@ -1152,6 +1159,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const data = await response.json();
                 users = data.users || [];
+                console.log('Loaded users data:', users);
+                console.log('Total users loaded:', users.length);
             const tbody = usersTable.querySelector('tbody');
             tbody.innerHTML = '';
 
@@ -1304,6 +1313,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Function to handle cancellation type change
+    function handleCancellationTypeChange() {
+        const cancelType = document.getElementById('cancelType');
+        const reactivateBtn = document.getElementById('reactivateSubscriptionBtn');
+        
+        if (cancelType && reactivateBtn) {
+            // Only show reactivate button if period_end is selected
+            if (cancelType.value === 'period_end') {
+                reactivateBtn.style.display = 'block';
+                reactivateBtn.disabled = false;
+            } else {
+                reactivateBtn.style.display = 'none';
+                reactivateBtn.disabled = true;
+            }
+        }
+    }
+
     // Function to open manage modal
     function openManageModal(userId) {
         const user = users.find(u => u.id === userId);
@@ -1437,12 +1463,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Add event listener for cancellation type change
+    const cancelTypeSelect = document.getElementById('cancelType');
+    if (cancelTypeSelect) {
+        cancelTypeSelect.addEventListener('change', handleCancellationTypeChange);
+    }
+    
     if (confirmCancelBtn) {
         confirmCancelBtn.addEventListener('click', async function() {
+            const thisButton = this; // Store button reference properly
             try {
-                const button = this;
-                button.classList.add('loading');
-                button.disabled = true;
+                thisButton.classList.add('loading');
+                thisButton.disabled = true;
                 
                 const cancelType = document.getElementById('cancelType').value;
                 const feedback = document.getElementById('cancelFeedback').value;
@@ -1454,12 +1486,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                body: JSON.stringify({ 
+                    body: JSON.stringify({ 
                         cancellation_type: cancelType,
                         feedback: feedback,
                         comment: feedback // Use feedback as comment
-                })
-            });
+                    })
+                });
 
                 const data = await response.json();
                 
@@ -1467,29 +1499,41 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(data.error || 'Failed to cancel subscription');
                 }
 
-                // Hide cancel confirmation modal
+                // Hide cancel confirmation modal and restore focus properly
                 if (cancelConfirmModal) {
+                    // Remove aria-hidden before hiding
+                    const modalElement = document.getElementById('cancelConfirmModal');
+                    if (modalElement) {
+                        modalElement.removeAttribute('aria-hidden');
+                    }
                     cancelConfirmModal.hide();
                 }
+                
+                // Close manage modal first to ensure clean state
+                if (manageModal) {
+                    manageModal.hide();
+                }
+                
+                // Wait a bit for modals to close properly
+                await new Promise(resolve => setTimeout(resolve, 300));
                 
                 // Reload users to get updated data
                 await loadUsers();
                 
-                // Find and update current user data
-                const updatedUsers = await fetch('/api/admin/users', {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'same-origin'
-                }).then(res => res.json()).then(data => data.users || []);
+                // Wait a bit more for data to be fully loaded
+                await new Promise(resolve => setTimeout(resolve, 200));
                 
-                // Find and update current user data
-                const updatedUser = updatedUsers.find(u => u.id === currentUser.id);
+                // Find and update current user data from the refreshed users array
+                const updatedUser = users.find(u => u.id === currentUser.id);
                 if (updatedUser) {
                     currentUser = updatedUser;
+                    console.log('Updated user data after cancel:', updatedUser);
                     // Update modal content with new data
                     openManageModal(currentUser.id);
+                } else {
+                    // If user not found in updated list, show error
+                    console.error('User not found in updated users list:', currentUser.id);
+                    showToast('User data could not be updated. Please refresh the page.', 'warning');
                 }
                 
                 showToast(data.message || 'Subscription cancelled successfully', 'success');
@@ -1497,20 +1541,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error cancelling subscription:', error);
                 showToast(error.message || 'Failed to cancel subscription', 'danger');
             } finally {
-                if (button) {
-                    button.classList.remove('loading');
-                    button.disabled = false;
+                if (thisButton) {
+                    thisButton.classList.remove('loading');
+                    thisButton.disabled = false;
                 }
             }
         });
     }
-    
+
     if (confirmReactivateBtn) {
         confirmReactivateBtn.addEventListener('click', async function() {
-            const button = this;  // Store button reference
+            const thisButton = this;
             try {
-                button.classList.add('loading');
-                button.disabled = true;  // Disable button while processing
+                thisButton.classList.add('loading');
+                thisButton.disabled = true;
                 
                 // Use admin endpoint to reactivate user subscription
                 const response = await fetch(`/api/auth/user/${currentUser.id}/reactivate_subscription`, {
@@ -1524,50 +1568,109 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    // Check specific error cases
-                    if (response.status === 400 && data.error === 'Subscription is not scheduled for cancellation') {
-                        throw new Error('Only subscriptions that are scheduled for cancellation can be reactivated');
-                    }
                     throw new Error(data.error || 'Failed to reactivate subscription');
-        }
+                }
 
                 // Hide reactivate confirmation modal
                 if (reactivateConfirmModal) {
                     reactivateConfirmModal.hide();
                 }
                 
+                // Close manage modal first to ensure clean state
+                if (manageModal) {
+                    manageModal.hide();
+                }
+                
+                // Wait a bit for modals to close properly
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
                 // Reload users to get updated data
                 await loadUsers();
                 
-                // Find and update current user data
-                const updatedUsers = await fetch('/api/admin/users', {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'same-origin'
-                }).then(res => res.json()).then(data => data.users || []);
+                // Wait a bit more for data to be fully loaded
+                await new Promise(resolve => setTimeout(resolve, 200));
                 
-                // Find and update current user data
-                const updatedUser = updatedUsers.find(u => u.id === currentUser.id);
+                // Find and update current user data from the refreshed users array
+                const updatedUser = users.find(u => u.id === currentUser.id);
                 if (updatedUser) {
                     currentUser = updatedUser;
-                    // Update modal content with new data and refresh button visibility
+                    console.log('Updated user data after reactivate:', updatedUser);
+                    // Update modal content with new data
                     openManageModal(currentUser.id);
+                } else {
+                    // If user not found in updated list, show error
+                    console.error('User not found in updated users list:', currentUser.id);
+                    showToast('User data could not be updated. Please refresh the page.', 'warning');
                 }
                 
                 showToast(data.message || 'Subscription reactivated successfully', 'success');
-        } catch (error) {
+            } catch (error) {
                 console.error('Error reactivating subscription:', error);
                 showToast(error.message || 'Failed to reactivate subscription', 'danger');
             } finally {
-                // Always cleanup button state
-                if (button) {
-                    button.classList.remove('loading');
-                    button.disabled = false;
+                if (thisButton) {
+                    thisButton.classList.remove('loading');
+                    thisButton.disabled = false;
                 }
-        }
-    });
+            }
+        });
+    }
+
+    // Add modal event listeners for proper focus management
+    if (cancelConfirmModalElement) {
+        cancelConfirmModalElement.addEventListener('hidden.bs.modal', function () {
+            // Remove aria-hidden when modal is hidden
+            this.removeAttribute('aria-hidden');
+            // Reset form fields
+            const cancelType = document.getElementById('cancelType');
+            const cancelFeedback = document.getElementById('cancelFeedback');
+            if (cancelType) cancelType.value = 'immediate';
+            if (cancelFeedback) cancelFeedback.value = '';
+            
+            // Remove loading states from buttons
+            const buttons = this.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            });
+            
+            // Reset reactivate button visibility
+            const reactivateBtn = document.getElementById('reactivateSubscriptionBtn');
+            if (reactivateBtn) {
+                reactivateBtn.style.display = 'none';
+                reactivateBtn.disabled = true;
+            }
+        });
+
+        cancelConfirmModalElement.addEventListener('show.bs.modal', function () {
+            // Ensure first focusable element gets focus
+            const firstFocusable = this.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (firstFocusable) {
+                firstFocusable.focus();
+            }
+            
+            // Initialize reactivate button visibility based on current selection
+            handleCancellationTypeChange();
+        });
+    }
+
+    if (reactivateConfirmModalElement) {
+        reactivateConfirmModalElement.addEventListener('hidden.bs.modal', function () {
+            // Remove loading state from confirm button
+            const confirmBtn = document.getElementById('confirmReactivateBtn');
+            if (confirmBtn) {
+                confirmBtn.classList.remove('loading');
+                confirmBtn.disabled = false;
+            }
+        });
+
+        reactivateConfirmModalElement.addEventListener('show.bs.modal', function () {
+            // Ensure first focusable element gets focus
+            const firstFocusable = this.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (firstFocusable) {
+                firstFocusable.focus();
+            }
+        });
     }
 
     // Initial load

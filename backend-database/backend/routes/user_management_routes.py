@@ -56,8 +56,18 @@ def get_users():
                         'status': 'active' if subscription and subscription.plan_expiration_timestamp and subscription.plan_expiration_timestamp > datetime.utcnow() else 'inactive',
                         'credits': subscription.credits_remaining if subscription else 0,
                         'expires_at': subscription.plan_expiration_timestamp.isoformat() if subscription and subscription.plan_expiration_timestamp else None,
-                        'is_canceled': subscription.is_canceled if subscription else False
-                    } if subscription else None
+                        'is_canceled': subscription.is_canceled if subscription else False,
+                        'is_scheduled_for_cancellation': subscription.payment_frequency and '_scheduled_cancel' in subscription.payment_frequency if subscription else False,
+                        'payment_frequency': subscription.payment_frequency if subscription else None
+                    } if subscription else {
+                        'plan': None,
+                        'status': 'inactive',
+                        'credits': 0,
+                        'expires_at': None,
+                        'is_canceled': False,
+                        'is_scheduled_for_cancellation': False,
+                        'payment_frequency': None
+                    }
                 }
                 user_list.append(user_data)
             except Exception as e:
