@@ -582,9 +582,7 @@ export default function PersonsPage() {
   const [popupData, setPopupData] = useState<Person | null>(null)
   const [popupTab, setPopupTab] = useState('overview')
   const [isEditing, setIsEditing] = useState(false)
-  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null)
-  const [editedPersons, setEditedPersons] = useState<Person[]>([])
-  
+
   // Email popup states
   const [emailPopupData, setEmailPopupData] = useState<Person | null>(null)
   const [generatedMessage, setGeneratedMessage] = useState("")
@@ -678,10 +676,6 @@ export default function PersonsPage() {
 
     fetchPersons()
   }, [])
-
-  useEffect(() => {
-    setEditedPersons([...persons]);
-  }, [persons]);
 
   // Handle search and filters
   const filteredPersons = persons.filter(person => {
@@ -805,22 +799,66 @@ export default function PersonsPage() {
   const handlePopupSave = async () => {
     if (!popupData) return;
 
+    // Helper to convert camelCase keys into snake_case
+    const toSnake = (str: string) => str.replace(/([A-Z])/g, "_$1").toLowerCase();
+    const normalizeKeys = (obj: any) => {
+      const result: any = {};
+      for (const [k, v] of Object.entries(obj)) {
+        result[toSnake(k)] = v;
+      }
+      return result;
+    };
+
     try {
-      const personIndex = persons.findIndex(p => p.id === popupData.id);
-      if (personIndex === -1) return;
+      const person = popupData;
+      const leadId = person.id;
+      const actualDraftId = person.draft_id;
 
-      await handleSave(personIndex);
+      if (!actualDraftId) {
+        throw new Error("Draft ID not found for this person");
+      }
 
-      // Update the popup data to reflect changes
-      const updatedPersons = [...persons];
-      updatedPersons[personIndex] = popupData;
-      setPersons(updatedPersons);
-      setEditedPersons(updatedPersons);
+      // Normalize the edited fields so that every key is snake_case
+      const normalizedPerson = normalizeKeys(person);
 
-      setIsEditing(false);
-      showNotification("Changes saved successfully.", "success");
-    } catch (error) {
-      showNotification("Failed to save changes.", "error");
+      // Create payload for the draft update
+      const payload = {
+        draft_data: normalizedPerson,
+        change_summary: "Updated from persons page",
+        phase: "draft",
+        status: "pending",
+      };
+
+      const putUrl = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/drafts/${actualDraftId}`;
+
+      try {
+        const putResponse = await axios.put(putUrl, payload, { withCredentials: true });
+        // Update local state with the saved changes
+        setPersons((prev) => prev.map((p) => p.id === person.id ? { ...person, draft_id: actualDraftId, updated: new Date().toLocaleString() } : p));
+        setIsEditing(false);
+        setPopupData(null);
+        showNotification("Changes saved successfully.", "success");
+      } catch (putError) {
+        console.error("❌ PUT Request failed:", putError);
+        if (axios.isAxiosError(putError)) {
+          console.error("❌ PUT Error status:", putError.response?.status);
+          console.error("❌ PUT Error data:", putError.response?.data);
+        }
+        throw putError;
+      }
+    } catch (err) {
+      console.error("❌ Error saving person:", err);
+      let errorMessage = "Failed to save person.";
+      if (axios.isAxiosError(err)) {
+        if (err.response) {
+          errorMessage = `Save failed: ${err.response.data?.message || err.message}`;
+        } else {
+          errorMessage = "Network error: Unable to connect to server.";
+        }
+      } else if (err instanceof Error) {
+        errorMessage = `Save failed: ${err.message}`;
+      }
+      showNotification(errorMessage, "error");
     }
   };
 
@@ -905,9 +943,11 @@ export default function PersonsPage() {
   }
 
   // Action handlers
-  const handleEdit = (person: Person, index: number) => {
-    setEditingRowIndex(index);
-  }
+  const handleEdit = (person: Person) => {
+    setPopupData(person);
+    setIsEditing(true);
+    setPopupTab('overview');
+  };
 
   const handleNotes = (person: Person) => {
     console.log("Open notes for:", person)
@@ -930,164 +970,39 @@ export default function PersonsPage() {
     setPopupData(person);
   }
 
-  // Function to handle field changes during editing
-  const handleFieldChange = (index: number, field: keyof Person, value: string | number) => {
-    const updated = [...editedPersons];
-    updated[index] = {
-      ...updated[index],
-      [field]: value,
-    };
-    setEditedPersons(updated);
+  // Function to show notifications
+  const showNotification = (message: string, type = "success") => {
+    setNotif({ show: true, message, type });
+    setTimeout(() => {
+      setNotif(prev => ({ ...prev, show: false }));
+    }, 3500);
   };
 
-  // Function to save edited row
-  const handleSave = async (index: number) => {
-    // Helper to convert camelCase keys into snake_case
-    const toSnake = (str: string) => str.replace(/([A-Z])/g, "_$1").toLowerCase();
-
-    // Given a plain object with camelCase keys, return a new object
-    // whose keys are all snake_case.
-    const normalizeKeys = (obj: any) => {
-      const result: any = {};
-      for (const [k, v] of Object.entries(obj)) {
-        result[toSnake(k)] = v;
-      }
-      return result;
-    };
-
+  // Generate AI email message
+  const generateEmailMessage = async (person: Person, settings: MessageSettings) => {
+    setIsGenerating(true);
     try {
-      const person = editedPersons[index];
-      const leadId = person.id;
-      const actualDraftId = person.draft_id;
-
-      console.log("🔧 Attempting to save person:", leadId);
-      console.log("🔧 Full person object:", JSON.stringify(person, null, 2));
-      console.log("🔧 person.draft_id:", person.draft_id);
-
-      if (!actualDraftId) {
-        throw new Error("Draft ID not found for this person");
-    }
-
-    // Normalize the edited fields so that every key is snake_case
-    const normalizedPerson = normalizeKeys(person);
-
-    // Create payload for the draft update
-    const payload = {
-      draft_data: normalizedPerson,
-      change_summary: "Updated from persons page",
-      phase: "draft",
-      status: "pending",
-    };
-
-    const putUrl = `${process.env.NEXT_PUBLIC_DATABASE_URL}/leads/drafts/${actualDraftId}`;
-    console.log("🔧 PUT URL:", putUrl);
-    console.log("🔧 PUT Payload:", JSON.stringify(payload, null, 2));
-
-    try {
-      const putResponse = await axios.put(putUrl, payload, { withCredentials: true });
-      console.log("✅ PUT Success response:", putResponse.data);
+      // Simulate AI generation (replace with actual API call)
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Update local state with the saved changes
-      updatePersonInState(person.id, {
-        ...person,
-        draft_id: actualDraftId,
-        updated: new Date().toLocaleString(),
-      });
+      const toneMap = {
+        professional: "I hope this message finds you well",
+        friendly: "I hope you're having a great day",
+        direct: "I'm reaching out to discuss",
+        casual: "Hey there"
+      };
 
-      setEditingRowIndex(null);
-      showNotification("Changes saved successfully", "success");
-      
-    } catch (putError) {
-      console.error("❌ PUT Request failed:", putError);
-      if (axios.isAxiosError(putError)) {
-        console.error("❌ PUT Error status:", putError.response?.status);
-        console.error("❌ PUT Error data:", putError.response?.data);
-      }
-      throw putError;
-    }
+      const focusMap = {
+        partnership: "exploring potential partnership opportunities",
+        collaboration: "discussing collaboration possibilities", 
+        networking: "connecting and expanding our professional networks",
+        sales: "sharing how we might help your business grow"
+      };
 
-  } catch (err) {
-    console.error("❌ Error saving person:", err);
+      const greeting = toneMap[settings.tone as keyof typeof toneMap] || toneMap.professional;
+      const purpose = focusMap[settings.focus as keyof typeof focusMap] || focusMap.partnership;
 
-    let errorMessage = "Failed to save person.";
-    if (axios.isAxiosError(err)) {
-      if (err.response) {
-        errorMessage = `Save failed: ${err.response.data?.message || err.message}`;
-      } else {
-        errorMessage = "Network error: Unable to connect to server.";
-      }
-    } else if (err instanceof Error) {
-      errorMessage = `Save failed: ${err.message}`;
-    }
-
-    showNotification(errorMessage, "error");
-  }
-};
-
-// Helper function to update person in state (eliminates duplication)
-const updatePersonInState = (personId: string, updatedPerson: Person) => {
-  const updateArray = (arr: Person[]) => 
-    arr.map(p => p.id === personId ? updatedPerson : p);
-  
-  setPersons(updateArray);
-  setEditedPersons(updateArray);
-};
-
-// Function to discard changes and revert to original data
-const handleDiscard = (index: number) => {
-  const originalPerson = persons[index];
-  const updated = [...editedPersons];
-  updated[index] = originalPerson;
-  setEditedPersons(updated);
-  setEditingRowIndex(null);
-};
-
-// Function to show notifications
-const showNotification = (message: string, type = "success") => {
-  setNotif({ show: true, message, type });
-  setTimeout(() => {
-    setNotif(prev => ({ ...prev, show: false }));
-  }, 3500);
-};
-
-// Sync editedPersons with persons when persons change
-useEffect(() => {
-  setEditedPersons([...persons]);
-}, [persons]);
-
-// Helper function to get person index by ID
-const getPersonIndex = (personId: string) => 
-  persons.findIndex(p => p.id === personId);
-
-// Helper function to get current row index
-const getCurrentRowIndex = (personId: string) => 
-  currentItems.findIndex(p => p.id === personId);
-
-// Generate AI email message
-const generateEmailMessage = async (person: Person, settings: MessageSettings) => {
-  setIsGenerating(true);
-  try {
-    // Simulate AI generation (replace with actual API call)
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const toneMap = {
-      professional: "I hope this message finds you well",
-      friendly: "I hope you're having a great day",
-      direct: "I'm reaching out to discuss",
-      casual: "Hey there"
-    };
-
-    const focusMap = {
-      partnership: "exploring potential partnership opportunities",
-      collaboration: "discussing collaboration possibilities", 
-      networking: "connecting and expanding our professional networks",
-      sales: "sharing how we might help your business grow"
-    };
-
-    const greeting = toneMap[settings.tone as keyof typeof toneMap] || toneMap.professional;
-    const purpose = focusMap[settings.focus as keyof typeof focusMap] || focusMap.partnership;
-
-    const message = `Subject: ${settings.focus.charAt(0).toUpperCase() + settings.focus.slice(1)} Opportunity
+      const message = `Subject: ${settings.focus.charAt(0).toUpperCase() + settings.focus.slice(1)} Opportunity
 
 Hi ${person.name},
 
@@ -1100,56 +1015,56 @@ ${settings.extraContext ? `${settings.extraContext}\n\n` : ''}Would you be open 
 Best regards,
 [Your Name]`;
 
-    setGeneratedMessage(message);
-  } catch (error) {
-    console.error("Error generating message:", error);
-    showNotification("Error generating message", "error");
-  } finally {
-    setIsGenerating(false);
-  }
-};
-const generateLinkedInMessage = async (person: Person, settings: MessageSettings) => {
-    setLinkedinIsGenerating(true);
-    try {
-      // Simulate AI generation (replace with actual API call)
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const toneMap = {
-        professional: "I hope this message finds you well",
-        friendly: "I hope you're doing great",
-        direct: "I'm reaching out to discuss",
-        casual: "Hey"
-      };
-  
-      const focusMap = {
-        partnership: "exploring potential partnership opportunities",
-        collaboration: "discussing collaboration possibilities", 
-        networking: "connecting and expanding our professional networks",
-        sales: "sharing how we might help your business grow"
-      };
-  
-      const greeting = toneMap[settings.tone as keyof typeof toneMap] || toneMap.professional;
-      const purpose = focusMap[settings.focus as keyof typeof focusMap] || focusMap.partnership;
-  
-      const message = `Hi ${person.name},
-  
-  ${greeting}. I came across your profile and was impressed by your role as ${person.title} at ${person.company}${person.industry && person.industry !== 'N/A' ? ` in the ${person.industry} industry` : ''}.
-  
-  I'm interested in ${purpose} that could be mutually beneficial for both our organizations.
-  
-  ${settings.extraContext ? `${settings.extraContext}\n\n` : ''}Would you be open to a brief conversation to explore this further?
-  
-  Best regards,
-  [Your Name]`;
-  
-      setLinkedinGeneratedMessage(message);
+      setGeneratedMessage(message);
     } catch (error) {
-      console.error("Error generating LinkedIn message:", error);
-      showNotification("Error generating LinkedIn message", "error");
+      console.error("Error generating message:", error);
+      showNotification("Error generating message", "error");
     } finally {
-      setLinkedinIsGenerating(false);
+      setIsGenerating(false);
     }
   };
+  const generateLinkedInMessage = async (person: Person, settings: MessageSettings) => {
+      setLinkedinIsGenerating(true);
+      try {
+        // Simulate AI generation (replace with actual API call)
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        const toneMap = {
+          professional: "I hope this message finds you well",
+          friendly: "I hope you're doing great",
+          direct: "I'm reaching out to discuss",
+          casual: "Hey"
+        };
+    
+        const focusMap = {
+          partnership: "exploring potential partnership opportunities",
+          collaboration: "discussing collaboration possibilities", 
+          networking: "connecting and expanding our professional networks",
+          sales: "sharing how we might help your business grow"
+        };
+    
+        const greeting = toneMap[settings.tone as keyof typeof toneMap] || toneMap.professional;
+        const purpose = focusMap[settings.focus as keyof typeof focusMap] || focusMap.partnership;
+    
+        const message = `Hi ${person.name},
+    
+${greeting}. I came across your profile and was impressed by your role as ${person.title} at ${person.company}${person.industry && person.industry !== 'N/A' ? ` in the ${person.industry} industry` : ''}.
+    
+I'm interested in ${purpose} that could be mutually beneficial for both our organizations.
+    
+${settings.extraContext ? `${settings.extraContext}\n\n` : ''}Would you be open to a brief conversation to explore this further?
+    
+Best regards,
+[Your Name]`;
+      
+        setLinkedinGeneratedMessage(message);
+      } catch (error) {
+        console.error("Error generating LinkedIn message:", error);
+        showNotification("Error generating LinkedIn message", "error");
+      } finally {
+        setLinkedinIsGenerating(false);
+      }
+    };
 
 return (
   <div className="flex flex-col h-screen">
@@ -1327,11 +1242,6 @@ return (
                   <TableBody>
                     {currentItems.length > 0 ? (
                       currentItems.map((person) => {
-                        const personIndex = getPersonIndex(person.id);
-                        const currentRowIndex = getCurrentRowIndex(person.id);
-                        const isEditing = editingRowIndex === currentRowIndex;
-                        const editedPerson = editedPersons[personIndex];
-
                         return (
                           <TableRow key={person.id}>
                             <TableCell>
@@ -1342,16 +1252,7 @@ return (
                               />
                             </TableCell>
                             <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12 ">
-                              {isEditing ? (
-                                <Input
-                                  type="text"
-                                  className="w-full"
-                                  value={editedPerson?.name || ""}
-                                  onChange={(e) => handleFieldChange(personIndex, 'name', e.target.value)}
-                                />
-                              ) : (
-                                person.name
-                              )}
+                              {person.name}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
@@ -1375,40 +1276,17 @@ return (
                                         <MessageSquare className="w-4 h-4 text-blue-600" />
                                     </Button>
                                 )}
-                                {isEditing ? (
-                                  <div className="flex gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleSave(personIndex)}
-                                      title="Save"
-                                      className="text-green-600"
-                                    >
-                                      Save
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDiscard(personIndex)}
-                                      title="Discard"
-                                      className="text-red-600"
-                                    >
-                                      Cancel
-                                    </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(person)}
+                                  title="Edit"
+                                  className="p-1 h-8 w-8"
+                                >
+                                  <div className="w-6 h-6 text-blue-500 flex items-center justify-center">
+                                    <Pencil className="h-3 w-3 text-blue-500" />
                                   </div>
-                                ) : (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEdit(person, personIndex)}
-                                    title="Edit"
-                                    className="p-1 h-8 w-8"
-                                  >
-                                    <div className="w-6 h-6 text-blue-500 flex items-center justify-center">
-                                      <Pencil className="h-3 w-3 text-blue-500" />
-                                    </div>
-                                  </Button>
-                                )}
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -1433,16 +1311,7 @@ return (
                               </div>
                             </TableCell>
                             <TableCell>
-                              {isEditing ? (
-                                <Input
-                                  type="text"
-                                  className="w-full"
-                                  value={editedPerson?.title || ""}
-                                  onChange={(e) => handleFieldChange(personIndex, 'title', e.target.value)}
-                                />
-                              ) : (
-                                person.title
-                              )}
+                              {person.title}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
@@ -1467,64 +1336,19 @@ return (
                               </div>
                             </TableCell>
                             <TableCell>
-                              {isEditing ? (
-                                <Input
-                                  type="text"
-                                  className="w-full"
-                                  value={editedPerson?.phone || ""}
-                                  onChange={(e) => handleFieldChange(personIndex, 'phone', e.target.value)}
-                                />
-                              ) : (
-                                person.phone || 'N/A'
-                              )}
+                              {person.phone || 'N/A'}
                             </TableCell>
                             <TableCell>
-                              {isEditing ? (
-                                <Input
-                                  type="text"
-                                  className="w-full"
-                                  value={editedPerson?.company || ""}
-                                  onChange={(e) => handleFieldChange(personIndex, 'company', e.target.value)}
-                                />
-                              ) : (
-                                person.company
-                              )}
+                              {person.company}
                             </TableCell>
                             <TableCell>
-                              {isEditing ? (
-                                <Input
-                                  type="text"
-                                  className="w-full"
-                                  value={editedPerson?.industry || ""}
-                                  onChange={(e) => handleFieldChange(personIndex, 'industry', e.target.value)}
-                                />
-                              ) : (
-                                person.industry
-                              )}
+                              {person.industry}
                             </TableCell>
                             <TableCell>
-                              {isEditing ? (
-                                <Input
-                                  type="text"
-                                  className="w-full"
-                                  value={editedPerson?.businessType || ""}
-                                  onChange={(e) => handleFieldChange(personIndex, 'businessType', e.target.value)}
-                                />
-                              ) : (
-                                person.businessType
-                              )}
+                              {person.businessType}
                             </TableCell>
                             <TableCell>
-                              {isEditing ? (
-                                <Input
-                                  type="text"
-                                  className="w-full"
-                                  value={editedPerson?.address || ""}
-                                  onChange={(e) => handleFieldChange(personIndex, 'address', e.target.value)}
-                                />
-                              ) : (
-                                person.address
-                              )}
+                              {person.address}
                             </TableCell>
                           </TableRow>
                         );
