@@ -1095,7 +1095,7 @@ return (
             )}
             
             {/* Persons Table */}
-            <div className="rounded-md border">
+            <div className="w-full overflow-x-auto relative border rounded-md">
               {loading ? (
                 <div className="p-8 text-center">
                   <div className="text-lg">Loading persons data...</div>
@@ -1122,7 +1122,7 @@ return (
                           aria-label="Select all"
                         />
                       </TableHead>
-                      <TableHead className="bg-background">Name</TableHead>
+                      <TableHead className="sticky top-0 left-[3rem] z-30 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">Name</TableHead>
                       <TableHead className="w-[140px] bg-background">Actions</TableHead>
                       <TableHead className="bg-background">Title</TableHead>
                       <TableHead className="w-[120px] bg-background">Links</TableHead>
@@ -1150,7 +1150,7 @@ return (
                                 aria-label={`Select ${person.name}`}
                               />
                             </TableCell>
-                            <TableCell className="font-medium">
+                            <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12 ">
                               {isEditing ? (
                                 <Input
                                   type="text"
