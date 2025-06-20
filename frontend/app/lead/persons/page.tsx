@@ -992,7 +992,7 @@ export default function PersonsPage() {
     setLinkedinIsGenerating(true);
     try {
       const response = await axios.post(
-        `https://data.saasquatchleads.com/emailgen/scrape`,
+        `${DATABASE_URL_NOAPI}/emailgen/scrape`,
         {
           company_name: person.company,
           homepage_url: person.website,
