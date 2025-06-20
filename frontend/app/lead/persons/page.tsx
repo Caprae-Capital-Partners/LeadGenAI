@@ -1284,44 +1284,46 @@ return (
             )}
             
             {/* Persons Table */}
-            <div className="w-full overflow-x-auto relative border rounded-md">
-              {loading ? (
-                <div className="p-8 text-center">
-                  <div className="text-lg">Loading persons data...</div>
-                </div>
-              ) : error ? (
-                <div className="p-8 text-center text-red-500">
-                  <div className="text-lg">{error}</div>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => window.location.reload()}
-                  >
-                    Retry
-                  </Button>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader className="sticky top-0 bg-background z-10">
-                    <TableRow>
-                      <TableHead className="w-[50px] bg-background">
-                        <Checkbox
-                          checked={selectedPersons.length === currentItems.length && currentItems.length > 0}
-                          onCheckedChange={handleSelectAll}
-                          aria-label="Select all"
-                        />
-                      </TableHead>
-                      <TableHead className="sticky top-0 left-[3rem] z-30 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">Name</TableHead>
-                      <TableHead className="w-[140px] bg-background">Actions</TableHead>
-                      <TableHead className="bg-background">Title</TableHead>
-                      <TableHead className="w-[120px] bg-background">Links</TableHead>
-                      <TableHead className="bg-background">Phone Number</TableHead>
-                      <TableHead className="bg-background">Company</TableHead>
-                      <TableHead className="bg-background">Industry</TableHead>
-                      <TableHead className="bg-background">Business Type</TableHead>
-                      <TableHead className="bg-background">Address</TableHead>
-                    </TableRow>
-                  </TableHeader>
+<div className="w-full overflow-x-auto relative border rounded-md">
+  {loading ? (
+    <div className="p-8 text-center">
+      <div className="text-lg">Loading persons data...</div>
+    </div>
+  ) : error ? (
+    <div className="p-8 text-center text-red-500">
+      <div className="text-lg">{error}</div>
+      <Button
+        variant="outline"
+        className="mt-4"
+        onClick={() => window.location.reload()}
+      >
+        Retry
+      </Button>
+    </div>
+  ) : (
+    <Table>
+      <TableHeader className="sticky top-0 bg-background z-20">
+        <TableRow>
+          <TableHead className="w-[50px] sticky left-0 z-30 bg-background border-r">
+            <Checkbox
+              checked={selectedPersons.length === currentItems.length && currentItems.length > 0}
+              onCheckedChange={handleSelectAll}
+              aria-label="Select all"
+            />
+          </TableHead>
+          <TableHead className="sticky left-[50px] z-30 bg-background border-r text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">
+            Name
+          </TableHead>
+          <TableHead className="w-[140px] bg-background">Actions</TableHead>
+          <TableHead className="bg-background">Title</TableHead>
+          <TableHead className="w-[120px] bg-background">Links</TableHead>
+          <TableHead className="bg-background">Phone Number</TableHead>
+          <TableHead className="bg-background">Company</TableHead>
+          <TableHead className="bg-background">Industry</TableHead>
+          <TableHead className="bg-background">Business Type</TableHead>
+          <TableHead className="bg-background">Address</TableHead>
+        </TableRow>
+      </TableHeader>
                   <TableBody>
                     {currentItems.length > 0 ? (
                       currentItems.map((person) => {
