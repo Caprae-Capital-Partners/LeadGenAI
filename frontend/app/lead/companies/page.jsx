@@ -39,6 +39,8 @@ import { SortDropdown } from "@/components/ui/sort-dropdown";
 import Notif from "@/components/ui/notif";
 import { Eye, Globe, Linkedin, MapPin, Edit, Pencil, Mail, StickyNote, Star } from "lucide-react";
 import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search } from "lucide-react";
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
 const DATABASE_URL_NOAPI = DATABASE_URL?.replace(/\/api\/?$/, "");
@@ -448,44 +450,11 @@ export default function CompaniesPage() {
     };
 
     const handleExportCSVWithCredits = async () => {
-        try {
-        const { data: subscriptionInfo } = await axios.get(
-            `${DATABASE_URL}/user/subscription_info`,
-            {
-            withCredentials: true,
-            }
-        );
-
-        const planName =
-            subscriptionInfo?.subscription?.plan_name?.toLowerCase() ?? "free";
-        const availableCredits =
-            subscriptionInfo?.subscription?.credits_remaining ?? 0;
-        const requiredCredits = scrapingHistory.length;
-
-        if (planName === "free") {
-            showNotification(
-            "Exporting is not allowed on the Free tier. Please upgrade your plan.",
-            "info"
-            );
+        if (selectedCompanies.length === 0) {
+            showNotification("Please select at least one row to export.", "info");
             return;
         }
-
-        if (availableCredits < requiredCredits) {
-            showNotification(
-            "Insufficient credits to export all selected leads. Please upgrade or reduce selection.",
-            "error"
-            );
-            return;
-        }
-
         handleExportCSV();
-        } catch (checkErr) {
-        console.error("❌ Failed to verify subscription:", checkErr);
-        showNotification(
-            "Failed to verify your subscription. Please try again later.",
-            "error"
-        );
-        }
     };
 
     const handleToggleFiltersWithCheck = async () => {
@@ -805,452 +774,454 @@ export default function CompaniesPage() {
         <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 p-6 overflow-auto">
-            <h1 className="text-2xl font-bold text-foreground mb-6">Companies</h1>
-            
-            {/* History Table */}
-            <div className="mt-10">
-                {/* Table container */}
-                <div className="w-full overflow-x-auto rounded-md border">
-                {/* Toolbar */}
-                <div className="flex flex-wrap items-center justify-between p-4 border-b bg-surface">
-                    {/* Search */}
-                    <div className="flex-grow max-w-xs">
-                    <Input
-                        placeholder="Search history…"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full"
-                    />
-                    </div>
-    
-                    {/* Actions */}
-                    <div className="flex items-center gap-2">
-                    <SortDropdown onApply={handleSortBy} />
-    
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleToggleFiltersWithCheck}
-                        title={showFilters ? "Hide Filters" : "Show Filters"}
-                    >
-                        <Filter className="h-4 w-4" />
-                    </Button>
-    
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleExportCSVWithCredits}
-                        title="Export CSV"
-                    >
-                        <Download className="h-4 w-4" />
-                    </Button>
-                    </div>
-                </div>
-                </div>
-                {showFilters && (
-                <div className="flex flex-wrap gap-4 my-4">
-                    <Input
-                    placeholder="Industry"
-                    value={industryFilter}
-                    onChange={(e) => setIndustryFilter(e.target.value)}
-                    className="w-[240px]"
-                    />
-                    <Input
-                    placeholder="Product/Service Category"
-                    value={productFilter}
-                    onChange={(e) => setProductFilter(e.target.value)}
-                    className="w-[240px]"
-                    />
-                    <Input
-                    placeholder="Business Type"
-                    value={businessTypeFilter}
-                    onChange={(e) => setBusinessTypeFilter(e.target.value)}
-                    className="w-[240px]"
-                    />
-                    <Input
-                    placeholder="Employees Count"
-                    value={employeesFilter}
-                    onChange={(e) => setEmployeesFilter(e.target.value)}
-                    className="w-[240px]"
-                    />
-                    <Input
-                    placeholder="Revenue"
-                    value={revenueFilter}
-                    onChange={(e) => setRevenueFilter(e.target.value)}
-                    className="w-[240px]"
-                    />
-                    <Input
-                    placeholder="Year Founded"
-                    value={yearFoundedFilter}
-                    onChange={(e) => setYearFoundedFilter(e.target.value)}
-                    className="w-[240px]"
-                    />
-                    <Input
-                    placeholder="BBB Rating"
-                    value={bbbRatingFilter}
-                    onChange={(e) => setBbbRatingFilter(e.target.value)}
-                    className="w-[240px]"
-                    />
-                    <Input
-                    placeholder="City"
-                    value={cityFilter}
-                    onChange={(e) => setCityFilter(e.target.value)}
-                    className="w-[240px]"
-                    />
-                    <Input
-                    placeholder="State"
-                    value={stateFilter}
-                    onChange={(e) => setStateFilter(e.target.value)}
-                    className="w-[240px]"
-                    />
-                    <Input
-                    placeholder="Source"
-                    value={sourceFilter}
-                    onChange={(e) => setSourceFilter(e.target.value)}
-                    className="w-[240px]"
-                    />
-                    <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                    <X className="h-4 w-4 mr-1" />
-                    Clear All
-                    </Button>
-                </div>
-                )}
-                {/* Scrollable container */}
-                <div className="w-full overflow-x-auto relative border rounded-md">
-                <Table className="min-w-full text-sm ">
-                    <TableHeader className="sticky top-0 bg-background z-10">
-                    <TableRow>
-                        {/* Sticky Checkbox Column */}
-                        <TableHead className="sticky top-0 left-0 z-40 bg-background px-6 py-3 w-12 text-base font-bold text-white">
-                        <Checkbox
-                            checked={selectAll}
-                            onCheckedChange={handleSelectAll}
-                        />
-                        </TableHead>
-    
-                        {/* Sticky Company Column */}
-                        <TableHead className="sticky top-0 left-[3rem] z-30 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">
-                        Company
-                        </TableHead>
-
-                        <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">
-                        Actions
-                        </TableHead>
-    
-                        {/* Remaining Headers */}
-                        {[
-                        "Industry",
-                        "Links",
-                        "Product/Service Category",
-                        "Business Type (B2B, B2B2C)",
-                        "Employees Count",
-                        "Revenue",
-                        "Year Founded",
-                        "BBB Rating",
-                        "Street",
-                        "City",
-                        "State",
-                        "Company Phone",
-                        "Source",
-                        "Created Date",
-                        "Updated",
-                        ].map((label, i) => (
-                        <TableHead
-                            key={i}
-                            className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap"
-                        >
-                            {label}
-                        </TableHead>
-                        ))}
-                    </TableRow>
-                    </TableHeader>
-    
-                    <tbody>
-                    {currentItems.map((row, i) => (
-                        <TableRow key={i} className="border-t">
-                        {/* Sticky Checkbox Column */}
-                        <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12  ">
-                            <Checkbox
-                            checked={selectedCompanies.includes(row.id)}
-                            onCheckedChange={() => handleSelectCompany(row.id)}
-                            />
-                        </TableCell>
-    
-                        {/* Sticky Company Column */}
-                        <TableCell
-                            key="company"
-                            className="sticky left-[3rem] z-10 bg-inherit px-6 py-2 max-w-[240px] align-top cursor-pointer"
-                        >
-                            <ExpandableCell text={row.company || "N/A"} />
-                        </TableCell>
-
-                        {/* Action Column */}
-                        <TableCell className="px-6 py-2">
-                            <div className="flex items-center space-x-3">
-                            <button
-                                onClick={() => {
-                                    setPopupData(row);
-                                    setIsEditing(false);
-                                    setPopupTab('overview');
-                                }}
-                                title="View Details"
-                                className="hover:bg-gray-100 rounded p-1"
-                                >
-                                <Eye className="w-4 h-4 text-blue-500" />
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setPopupData(row);
-                                    setIsEditing(true);
-                                    setPopupTab('overview');
-                                }}
-                                title="Edit"
-                                className="hover:bg-gray-100 rounded p-1"
-                            >
-                                <Pencil className="w-4 h-4 text-blue-600" />
-                            </button>
-
-                            <button
-                                title="Notes - Coming soon!"
-                                className="hover:bg-gray-100 rounded p-1 group relative"
-                                onClick={() => {}}
-                            >
-                                <StickyNote className="w-4 h-4 text-yellow-500" />
-                                <span className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-300 absolute z-10 w-32 p-2 text-xs text-white bg-gray-800 rounded shadow-lg -top-8 -left-1/2">
-                                    Notes feature coming soon!
-                                </span>
-                            </button>
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <CardTitle>Companies</CardTitle>
+                        <div className="flex items-center gap-4">
+                            {/* Search Bar */}
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="search"
+                                    placeholder="Search companies..."
+                                    className="w-80 pl-8"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
                             </div>
+                            
+                            {/* Actions */}
+                            <div className="flex items-center gap-2">
+                                <SortDropdown onApply={handleSortBy} />
+                                
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleToggleFiltersWithCheck}
+                                    title={showFilters ? "Hide Filters" : "Show Filters"}
+                                >
+                                    <Filter className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleExportCSVWithCredits}
+                                    title="Export CSV"
+                                >
+                                    <Download className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
 
-                            <button
-                            title="Favorite - Coming soon!"
-                            className="hover:bg-gray-100 rounded p-1 group relative"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                showNotification("Favorite feature coming soon!", "info");
-                            }}
+                    {/* Filter Section */}
+                    {showFilters && (
+                        <div className="flex flex-wrap gap-4 my-4">
+                            <Input
+                            placeholder="Industry"
+                            value={industryFilter}
+                            onChange={(e) => setIndustryFilter(e.target.value)}
+                            className="w-[240px]"
+                            />
+                            <Input
+                            placeholder="Product/Service Category"
+                            value={productFilter}
+                            onChange={(e) => setProductFilter(e.target.value)}
+                            className="w-[240px]"
+                            />
+                            <Input
+                            placeholder="Business Type"
+                            value={businessTypeFilter}
+                            onChange={(e) => setBusinessTypeFilter(e.target.value)}
+                            className="w-[240px]"
+                            />
+                            <Input
+                            placeholder="Employees Count"
+                            value={employeesFilter}
+                            onChange={(e) => setEmployeesFilter(e.target.value)}
+                            className="w-[240px]"
+                            />
+                            <Input
+                            placeholder="Revenue"
+                            value={revenueFilter}
+                            onChange={(e) => setRevenueFilter(e.target.value)}
+                            className="w-[240px]"
+                            />
+                            <Input
+                            placeholder="Year Founded"
+                            value={yearFoundedFilter}
+                            onChange={(e) => setYearFoundedFilter(e.target.value)}
+                            className="w-[240px]"
+                            />
+                            <Input
+                            placeholder="BBB Rating"
+                            value={bbbRatingFilter}
+                            onChange={(e) => setBbbRatingFilter(e.target.value)}
+                            className="w-[240px]"
+                            />
+                            <Input
+                            placeholder="City"
+                            value={cityFilter}
+                            onChange={(e) => setCityFilter(e.target.value)}
+                            className="w-[240px]"
+                            />
+                            <Input
+                            placeholder="State"
+                            value={stateFilter}
+                            onChange={(e) => setStateFilter(e.target.value)}
+                            className="w-[240px]"
+                            />
+                            <Input
+                            placeholder="Source"
+                            value={sourceFilter}
+                            onChange={(e) => setSourceFilter(e.target.value)}
+                            className="w-[240px]"
+                            />
+                            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                            <X className="h-4 w-4 mr-1" />
+                            Clear All
+                            </Button>
+                        </div>
+                    )}
+                </CardHeader>
+                <CardContent>
+                    {/* Scrollable container */}
+                    <div className="w-full overflow-x-auto relative border rounded-md">
+                    <Table className="min-w-full text-sm ">
+                        <TableHeader>
+                        <TableRow>
+                            {/* Sticky Checkbox Column */}
+                            <TableHead className="sticky top-0 left-0 z-40 bg-background px-6 py-3 w-[50px] text-base font-bold text-white border-r">
+                            <Checkbox
+                                checked={selectAll}
+                                onCheckedChange={handleSelectAll}
+                            />
+                            </TableHead>
+        
+                            {/* Sticky Company Column */}
+                            <TableHead className="sticky top-0 left-[50px] z-30 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px] border-r">
+                            Company
+                            </TableHead>
+
+                            <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">
+                            Actions
+                            </TableHead>
+        
+                            {/* Remaining Headers */}
+                            {[
+                            "Industry",
+                            "Links",
+                            "Product/Service Category",
+                            "Business Type (B2B, B2B2C)",
+                            "Employees Count",
+                            "Revenue",
+                            "Year Founded",
+                            "BBB Rating",
+                            "Street",
+                            "City",
+                            "State",
+                            "Company Phone",
+                            "Source",
+                            "Created Date",
+                            "Updated",
+                            ].map((label, i) => (
+                            <TableHead
+                                key={i}
+                                className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap"
                             >
-                            <Star className="w-4 h-4 text-yellow-500" />
-                            <span className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-300 absolute z-10 w-32 p-2 text-xs text-white bg-gray-800 rounded shadow-lg -top-8 -left-1/2">
-                                Favorite feature coming soon!
-                            </span>
-                            </button>
-                        </TableCell>
-    
-                        {/* Remaining Cells */}
-                        {[
-                            "industry",
-                            "productCategory",
-                            "businessType",
-                            "employees",
-                            "revenue",
-                            "yearFounded",
-                            "bbbRating",
-                            "street",
-                            "city",
-                            "state",
-                            "companyPhone",
-                            "source",
-                            "created",
-                            "updated",
-                        ].map((field, fieldIndex) => {
-                            const rawValue = row[field];
-                            const displayValue =
-                            rawValue === null ||
-                            rawValue === undefined ||
-                            rawValue === ""
-                                ? "N/A"
-                                : rawValue;
-    
-                            const isUrl =
-                            typeof rawValue === "string" &&
-                            (rawValue.startsWith("http://") ||
-                                rawValue.startsWith("https://"));
-    
-                            const shortened =
-                            isUrl && rawValue.length > 0
-                                ? rawValue
-                                    .replace(/^https?:\/\//, "")
-                                    .replace(/^www\./, "")
-                                    .split("/")[0]
-                                : displayValue;
-    
-                            return (
-                            <React.Fragment key={field}>
-                                <TableCell className="px-6 py-2 max-w-[240px] align-top">
-                                    {isUrl ? (
-                                    <a
-                                        href={rawValue}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 underline hover:text-blue-800 block truncate"
-                                        title={rawValue}
-                                    >
-                                        {shortened}
-                                    </a>
-                                    ) : (
-                                    <ExpandableCell text={displayValue} />
-                                    )}
-                                </TableCell>
+                                {label}
+                            </TableHead>
+                            ))}
+                        </TableRow>
+                        </TableHeader>
+        
+                        <tbody>
+                        {currentItems.map((row, i) => (
+                            <TableRow key={i} className="border-t">
+                            {/* Sticky Checkbox Column */}
+                            <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-[50px] border-r">
+                                <Checkbox
+                                checked={selectedCompanies.includes(row.id)}
+                                onCheckedChange={() => handleSelectCompany(row.id)}
+                                />
+                            </TableCell>
+        
+                            {/* Sticky Company Column */}
+                            <TableCell
+                                key="company"
+                                className="sticky left-[50px] z-10 bg-inherit px-6 py-2 max-w-[240px] align-top cursor-pointer border-r"
+                            >
+                                <ExpandableCell text={row.company || "N/A"} />
+                            </TableCell>
 
-                                {/* Inject Actions Cell after "industry" */}
-                                {field === "industry" && (
-                                    <TableCell className="px-6 py-2 max-w-[240px] align-top space-x-2 whitespace-nowrap">
-                                        {row.website && (
+                            {/* Action Column */}
+                            <TableCell className="px-6 py-2">
+                                <div className="flex items-center space-x-3">
+                                <button
+                                    onClick={() => {
+                                        setPopupData(row);
+                                        setIsEditing(false);
+                                        setPopupTab('overview');
+                                    }}
+                                    title="View Details"
+                                    className="hover:bg-gray-100 rounded p-1"
+                                    >
+                                    <Eye className="w-4 h-4 text-blue-500" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setPopupData(row);
+                                        setIsEditing(true);
+                                        setPopupTab('overview');
+                                    }}
+                                    title="Edit"
+                                    className="hover:bg-gray-100 rounded p-1"
+                                >
+                                    <Pencil className="w-4 h-4 text-blue-600" />
+                                </button>
+
+                                <button
+                                    title="Notes - Coming soon!"
+                                    className="hover:bg-gray-100 rounded p-1 group relative"
+                                    onClick={() => {}}
+                                >
+                                    <StickyNote className="w-4 h-4 text-yellow-500" />
+                                    <span className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-300 absolute z-10 w-32 p-2 text-xs text-white bg-gray-800 rounded shadow-lg -top-8 -left-1/2">
+                                        Notes feature coming soon!
+                                    </span>
+                                </button>
+                                </div>
+
+                                <button
+                                title="Favorite - Coming soon!"
+                                className="hover:bg-gray-100 rounded p-1 group relative"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    showNotification("Favorite feature coming soon!", "info");
+                                }}
+                                >
+                                <Star className="w-4 h-4 text-yellow-500" />
+                                <span className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-300 absolute z-10 w-32 p-2 text-xs text-white bg-gray-800 rounded shadow-lg -top-8 -left-1/2">
+                                    Favorite feature coming soon!
+                                </span>
+                                </button>
+                            </TableCell>
+        
+                            {/* Remaining Cells */}
+                            {[
+                                "industry",
+                                "productCategory",
+                                "businessType",
+                                "employees",
+                                "revenue",
+                                "yearFounded",
+                                "bbbRating",
+                                "street",
+                                "city",
+                                "state",
+                                "companyPhone",
+                                "source",
+                                "created",
+                                "updated",
+                            ].map((field, fieldIndex) => {
+                                const rawValue = row[field];
+                                const displayValue =
+                                rawValue === null ||
+                                rawValue === undefined ||
+                                rawValue === ""
+                                    ? "N/A"
+                                    : rawValue;
+        
+                                const isUrl =
+                                typeof rawValue === "string" &&
+                                (rawValue.startsWith("http://") ||
+                                    rawValue.startsWith("https://"));
+        
+                                const shortened =
+                                isUrl && rawValue.length > 0
+                                    ? rawValue
+                                        .replace(/^https?:\/\//, "")
+                                        .replace(/^www\./, "")
+                                        .split("/")[0]
+                                    : displayValue;
+        
+                                return (
+                                <React.Fragment key={field}>
+                                    <TableCell className="px-6 py-2 max-w-[240px] align-top">
+                                        {isUrl ? (
                                         <a
-                                            href={row.website}
+                                            href={rawValue}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-block p-1 rounded hover:bg-gray-200"
-                                            title="Website"
+                                            className="text-blue-600 underline hover:text-blue-800 block truncate"
+                                            title={rawValue}
                                         >
-                                            <Globe className="h-4 w-4 text-blue-600" />
+                                            {shortened}
                                         </a>
-                                        )}
-                                        {row.companyLinkedin && (
-                                        <a
-                                            href={row.companyLinkedin}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-block p-1 rounded hover:bg-gray-200"
-                                            title="LinkedIn"
-                                        >
-                                            <Linkedin className="h-4 w-4 text-blue-700" />
-                                        </a>
-                                        )}
-                                        {row.ownerEmail && (
-                                        <a
-                                            href={`mailto:${row.ownerEmail}`}
-                                            onClick={(e) => {
-                                            setTimeout(() => {
-                                                window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${row.ownerEmail}`, '_blank');
-                                            }, 500);
-                                            }}
-                                            title="Send Email"
-                                            className="inline-block p-1 rounded hover:bg-gray-200"
-                                        >
-                                            <Mail className="h-4 w-4 text-green-600" />
-                                        </a>
-                                        )}
-                                        {(row.street || row.city || row.state) && (
-                                        <a
-                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${row.street || ""}, ${row.city || ""}, ${row.state || ""}`)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-block p-1 rounded hover:bg-gray-200"
-                                            title="Map Location"
-                                        >
-                                            <MapPin className="h-4 w-4 text-red-600" />
-                                        </a>
+                                        ) : (
+                                        <ExpandableCell text={displayValue} />
                                         )}
                                     </TableCell>
-                                )}
-                            </React.Fragment>
-                            );
-                        })}
 
-                        </TableRow>
-                    ))}
-                    </tbody>
-                </Table>
-                </div>
-                <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
-                <div className="text-sm text-muted-foreground">
-                    Showing {indexOfFirstItem + 1}–
-                    {Math.min(indexOfLastItem, scrapingHistory.length)} of{" "}
-                    {scrapingHistory.length} results
-                </div>
-    
-                <div className="flex items-center gap-3 px-3 py-2">
-                    <Select
-                    value={itemsPerPage.toString()}
-                    onValueChange={(value) => {
-                        setItemsPerPage(Number(value));
-                        setCurrentPage(1);
-                    }}
-                    >
-                    <SelectTrigger className="w-[120px]  text-black font-medium rounded-md hover:bg-[#6bb293]">
-                        <SelectValue placeholder="Items per page" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="25">25 per page</SelectItem>
-                        <SelectItem value="50">50 per page</SelectItem>
-                        <SelectItem value="100">100 per page</SelectItem>
-                    </SelectContent>
-                    </Select>
-    
-                    <Pagination>
-                    <PaginationContent>
-                        <PaginationItem>
-                        <PaginationPrevious
-                            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                            aria-disabled={currentPage === 1}
-                            className={
-                            currentPage === 1
-                                ? "pointer-events-none opacity-50"
-                                : ""
-                            }
-                        />
-                        </PaginationItem>
-    
-                        {Array.from({ length: totalPages }, (_, i) => i + 1)
-                        .filter((page) => {
-                            // show all if totalPages <= 7
-                            if (totalPages <= 7) return true;
-    
-                            // show first, last, current, and neighbors
-                            return (
-                            page === 1 ||
-                            page === totalPages ||
-                            Math.abs(page - currentPage) <= 1
-                            );
-                        })
-                        .reduce((acc, page, i, arr) => {
-                            if (i > 0 && page - arr[i - 1] > 1) {
-                            acc.push("ellipsis");
-                            }
-                            acc.push(page);
-                            return acc;
-                        }, [])
-                        .map((page, idx) => (
-                            <PaginationItem key={idx}>
-                            {page === "ellipsis" ? (
-                                <PaginationEllipsis />
-                            ) : (
-                                <PaginationLink
-                                isActive={page === currentPage}
-                                onClick={() => setCurrentPage(page)}
-                                className={`px-3 py-1 rounded-md text-sm font-medium ${
-                                    page === currentPage
-                                    ? " text-black" // active teal background
-                                    : "text-black hover:bg-muted"
-                                }`}
-                                >
-                                {page}
-                                </PaginationLink>
-                            )}
-                            </PaginationItem>
+                                    {/* Inject Actions Cell after "industry" */}
+                                    {field === "industry" && (
+                                        <TableCell className="px-6 py-2 max-w-[240px] align-top space-x-2 whitespace-nowrap">
+                                            {row.website && (
+                                            <a
+                                                href={row.website}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-block p-1 rounded hover:bg-gray-200"
+                                                title="Website"
+                                            >
+                                                <Globe className="h-4 w-4 text-blue-600" />
+                                            </a>
+                                            )}
+                                            {row.companyLinkedin && (
+                                            <a
+                                                href={row.companyLinkedin}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-block p-1 rounded hover:bg-gray-200"
+                                                title="LinkedIn"
+                                            >
+                                                <Linkedin className="h-4 w-4 text-blue-700" />
+                                            </a>
+                                            )}
+                                            {row.ownerEmail && (
+                                            <a
+                                                href={`mailto:${row.ownerEmail}`}
+                                                onClick={(e) => {
+                                                setTimeout(() => {
+                                                    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${row.ownerEmail}`, '_blank');
+                                                }, 500);
+                                                }}
+                                                title="Send Email"
+                                                className="inline-block p-1 rounded hover:bg-gray-200"
+                                            >
+                                                <Mail className="h-4 w-4 text-green-600" />
+                                            </a>
+                                            )}
+                                            {(row.street || row.city || row.state) && (
+                                            <a
+                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${row.street || ""}, ${row.city || ""}, ${row.state || ""}`)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-block p-1 rounded hover:bg-gray-200"
+                                                title="Map Location"
+                                            >
+                                                <MapPin className="h-4 w-4 text-red-600" />
+                                            </a>
+                                            )}
+                                        </TableCell>
+                                    )}
+                                </React.Fragment>
+                                );
+                            })}
+
+                            </TableRow>
                         ))}
-    
-                        <PaginationItem>
-                        <PaginationNext
-                            onClick={() =>
-                            setCurrentPage((p) => Math.min(p + 1, totalPages))
-                            }
-                            aria-disabled={currentPage === totalPages}
-                            className={
-                            currentPage === totalPages
-                                ? "pointer-events-none opacity-50"
-                                : ""
-                            }
-                        />
-                        </PaginationItem>
-                    </PaginationContent>
-                    </Pagination>
-                </div>
-                </div>
-            </div>
-
+                        </tbody>
+                    </Table>
+                    </div>
+                    <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
+                    <div className="text-sm text-muted-foreground">
+                        Showing {indexOfFirstItem + 1}–
+                        {Math.min(indexOfLastItem, scrapingHistory.length)} of{" "}
+                        {scrapingHistory.length} results
+                    </div>
+        
+                    <div className="flex items-center gap-3 px-3 py-2">
+                        <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                            setItemsPerPage(Number(value));
+                            setCurrentPage(1);
+                        }}
+                        >
+                        <SelectTrigger className="w-[120px]  text-black font-medium rounded-md hover:bg-[#6bb293]">
+                            <SelectValue placeholder="Items per page" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="25">25 per page</SelectItem>
+                            <SelectItem value="50">50 per page</SelectItem>
+                            <SelectItem value="100">100 per page</SelectItem>
+                        </SelectContent>
+                        </Select>
+        
+                        <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                            <PaginationPrevious
+                                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                                aria-disabled={currentPage === 1}
+                                className={
+                                currentPage === 1
+                                    ? "pointer-events-none opacity-50"
+                                    : ""
+                                }
+                            />
+                            </PaginationItem>
+        
+                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter((page) => {
+                                // show all if totalPages <= 7
+                                if (totalPages <= 7) return true;
+        
+                                // show first, last, current, and neighbors
+                                return (
+                                page === 1 ||
+                                page === totalPages ||
+                                Math.abs(page - currentPage) <= 1
+                                );
+                            })
+                            .reduce((acc, page, i, arr) => {
+                                if (i > 0 && page - arr[i - 1] > 1) {
+                                acc.push("ellipsis");
+                                }
+                                acc.push(page);
+                                return acc;
+                            }, [])
+                            .map((page, idx) => (
+                                <PaginationItem key={idx}>
+                                {page === "ellipsis" ? (
+                                    <PaginationEllipsis />
+                                ) : (
+                                    <PaginationLink
+                                    isActive={page === currentPage}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`px-3 py-1 rounded-md text-sm font-medium ${
+                                        page === currentPage
+                                        ? " text-black" // active teal background
+                                        : "text-black hover:bg-muted"
+                                    }`}
+                                    >
+                                    {page}
+                                    </PaginationLink>
+                                )}
+                                </PaginationItem>
+                            ))}
+        
+                            <PaginationItem>
+                            <PaginationNext
+                                onClick={() =>
+                                setCurrentPage((p) => Math.min(p + 1, totalPages))
+                                }
+                                aria-disabled={currentPage === totalPages}
+                                className={
+                                currentPage === totalPages
+                                    ? "pointer-events-none opacity-50"
+                                    : ""
+                                }
+                            />
+                            </PaginationItem>
+                        </PaginationContent>
+                        </Pagination>
+                    </div>
+                    </div>
+                </CardContent>
+            </Card>
             <PopupBig show={!!popupData} onClose={() => {
             setPopupData(null);
             setIsEditing(false);

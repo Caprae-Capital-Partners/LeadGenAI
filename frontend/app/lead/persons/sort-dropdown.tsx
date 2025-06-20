@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SlidersHorizontal } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 type SortOption = "filled" | "company" | "employees" | "owner" | "recent"
 
@@ -29,14 +30,13 @@ export function SortDropdown({
     }
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button variant="outline" className="gap-2">
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
                     <SlidersHorizontal className="h-4 w-4" />
-                    Sort By
                 </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-4">
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
                 <div className="space-y-4">
                     <div>
                         <label className="text-sm font-medium mb-2 block">Sort By</label>
@@ -84,7 +84,7 @@ export function SortDropdown({
                         Apply
                     </Button>
                 </div>
-            </PopoverContent>
-        </Popover>
+            </DropdownMenuContent>
+        </DropdownMenu>
     )
 }

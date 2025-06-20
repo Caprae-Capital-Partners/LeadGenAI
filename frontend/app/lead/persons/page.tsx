@@ -48,6 +48,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import Notif from "@/components/ui/notif"
 
 // Database URLs
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
@@ -552,6 +553,26 @@ const PopupBig: React.FC<PopupBigProps> = ({
   );
 };
 
+const ExpandableCell: React.FC<{ text: string }> = ({ text }) => {
+    const [expanded, setExpanded] = useState(false);
+    const isLong = text && text.length > 30;
+    if (!isLong) return <span>{text}</span>;
+
+    return (
+        <div className="whitespace-pre-wrap">
+            <span>
+                {expanded ? text : `${text.slice(0, 30)}...`}
+            </span>
+            <button
+                className="text-blue-500 hover:underline text-xs ml-1"
+                onClick={() => setExpanded(!expanded)}
+            >
+                {expanded ? "Show less" : "Show more"}
+            </button>
+        </div>
+    );
+};
+
 // Main PersonsPage Component
 export default function PersonsPage() {
   // State declarations
@@ -561,7 +582,6 @@ export default function PersonsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
-  const [exportFormat, setExportFormat] = useState("csv")
   const [selectedPersons, setSelectedPersons] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const [popupData, setPopupData] = useState<Person | null>(null)
@@ -587,7 +607,11 @@ export default function PersonsPage() {
   })
 
   // Notification state
-  const [notif, setNotif] = useState({
+  const [notif, setNotif] = useState<{
+    show: boolean;
+    message: string;
+    type: "success" | "error" | "info";
+  }>({
     show: false,
     message: "",
     type: "success",
@@ -885,17 +909,9 @@ export default function PersonsPage() {
     return pageNumbers
   }
 
-  // Get selected persons for export
-  const getSelectedPersonsData = () => {
-    if (selectedPersons.length === 0) {
-      return filteredPersons; // If nothing selected, export all filtered
-    }
-    return filteredPersons.filter(person => selectedPersons.includes(person.id));
-  }
-
   // Export functions
   const exportCSV = () => {
-    const personsToExport = getSelectedPersonsData();
+    const personsToExport = filteredPersons.filter(p => selectedPersons.includes(p.id));
     const csvRows = [
       "Name,Title,Company,Industry,Business Type,Website,Email,Phone,LinkedIn,Address,Employees,Year Founded",
       ...personsToExport.map(person =>
@@ -906,25 +922,17 @@ export default function PersonsPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `persons-${selectedPersons.length > 0 ? 'selected' : 'all'}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const exportJSON = () => {
-    const personsToExport = getSelectedPersonsData();
-    const blob = new Blob([JSON.stringify(personsToExport, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `persons-${selectedPersons.length > 0 ? 'selected' : 'all'}.json`
+    a.download = `persons-selected.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   const handleExport = () => {
-    if (exportFormat === "csv") exportCSV()
-    else if (exportFormat === "json") exportJSON()
+    if (selectedPersons.length === 0) {
+      showNotification("Please select at least one row to export.", "info");
+      return;
+    }
+    exportCSV();
   }
 
   // Action handlers
@@ -956,7 +964,7 @@ export default function PersonsPage() {
   }
 
   // Function to show notifications
-  const showNotification = (message: string, type = "success") => {
+  const showNotification = (message: string, type: "success" | "error" | "info" = "success") => {
     setNotif({ show: true, message, type });
     setTimeout(() => {
       setNotif(prev => ({ ...prev, show: false }));
@@ -1051,22 +1059,8 @@ return (
                   >
                     <Filter className="h-4 w-4" />
                   </Button>
-                </div>
-                
-                {/* Export */}
-                <div className="flex items-center gap-2">
-                  <Select value={exportFormat} onValueChange={setExportFormat}>
-                    <SelectTrigger className="w-20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="csv">CSV</SelectItem>
-                      <SelectItem value="json">JSON</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" onClick={handleExport}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Export {selectedPersons.length > 0 ? `(${selectedPersons.length})` : 'All'}
+                  <Button variant="outline" size="icon" onClick={handleExport} title="Export Selected to CSV">
+                    <Download className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -1114,91 +1108,61 @@ return (
           </CardHeader>
           
           <CardContent>
-            {/* Pagination Info and Controls */}
-            {filteredPersons.length > 0 && (
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredPersons.length)} of {filteredPersons.length} persons
-                  {selectedPersons.length > 0 && (
-                    <span className="ml-2 text-blue-600">
-                      ({selectedPersons.length} selected)
-                    </span>
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1);
-                  }}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25 per page</SelectItem>
-                      <SelectItem value="50">50 per page</SelectItem>
-                      <SelectItem value="100">100 per page</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-            
             {/* Persons Table */}
-<div className="w-full overflow-x-auto relative border rounded-md">
-  {loading ? (
-    <div className="p-8 text-center">
-      <div className="text-lg">Loading persons data...</div>
-    </div>
-  ) : error ? (
-    <div className="p-8 text-center text-red-500">
-      <div className="text-lg">{error}</div>
-      <Button
-        variant="outline"
-        className="mt-4"
-        onClick={() => window.location.reload()}
-      >
-        Retry
-      </Button>
-    </div>
-  ) : (
-    <Table>
-      <TableHeader className="sticky top-0 bg-background z-20">
-        <TableRow>
-          <TableHead className="w-[50px] sticky left-0 z-30 bg-background border-r">
-            <Checkbox
-              checked={selectedPersons.length === currentItems.length && currentItems.length > 0}
-              onCheckedChange={handleSelectAll}
-              aria-label="Select all"
-            />
-          </TableHead>
-          <TableHead className="sticky left-[50px] z-30 bg-background border-r text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">
-            Name
-          </TableHead>
-          <TableHead className="w-[140px] bg-background">Actions</TableHead>
-          <TableHead className="bg-background">Title</TableHead>
-          <TableHead className="w-[120px] bg-background">Links</TableHead>
-          <TableHead className="bg-background">Phone Number</TableHead>
-          <TableHead className="bg-background">Company</TableHead>
-          <TableHead className="bg-background">Industry</TableHead>
-          <TableHead className="bg-background">Business Type</TableHead>
-          <TableHead className="bg-background">Address</TableHead>
-        </TableRow>
-      </TableHeader>
+            <div className="w-full overflow-x-auto relative border rounded-md">
+              {loading ? (
+                <div className="p-8 text-center">
+                  <div className="text-lg">Loading persons data...</div>
+                </div>
+              ) : error ? (
+                <div className="p-8 text-center text-red-500">
+                  <div className="text-lg">{error}</div>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => window.location.reload()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px] sticky top-0 left-0 z-40 bg-background border-r">
+                        <Checkbox
+                          checked={selectedPersons.length === currentItems.length && currentItems.length > 0}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
+                      <TableHead className="sticky top-0 left-[50px] z-30 bg-background border-r text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">
+                        Name
+                      </TableHead>
+                      <TableHead className="w-[140px] sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Actions</TableHead>
+                      <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Title</TableHead>
+                      <TableHead className="w-[120px] sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Links</TableHead>
+                      <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Phone Number</TableHead>
+                      <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Company</TableHead>
+                      <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Industry</TableHead>
+                      <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Business Type</TableHead>
+                      <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Address</TableHead>
+                    </TableRow>
+                  </TableHeader>
                   <TableBody>
                     {currentItems.length > 0 ? (
                       currentItems.map((person) => {
                         return (
                           <TableRow key={person.id}>
-                            <TableCell>
+                            <TableCell className="w-[50px] sticky left-0 z-20 bg-inherit border-r">
                               <Checkbox
                                 checked={selectedPersons.includes(person.id)}
                                 onCheckedChange={() => handleSelectPerson(person.id)}
                                 aria-label={`Select ${person.name}`}
                               />
                             </TableCell>
-                            <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12 ">
-                              {person.name}
+                            <TableCell className="sticky left-[50px] z-10 bg-inherit border-r px-6 py-2 max-w-[240px] align-top">
+                              <ExpandableCell text={person.name} />
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
@@ -1313,41 +1277,68 @@ return (
 
             {/* Pagination at the bottom */}
             {filteredPersons.length > 0 && (
-              <div className="mt-4 flex items-center justify-center">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious 
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        aria-disabled={currentPage === 1}
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                    
-                    {getPageNumbers().map((page, index) => (
-                      <PaginationItem key={index}>
-                        {page === 'ellipsis' ? (
-                          <PaginationEllipsis />
-                        ) : (
-                          <PaginationLink
-                            isActive={page === currentPage}
-                            onClick={() => setCurrentPage(Number(page))}
-                          >
-                            {page}
-                          </PaginationLink>
-                        )}
-                      </PaginationItem>
-                    ))}
-                    
-                    <PaginationItem>
-                      <PaginationNext 
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        aria-disabled={currentPage === totalPages}
-                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+              <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
+                <div className="text-sm text-muted-foreground">
+                    Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredPersons.length)} of {filteredPersons.length} persons
+                    {selectedPersons.length > 0 && (
+                        <span className="ml-2 text-blue-600">
+                        ({selectedPersons.length} selected)
+                        </span>
+                    )}
+                </div>
+    
+                <div className="flex items-center gap-3 px-3 py-2">
+                    <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                            setItemsPerPage(Number(value));
+                            setCurrentPage(1);
+                        }}
+                    >
+                        <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Items per page" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="25">25 per page</SelectItem>
+                            <SelectItem value="50">50 per page</SelectItem>
+                            <SelectItem value="100">100 per page</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                            <PaginationPrevious 
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                aria-disabled={currentPage === 1}
+                                className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                            />
+                            </PaginationItem>
+                            
+                            {getPageNumbers().map((page, index) => (
+                            <PaginationItem key={index}>
+                                {page === 'ellipsis' ? (
+                                <PaginationEllipsis />
+                                ) : (
+                                <PaginationLink
+                                    isActive={page === currentPage}
+                                    onClick={() => setCurrentPage(Number(page))}
+                                >
+                                    {page}
+                                </PaginationLink>
+                                )}
+                            </PaginationItem>
+                            ))}
+                            
+                            <PaginationItem>
+                            <PaginationNext 
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                aria-disabled={currentPage === totalPages}
+                                className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                            />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
               </div>
             )}
           </CardContent>
@@ -1411,13 +1402,12 @@ return (
 )}
 
     {/* Notification */}
-    {notif.show && (
-      <div className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
-        notif.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-      }`}>
-        {notif.message}
-      </div>
-    )}
+    <Notif
+      show={notif.show}
+      message={notif.message}
+      type={notif.type}
+      onClose={() => setNotif((prev) => ({ ...prev, show: false }))}
+    />
   </div>
 );
 }
