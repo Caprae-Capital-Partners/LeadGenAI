@@ -1304,6 +1304,7 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (hasPaidSubscription && isScheduledCancelled) {
                 cancelBtn.style.display = 'none';
                 reactivateBtn.style.display = 'block';
+                reactivateBtn.disabled = false;
             } 
             // Hide both buttons in all other cases
             else {
