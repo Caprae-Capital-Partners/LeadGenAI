@@ -13,31 +13,31 @@ def sync_customer_data(customer_id, user_id):
     """Sync customer data from Stripe to local database"""
     try:
         current_app.logger.info(f"Syncing customer data for customer {customer_id}")
-        
+
         # Set Stripe API key
         stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
-        
+
         # Retrieve customer from Stripe with expanded data
         customer = stripe.Customer.retrieve(
             customer_id,
             expand=['invoice_settings.default_payment_method']
         )
-        
+
         # Get user subscription
         user_subscription = UserSubscription.query.filter_by(user_id=user_id).first()
         if not user_subscription:
             current_app.logger.warning(f"User subscription not found for user {user_id}")
             return False
-        
+
         current_app.logger.info(f"Customer data: {customer}")
-        
+
         # Update customer data
         user_subscription.stripe_customer_id = customer.id
         user_subscription.phone_number = customer.get('phone')
         user_subscription.preferred_locales = ','.join(customer.get('preferred_locales', []))
         user_subscription.currency = customer.get('currency')
         user_subscription.customer_portal_last_updated = datetime.utcnow()
-        
+
         # Update billing address
         address = customer.get('address')
         if address:
@@ -47,35 +47,35 @@ def sync_customer_data(customer_id, user_id):
             user_subscription.billing_address_state = address.get('state')
             user_subscription.billing_address_postal_code = address.get('postal_code')
             user_subscription.billing_address_country = address.get('country')
-        
+
         # Update invoice settings
         invoice_settings = customer.get('invoice_settings', {})
         if invoice_settings:
             default_pm = invoice_settings.get('default_payment_method')
             if default_pm:
                 user_subscription.invoice_settings_default_payment_method = default_pm.id if hasattr(default_pm, 'id') else str(default_pm)
-        
+
         # Get all subscriptions for this customer (active, past_due, etc.)
         subscriptions = stripe.Subscription.list(
-            customer=customer_id, 
+            customer=customer_id,
             limit=10,
             expand=['data.default_payment_method']
         )
-        
+
         # Find the most recent active or past_due subscription
         active_subscription = None
         for sub in subscriptions.data:
             if sub.status in ['active', 'past_due', 'trialing']:
                 active_subscription = sub
                 break
-        
+
         if active_subscription:
             current_app.logger.info(f"Found active subscription: {active_subscription.id}")
             user_subscription.subscription_status = active_subscription.status
             user_subscription.current_period_start = datetime.fromtimestamp(active_subscription.current_period_start)
             user_subscription.current_period_end = datetime.fromtimestamp(active_subscription.current_period_end)
             user_subscription.cancel_at_period_end = active_subscription.get('cancel_at_period_end', False)
-            
+
             # Update payment method from subscription
             default_payment_method = active_subscription.get('default_payment_method')
             if default_payment_method:
@@ -85,10 +85,10 @@ def sync_customer_data(customer_id, user_id):
                 else:
                     # Need to retrieve
                     payment_method = stripe.PaymentMethod.retrieve(default_payment_method)
-                
+
                 user_subscription.payment_method_id = payment_method.id
                 user_subscription.payment_method_type = payment_method.type
-                
+
                 if payment_method.type == 'card' and hasattr(payment_method, 'card'):
                     card = payment_method.card
                     user_subscription.payment_method_last4 = card.last4
@@ -100,24 +100,24 @@ def sync_customer_data(customer_id, user_id):
                 type='card',
                 limit=1
             )
-            
+
             if payment_methods.data:
                 payment_method = payment_methods.data[0]
                 user_subscription.payment_method_id = payment_method.id
                 user_subscription.payment_method_type = payment_method.type
-                
+
                 if payment_method.type == 'card':
                     card = payment_method.card
                     user_subscription.payment_method_last4 = card.last4
                     user_subscription.payment_method_brand = card.brand
-        
+
         # Set invoice email enabled (default to True)
         user_subscription.invoice_email_enabled = True
-        
+
         db.session.commit()
         current_app.logger.info(f"Successfully synced customer data for user {user_id}")
         return True
-        
+
     except Exception as e:
         current_app.logger.error(f"Error syncing customer data: {str(e)}")
         db.session.rollback()
@@ -226,7 +226,7 @@ def force_sync_customer_data():
 
         # Force sync
         sync_success = sync_customer_data(customer.id, current_user.user_id)
-        
+
         if sync_success:
             # Get updated subscription data
             user_subscription = UserSubscription.query.filter_by(user_id=current_user.user_id).first()
@@ -261,7 +261,7 @@ def sync_customer_data_endpoint():
             return jsonify({'error': 'Stripe customer not found'}), 404
 
         customer = customers.data[0]
-        
+
         # Sync customer data
         sync_success = sync_customer_data(customer.id, current_user.user_id)
 
@@ -305,13 +305,16 @@ def redirect_to_stripe_portal():
             if customers.data:
                 customer = customers.data[0]
         except Exception:
-            pass
+            current_app.logger.error(
+            f"[Customer Portal] No customer found on Stripe: {str(e)}"
+        )
+            return jsonify({'error': 'No customer data on Stirpe and use same email'}), 500
 
-        if not customer:
-            customer = stripe.Customer.create(
-                email=current_user.email,
-                name=current_user.username,
-                metadata={'user_id': str(current_user.user_id)})
+        # if not customer:
+        #     customer = stripe.Customer.create(
+        #         email=current_user.email,
+        #         name=current_user.username,
+        #         metadata={'user_id': str(current_user.user_id)})
 
         # Create portal session
         portal_session = stripe.billing_portal.Session.create(
