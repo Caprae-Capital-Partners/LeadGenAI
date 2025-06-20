@@ -1772,7 +1772,7 @@ def view_lead_contacts(lead_id):
     current_app.logger.info(f'Route hit: /leads/{lead_id}/contacts by user_id={user_id}, username={username}')
     return render_template('contacts.html', lead_id=lead_id)
 
-@lead_bp.route('/proxy/scrape', methods=['POST'])
+@lead_bp.route('/emailgen/scrape', methods=['POST'])
 def proxy_scrape():
     """
     Proxy endpoint to forward scrape requests to the external API.
