@@ -1771,3 +1771,19 @@ def view_lead_contacts(lead_id):
     username = getattr(current_user, 'username', getattr(current_user, 'email', 'anonymous'))
     current_app.logger.info(f'Route hit: /leads/{lead_id}/contacts by user_id={user_id}, username={username}')
     return render_template('contacts.html', lead_id=lead_id)
+
+@lead_bp.route('/proxy/scrape', methods=['POST'])
+def proxy_scrape():
+    """
+    Proxy endpoint to forward scrape requests to the external API.
+    """
+    try:
+        body = request.get_json()
+        resp = requests.post(
+            "https://data.saasquatchleads.com/emailgen/scrape",
+            json=body,
+            timeout=60
+        )
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
