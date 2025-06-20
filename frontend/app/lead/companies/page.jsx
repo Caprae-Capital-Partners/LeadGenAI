@@ -37,7 +37,7 @@ import FeedbackPopup from "@/components/FeedbackPopup";
 import axios from "axios";
 import { SortDropdown } from "@/components/ui/sort-dropdown";
 import Notif from "@/components/ui/notif";
-import { Eye, Globe, Linkedin, MapPin, Edit, Pencil, Mail, StickyNote, MessageSquare, Star } from "lucide-react";
+import { Eye, Globe, Linkedin, MapPin, Edit, Pencil, Mail, StickyNote, Star } from "lucide-react";
 import React from "react";
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_DATABASE_URL;
@@ -191,131 +191,6 @@ const dummyData = [
 }
 ];
 
-const LinkedInMessageGenerator = ({ 
-  company, 
-  onClose,
-  onGenerate,
-  generatedMessage,
-  isGenerating,
-  settings,
-  onSettingsChange
-}) => {
-  return (
-    <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">LinkedIn Message Generator</h2>
-        {/* <button 
-          onClick={onClose}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <X className="h-5 w-5" />
-        </button> */}
-      </div>
-
-      <div className="space-y-4">
-        <div className="p-4 border rounded-lg text-white bg-gray-600">
-          <p className="font-medium">Company:</p>
-          <p className="text-lg">{company.company}</p>
-          {company.ownerLinkedin && (
-            <p className="text-sm text-white mt-1">
-              Recipient: <a href={company.ownerLinkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600">
-                {company.ownerFirstName} {company.ownerLastName}
-              </a>
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-white mb-1">Tone</label>
-            <Select 
-              value={settings.tone}
-              onValueChange={(value) => onSettingsChange({...settings, tone: value})}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select tone" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="professional">Professional</SelectItem>
-                <SelectItem value="friendly">Friendly</SelectItem>
-                <SelectItem value="direct">Direct</SelectItem>
-                <SelectItem value="casual">Casual</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-white mb-1">Focus</label>
-            <Select 
-              value={settings.focus}
-              onValueChange={(value) => onSettingsChange({...settings, focus: value})}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select focus" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="partnership">Partnership</SelectItem>
-                <SelectItem value="collaboration">Collaboration</SelectItem>
-                <SelectItem value="networking">Networking</SelectItem>
-                <SelectItem value="sales">Sales</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-white mb-1">Additional Context (Optional)</label>
-            <Input 
-              value={settings.extraContext}
-              onChange={(e) => onSettingsChange({...settings, extraContext: e.target.value})}
-              placeholder="Any special notes or context"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-3 pt-2">
-          <Button 
-            onClick={onGenerate}
-            disabled={isGenerating}
-            className="flex-1"
-          >
-            {isGenerating ? (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Generating...
-              </div>
-            ) : "Generate Message"}
-          </Button>
-        </div>
-
-        {generatedMessage && (
-          <div className="mt-4 space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Generated Message</label>
-            <div className="p-4 border rounded-lg text-white bg-gray-600 whitespace-pre-wrap">
-              {generatedMessage}
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => {
-                navigator.clipboard.writeText(generatedMessage);
-                // You might want to show a notification here
-              }}>
-                Copy to Clipboard
-              </Button>
-              <Button onClick={() => {
-                window.open(
-                  `https://www.linkedin.com/messaging/compose/?to=${company.ownerLinkedin?.split('/in/')[1]}`,
-                  '_blank'
-                );
-              }}>
-                Open in LinkedIn
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
 export default function CompaniesPage() {
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -348,15 +223,6 @@ export default function CompaniesPage() {
     const [popupTab, setPopupTab] = useState('overview');
     const [isEditing, setIsEditing] = useState(false);
 
-    // Add to your existing state declarations
-    const [linkedinPopupData, setLinkedinPopupData] = useState(null);
-    const [generatedMessage, setGeneratedMessage] = useState("");
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [messageSettings, setMessageSettings] = useState({
-    tone: "professional",
-    focus: "partnership",
-    extraContext: ""
-    });
     const router = useRouter();
 
     const saveLeadToAPI = async (lead) => {
@@ -932,12 +798,6 @@ export default function CompaniesPage() {
         { key: "ownerEmail", label: "Owner Email" },
     ];
 
-    // Replace your current LinkedIn message button click handler with this:
-    const handleLinkedInMessageClick = (company) => {
-        setLinkedinPopupData(company);
-        setGeneratedMessage(""); // Clear any previous message
-    };
-
     return (
     <div className="flex flex-col h-screen">
         <FeedbackPopup />
@@ -1138,15 +998,6 @@ export default function CompaniesPage() {
                                 >
                                 <Eye className="w-4 h-4 text-blue-500" />
                             </button>
-                            {row.ownerLinkedin && (
-                            <button
-                                onClick={() => handleLinkedInMessageClick(row)}
-                                title="Send LinkedIn Message"
-                                className="hover:bg-gray-100 rounded p-1"
-                            >
-                                <MessageSquare className="w-4 h-4 text-blue-700" />
-                            </button>
-                            )}
                             <button
                                 onClick={() => {
                                     setPopupData(row);
@@ -1527,25 +1378,9 @@ export default function CompaniesPage() {
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-4 pt-4 border-t">
                     {!isEditing ? (
-                    // <Button
-                    //     size="sm"
-                    //     variant="outline"
-                    //     onClick={() => setIsEditing(true)}
-                    //     className="ml-auto"
-                    // >
-                    //     Edit
-                    // </Button>
                     null
                     ) : (
                     <>
-                        {/* <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setIsEditing(false)}
-                        className="text-red-500 hover:text-red-600"
-                        >
-                        Cancel
-                        </Button> */}
                         <Button size="sm" onClick={handlePopupSave}>
                         Save Changes
                         </Button>
@@ -1553,55 +1388,6 @@ export default function CompaniesPage() {
                     )}
                 </div>
                 </div>
-            )}
-            </PopupBig>
-            <PopupBig show={!!linkedinPopupData} onClose={() => setLinkedinPopupData(null)}>
-            {linkedinPopupData && (
-                <LinkedInMessageGenerator
-                company={linkedinPopupData}
-                onClose={() => setLinkedinPopupData(null)}
-                onGenerate={async () => {
-                    setIsGenerating(true);
-                    
-                    // Mock API call - replace with real API when ready
-                    try {
-                    // This is where you'll call the real API
-                    // const response = await axios.post('/api/generate-linkedin-message', {
-                    //   company_name: linkedinPopupData.company,
-                    //   website_url: linkedinPopupData.website,
-                    //   user_linkedin_url: "https://linkedin.com/in/user", // You'll need to get this from user profile
-                    //   founder_linkedin_url: linkedinPopupData.ownerLinkedin,
-                    //   extra_context: messageSettings.extraContext,
-                    //   tone: messageSettings.tone,
-                    //   focus: messageSettings.focus
-                    // });
-                    // setGeneratedMessage(response.data.message);
-                    
-                    // Mock response for now
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    const mockMessage = `Hi ${linkedinPopupData.ownerFirstName || 'there'},
-
-            I came across ${linkedinPopupData.company} and was impressed by your work in ${linkedinPopupData.industry || 'your industry'}. I'd love to connect and explore potential ${messageSettings.focus} opportunities.
-
-            ${messageSettings.extraContext ? `\n${messageSettings.extraContext}\n` : ''}
-            Looking forward to your thoughts!
-
-            Best regards,
-            [Your Name]`;
-                    
-                    setGeneratedMessage(mockMessage);
-                    } catch (error) {
-                    console.error("Error generating message:", error);
-                    // You might want to show an error notification here
-                    } finally {
-                    setIsGenerating(false);
-                    }
-                }}
-                generatedMessage={generatedMessage}
-                isGenerating={isGenerating}
-                settings={messageSettings}
-                onSettingsChange={setMessageSettings}
-                />
             )}
             </PopupBig>
 
