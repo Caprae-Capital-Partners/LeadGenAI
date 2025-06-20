@@ -237,6 +237,141 @@ const EmailMessageGenerator: React.FC<EmailMessageGeneratorProps> = ({
     </div>
   );
 };
+// LinkedIn Message Generator Component
+interface LinkedInMessageGeneratorProps {
+    person: Person;
+    onClose: () => void;
+    onGenerate: () => Promise<void>;
+    generatedMessage: string;
+    isGenerating: boolean;
+    settings: MessageSettings;
+    onSettingsChange: (settings: MessageSettings) => void;
+  }
+  
+  const LinkedInMessageGenerator: React.FC<LinkedInMessageGeneratorProps> = ({ 
+    person, 
+    onClose,
+    onGenerate,
+    generatedMessage,
+    isGenerating,
+    settings,
+    onSettingsChange
+  }) => {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">LinkedIn Message Generator</h2>
+          <Button 
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-8 w-8 p-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+  
+        <div className="space-y-4">
+          <div className="p-4 border rounded-lg text-white bg-blue-600">
+            <p className="font-medium">Person:</p>
+            <p className="text-lg">{person.name}</p>
+            <p className="text-sm text-white mt-1">Company: {person.company}</p>
+            {person.linkedin && (
+              <p className="text-sm text-white mt-1">
+                LinkedIn: <span className="text-blue-200">{person.linkedin}</span>
+              </p>
+            )}
+          </div>
+  
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tone</label>
+              <Select 
+                value={settings.tone}
+                onValueChange={(value) => onSettingsChange({...settings, tone: value})}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select tone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="professional">Professional</SelectItem>
+                  <SelectItem value="friendly">Friendly</SelectItem>
+                  <SelectItem value="direct">Direct</SelectItem>
+                  <SelectItem value="casual">Casual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+  
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Focus</label>
+              <Select 
+                value={settings.focus}
+                onValueChange={(value) => onSettingsChange({...settings, focus: value})}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select focus" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="partnership">Partnership</SelectItem>
+                  <SelectItem value="collaboration">Collaboration</SelectItem>
+                  <SelectItem value="networking">Networking</SelectItem>
+                  <SelectItem value="sales">Sales</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+  
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Additional Context</label>
+              <Input 
+                value={settings.extraContext}
+                onChange={(e) => onSettingsChange({...settings, extraContext: e.target.value})}
+                placeholder="Any special notes or context"
+              />
+            </div>
+          </div>
+  
+          <div className="flex gap-3 pt-2">
+            <Button 
+              onClick={onGenerate}
+              disabled={isGenerating}
+              className="flex-1"
+            >
+              {isGenerating ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Generating...
+                </div>
+              ) : "Generate Message"}
+            </Button>
+          </div>
+  
+          {generatedMessage && (
+            <div className="mt-4 space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Generated Message</label>
+              <div className="p-4 border rounded-lg text-white bg-blue-600 whitespace-pre-wrap max-h-60 overflow-y-auto">
+                {generatedMessage}
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => {
+                  navigator.clipboard.writeText(generatedMessage);
+                  // You might want to show a notification here
+                }}>
+                  Copy to Clipboard
+                </Button>
+                <Button onClick={() => {
+                  if (person.linkedin) {
+                    window.open(person.linkedin, '_blank');
+                  }
+                }}>
+                  Open LinkedIn Profile
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
 // PopupBig Component
 interface PopupBigProps {
@@ -459,6 +594,14 @@ export default function PersonsPage() {
     focus: "partnership",
     extraContext: ""
   })
+  const [linkedinPopupData, setLinkedinPopupData] = useState<Person | null>(null)
+  const [linkedinGeneratedMessage, setLinkedinGeneratedMessage] = useState("")
+  const [linkedinIsGenerating, setLinkedinIsGenerating] = useState(false)
+  const [linkedinMessageSettings, setLinkedinMessageSettings] = useState<MessageSettings>({
+    tone: "professional",
+    focus: "partnership",
+    extraContext: ""
+  })
 
   // Notification state
   const [notif, setNotif] = useState({
@@ -635,6 +778,10 @@ export default function PersonsPage() {
   const handleEmailMessageClick = (person: Person) => {
     setEmailPopupData(person);
     setGeneratedMessage(""); // Clear any previous message
+  };
+  const handleLinkedInMessageClick = (person: Person) => {
+    setLinkedinPopupData(person);
+    setLinkedinGeneratedMessage(""); // Clear any previous message
   };
 
   // Handle checkbox selection
@@ -961,6 +1108,48 @@ Best regards,
     setIsGenerating(false);
   }
 };
+const generateLinkedInMessage = async (person: Person, settings: MessageSettings) => {
+    setLinkedinIsGenerating(true);
+    try {
+      // Simulate AI generation (replace with actual API call)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const toneMap = {
+        professional: "I hope this message finds you well",
+        friendly: "I hope you're doing great",
+        direct: "I'm reaching out to discuss",
+        casual: "Hey"
+      };
+  
+      const focusMap = {
+        partnership: "exploring potential partnership opportunities",
+        collaboration: "discussing collaboration possibilities", 
+        networking: "connecting and expanding our professional networks",
+        sales: "sharing how we might help your business grow"
+      };
+  
+      const greeting = toneMap[settings.tone as keyof typeof toneMap] || toneMap.professional;
+      const purpose = focusMap[settings.focus as keyof typeof focusMap] || focusMap.partnership;
+  
+      const message = `Hi ${person.name},
+  
+  ${greeting}. I came across your profile and was impressed by your role as ${person.title} at ${person.company}${person.industry && person.industry !== 'N/A' ? ` in the ${person.industry} industry` : ''}.
+  
+  I'm interested in ${purpose} that could be mutually beneficial for both our organizations.
+  
+  ${settings.extraContext ? `${settings.extraContext}\n\n` : ''}Would you be open to a brief conversation to explore this further?
+  
+  Best regards,
+  [Your Name]`;
+  
+      setLinkedinGeneratedMessage(message);
+    } catch (error) {
+      console.error("Error generating LinkedIn message:", error);
+      showNotification("Error generating LinkedIn message", "error");
+    } finally {
+      setLinkedinIsGenerating(false);
+    }
+  };
 
 return (
   <div className="flex flex-col h-screen">
@@ -1173,6 +1362,16 @@ return (
                                   >
                                     <MessageSquare className="w-4 h-4 text-green-600" />
                                   </Button>
+                                )}
+                                {person.linkedin && person.linkedin !== 'N/A' && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleLinkedInMessageClick(person)}
+                                        title="Generate LinkedIn Message"
+                                    >
+                                        <MessageSquare className="w-4 h-4 text-blue-600" />
+                                    </Button>
                                 )}
                                 {isEditing ? (
                                   <div className="flex gap-1">
@@ -1415,6 +1614,25 @@ return (
         isGenerating={isGenerating}
         settings={messageSettings}
         onSettingsChange={setMessageSettings}
+      />
+    </DialogContent>
+  </Dialog>
+)}
+{/* LinkedIn Popup Dialog */}
+{linkedinPopupData && (
+  <Dialog open={!!linkedinPopupData} onOpenChange={() => setLinkedinPopupData(null)}>
+    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>LinkedIn Message Generator</DialogTitle>
+      </DialogHeader>
+      <LinkedInMessageGenerator
+        person={linkedinPopupData}
+        onClose={() => setLinkedinPopupData(null)}
+        onGenerate={() => generateLinkedInMessage(linkedinPopupData, linkedinMessageSettings)}
+        generatedMessage={linkedinGeneratedMessage}
+        isGenerating={linkedinIsGenerating}
+        settings={linkedinMessageSettings}
+        onSettingsChange={setLinkedinMessageSettings}
       />
     </DialogContent>
   </Dialog>
