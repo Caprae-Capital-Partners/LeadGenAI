@@ -189,22 +189,22 @@ def delete_user(user_id):
         try:
             # Delete drafts first (these are user-specific)
             drafts_deleted = EditLeadDraft.query.filter_by(user_id=user_id).delete()
-            
+
             # Delete user lead drafts (these are user-specific)
             user_lead_drafts_deleted = UserLeadDraft.query.filter_by(user_id=user_id).delete()
-            
+
             # Delete audit logs (these are user-specific)
             audit_logs_deleted = AuditLog.query.filter_by(user_id=user_id).delete()
-            
+
             # Delete user subscription using delete() method
             subscription_deleted = UserSubscription.query.filter_by(user_id=user_id).delete()
-            
+
             # Finally delete the user
             db.session.delete(user)
-            
+
             # Commit all changes
             db.session.commit()
-            
+
             return jsonify({
                 'message': f'User "{username}" and all associated data deleted successfully',
                 'user_id': user_id,
@@ -216,7 +216,7 @@ def delete_user(user_id):
                     'subscription': subscription_deleted
                 }
             }), 200
-            
+
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Error during data deletion for user {user_id}: {str(e)}")
@@ -743,15 +743,43 @@ def api_reset_password(token):
         return jsonify({"error": message}), 400
 
 @auth_bp.route('/api/auth/check-student-email', methods=['POST'])
+@login_required
 def check_student_email():
-    """API endpoint to check if an email is a student email (school domain)"""
-    from controllers.student_verification_controller import is_student_email
-    data = request.json or {}
-    email = data.get('email', '').lower()
-    if not email:
-        return jsonify({"error": "Email is required."}), 400
-    is_student = is_student_email(email)
-    return jsonify({"is_student_email": is_student}), 200
+    """
+    API endpoint to check if the current user's email is a student email.
+    If it is, the user's role is updated to 'student'.
+    """
+    from controllers.student_verification_controller import is_student_email, set_user_as_student
+
+    current_app.logger.info(f"Student email check initiated for user {current_user.user_id} ({current_user.email}).")
+    is_student = is_student_email(current_user.email)
+
+    if not is_student:
+        current_app.logger.info(f"User {current_user.user_id} ({current_user.email}) does not have a student email.")
+        return jsonify({
+            "is_student": False,
+            "message": "The email associated with your account is not recognized as a student email."
+        }), 200
+
+    if current_user.role == 'student':
+        current_app.logger.info(f"User {current_user.user_id} is already registered as a student.")
+        return jsonify({
+            "is_student": True,
+            "message": "Your account is already registered as a student account."
+        }), 200
+
+    if set_user_as_student(current_user):
+        current_app.logger.info(f"Successfully updated user {current_user.user_id} role to 'student'.")
+        return jsonify({
+            "is_student": True,
+            "message": "Success! Your account has been updated to a student account."
+        }), 200
+    else:
+        current_app.logger.error(f"Failed to update database for user {current_user.user_id} to set role as student.")
+        return jsonify({
+            "is_student": False,
+            "message": "Could not update your account. Please contact support."
+        }), 500
 
 @auth_bp.route('/api/auth/user/<string:user_id>/cancel_subscription', methods=['POST'])
 @login_required

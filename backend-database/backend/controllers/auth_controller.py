@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from utils.token_utils import generate_token, confirm_token
 from utils.email_utils import send_email
 from flask import url_for, render_template, current_app, redirect, request
-from controllers.student_verification_controller import is_student_email, set_user_as_student
+# from controllers.student_verification_controller import is_student_email, set_user_as_student
 
 
 class AuthController:
@@ -143,10 +143,10 @@ class AuthController:
             current_app.logger.info(f"Email verified for user {user.email}.")
 
             # Student domain check and role update (added, do not change existing logic)
-            if is_student_email(user.email):
-                set_user_as_student(user)
+            # if is_student_email(user.email):
+            #     set_user_as_student(user)
 
-            return True, "Success, Email verified!"
+            # return True, "Success, Email verified!"
         except Exception as e:
             current_app.logger.error(f"Error during email verification: {str(e)}")
             return False, f"Verification failed: {str(e)}"
