@@ -1,6 +1,7 @@
 "use client"
 import axios from 'axios';
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
 import { Button } from "@/components/ui/button"
@@ -585,6 +586,7 @@ const ExpandableCell: React.FC<{ text: string }> = ({ text }) => {
 
 // Main PersonsPage Component
 export default function PersonsPage() {
+  const router = useRouter()
   // State declarations
   const [persons, setPersons] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
@@ -597,6 +599,8 @@ export default function PersonsPage() {
   const [popupData, setPopupData] = useState<Person | null>(null)
   const [popupTab, setPopupTab] = useState('overview')
   const [isEditing, setIsEditing] = useState(false)
+  const [user, setUser] = useState<{ tier?: string }>({});
+  const [showUpgradePopup, setShowUpgradePopup] = useState(false);
 
   // Email popup states
   const [emailPopupData, setEmailPopupData] = useState<Person | null>(null)
@@ -650,6 +654,11 @@ export default function PersonsPage() {
       try {
         setLoading(true)
         setError(null)
+        
+        const storedUser = typeof window !== "undefined"
+        ? JSON.parse(sessionStorage.getItem("user") || "{}")
+        : {};
+        setUser(storedUser);
         
         const draftsRes = await fetch(`${DATABASE_URL}/leads/drafts`, {
           method: "GET",
@@ -797,6 +806,22 @@ export default function PersonsPage() {
   const handleLinkedInMessageClick = (person: Person) => {
     setLinkedinPopupData(person);
     setLinkedinGeneratedMessage(""); // Clear any previous message
+  };
+
+  const handleGeneratorClick = (person: Person, generatorType: 'email' | 'linkedin') => {
+    const allowedTiers = ['silver', 'gold', 'platinum', 'enterprise'];
+    const userTier = user.tier?.toLowerCase() || 'free';
+
+    if (!allowedTiers.includes(userTier)) {
+        setShowUpgradePopup(true);
+        return;
+    }
+
+    if (generatorType === 'email') {
+        handleEmailMessageClick(person);
+    } else {
+        handleLinkedInMessageClick(person);
+    }
   };
 
   // Handle checkbox selection
@@ -1183,7 +1208,7 @@ return (
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleEmailMessageClick(person)}
+                                    onClick={() => handleGeneratorClick(person, 'email')}
                                     title="Generate Email Message"
                                   >
                                     <Mail className="w-4 h-4 text-green-600" />
@@ -1193,7 +1218,7 @@ return (
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => handleLinkedInMessageClick(person)}
+                                        onClick={() => handleGeneratorClick(person, 'linkedin')}
                                         title="Generate LinkedIn Message"
                                     >
                                         <Linkedin className="w-4 h-4 text-blue-700" />
@@ -1414,6 +1439,31 @@ return (
     </DialogContent>
   </Dialog>
 )}
+
+    {/* Upgrade Popup Dialog */}
+    <Dialog open={showUpgradePopup} onOpenChange={setShowUpgradePopup}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold">Upgrade Your Plan</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <p className="text-gray-600 dark:text-gray-300">
+            You've discovered an advanced feature! Generating AI messages is available for users on the Silver tier and above.
+          </p>
+          <p className="mt-2 text-gray-600 dark:text-gray-300">
+            Upgrade now to unlock this and many other powerful tools to accelerate your lead generation.
+          </p>
+        </div>
+        <div className="flex justify-end gap-3 pt-4">
+          <Button variant="outline" onClick={() => setShowUpgradePopup(false)}>
+            Maybe Later
+          </Button>
+          <Button onClick={() => router.push('/subscription')}>
+            Upgrade Now
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
 
     {/* Notification */}
     <Notif
