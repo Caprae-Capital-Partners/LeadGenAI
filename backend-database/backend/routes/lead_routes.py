@@ -234,7 +234,6 @@ def view_leads():
                 else:
                     expr = or_(expr, adv_expressions[i][0])
             query = query.filter(expr)
-        # END advanced filter
 
         paginated = query.order_by(Lead.created_at.desc()).paginate(page=page, per_page=per_page)
         leads = paginated.items
@@ -254,8 +253,8 @@ def view_leads():
         employee_sizes = sorted(set(lead.employees for lead in all_leads if lead.employees))
         revenue_ranges = sorted(set(lead.revenue for lead in all_leads if lead.revenue))
         sources = sorted(set(lead.source for lead in all_leads if lead.source))
-    else:
-        # For 'user' role, show their drafts
+    else:  # For 'user' and 'student' roles
+        # For 'user' and 'student' roles, show their drafts
         from models.user_lead_drafts_model import UserLeadDraft
 
         query = UserLeadDraft.query.filter(
@@ -289,6 +288,13 @@ def view_leads():
             lead_data['created_at'] = draft.created_at
             lead_data['updated_at'] = draft.updated_at
             
+            # Convert revenue to float if it exists
+            if 'revenue' in lead_data and lead_data['revenue'] is not None:
+                try:
+                    lead_data['revenue'] = float(str(lead_data['revenue']).replace('$', '').replace(',', '').replace('M', ''))
+                except (ValueError, TypeError):
+                    lead_data['revenue'] = 0.0
+            
             for field in lead_fields:
                 if field not in lead_data:
                     lead_data[field] = None
@@ -313,7 +319,23 @@ def view_leads():
         industries = sorted(set(d.get('industry') for d in all_draft_data if d and d.get('industry')))
         business_types = sorted(set(d.get('business_type') for d in all_draft_data if d and d.get('business_type')))
         employee_sizes = sorted(set(d.get('employees') for d in all_draft_data if d and d.get('employees')))
-        revenue_ranges = sorted(set(d.get('revenue') for d in all_draft_data if d and d.get('revenue')))
+
+        # Safe conversion function for revenue sorting
+        def safe_revenue_convert(val):
+            if val is None:
+                return 0.0
+            if isinstance(val, (int, float)):
+                return float(val)
+            try:
+                return float(str(val).replace('$', '').replace(',', '').replace('M', ''))
+            except (ValueError, TypeError):
+                return 0.0
+
+        revenue_ranges = sorted(
+            set(d.get('revenue') for d in all_draft_data if d and d.get('revenue')),
+            key=safe_revenue_convert
+        )
+
         sources = sorted(set(d.get('source') for d in all_draft_data if d and d.get('source')))
 
     return render_template('leads.html',
