@@ -53,23 +53,7 @@ export default function SettingsPage({ isEditing, setIsEditing }: SettingsPagePr
 
     const handleManageSubscription = async () => {
         try {
-            const res = await fetch(`${DATABASE_URL_NOAPI}/customer_portal`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
-            });
-            const data = await res.json();
-            if (res.ok && data.url) {
-                window.open(data.url, "_blank");
-            } else {
-                setNotif({
-                    show: true,
-                    message: "Unable to open billing portal.",
-                    type: "error",
-                });
-            }
+            window.location.href = `${DATABASE_URL_NOAPI}/customer_portal`;
         } catch (error) {
             setNotif({
                 show: true,
