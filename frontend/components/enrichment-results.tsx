@@ -426,12 +426,12 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
   }
 
   const handleExportCSVWithCredits = async () => {
-    // 1) Grab current user’s role
+    // 1) Grab current user's role
     const stored = sessionStorage.getItem("user");
     const currentUser = stored ? JSON.parse(stored) : {};
     const role = currentUser.role || "";
 
-    // 2) If they’re a developer, skip all checks
+    // 2) If they're a developer, skip all checks
     if (role === "developer") {
       downloadCSV(filteredCompanies, "enriched_results.csv");
       return;
@@ -483,13 +483,13 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
     const currentUser = stored ? JSON.parse(stored) : {};
     const role = currentUser.role || "";
 
-    // 2) If they’re a developer, skip subscription check entirely
+    // 2) If they're a developer, skip subscription check entirely
     if (role === "developer") {
       setShowFilters((prev) => !prev);
       return;
     }
 
-    // 3) Otherwise, fall back to the existing “free‐tier” logic
+    // 3) Otherwise, fall back to the existing "free-tier" logic
     try {
       const { data: subscriptionInfo } = await axios.get(
         `${DATABASE_URL}/user/subscription_info`,
@@ -698,26 +698,28 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
 
       <Card>
         <CardHeader>
-          <CardTitle>Enrichment Results</CardTitle>
-          <CardDescription>{filteredCompanies.length} companies enriched successfully</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              {/* Stretched Search Bar */}
-              <div className="flex-grow">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Enrichment Results</CardTitle>
+              <CardDescription>{filteredCompanies.length} companies enriched successfully</CardDescription>
+            </div>
+            <div className="flex items-center gap-4">
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
+                  type="search"
                   placeholder="Search companies..."
+                  className="w-80 pl-8"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full"
                 />
               </div>
-
-              {/* Right: Filter + Export + Edit */}
-              <div className="flex flex-wrap items-center gap-2 justify-end">
+              
+              {/* Actions */}
+              <div className="flex items-center gap-2">
                 <SortDropdown onApply={(sortBy, direction) => handleSortBy(sortBy, direction)} />
-
+                
                 <Button
                   variant="outline"
                   size="icon"
@@ -726,7 +728,7 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                 >
                   <Filter className="h-4 w-4" />
                 </Button>
-
+                
                 <Button
                   onClick={handleExportCSVWithCredits}
                   disabled={filteredCompanies.length === 0}
@@ -773,369 +775,369 @@ export const EnrichmentResults: FC<EnrichmentResultsProps> = ({
                 )}
               </div>
             </div>
+          </div>
 
+          {/* Filter Section */}
+          {showFilters && (
+            <div className="flex flex-wrap gap-4 my-4">
+              <Input
+                placeholder="Employees (e.g. >1000, 50-200)"
+                value={employeesFilter}
+                onChange={(e) => setEmployeesFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Revenue (e.g. >1M, 500K-2M)"
+                value={revenueFilter}
+                onChange={(e) => setRevenueFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Business Type (e.g. B2B)"
+                value={businessTypeFilter}
+                onChange={(e) => setBusinessTypeFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Product Category (e.g. SaaS)"
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Year Founded (e.g. 2015)"
+                value={yearFoundedFilter}
+                onChange={(e) => setYearFoundedFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="BBB Rating (e.g. A+)"
+                value={bbbRatingFilter}
+                onChange={(e) => setBbbRatingFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Street"
+                value={streetFilter}
+                onChange={(e) => setStreetFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="City"
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="State"
+                value={stateFilter}
+                onChange={(e) => setStateFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="Source (e.g. Growjo)"
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setEmployeesFilter("")
+                  setRevenueFilter("")
+                  setBusinessTypeFilter("")
+                  setProductFilter("")
+                  setYearFoundedFilter("")
+                  setBbbRatingFilter("")
+                  setStreetFilter("")
+                  setCityFilter("")
+                  setStateFilter("")
+                  setSourceFilter("")
+                }}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear All
+              </Button>
+            </div>
+          )}
+        </CardHeader>
+        
+        <CardContent>
+          {/* Table container */}
+          <div className="w-full overflow-x-auto relative border rounded-md">
+            <Table className="w-full overflow-x-auto">
+              <TableHeader>
+                <TableRow>
+                  {/* Sticky Checkbox Column */}
+                  <TableHead className="sticky top-0 left-0 z-40 bg-background px-6 py-3 w-12 text-base font-bold text-white border-r">
+                    <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
+                  </TableHead>
 
+                  {/* Sticky Company Column */}
+                  <TableHead className="sticky top-0 left-[3rem] z-30 bg-background px-6 py-3 min-w-[200px] text-base font-bold text-white whitespace-nowrap border-r">
+                    Company
+                  </TableHead>
 
-            {showFilters && (
-              <div className="flex flex-wrap gap-4 my-4">
-                <Input
-                  placeholder="Employees (e.g. >1000, 50-200)"
-                  value={employeesFilter}
-                  onChange={(e) => setEmployeesFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="Revenue (e.g. >1M, 500K-2M)"
-                  value={revenueFilter}
-                  onChange={(e) => setRevenueFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="Business Type (e.g. B2B)"
-                  value={businessTypeFilter}
-                  onChange={(e) => setBusinessTypeFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="Product Category (e.g. SaaS)"
-                  value={productFilter}
-                  onChange={(e) => setProductFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="Year Founded (e.g. 2015)"
-                  value={yearFoundedFilter}
-                  onChange={(e) => setYearFoundedFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="BBB Rating (e.g. A+)"
-                  value={bbbRatingFilter}
-                  onChange={(e) => setBbbRatingFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="Street"
-                  value={streetFilter}
-                  onChange={(e) => setStreetFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="City"
-                  value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="State"
-                  value={stateFilter}
-                  onChange={(e) => setStateFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="Source (e.g. Growjo)"
-                  value={sourceFilter}
-                  onChange={(e) => setSourceFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setEmployeesFilter("")
-                    setRevenueFilter("")
-                    setBusinessTypeFilter("")
-                    setProductFilter("")
-                    setYearFoundedFilter("")
-                    setBbbRatingFilter("")
-                    setStreetFilter("")
-                    setCityFilter("")
-                    setStateFilter("")
-                    setSourceFilter("")
-                  }}
+                  {/* Remaining Headers */}
+                  {[
+                    "Website",
+                    "Industry",
+                    "Product/Service Category",
+                    "Business Type (B2B, B2B2C)",
+                    "Employees Count",
+                    "Revenue",
+                    "Year Founded",
+                    "BBB Rating",
+                    "Street",
+                    "City",
+                    "State",
+                    "Company Phone",
+                    "Company LinkedIn",
+                    "Owner's First Name",
+                    "Owner's Last Name",
+                    "Owner's Title",
+                    "Owner's LinkedIn",
+                    "Owner's Phone Number",
+                    "Owner's Email",
+                    "Source",
+                  ].map((label, i) => (
+                    <TableHead
+                      key={i}
+                      className="sticky top-0 z-20 bg-background px-6 py-3 text-base font-bold text-white whitespace-nowrap"
+                    >
+                      {label}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
 
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Clear All
-                </Button>
-              </div>
-            )}
-
-            <div className="w-full overflow-x-auto rounded-md border">
-              <div className="w-full overflow-x-auto rounded-md border">
-                <Table className="w-full overflow-x-auto">
-                  <TableHeader>
-                    <TableRow>
+              <TableBody>
+                {currentItems.length > 0 ? (
+                  currentItems.map((company, i) => (
+                    <TableRow
+                      key={company.id}
+                      className={
+                        rowClassName?.(company, i) ??
+                        (company.sourceType === "database"
+                          ? "bg-teal-50"
+                          : company.sourceType === "scraped"
+                            ? "bg-yellow-50"
+                            : "")
+                      }
+                    >
                       {/* Sticky Checkbox Column */}
-                      <TableHead className="sticky top-0 left-0 z-40 bg-[#1e263a] px-6 py-3 w-12 text-base font-bold text-white">
-                        <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
-                      </TableHead>
+                      <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12 border-r">
+                        <Checkbox
+                          checked={selectedCompanies.includes(company.id)}
+                          onCheckedChange={() => handleSelectCompany(company.id)}
+                        />
+                      </TableCell>
 
                       {/* Sticky Company Column */}
-                      <TableHead className="sticky top-0 left-[3rem] z-30 bg-[#1e263a] px-6 py-3 min-w-[200px] text-base font-bold text-white whitespace-nowrap">
-                        Company
-                      </TableHead>
+                      <TableCell className="sticky left-[3rem] z-10 bg-inherit px-6 py-2 max-w-[240px] align-top border-r">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
+                            value={String(company.company)}
+                            onChange={(e) =>
+                              handleFieldChange(company.id, "company", e.target.value)
+                            }
+                          />
+                        ) : (
+                          <span>{normalizeDisplayValue(company.company)}</span>
+                        )}
+                      </TableCell>
 
-                      {/* Remaining Headers */}
+                      {/* Remaining Columns */}
                       {[
-                        "Website",
-                        "Industry",
-                        "Product/Service Category",
-                        "Business Type (B2B, B2B2C)",
-                        "Employees Count",
-                        "Revenue",
-                        "Year Founded",
-                        "BBB Rating",
-                        "Street",
-                        "City",
-                        "State",
-                        "Company Phone",
-                        "Company LinkedIn",
-                        "Owner's First Name",
-                        "Owner's Last Name",
-                        "Owner's Title",
-                        "Owner's LinkedIn",
-                        "Owner's Phone Number",
-                        "Owner's Email",
-                        "Source",
-                      ].map((label, i) => (
-                        <TableHead
-                          key={i}
-                          className="sticky top-0 z-20 bg-[#1e263a] px-6 py-3 text-base font-bold text-white whitespace-nowrap"
-                        >
-                          {label}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
+                        "website",
+                        "industry",
+                        "productCategory",
+                        "businessType",
+                        "employees",
+                        "revenue",
+                        "yearFounded",
+                        "bbbRating",
+                        "street",
+                        "city",
+                        "state",
+                        "companyPhone",
+                        "companyLinkedin",
+                        "ownerFirstName",
+                        "ownerLastName",
+                        "ownerTitle",
+                        "ownerLinkedin",
+                        "ownerPhoneNumber",
+                        "ownerEmail",
+                        "source",
+                      ].map((field) => {
+                        const value = company[field as keyof EnrichedCompany] ?? "";
+                        const displayValue = normalizeDisplayValue(value);
 
+                        const isLinkedInField = ["companyLinkedin", "ownerLinkedin"].includes(field);
+                        const isValidLink = typeof value === "string" && value.startsWith("http");
 
-                  <TableBody>
-                    {currentItems.length > 0 ? (
-                      currentItems.map((company, i) => (
-                        <TableRow
-                          key={company.id}
-                          className={
-                            rowClassName?.(company, i) ??
-                            (company.sourceType === "database"
-                              ? "bg-teal-50"
-                              : company.sourceType === "scraped"
-                                ? "bg-yellow-50"
-                                : "")
-                          }
-                        >
-                          {/* Sticky Checkbox Column */}
-                          <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12  ">
-                            <Checkbox
-                              checked={selectedCompanies.includes(company.id)}
-                              onCheckedChange={() => handleSelectCompany(company.id)}
-                            />
-                          </TableCell>
+                        if (field === "productCategory") {
+                          const isExpanded = expandedRows.has(i);
+                          return (
+                            <TableCell
+                              key={field}
+                              className="px-6 py-2 text-sm align-top max-w-[240px]"
+                            >
+                              <div className={`${isExpanded ? "" : "line-clamp-3"} break-words overflow-hidden`}>
+                                {displayValue}
+                              </div>
+                              {displayValue.length > 100 && (
+                                <button
+                                  onClick={() => {
+                                    const newSet = new Set(expandedRows);
+                                    isExpanded ? newSet.delete(i) : newSet.add(i);
+                                    setExpandedRows(newSet);
+                                  }}
+                                  className="text-xs text-blue-500 hover:underline mt-1 block"
+                                >
+                                  {isExpanded ? "Show less" : "Show more"}
+                                </button>
+                              )}
+                            </TableCell>
+                          );
+                        }
 
-                          {/* Sticky Company Column */}
-                          <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12  ">
+                        return (
+                          <TableCell
+                            key={field}
+                            className="px-6 py-2 text-sm align-top whitespace-nowrap"
+                            title={displayValue}
+                          >
                             {isEditing ? (
                               <input
                                 type="text"
                                 className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
-                                value={String(company.company)}
+                                value={String(value)}
                                 onChange={(e) =>
-                                  handleFieldChange(company.id, "company", e.target.value)
+                                  handleFieldChange(
+                                    company.id,
+                                    field as keyof EnrichedCompany,
+                                    e.target.value
+                                  )
                                 }
                               />
+                            ) : field === "website" && typeof value === "string" && value.trim() !== "" ? (
+                              <a
+                                href={value.startsWith("http") ? value : `https://${value}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:text-blue-700 truncate"
+                                title={value}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {cleanUrlForDisplay(value)}
+                              </a>
+                            ) : isLinkedInField && typeof value === "string" && value.startsWith("http") ? (
+                              <a
+                                href={value}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:text-blue-700 truncate"
+                                title={value}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {value.replace(/^https?:\/\/(www\.)?/, "").split("?")[0]}
+                              </a>
                             ) : (
-                              <span>{normalizeDisplayValue(company.company)}</span>
+                              displayValue
                             )}
                           </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={22} className="text-center py-4">
+                      No results found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
-                          {/* Remaining Columns */}
-                          {[
-                            "website",
-                            "industry",
-                            "productCategory",
-                            "businessType",
-                            "employees",
-                            "revenue",
-                            "yearFounded",
-                            "bbbRating",
-                            "street",
-                            "city",
-                            "state",
-                            "companyPhone",
-                            "companyLinkedin",
-                            "ownerFirstName",
-                            "ownerLastName",
-                            "ownerTitle",
-                            "ownerLinkedin",
-                            "ownerPhoneNumber",
-                            "ownerEmail",
-                            "source",
-                          ].map((field) => {
-                            const value = company[field as keyof EnrichedCompany] ?? "";
-                            const displayValue = normalizeDisplayValue(value);
+          {/* Pagination at the bottom */}
+          {filteredCompanies.length > 0 && (
+            <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
+              <div className="text-sm text-muted-foreground">
+                Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCompanies.length)} of {filteredCompanies.length} results
+                {selectedCompanies.length > 0 && (
+                  <span className="ml-2 text-blue-600">
+                    ({selectedCompanies.length} selected)
+                  </span>
+                )}
+              </div>
 
-                            const isLinkedInField = ["companyLinkedin", "ownerLinkedin"].includes(field);
-                            const isValidLink = typeof value === "string" && value.startsWith("http");
+              <div className="flex items-center gap-3 px-3 py-2">
+                <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                  setCurrentPage(1); // Reset to first page when changing items per page
+                }}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Items per page" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25">25 per page</SelectItem>
+                    <SelectItem value="50">50 per page</SelectItem>
+                    <SelectItem value="100">100 per page</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                            if (field === "productCategory") {
-                              const isExpanded = expandedRows.has(i);
-                              return (
-                                <TableCell
-                                  key={field}
-                                  className="px-6 py-2 text-sm align-top max-w-[240px]"
-                                >
-                                  <div className={`${isExpanded ? "" : "line-clamp-3"} break-words overflow-hidden`}>
-                                    {displayValue}
-                                  </div>
-                                  {displayValue.length > 100 && (
-                                    <button
-                                      onClick={() => {
-                                        const newSet = new Set(expandedRows);
-                                        isExpanded ? newSet.delete(i) : newSet.add(i);
-                                        setExpandedRows(newSet);
-                                      }}
-                                      className="text-xs text-blue-500 hover:underline mt-1 block"
-                                    >
-                                      {isExpanded ? "Show less" : "Show more"}
-                                    </button>
-                                  )}
-                                </TableCell>
-                              );
-                            }
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        aria-disabled={currentPage === 1}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
 
-                            return (
-                              <TableCell
-                                key={field}
-                                className="px-6 py-2 text-sm align-top whitespace-nowrap"
-                                title={displayValue}
-                              >
-                                {isEditing ? (
-                                  <input
-                                    type="text"
-                                    className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
-                                    value={String(value)}
-                                    onChange={(e) =>
-                                      handleFieldChange(
-                                        company.id,
-                                        field as keyof EnrichedCompany,
-                                        e.target.value
-                                      )
-                                    }
-                                  />
-                                ) : field === "website" && typeof value === "string" && value.trim() !== "" ? (
-                                  <a
-                                    href={value.startsWith("http") ? value : `https://${value}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-500 hover:text-blue-700 truncate"
-                                    title={value}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {cleanUrlForDisplay(value)}
-                                  </a>
-                                ) : isLinkedInField && typeof value === "string" && value.startsWith("http") ? (
-                                  <a
-                                    href={value}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-500 hover:text-blue-700 truncate"
-                                    title={value}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {value.replace(/^https?:\/\/(www\.)?/, "").split("?")[0]}
-                                  </a>
-                                ) : (
-                                  displayValue
-                                )}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={22} className="text-center py-4">
-                          No results found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
+                    {getPageNumbers().map((page, index) => (
+                      <PaginationItem key={index}>
+                        {page === 'ellipsis' ? (
+                          <PaginationEllipsis />
+                        ) : (
+                          <PaginationLink
+                            isActive={page === currentPage}
+                            onClick={() => setCurrentPage(Number(page))}
+                          >
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
 
-
-                </Table>
-
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        aria-disabled={currentPage === totalPages}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               </div>
             </div>
-
-            {/* Pagination controls */}
-            {filteredCompanies.length > 0 && (
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCompanies.length)} of {filteredCompanies.length} results
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1); // Reset to first page when changing items per page
-                  }}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Items per page" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25 per page</SelectItem>
-                      <SelectItem value="50">50 per page</SelectItem>
-                      <SelectItem value="100">100 per page</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          aria-disabled={currentPage === 1}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-
-                      {getPageNumbers().map((page, index) => (
-                        <PaginationItem key={index}>
-                          {page === 'ellipsis' ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              isActive={page === currentPage}
-                              onClick={() => setCurrentPage(Number(page))}
-                            >
-                              {page}
-                            </PaginationLink>
-                          )}
-                        </PaginationItem>
-                      ))}
-
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                          aria-disabled={currentPage === totalPages}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              </div>
-            )}
-
-          </div>
-          <Notif
-            show={notif.show}
-            message={notif.message}
-            type={notif.type}
-            onClose={() => setNotif(prev => ({ ...prev, show: false }))}
-          />
+          )}
         </CardContent>
       </Card>
+      
+      <Notif
+        show={notif.show}
+        message={notif.message}
+        type={notif.type}
+        onClose={() => setNotif(prev => ({ ...prev, show: false }))}
+      />
     </div>
   )
 }

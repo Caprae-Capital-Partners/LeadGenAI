@@ -43,6 +43,7 @@ export function ScraperResults({ data, industry, location }: { data: string | an
   const [selectedCompanies, setSelectedCompanies] = useState<number[]>([])
   const [selectAll, setSelectAll] = useState(false)
   const [isIndeterminate, setIsIndeterminate] = useState(false)
+  const [showCheckboxes, setShowCheckboxes] = useState(false)
 
   // Add effect to handle indeterminate state
   useEffect(() => {
@@ -357,40 +358,259 @@ export function ScraperResults({ data, industry, location }: { data: string | an
     setGlobalLeads(prev => prev.filter((_, idx) => !selectedCompanies.includes(idx)));
     setSelectedCompanies([]);
     setSelectAll(false);
+    setShowCheckboxes(false); // Hide checkboxes after deletion
     toast.success("Lead removed successfully.");
     setIsDeleting(false);
+  };
+
+  const handleToggleDeleteMode = () => {
+    setShowCheckboxes(!showCheckboxes);
+    if (showCheckboxes) {
+      // If hiding checkboxes, clear selection
+      setSelectedCompanies([]);
+      setSelectAll(false);
+    }
   };
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Company Search Results</CardTitle>
-          </div>
-          <div className="flex items-center gap-2">
+          <CardTitle>Company Search Results</CardTitle>
+          <div className="flex items-center gap-4">
+            {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search results..."
-                className="w-64 pl-8"
+                className="w-80 pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={handleToggleDeleteMode}
+                className={showCheckboxes ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" : ""}
+                title={showCheckboxes ? "Cancel Delete Mode" : "Delete Items"}
+              >
+                <Trash2 className={`h-4 w-4 ${showCheckboxes ? "text-red-600" : ""}`} />
+              </Button>
+              {showCheckboxes && selectedCompanies.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                >
+                  {isDeleting ? "Deleting..." : `Delete (${selectedCompanies.length})`}
+                </Button>
+              )}
+              <Button
+                className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
+                onClick={handleNext}
+              >
+                <ArrowRight className="mr-2 h-4 w-4" />
+                Next
+              </Button>
+            </div>
           </div>
         </div>
       </CardHeader>
+      
       <CardContent>
-        {/* Pagination controls */}
+        {/* Table container */}
+        <div className="w-full overflow-x-auto relative border rounded-md">
+          <Table className="w-full" fixedLayout={false}>
+            <TableHeader>
+              <TableRow>
+                {showCheckboxes && (
+                  <TableHead className="w-[50px] sticky top-0 left-0 z-40 bg-background border-r">
+                    <Checkbox
+                      checked={selectAll}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                )}
+                <TableHead className={`sticky top-0 ${showCheckboxes ? 'left-[50px]' : 'left-0'} z-30 bg-background border-r text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]`}>
+                  Company
+                </TableHead>
+                <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Industry</TableHead>
+                <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Address</TableHead>
+                <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">BBB Rating</TableHead>
+                <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Phone</TableHead>
+                <TableHead className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap">Website</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {currentItems.length > 0 ? (
+                currentItems.map((result, rowIdx) => {
+                  // Calculate the actual index in the filtered results
+                  const actualIndex = indexOfFirstItem + rowIdx;
+                  return (
+                    <TableRow key={result.id}>
+                      {showCheckboxes && (
+                        <TableCell className="w-[50px] sticky left-0 z-20 bg-inherit border-r">
+                          <Checkbox
+                            checked={selectedCompanies.includes(actualIndex)}
+                            onCheckedChange={() => handleSelectCompany(actualIndex)}
+                            aria-label={`Select ${result.company}`}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell className={`sticky ${showCheckboxes ? 'left-[50px]' : 'left-0'} z-10 bg-inherit border-r px-6 py-2 max-w-[240px] align-top`}>
+                        <textarea
+                          className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
+                          value={normalizeDisplayValue(result.company ?? "")}
+                          onChange={e => handleCellChange(actualIndex, "company", e.target.value)}
+                          rows={1}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "company", "N/A")
+                            }
+                          }}
+                          ref={(el) => {
+                            textareaRefs.current[actualIndex * 3] = el;
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="px-6 py-2 max-w-[240px] align-top">
+                        <textarea
+                          className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
+                          value={normalizeDisplayValue(result.industry ?? "")}
+                          onChange={e => handleCellChange(actualIndex, "industry", e.target.value)}
+                          rows={1}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "industry", "N/A")
+                            }
+                          }}
+                          ref={(el) => {
+                            textareaRefs.current[actualIndex * 3 + 1] = el;
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="px-6 py-2 max-w-[240px] align-top">
+                        <textarea
+                          className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
+                          value={normalizeDisplayValue(result.street)}
+                          onChange={e => handleCellChange(actualIndex, "street", e.target.value)}
+                          placeholder="Street"
+                          rows={1}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "street", "N/A")
+                            }
+                          }}
+                          ref={(el) => {
+                            textareaRefs.current[actualIndex * 3 + 2] = el;
+                          }}
+                        />
+                        <div className="flex gap-1 mt-1">
+                          <input
+                            className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
+                            value={normalizeDisplayValue(result.city)}
+                            onChange={e => handleCellChange(actualIndex, "city", e.target.value)}
+                            onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "city", "N/A")
+                            }
+                          }}
+                            placeholder="City"
+                          />
+                          <input
+                            className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
+                            value={normalizeDisplayValue(result.state)}
+                            onChange={e => handleCellChange(actualIndex, "state", e.target.value)}
+                            onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "state", "N/A")
+                            }
+                          }}
+                            placeholder="State"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-2 max-w-[240px] align-top">
+                        <input
+                          className="border-b w-full bg-transparent break-words"
+                          value={normalizeDisplayValue(result.bbb_rating)}
+                          onChange={e => handleCellChange(actualIndex, "bbb_rating", e.target.value)}
+                          onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "bbb_rating", "N/A")
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="px-6 py-2 max-w-[240px] align-top">
+                        {normalizeDisplayValue(result.business_phone)
+                          .split(",")
+                          .map((phone: string, i: number) => (
+                            <div key={`${result.id}-phone-${i}`} className="break-words">
+                              {normalizeDisplayValue(phone.trim())}
+                            </div>
+                          ))}
+                      </TableCell>
+                      <TableCell className="px-6 py-2 max-w-[240px] align-top">
+                        <div className="flex items-center gap-2">
+                          <input
+                            className="border-b w-full bg-transparent"
+                            value={result.website ? cleanUrlForDisplay(normalizeDisplayValue(result.website)) : ""}
+                            onChange={e => handleCellChange(actualIndex, "website", e.target.value)}
+                            onBlur={e => {
+                            if (e.target.value.trim() === "") {
+                              handleCellChange(actualIndex, "website", "N/A")
+                            }
+                          }}
+                            placeholder="Website (domain only)"
+                          />
+                          {result.website && normalizeDisplayValue(result.website) !== "N/A" && normalizeDisplayValue(result.website) !== "NA" && (
+                            <a
+                              href={result.website.toString().startsWith('http') ? result.website : `https://${result.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700"
+                              title="Open website in new tab"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    No results found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination at the bottom */}
         {filteredResults.length > 0 && (
-          <div className="mb-4 flex items-center justify-between">
+          <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
             <div className="text-sm text-muted-foreground">
               Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredResults.length)} of {filteredResults.length} results
+              {selectedCompanies.length > 0 && (
+                <span className="ml-2 text-blue-600">
+                  ({selectedCompanies.length} selected)
+                </span>
+              )}
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 px-3 py-2">
               <Select value={itemsPerPage.toString()} onValueChange={(value) => {
                 setItemsPerPage(Number(value));
                 setCurrentPage(1); // Reset to first page when changing items per page
@@ -442,218 +662,7 @@ export function ScraperResults({ data, industry, location }: { data: string | an
             </div>
           </div>
         )}
-        
-        <div className="rounded-md border">
-          <Table className="w-full" fixedLayout={false}>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectAll}
-                    onCheckedChange={handleSelectAll}
-                    aria-label="Select all"
-                  />
-                </TableHead>
-                <TableHead className="w-[18%] break-words">Company</TableHead>
-                <TableHead className="w-[15%] break-words">Industry</TableHead>
-                <TableHead className="w-[25%] break-words">Address</TableHead>
-                <TableHead className="w-[10%] break-words">BBB Rating</TableHead>
-                <TableHead className="w-[12%] break-words">Phone</TableHead>
-                <TableHead className="w-[20%]">Website</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentItems.length > 0 ? (
-                currentItems.map((result, rowIdx) => {
-                  // Calculate the actual index in the filtered results
-                  const actualIndex = indexOfFirstItem + rowIdx;
-                  return (
-                    <TableRow key={result.id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedCompanies.includes(actualIndex)}
-                          onCheckedChange={() => handleSelectCompany(actualIndex)}
-                          aria-label={`Select ${result.company}`}
-                        />
-                      </TableCell>
-                      <TableCell className="break-words">
-                        <textarea
-                          className="font-medium border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                          value={normalizeDisplayValue(result.company ?? "")}
-                          onChange={e => handleCellChange(actualIndex, "company", e.target.value)}
-                          rows={1}
-                          onBlur={e => {
-                            if (e.target.value.trim() === "") {
-                              handleCellChange(actualIndex, "company", "N/A")
-                            }
-                          }}
-                          ref={(el) => {
-                            textareaRefs.current[actualIndex * 3] = el;
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell className="break-words">
-                        <textarea
-                          className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                          value={normalizeDisplayValue(result.industry ?? "")}
-                          onChange={e => handleCellChange(actualIndex, "industry", e.target.value)}
-                          rows={1}
-                          onBlur={e => {
-                            if (e.target.value.trim() === "") {
-                              handleCellChange(actualIndex, "industry", "N/A")
-                            }
-                          }}
-                          ref={(el) => {
-                            textareaRefs.current[actualIndex * 3 + 1] = el;
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell className="break-words">
-                        <textarea
-                          className="border-b w-full bg-transparent break-words resize-none min-h-[24px] overflow-hidden"
-                          value={normalizeDisplayValue(result.street)}
-                          onChange={e => handleCellChange(actualIndex, "street", e.target.value)}
-                          placeholder="Street"
-                          rows={1}
-                          onBlur={e => {
-                            if (e.target.value.trim() === "") {
-                              handleCellChange(actualIndex, "street", "N/A")
-                            }
-                          }}
-                          ref={(el) => {
-                            textareaRefs.current[actualIndex * 3 + 2] = el;
-                          }}
-                        />
-                        <div className="flex gap-1 mt-1">
-                          <input
-                            className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
-                            value={normalizeDisplayValue(result.city)}
-                            onChange={e => handleCellChange(actualIndex, "city", e.target.value)}
-                            onBlur={e => {
-                            if (e.target.value.trim() === "") {
-                              handleCellChange(actualIndex, "city", "N/A")
-                            }
-                          }}
-                            placeholder="City"
-                          />
-                          <input
-                            className="border-b w-1/2 bg-transparent text-sm text-muted-foreground break-words"
-                            value={normalizeDisplayValue(result.state)}
-                            onChange={e => handleCellChange(actualIndex, "state", e.target.value)}
-                            onBlur={e => {
-                            if (e.target.value.trim() === "") {
-                              handleCellChange(actualIndex, "state", "N/A")
-                            }
-                          }}
-                            placeholder="State"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="break-words">
-                        <input
-                          className="border-b w-full bg-transparent break-words"
-                          value={normalizeDisplayValue(result.bbb_rating)}
-                          onChange={e => handleCellChange(actualIndex, "bbb_rating", e.target.value)}
-                          onBlur={e => {
-                            if (e.target.value.trim() === "") {
-                              handleCellChange(actualIndex, "bbb_rating", "N/A")
-                            }
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell className="break-words">
-                        {normalizeDisplayValue(result.business_phone)
-                          .split(",")
-                          .map((phone: string, i: number) => (
-                            <div key={`${result.id}-phone-${i}`} className="break-words">
-                              {normalizeDisplayValue(phone.trim())}
-                            </div>
-                          ))}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <input
-                            className="border-b w-full bg-transparent"
-                            value={result.website ? cleanUrlForDisplay(normalizeDisplayValue(result.website)) : ""}
-                            onChange={e => handleCellChange(actualIndex, "website", e.target.value)}
-                            onBlur={e => {
-                            if (e.target.value.trim() === "") {
-                              handleCellChange(actualIndex, "website", "N/A")
-                            }
-                          }}
-                            placeholder="Website (domain only)"
-                          />
-                          {result.website && normalizeDisplayValue(result.website) !== "N/A" && normalizeDisplayValue(result.website) !== "NA" && (
-                            <a
-                              href={result.website.toString().startsWith('http') ? result.website : `https://${result.website}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:text-blue-700"
-                              title="Open website in new tab"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    No results found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <div className="text-sm text-muted-foreground" />
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleDelete}
-            disabled={isDeleting || selectedCompanies.length === 0}
-            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            {isDeleting ? "Deleting..." : `Delete Selected (${selectedCompanies.length})`}
-          </Button>
-          {/* <Button
-            variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {isSaving ? "Saving..." : "Save"}
-          </Button> */}
-          <Button
-            className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
-            onClick={handleNext}
-          >
-            <ArrowRight className="mr-2 h-4 w-4" />
-            Next
-          </Button>
-          {/* <Select value={exportFormat} onValueChange={setExportFormat}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Format" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="csv">CSV</SelectItem>
-              <SelectItem value="excel">Excel</SelectItem>
-              <SelectItem value="json">JSON</SelectItem>
-            </SelectContent>
-          </Select> */}
-          {/* <Button variant="outline" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button> */}
-        </div>
-      </CardFooter>
     </Card>
   )
 }

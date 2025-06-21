@@ -635,7 +635,7 @@ export function DataEnhancement() {
         }
       }
 
-      // ── Step 4: Determine “toScrape” ──
+      // ── Step 4: Determine "toScrape" ──
       const toScrape = forceScrape
         ? selected
         : selected.filter(c => !existingNames.has(c.company.toLowerCase()));
@@ -652,7 +652,7 @@ export function DataEnhancement() {
         }
 
         if (!isInitialized) {
-          // Show a persistent “please wait…” notification
+          // Show a persistent "please wait…" notification
           showNotification("Initializing scraper, please wait...", "info");
 
           try {
@@ -666,12 +666,12 @@ export function DataEnhancement() {
             return;
           }
 
-          // Hide that “Initializing…” notification now that init is done
+          // Hide that "Initializing…" notification now that init is done
           setNotif(prev => ({ ...prev, show: false }));
         }
       }
 
-      // ── Step 6: Loop through “toScrape” ──
+      // ── Step 6: Loop through "toScrape" ──
       for (const company of toScrape) {
         try {
           const lead_id_before = company.lead_id || "";
@@ -861,326 +861,340 @@ export function DataEnhancement() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Companies</CardTitle>
-          <CardDescription>Select companies to enrich with additional data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Search companies..." className="pl-8" />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className="h-4 w-4" />
-                {showFilters ? "Hide Filters" : "Show Filters"}
-              </Button>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Companies</CardTitle>
+              <CardDescription>Select companies to enrich with additional data</CardDescription>
             </div>
-            {showFilters && (
-              <div className="flex flex-wrap gap-4 my-4">
-                <Input
-                  placeholder="Industry (e.g. Software)"
-                  value={industryFilter}
-                  onChange={(e) => setIndustryFilter(e.target.value)}
-                  className="w-[240px]"
+            <div className="flex items-center gap-4">
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  type="search" 
+                  placeholder="Search companies..." 
+                  className="w-80 pl-8" 
                 />
-                <Input
-                  placeholder="City (e.g. Los Angeles)"
-                  value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="State (e.g. CA)"
-                  value={stateFilter}
-                  onChange={(e) => setStateFilter(e.target.value)}
-                  className="w-[240px]"
-                />
-                <Input
-                  placeholder="BBB Rating (e.g. A+)"
-                  value={bbbRatingFilter}
-                  onChange={(e) => setBbbRatingFilter(e.target.value)}
-                  className="w-[240px]"
-                />
+              </div>
+              
+              {/* Actions */}
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setIndustryFilter("")
-                    setCityFilter("")
-                    setStateFilter("")
-                    setBbbRatingFilter("")
-                  }}
+                  className="gap-1"
+                  onClick={() => setShowFilters(!showFilters)}
                 >
-                  <X className="h-4 w-4 mr-1" />
-                  Clear Filters
+                  <Filter className="h-4 w-4" />
+                  {showFilters ? "Hide Filters" : "Show Filters"}
                 </Button>
               </div>
-            )}
+            </div>
+          </div>
 
-            <div className="w-full overflow-x-auto rounded-md border">
-              <div className="w-full overflow-x-auto rounded-md border">
-                <Table className="w-full table-fixed">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12 bg-[#1e263a]">
-                        <Checkbox
-                          checked={selectAll}
-                          onCheckedChange={handleSelectAll}
-                          aria-label="Select all"
-                        />
-                      </TableHead>
+          {/* Filter Section */}
+          {showFilters && (
+            <div className="flex flex-wrap gap-4 my-4">
+              <Input
+                placeholder="Industry (e.g. Software)"
+                value={industryFilter}
+                onChange={(e) => setIndustryFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="City (e.g. Los Angeles)"
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="State (e.g. CA)"
+                value={stateFilter}
+                onChange={(e) => setStateFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Input
+                placeholder="BBB Rating (e.g. A+)"
+                value={bbbRatingFilter}
+                onChange={(e) => setBbbRatingFilter(e.target.value)}
+                className="w-[240px]"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIndustryFilter("")
+                  setCityFilter("")
+                  setStateFilter("")
+                  setBbbRatingFilter("")
+                }}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear Filters
+              </Button>
+            </div>
+          )}
+        </CardHeader>
+        
+        <CardContent>
+          {/* Table container */}
+          <div className="w-full overflow-x-auto relative border rounded-md">
+            <Table className="w-full table-fixed">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px] sticky top-0 left-0 z-40 bg-background border-r">
+                    <Checkbox
+                      checked={selectAll}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('company')}
-                      >
-                        <div className="flex items-center">
-                          Company
-                          {sortConfig?.key === 'company' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                  <TableHead
+                    className="sticky top-0 left-[50px] z-30 bg-background border-r text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px] cursor-pointer hover:bg-muted/50"
+                    onClick={() => requestSort('company')}
+                  >
+                    <div className="flex items-center">
+                      Company
+                      {sortConfig?.key === 'company' && (
+                        <span className="ml-2">
+                          {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('industry')}
-                      >
-                        <div className="flex items-center">
-                          Industry
-                          {sortConfig?.key === 'industry' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap cursor-pointer hover:bg-muted/50"
+                    onClick={() => requestSort('industry')}
+                  >
+                    <div className="flex items-center">
+                      Industry
+                      {sortConfig?.key === 'industry' && (
+                        <span className="ml-2">
+                          {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('street')}
-                      >
-                        <div className="flex items-center">
-                          Street
-                          {sortConfig?.key === 'street' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap cursor-pointer hover:bg-muted/50"
+                    onClick={() => requestSort('street')}
+                  >
+                    <div className="flex items-center">
+                      Street
+                      {sortConfig?.key === 'street' && (
+                        <span className="ml-2">
+                          {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('city')}
-                      >
-                        <div className="flex items-center">
-                          City
-                          {sortConfig?.key === 'city' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap cursor-pointer hover:bg-muted/50"
+                    onClick={() => requestSort('city')}
+                  >
+                    <div className="flex items-center">
+                      City
+                      {sortConfig?.key === 'city' && (
+                        <span className="ml-2">
+                          {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('state')}
-                      >
-                        <div className="flex items-center">
-                          State
-                          {sortConfig?.key === 'state' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap cursor-pointer hover:bg-muted/50"
+                    onClick={() => requestSort('state')}
+                  >
+                    <div className="flex items-center">
+                      State
+                      {sortConfig?.key === 'state' && (
+                        <span className="ml-2">
+                          {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('bbb_rating')}
-                      >
-                        <div className="flex items-center">
-                          BBB Rating
-                          {sortConfig?.key === 'bbb_rating' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap cursor-pointer hover:bg-muted/50"
+                    onClick={() => requestSort('bbb_rating')}
+                  >
+                    <div className="flex items-center">
+                      BBB Rating
+                      {sortConfig?.key === 'bbb_rating' && (
+                        <span className="ml-2">
+                          {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('business_phone')}
-                      >
-                        <div className="flex items-center">
-                          Company Phone
-                          {sortConfig?.key === 'business_phone' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap cursor-pointer hover:bg-muted/50"
+                    onClick={() => requestSort('business_phone')}
+                  >
+                    <div className="flex items-center">
+                      Company Phone
+                      {sortConfig?.key === 'business_phone' && (
+                        <span className="ml-2">
+                          {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </TableHead>
 
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 bg-[#1e263a]"
-                        onClick={() => requestSort('website')}
-                      >
-                        <div className="flex items-center">
-                          Website
-                          {sortConfig?.key === 'website' && (
-                            <span className="ml-2">
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <>
-                      {currentItems.length > 0 &&
-                        currentItems.map((company) => (
-                          <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
-                            <TableCell>
-                              <Checkbox
-                                checked={selectedCompanies.includes(company.id)}
-                                onCheckedChange={() => handleSelectCompany(company.id)}
-                                aria-label={`Select ${company.company}`}
-                              />
-                            </TableCell>
-                            <TableCell className="font-medium">{company.company}</TableCell>
-                            <TableCell>{company.industry}</TableCell>
-                            <TableCell>{company.street}</TableCell>
-                            <TableCell>{company.city}</TableCell>
-                            <TableCell>{company.state}</TableCell>
-                            <TableCell>{company.bbb_rating}</TableCell>
-                            <TableCell>{company.business_phone}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {company.website && company.website !== "N/A" && company.website !== "NA" ? (
-                                  <a
-                                    href={
-                                      company.website.toString().startsWith("http")
-                                        ? company.website
-                                        : `https://${company.website}`
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-500 hover:text-blue-700"
-                                    title="Open website in new tab"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {cleanUrlForDisplay(company.website)}
-                                  </a>
-                                ) : (
-                                  <span className="text-gray-500">N/A</span>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-
-                      {/* {loading && (
-                      <TableRow key="loading-row">
-                        <TableCell colSpan={9} className="text-center py-8">
-                          <div className="flex justify-center">
-                            <Loader />
+                  <TableHead
+                    className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap cursor-pointer hover:bg-muted/50"
+                    onClick={() => requestSort('website')}
+                  >
+                    <div className="flex items-center">
+                      Website
+                      {sortConfig?.key === 'website' && (
+                        <span className="ml-2">
+                          {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <>
+                  {currentItems.length > 0 &&
+                    currentItems.map((company) => (
+                      <TableRow key={company.id ?? `${company.company}-${Math.random()}`}>
+                        <TableCell className="w-[50px] sticky left-0 z-20 bg-inherit border-r">
+                          <Checkbox
+                            checked={selectedCompanies.includes(company.id)}
+                            onCheckedChange={() => handleSelectCompany(company.id)}
+                            aria-label={`Select ${company.company}`}
+                          />
+                        </TableCell>
+                        <TableCell className="sticky left-[50px] z-10 bg-inherit border-r px-6 py-2 max-w-[240px] align-top font-medium">{company.company}</TableCell>
+                        <TableCell className="px-6 py-2 max-w-[240px] align-top">{company.industry}</TableCell>
+                        <TableCell className="px-6 py-2 max-w-[240px] align-top">{company.street}</TableCell>
+                        <TableCell className="px-6 py-2 max-w-[240px] align-top">{company.city}</TableCell>
+                        <TableCell className="px-6 py-2 max-w-[240px] align-top">{company.state}</TableCell>
+                        <TableCell className="px-6 py-2 max-w-[240px] align-top">{company.bbb_rating}</TableCell>
+                        <TableCell className="px-6 py-2 max-w-[240px] align-top">{company.business_phone}</TableCell>
+                        <TableCell className="px-6 py-2 max-w-[240px] align-top">
+                          <div className="flex items-center gap-2">
+                            {company.website && company.website !== "N/A" && company.website !== "NA" ? (
+                              <a
+                                href={
+                                  company.website.toString().startsWith("http")
+                                    ? company.website
+                                    : `https://${company.website}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:text-blue-700"
+                                title="Open website in new tab"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {cleanUrlForDisplay(company.website)}
+                              </a>
+                            ) : (
+                              <span className="text-gray-500">N/A</span>
+                            )}
                           </div>
-                          <div className="mt-4 text-sm text-muted-foreground">Scraping and enriching data… please wait</div>
                         </TableCell>
                       </TableRow>
-                    )} */}
+                    ))}
 
-                      {!loading && currentItems.length === 0 && (
-                        <TableRow key="no-results">
-                          <TableCell colSpan={9} className="text-center">
-                            No results found.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
-                  </TableBody>
-                </Table>
+                  {/* {loading && (
+                  <TableRow key="loading-row">
+                    <TableCell colSpan={9} className="text-center py-8">
+                      <div className="flex justify-center">
+                        <Loader />
+                      </div>
+                      <div className="mt-4 text-sm text-muted-foreground">Scraping and enriching data… please wait</div>
+                    </TableCell>
+                  </TableRow>
+                )} */}
+
+                  {!loading && currentItems.length === 0 && (
+                    <TableRow key="no-results">
+                      <TableCell colSpan={9} className="text-center">
+                        No results found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination at the bottom */}
+          {sortedFilteredLeads.length > 0 && (
+            <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
+              <div className="text-sm text-muted-foreground">
+                Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results for {searchCriteria.industry} in {searchCriteria.location}
+                {selectedCompanies.length > 0 && (
+                  <span className="ml-2 text-blue-600">
+                    ({selectedCompanies.length} selected)
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 px-3 py-2">
+                <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                  setCurrentPage(1); // Reset to first page when changing items per page
+                }}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Items per page" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25">25 per page</SelectItem>
+                    <SelectItem value="50">50 per page</SelectItem>
+                    <SelectItem value="100">100 per page</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        aria-disabled={currentPage === 1}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+
+                    {getPageNumbers().map((page, index) => (
+                      <PaginationItem key={index}>
+                        {page === 'ellipsis' ? (
+                          <PaginationEllipsis />
+                        ) : (
+                          <PaginationLink
+                            isActive={page === currentPage}
+                            onClick={() => setCurrentPage(Number(page))}
+                          >
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        aria-disabled={currentPage === totalPages}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               </div>
             </div>
-
-
-            {/* Pagination controls */}
-            {sortedFilteredLeads.length > 0 && (
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, sortedFilteredLeads.length)} of {sortedFilteredLeads.length} results for {searchCriteria.industry} in {searchCriteria.location}
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1); // Reset to first page when changing items per page
-                  }}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Items per page" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25 per page</SelectItem>
-                      <SelectItem value="50">50 per page</SelectItem>
-                      <SelectItem value="100">100 per page</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          aria-disabled={currentPage === 1}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-
-                      {getPageNumbers().map((page, index) => (
-                        <PaginationItem key={index}>
-                          {page === 'ellipsis' ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationLink
-                              isActive={page === currentPage}
-                              onClick={() => setCurrentPage(Number(page))}
-                            >
-                              {page}
-                            </PaginationLink>
-                          )}
-                        </PaginationItem>
-                      ))}
-
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                          aria-disabled={currentPage === totalPages}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              </div>
-            )}
-            {/* Results section */}
-          </div>
+          )}
         </CardContent>
-
       </Card>
       <div className="flex flex-col items-end mt-4 gap-2">
         {/* Enrichment button and optional progress */}
