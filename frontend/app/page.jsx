@@ -651,7 +651,7 @@ export default function Home() {
 
     // Push the new order into state:
     setScrapingHistory(sorted);
-    setEditedRows(sorted); // keep the “edited” mirror in sync
+    setEditedRows(sorted); // keep the "edited" mirror in sync
     setCurrentPage(1); // reset pagination to page 1
   };
 
@@ -839,7 +839,7 @@ export default function Home() {
         <div className="text-center flex flex-col items-center justify-center">
           <h2 className="text-lg font-semibold">Account Not Verified</h2>
           <p className="mt-2">
-            Your account hasn’t been verified yet. Please check your email for
+            Your account hasn't been verified yet. Please check your email for
             the verification link.
           </p>
 
@@ -1056,401 +1056,409 @@ export default function Home() {
 
         {/* History Table */}
         <div className="mt-10">
-          {/* 1. Keep the heading here */}
-          <h2 className="text-2xl font-semibold text-foreground mb-2">
-            Scraping History
-          </h2>
-
-          {/* 2. Table container */}
-          <div className="w-full overflow-x-auto rounded-md border">
-            {/* 3. Toolbar INSIDE the table wrapper, above the table */}
-            <div className="flex flex-wrap items-center justify-between p-4 border-b bg-surface">
-              {/* Search */}
-              <div className="flex-grow max-w-xs">
-                <Input
-                  placeholder="Search history…"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2">
-                <SortDropdown onApply={handleSortBy} />
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowFilters((f) => !f)}
-                  title={showFilters ? "Hide Filters" : "Show Filters"}
-                >
-                  <Filter className="h-4 w-4" />
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleExportCSVWithCredits}
-                  title="Export CSV"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-          {showFilters && (
-            <div className="flex flex-wrap gap-4 my-4">
-              <Input
-                placeholder="Industry"
-                value={industryFilter}
-                onChange={(e) => setIndustryFilter(e.target.value)}
-                className="w-[240px]"
-              />
-              <Input
-                placeholder="Product/Service Category"
-                value={productFilter}
-                onChange={(e) => setProductFilter(e.target.value)}
-                className="w-[240px]"
-              />
-              <Input
-                placeholder="Business Type"
-                value={businessTypeFilter}
-                onChange={(e) => setBusinessTypeFilter(e.target.value)}
-                className="w-[240px]"
-              />
-              <Input
-                placeholder="Employees Count"
-                value={employeesFilter}
-                onChange={(e) => setEmployeesFilter(e.target.value)}
-                className="w-[240px]"
-              />
-              <Input
-                placeholder="Revenue"
-                value={revenueFilter}
-                onChange={(e) => setRevenueFilter(e.target.value)}
-                className="w-[240px]"
-              />
-              <Input
-                placeholder="Year Founded"
-                value={yearFoundedFilter}
-                onChange={(e) => setYearFoundedFilter(e.target.value)}
-                className="w-[240px]"
-              />
-              <Input
-                placeholder="BBB Rating"
-                value={bbbRatingFilter}
-                onChange={(e) => setBbbRatingFilter(e.target.value)}
-                className="w-[240px]"
-              />
-              <Input
-                placeholder="City"
-                value={cityFilter}
-                onChange={(e) => setCityFilter(e.target.value)}
-                className="w-[240px]"
-              />
-              <Input
-                placeholder="State"
-                value={stateFilter}
-                onChange={(e) => setStateFilter(e.target.value)}
-                className="w-[240px]"
-              />
-              <Input
-                placeholder="Source"
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
-                className="w-[240px]"
-              />
-              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                <X className="h-4 w-4 mr-1" />
-                Clear All
-              </Button>
-            </div>
-          )}
-          {/* Scrollable container with a max height */}
-          <div className="w-full overflow-x-auto relative border rounded-md">
-            <Table className="min-w-full text-sm ">
-              <TableHeader>
-                <TableRow>
-                  {/* Sticky Checkbox Column */}
-                  <TableHead className="sticky top-0 left-0 z-40 bg-[#1e263a] px-6 py-3 w-12 text-base font-bold text-white">
-                    <Checkbox
-                      checked={selectAll}
-                      onCheckedChange={handleSelectAll}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Scraping History</CardTitle>
+                <div className="flex items-center gap-4">
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      placeholder="Search history…"
+                      className="w-80 pl-8"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                  </TableHead>
-
-                  {/* Sticky Company Column */}
-                  <TableHead className="sticky top-0 left-[3rem] z-30 bg-[#1e263a] text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px]">
-                    Company
-                  </TableHead>
-
-                  {/* Remaining Headers */}
-                  {[
-                    "Website",
-                    "Industry",
-                    "Product/Service Category",
-                    "Business Type (B2B, B2B2C)",
-                    "Employees Count",
-                    "Revenue",
-                    "Year Founded",
-                    "BBB Rating",
-                    "Street",
-                    "City",
-                    "State",
-                    "Company Phone",
-                    "Company LinkedIn",
-                    "Owner's First Name",
-                    "Owner's Last Name",
-                    "Owner's Title",
-                    "Owner's LinkedIn",
-                    "Owner's Phone Number",
-                    "Owner's Email",
-                    "Source",
-                    "Created Date",
-                    "Updated",
-                    "Actions",
-                  ].map((label, i) => (
-                    <TableHead
-                      key={i}
-                      className="sticky top-0 z-20 bg-[#1e263a] text-base font-bold text-white px-6 py-3 whitespace-nowrap"
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <SortDropdown onApply={handleSortBy} />
+                    
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowFilters(f => !f)}
+                      title={showFilters ? "Hide Filters" : "Show Filters"}
                     >
-                      {label}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
+                      <Filter className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={handleExportCSVWithCredits} title="Export CSV">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
-              <tbody>
-                {currentItems.map((row, i) => (
-                  <TableRow key={i} className="border-t">
-                    {/* Sticky Checkbox Column */}
-                    <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12  ">
-                      <Checkbox
-                        checked={selectedCompanies.includes(row.id)}
-                        onCheckedChange={() => handleSelectCompany(row.id)}
-                      />
-                    </TableCell>
-
-                    {/* Sticky Company Column */}
-                    <TableCell className="sticky left-[3rem] z-10 bg-inherit px-6 py-2 max-w-[240px] align-top  ">
-                      {editingRowIndex === i ? (
-                        <input
-                          type="text"
-                          className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
-                          value={editedRows[i]?.company ?? ""}
-                          onChange={(e) =>
-                            handleFieldChange(i, "company", e.target.value)
-                          }
+              {/* Filter Section */}
+              {showFilters && (
+                <div className="flex flex-wrap gap-4 my-4">
+                  <Input
+                    placeholder="Industry"
+                    value={industryFilter}
+                    onChange={(e) => setIndustryFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="Product/Service Category"
+                    value={productFilter}
+                    onChange={(e) => setProductFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="Business Type"
+                    value={businessTypeFilter}
+                    onChange={(e) => setBusinessTypeFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="Employees Count"
+                    value={employeesFilter}
+                    onChange={(e) => setEmployeesFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="Revenue"
+                    value={revenueFilter}
+                    onChange={(e) => setRevenueFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="Year Founded"
+                    value={yearFoundedFilter}
+                    onChange={(e) => setYearFoundedFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="BBB Rating"
+                    value={bbbRatingFilter}
+                    onChange={(e) => setBbbRatingFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="City"
+                    value={cityFilter}
+                    onChange={(e) => setCityFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="State"
+                    value={stateFilter}
+                    onChange={(e) => setStateFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Input
+                    placeholder="Source"
+                    value={sourceFilter}
+                    onChange={(e) => setSourceFilter(e.target.value)}
+                    className="w-[240px]"
+                  />
+                  <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                    <X className="h-4 w-4 mr-1" />
+                    Clear All
+                  </Button>
+                </div>
+              )}
+            </CardHeader>
+            
+            <CardContent>
+              {/* Scrollable container with a max height */}
+              <div className="w-full overflow-x-auto relative border rounded-md">
+                <Table className="min-w-full text-sm ">
+                  <TableHeader>
+                    <TableRow>
+                      {/* Sticky Checkbox Column */}
+                      <TableHead className="sticky top-0 left-0 z-40 bg-background px-6 py-3 w-12 text-base font-bold text-white border-r">
+                        <Checkbox
+                          checked={selectAll}
+                          onCheckedChange={handleSelectAll}
                         />
-                      ) : (
-                        <ExpandableCell text={row.company || "N/A"} />
-                      )}
-                    </TableCell>
+                      </TableHead>
 
-                    {/* Remaining Cells */}
-                    {[
-                      "website",
-                      "industry",
-                      "productCategory",
-                      "businessType",
-                      "employees",
-                      "revenue",
-                      "yearFounded",
-                      "bbbRating",
-                      "street",
-                      "city",
-                      "state",
-                      "companyPhone",
-                      "companyLinkedin",
-                      "ownerFirstName",
-                      "ownerLastName",
-                      "ownerTitle",
-                      "ownerLinkedin",
-                      "ownerPhoneNumber",
-                      "ownerEmail",
-                      "source",
-                      "created",
-                      "updated",
-                    ].map((field) => {
-                      const rawValue = row[field];
-                      const displayValue =
-                        rawValue === null ||
-                        rawValue === undefined ||
-                        rawValue === ""
-                          ? "N/A"
-                          : rawValue;
+                      {/* Sticky Company Column */}
+                      <TableHead className="sticky top-0 left-[3rem] z-30 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap min-w-[200px] border-r">
+                        Company
+                      </TableHead>
 
-                      const isUrl =
-                        typeof rawValue === "string" &&
-                        (rawValue.startsWith("http://") ||
-                          rawValue.startsWith("https://"));
-
-                      const shortened =
-                        isUrl && rawValue.length > 0
-                          ? rawValue
-                              .replace(/^https?:\/\//, "")
-                              .replace(/^www\./, "")
-                              .split("/")[0]
-                          : displayValue;
-
-                      return (
-                        <TableCell
-                          key={field}
-                          className="px-6 py-2 max-w-[240px] align-top"
+                      {/* Remaining Headers */}
+                      {[
+                        "Website",
+                        "Industry",
+                        "Product/Service Category",
+                        "Business Type (B2B, B2B2C)",
+                        "Employees Count",
+                        "Revenue",
+                        "Year Founded",
+                        "BBB Rating",
+                        "Street",
+                        "City",
+                        "State",
+                        "Company Phone",
+                        "Company LinkedIn",
+                        "Owner's First Name",
+                        "Owner's Last Name",
+                        "Owner's Title",
+                        "Owner's LinkedIn",
+                        "Owner's Phone Number",
+                        "Owner's Email",
+                        "Source",
+                        "Created Date",
+                        "Updated",
+                        "Actions",
+                      ].map((label, i) => (
+                        <TableHead
+                          key={i}
+                          className="sticky top-0 z-20 bg-background text-base font-bold text-white px-6 py-3 whitespace-nowrap"
                         >
+                          {label}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+
+                  <tbody>
+                    {currentItems.map((row, i) => (
+                      <TableRow key={i} className="border-t">
+                        {/* Sticky Checkbox Column */}
+                        <TableCell className="sticky left-0 z-20 bg-inherit px-6 py-2 w-12 border-r">
+                          <Checkbox
+                            checked={selectedCompanies.includes(row.id)}
+                            onCheckedChange={() => handleSelectCompany(row.id)}
+                          />
+                        </TableCell>
+
+                        {/* Sticky Company Column */}
+                        <TableCell className="sticky left-[3rem] z-10 bg-inherit px-6 py-2 max-w-[240px] align-top border-r">
                           {editingRowIndex === i ? (
                             <input
                               type="text"
                               className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
-                              value={editedRows[i]?.[field] ?? ""}
+                              value={editedRows[i]?.company ?? ""}
                               onChange={(e) =>
-                                handleFieldChange(i, field, e.target.value)
+                                handleFieldChange(i, "company", e.target.value)
                               }
                             />
-                          ) : isUrl ? (
-                            <a
-                              href={rawValue}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 underline hover:text-blue-800 block truncate"
-                              title={rawValue}
-                            >
-                              {shortened}
-                            </a>
                           ) : (
-                            <ExpandableCell text={displayValue} />
+                            <ExpandableCell text={row.company || "N/A"} />
                           )}
                         </TableCell>
-                      );
-                    })}
 
-                    {/* Action Column */}
-                    <TableCell className="px-6 py-2">
-                      {editingRowIndex === i ? (
-                        <>
-                          <span
-                            className="text-green-500 hover:underline cursor-pointer mr-2"
-                            onClick={() => handleSave(i)}
-                          >
-                            Save
-                          </span>
-                          <span
-                            className="text-red-500 hover:underline cursor-pointer"
-                            onClick={() => handleDiscard(i)}
-                          >
-                            Discard
-                          </span>
-                        </>
-                      ) : (
-                        <span
-                          className="text-blue-500 hover:underline cursor-pointer mr-2"
-                          onClick={() => setEditingRowIndex(i)}
-                        >
-                          Edit
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </tbody>
-            </Table>
-          </div>
-          <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
-            <div className="text-sm text-muted-foreground">
-              Showing {indexOfFirstItem + 1}–
-              {Math.min(indexOfLastItem, scrapingHistory.length)} of{" "}
-              {scrapingHistory.length} results
-            </div>
+                        {/* Remaining Cells */}
+                        {[
+                          "website",
+                          "industry",
+                          "productCategory",
+                          "businessType",
+                          "employees",
+                          "revenue",
+                          "yearFounded",
+                          "bbbRating",
+                          "street",
+                          "city",
+                          "state",
+                          "companyPhone",
+                          "companyLinkedin",
+                          "ownerFirstName",
+                          "ownerLastName",
+                          "ownerTitle",
+                          "ownerLinkedin",
+                          "ownerPhoneNumber",
+                          "ownerEmail",
+                          "source",
+                          "created",
+                          "updated",
+                        ].map((field) => {
+                          const rawValue = row[field];
+                          const displayValue =
+                            rawValue === null ||
+                            rawValue === undefined ||
+                            rawValue === ""
+                              ? "N/A"
+                              : rawValue;
 
-            <div className="flex items-center gap-3 px-3 py-2">
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={(value) => {
-                  setItemsPerPage(Number(value));
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-[120px]  text-black font-medium rounded-md hover:bg-[#6bb293]">
-                  <SelectValue placeholder="Items per page" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="25">25 per page</SelectItem>
-                  <SelectItem value="50">50 per page</SelectItem>
-                  <SelectItem value="100">100 per page</SelectItem>
-                </SelectContent>
-              </Select>
+                          const isUrl =
+                            typeof rawValue === "string" &&
+                            (rawValue.startsWith("http://") ||
+                              rawValue.startsWith("https://"));
 
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                      aria-disabled={currentPage === 1}
-                      className={
-                        currentPage === 1
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    />
-                  </PaginationItem>
+                          const shortened =
+                            isUrl && rawValue.length > 0
+                              ? rawValue
+                                  .replace(/^https?:\/\//, "")
+                                  .replace(/^www\./, "")
+                                  .split("/")[0]
+                              : displayValue;
 
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((page) => {
-                      // show all if totalPages <= 7
-                      if (totalPages <= 7) return true;
+                          return (
+                            <TableCell
+                              key={field}
+                              className="px-6 py-2 max-w-[240px] align-top"
+                            >
+                              {editingRowIndex === i ? (
+                                <input
+                                  type="text"
+                                  className="w-full bg-transparent border-b border-muted focus:outline-none text-sm"
+                                  value={editedRows[i]?.[field] ?? ""}
+                                  onChange={(e) =>
+                                    handleFieldChange(i, field, e.target.value)
+                                  }
+                                />
+                              ) : isUrl ? (
+                                <a
+                                  href={rawValue}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline hover:text-blue-800 block truncate"
+                                  title={rawValue}
+                                >
+                                  {shortened}
+                                </a>
+                              ) : (
+                                <ExpandableCell text={displayValue} />
+                              )}
+                            </TableCell>
+                          );
+                        })}
 
-                      // show first, last, current, and neighbors
-                      return (
-                        page === 1 ||
-                        page === totalPages ||
-                        Math.abs(page - currentPage) <= 1
-                      );
-                    })
-                    .reduce((acc, page, i, arr) => {
-                      if (i > 0 && page - arr[i - 1] > 1) {
-                        acc.push("ellipsis");
-                      }
-                      acc.push(page);
-                      return acc;
-                    }, [])
-                    .map((page, idx) => (
-                      <PaginationItem key={idx}>
-                        {page === "ellipsis" ? (
-                          <PaginationEllipsis />
-                        ) : (
-                          <PaginationLink
-                            isActive={page === currentPage}
-                            onClick={() => setCurrentPage(page)}
-                            className={`px-3 py-1 rounded-md text-sm font-medium ${
-                              page === currentPage
-                                ? " text-black" // active teal background
-                                : "text-black hover:bg-muted"
-                            }`}
-                          >
-                            {page}
-                          </PaginationLink>
-                        )}
-                      </PaginationItem>
+                        {/* Action Column */}
+                        <TableCell className="px-6 py-2">
+                          {editingRowIndex === i ? (
+                            <>
+                              <span
+                                className="text-green-500 hover:underline cursor-pointer mr-2"
+                                onClick={() => handleSave(i)}
+                              >
+                                Save
+                              </span>
+                              <span
+                                className="text-red-500 hover:underline cursor-pointer"
+                                onClick={() => handleDiscard(i)}
+                              >
+                                Discard
+                              </span>
+                            </>
+                          ) : (
+                            <span
+                              className="text-blue-500 hover:underline cursor-pointer mr-2"
+                              onClick={() => setEditingRowIndex(i)}
+                            >
+                              Edit
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
                     ))}
+                  </tbody>
+                </Table>
+              </div>
 
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() =>
-                        setCurrentPage((p) => Math.min(p + 1, totalPages))
-                      }
-                      aria-disabled={currentPage === totalPages}
-                      className={
-                        currentPage === totalPages
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          </div>
+              {/* Pagination at the bottom */}
+              {filteredScrapingHistory.length > 0 && (
+                <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-4 py-2">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {indexOfFirstItem + 1}–
+                    {Math.min(indexOfLastItem, scrapingHistory.length)} of{" "}
+                    {scrapingHistory.length} results
+                    {selectedCompanies.length > 0 && (
+                      <span className="ml-2 text-blue-600">
+                        ({selectedCompanies.length} selected)
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 px-3 py-2">
+                    <Select
+                      value={itemsPerPage.toString()}
+                      onValueChange={(value) => {
+                        setItemsPerPage(Number(value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Items per page" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25 per page</SelectItem>
+                        <SelectItem value="50">50 per page</SelectItem>
+                        <SelectItem value="100">100 per page</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                            aria-disabled={currentPage === 1}
+                            className={
+                              currentPage === 1
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
+                          />
+                        </PaginationItem>
+
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter((page) => {
+                            // show all if totalPages <= 7
+                            if (totalPages <= 7) return true;
+
+                            // show first, last, current, and neighbors
+                            return (
+                              page === 1 ||
+                              page === totalPages ||
+                              Math.abs(page - currentPage) <= 1
+                            );
+                          })
+                          .reduce((acc, page, i, arr) => {
+                            if (i > 0 && page - arr[i - 1] > 1) {
+                              acc.push("ellipsis");
+                            }
+                            acc.push(page);
+                            return acc;
+                          }, [])
+                          .map((page, idx) => (
+                            <PaginationItem key={idx}>
+                              {page === "ellipsis" ? (
+                                <PaginationEllipsis />
+                              ) : (
+                                <PaginationLink
+                                  isActive={page === currentPage}
+                                  onClick={() => setCurrentPage(page)}
+                                  className={`px-3 py-1 rounded-md text-sm font-medium ${
+                                    page === currentPage
+                                      ? " text-black" // active teal background
+                                      : "text-black hover:bg-muted"
+                                  }`}
+                                >
+                                  {page}
+                                </PaginationLink>
+                              )}
+                            </PaginationItem>
+                          ))}
+
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() =>
+                              setCurrentPage((p) => Math.min(p + 1, totalPages))
+                            }
+                            aria-disabled={currentPage === totalPages}
+                            className={
+                              currentPage === totalPages
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
         <div className="flex justify-end mt-3 gap-3">
           <Notif
