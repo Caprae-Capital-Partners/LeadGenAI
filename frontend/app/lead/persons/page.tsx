@@ -80,7 +80,7 @@ type SortOption = "filled" | "company" | "employees" | "owner" | "recent"
 interface MessageSettings {
   tone: string;
   focus: string;
-  extraContext: string;
+  additionalcontext: string;
 }
 
 // Constants moved to top level
@@ -183,8 +183,8 @@ const EmailMessageGenerator: React.FC<EmailMessageGeneratorProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Additional Context</label>
             <Input 
-              value={settings.extraContext}
-              onChange={(e) => onSettingsChange({...settings, extraContext: e.target.value})}
+              value={settings.additionalcontext}
+              onChange={(e) => onSettingsChange({...settings,additionalcontext: e.target.value})}
               placeholder="Any special notes or context"
             />
           </div>
@@ -309,8 +309,8 @@ interface LinkedInMessageGeneratorProps {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Additional Context</label>
               <Input 
-                value={settings.extraContext}
-                onChange={(e) => onSettingsChange({...settings, extraContext: e.target.value})}
+                value={settings.additionalcontext}
+                onChange={(e) => onSettingsChange({...settings,additionalcontext: e.target.value})}
                 placeholder="Any special notes or context"
               />
             </div>
@@ -595,7 +595,7 @@ export default function PersonsPage() {
   const [messageSettings, setMessageSettings] = useState<MessageSettings>({
     tone: "professional",
     focus: "partnership",
-    extraContext: ""
+    additionalcontext: ""
   })
   const [linkedinPopupData, setLinkedinPopupData] = useState<Person | null>(null)
   const [linkedinGeneratedMessage, setLinkedinGeneratedMessage] = useState("")
@@ -603,7 +603,7 @@ export default function PersonsPage() {
   const [linkedinMessageSettings, setLinkedinMessageSettings] = useState<MessageSettings>({
     tone: "professional",
     focus: "partnership",
-    extraContext: ""
+    additionalcontext: ""
   })
 
   // Notification state
@@ -981,9 +981,9 @@ export default function PersonsPage() {
           company_name: person.company,
           homepage_url: person.website,
           // Optionally, you can send more context if your backend supports it
-          // tone: settings.tone,
-          // focus: settings.focus,
-          // extra_context: settings.extraContext,
+          tone: settings.tone,
+          focus: settings.focus,
+          additional_context: settings.additionalcontext,
         },
         { withCredentials: true }
       );
@@ -1005,9 +1005,9 @@ export default function PersonsPage() {
           company_name: person.company,
           homepage_url: person.website,
           // Optionally, you can send more context if your backend supports it
-          // tone: settings.tone,
-          // focus: settings.focus,
-          // extra_context: settings.extraContext,
+          tone: settings.tone,
+          ocus: settings.focus,
+          additional_context: settings.additionalcontext,
         },
         { withCredentials: true }
       );
