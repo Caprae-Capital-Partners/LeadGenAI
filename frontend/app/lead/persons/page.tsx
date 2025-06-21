@@ -809,6 +809,23 @@ export default function PersonsPage() {
   };
 
   const handleGeneratorClick = (person: Person, generatorType: 'email' | 'linkedin') => {
+    // Check if user is a developer first
+    const storedUser = typeof window !== "undefined"
+      ? JSON.parse(sessionStorage.getItem("user") || "{}")
+      : {};
+    const userRole = storedUser.role || "";
+    
+    // If user is a developer, allow access
+    if (userRole === "developer") {
+      if (generatorType === 'email') {
+        handleEmailMessageClick(person);
+      } else {
+        handleLinkedInMessageClick(person);
+      }
+      return;
+    }
+
+    // Otherwise, check tier restrictions
     const allowedTiers = ['silver', 'gold', 'platinum', 'enterprise'];
     const userTier = user.tier?.toLowerCase() || 'free';
 
