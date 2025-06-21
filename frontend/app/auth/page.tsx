@@ -105,7 +105,7 @@ const termsContent = (
         </li>
       </ol>
       <span className="block mt-1 italic">
-        DISCLAIMER: This template is informational only and not legal advice. Caprae Capital Partners LLC assumes no liability for users’ compliance with laws.
+        DISCLAIMER: This template is informational only and not legal advice. Caprae Capital Partners LLC assumes no liability for users' compliance with laws.
       </span>
     </div>
   </div>
@@ -195,6 +195,7 @@ export default function AuthPage() {
         password: "",
         confirmPassword: "",
         gdpr: false,
+        isStudent: false, // Added student checkbox
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,74 +224,121 @@ export default function AuthPage() {
     
 
     const router = useRouter();
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errors = validateForm(formData, isSignup);
-    setFormErrors(errors);
-    if (Object.keys(errors).length > 0) return;
 
-    const endpoint = isSignup ? "/auth/register" : "/auth/login";
-    const payload = isSignup ? {
-      username: formData.username,
-      email: formData.email,
-      linkedin: formData.linkedin,
-      password: formData.password,
-      confirm_password: formData.confirmPassword,
-      gdpr_accept: formData.gdpr,
-    } : {
-      email: formData.email,
-      password: formData.password,
+    // Function to check student email status
+    const checkStudentEmail = async () => {
+        try {
+            const res = await fetch(`${DATABASE_URL}/api/auth/check-student-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+            });
+
+            const result = await res.json();
+            return { success: res.ok, data: result };
+        } catch (error) {
+            console.error("❌ Student email check error:", error);
+            return { success: false, error: "Failed to check student email status" };
+        }
     };
 
-    try {
-      const res = await fetch(`${DATABASE_URL}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const errors = validateForm(formData, isSignup);
+        setFormErrors(errors);
+        if (Object.keys(errors).length > 0) return;
 
-      // First check if response is JSON
-      const contentType = res.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await res.text();
-        throw new Error(`Expected JSON but got: ${text.substring(0, 100)}`);
-      }
+        const endpoint = isSignup ? "/auth/register" : "/auth/login";
+        const payload = isSignup ? {
+            username: formData.username,
+            email: formData.email,
+            linkedin: formData.linkedin,
+            password: formData.password,
+            confirm_password: formData.confirmPassword,
+            gdpr_accept: formData.gdpr,
+            is_student: formData.isStudent, // Include student flag in payload
+        } : {
+            email: formData.email,
+            password: formData.password,
+        };
 
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.message || `HTTP error! status: ${res.status}`);
-      }
-
-      if (result.user) {
-        sessionStorage.setItem("user", JSON.stringify(result.user));
-
-        if (isSignup) {
-          try {
-            await fetch(`${DATABASE_URL}/auth/send-verification`, {
-              method: "POST",
-              credentials: "include",
+        try {
+            const res = await fetch(`${DATABASE_URL}${endpoint}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(payload),
             });
-            showNotification("Your account has been created. Please verify your email to activate it. A link has been sent to your email.", "info");
-          } catch (err) {
-            console.error("❌ Failed to send verification email:", err);
-            showNotification("Account created, but failed to send verification email.", "error");
-          }
-        } else {
-          showNotification("Successfully signed in!", "success");
-        }
 
-        setTimeout(() => {
-          const base = window.location.origin;
-          router.push(isSignup ? `${base}/subscription` : `${base}/`);
-        }, 100);
-      }
-    } catch (err: any) {
-      console.error("❌ Login error:", err);
-      showNotification(err.message || "Login failed. Please check your credentials and try again.", "error");
-    }
-  };
+            // First check if response is JSON
+            const contentType = res.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await res.text();
+                throw new Error(`Expected JSON but got: ${text.substring(0, 100)}`);
+            }
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                throw new Error(result.message || `HTTP error! status: ${res.status}`);
+            }
+
+            if (result.user) {
+                sessionStorage.setItem("user", JSON.stringify(result.user));
+
+                if (isSignup) {
+                    try {
+                        await fetch(`${DATABASE_URL}/auth/send-verification`, {
+                            method: "POST",
+                            credentials: "include",
+                        });
+                        
+                        // Different messages based on student status
+                        const verificationMessage = formData.isStudent 
+                            ? "Your student account has been created successfully! Please verify your email to activate it."
+                            : "Your account has been created. Please verify your email to activate it. A link has been sent to your email.";
+                        
+                        showNotification(verificationMessage, "info");
+
+                        // If user checked "I am a student", check student email status after 2 seconds
+                        if (formData.isStudent) {
+                            setTimeout(async () => {
+                                showNotification("Checking student email status...", "info");
+                                
+                                const studentCheck = await checkStudentEmail();
+                                
+                                if (studentCheck.success && studentCheck.data) {
+                                    const { is_student, message } = studentCheck.data;
+                                    
+                                    if (is_student) {
+                                        showNotification(message, "success");
+                                    } else {
+                                        showNotification(message, "error");
+                                    }
+                                } else {
+                                    showNotification("Could not verify student status. Please contact support.", "error");
+                                }
+                            }, 2000); // 2 second delay to allow user data to be saved
+                        }
+
+                    } catch (err) {
+                        console.error("❌ Failed to send verification email:", err);
+                        showNotification("Account created, but failed to send verification email.", "error");
+                    }
+                } else {
+                    showNotification("Successfully signed in!", "success");
+                }
+
+                setTimeout(() => {
+                    const base = window.location.origin;
+                    router.push(isSignup ? `${base}/subscription` : `${base}/`);
+                }, formData.isStudent && isSignup ? 4000 : 100); // Delay navigation if student check is running
+            }
+        } catch (err: any) {
+            console.error("❌ Registration/Login error:", err);
+            showNotification(err.message || "Registration failed. Please check your information and try again.", "error");
+        }
+    };
 
     const toggleMode = (signup: boolean) => {
         setIsSignup(signup);
@@ -301,6 +349,7 @@ export default function AuthPage() {
             password: "",
             confirmPassword: "",
             gdpr: false,
+            isStudent: false, // Reset student checkbox
         });
         setFormErrors({});
     };
@@ -409,6 +458,25 @@ export default function AuthPage() {
                             )}
                         </div>
 
+                        {/* Student checkbox - positioned after email field */}
+                        {isSignup && (
+                            <div className="flex items-start space-x-2 text-sm bg-muted/50 p-3 rounded-lg border border-border">
+                                <input
+                                    type="checkbox"
+                                    id="isStudent"
+                                    checked={formData.isStudent}
+                                    onChange={handleChange}
+                                    className={inputClass("isStudent", "mt-1 accent-primary")}
+                                />
+                                <label htmlFor="isStudent" className="text-foreground font-medium">
+                                    I am a student
+                                    <span className="block text-xs text-muted-foreground mt-1 font-normal">
+                                        Check this if you're using a school/university email domain to get student benefits
+                                    </span>
+                                </label>
+                            </div>
+                        )}
+
                         {isSignup && (
                             <div>
                                 <Label htmlFor="linkedin">LinkedIn Profile (Optional)</Label>
@@ -443,7 +511,7 @@ export default function AuthPage() {
                             )}
                         </div>
 
-                        {/* ← Show “Forgot password?” only when NOT in Sign-Up mode */}
+                        {/* Show "Forgot password?" only when NOT in Sign-Up mode */}
                         {!isSignup && (
                             <div className="mt-1 text-right">
                                 <Link
@@ -472,8 +540,6 @@ export default function AuthPage() {
                                 )}
                             </div>
                         )}
-                        
-                        
 
                         {isSignup && (
                         <div className="flex items-start space-x-2 text-sm">
