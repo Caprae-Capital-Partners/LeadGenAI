@@ -1,4 +1,3 @@
-
 from flask import Blueprint, request, jsonify, current_app, redirect, render_template, flash, url_for
 from flask_login import login_required, current_user
 import stripe
@@ -72,8 +71,11 @@ def sync_customer_data(customer_id, user_id):
         if active_subscription:
             current_app.logger.info(f"Found active subscription: {active_subscription.id}")
             user_subscription.subscription_status = active_subscription.status
-            user_subscription.current_period_start = datetime.fromtimestamp(active_subscription.current_period_start)
-            user_subscription.current_period_end = datetime.fromtimestamp(active_subscription.current_period_end)
+            start_ts = active_subscription.get('current_period_start')
+            end_ts = active_subscription.get('current_period_end')
+
+            user_subscription.current_period_start = datetime.fromtimestamp(start_ts) if start_ts else None
+            user_subscription.current_period_end = datetime.fromtimestamp(end_ts) if end_ts else None
             user_subscription.cancel_at_period_end = active_subscription.get('cancel_at_period_end', False)
 
             # Update payment method from subscription
@@ -315,6 +317,7 @@ def redirect_to_stripe_portal():
         #         email=current_user.email,
         #         name=current_user.username,
         #         metadata={'user_id': str(current_user.user_id)})
+
 
         # Create portal session
         portal_session = stripe.billing_portal.Session.create(
