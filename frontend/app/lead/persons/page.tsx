@@ -80,7 +80,7 @@ type SortOption = "filled" | "company" | "employees" | "owner" | "recent"
 interface MessageSettings {
   tone: string;
   focus: string;
-  additionalcontext: string;
+  additionalContext: string;
 }
 
 // Constants moved to top level
@@ -109,6 +109,7 @@ interface EmailMessageGeneratorProps {
   onClose: () => void;
   onGenerate: () => Promise<void>;
   generatedMessage: string;
+  generatedSubject: string;
   isGenerating: boolean;
   settings: MessageSettings;
   onSettingsChange: (settings: MessageSettings) => void;
@@ -119,6 +120,7 @@ const EmailMessageGenerator: React.FC<EmailMessageGeneratorProps> = ({
   onClose,
   onGenerate,
   generatedMessage,
+  generatedSubject,
   isGenerating,
   settings,
   onSettingsChange
@@ -183,8 +185,8 @@ const EmailMessageGenerator: React.FC<EmailMessageGeneratorProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Additional Context</label>
             <Input 
-              value={settings.additionalcontext}
-              onChange={(e) => onSettingsChange({...settings,additionalcontext: e.target.value})}
+              value={settings.additionalContext}
+              onChange={(e) => onSettingsChange({...settings, additionalContext: e.target.value})}
               placeholder="Any special notes or context"
             />
           </div>
@@ -206,12 +208,20 @@ const EmailMessageGenerator: React.FC<EmailMessageGeneratorProps> = ({
         </div>
 
         {generatedMessage && (
-  <div className="mt-4 space-y-2">
-    <label className="block text-sm font-medium text-gray-700">Generated Message</label>
-    <div className="p-4 border rounded-lg text-white bg-gray-600 whitespace-pre-wrap max-h-60 overflow-y-auto">
-      {generatedMessage}
-    </div>
-    <div className="flex justify-end gap-2 pt-2">
+          <div className="mt-4 space-y-4">
+            {generatedSubject && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Subject</label>
+                <Input value={generatedSubject} readOnly className="bg-gray-100 dark:bg-zinc-700" />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Generated Message</label>
+              <div className="p-4 border rounded-lg text-white bg-gray-600 whitespace-pre-wrap max-h-60 overflow-y-auto">
+                {generatedMessage}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => {
                 navigator.clipboard.writeText(generatedMessage);
                 // You might want to show a notification here
@@ -309,8 +319,8 @@ interface LinkedInMessageGeneratorProps {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Additional Context</label>
               <Input 
-                value={settings.additionalcontext}
-                onChange={(e) => onSettingsChange({...settings,additionalcontext: e.target.value})}
+                value={settings.additionalContext}
+                onChange={(e) => onSettingsChange({...settings, additionalContext: e.target.value})}
                 placeholder="Any special notes or context"
               />
             </div>
@@ -591,11 +601,12 @@ export default function PersonsPage() {
   // Email popup states
   const [emailPopupData, setEmailPopupData] = useState<Person | null>(null)
   const [generatedMessage, setGeneratedMessage] = useState("")
+  const [generatedSubject, setGeneratedSubject] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [messageSettings, setMessageSettings] = useState<MessageSettings>({
     tone: "professional",
     focus: "partnership",
-    additionalcontext: ""
+    additionalContext: ""
   })
   const [linkedinPopupData, setLinkedinPopupData] = useState<Person | null>(null)
   const [linkedinGeneratedMessage, setLinkedinGeneratedMessage] = useState("")
@@ -603,7 +614,7 @@ export default function PersonsPage() {
   const [linkedinMessageSettings, setLinkedinMessageSettings] = useState<MessageSettings>({
     tone: "professional",
     focus: "partnership",
-    additionalcontext: ""
+    additionalContext: ""
   })
 
   // Notification state
@@ -781,6 +792,7 @@ export default function PersonsPage() {
   const handleEmailMessageClick = (person: Person) => {
     setEmailPopupData(person);
     setGeneratedMessage(""); // Clear any previous message
+    setGeneratedSubject("");
   };
   const handleLinkedInMessageClick = (person: Person) => {
     setLinkedinPopupData(person);
@@ -983,11 +995,12 @@ export default function PersonsPage() {
           // Optionally, you can send more context if your backend supports it
           tone: settings.tone,
           focus: settings.focus,
-          additional_context: settings.additionalcontext,
+          additional_context: settings.additionalContext,
         },
         { withCredentials: true }
       );
       setGeneratedMessage(response.data.email || "No email message returned.");
+      setGeneratedSubject(response.data.subject || "");
     } catch (error) {
       console.error("Error generating message:", error);
       showNotification("Error generating message", "error");
@@ -1006,8 +1019,8 @@ export default function PersonsPage() {
           homepage_url: person.website,
           // Optionally, you can send more context if your backend supports it
           tone: settings.tone,
-          ocus: settings.focus,
-          additional_context: settings.additionalcontext,
+          focus: settings.focus,
+          additional_context: settings.additionalContext,
         },
         { withCredentials: true }
       );
@@ -1374,6 +1387,7 @@ return (
         onClose={() => setEmailPopupData(null)}
         onGenerate={() => generateEmailMessage(emailPopupData, messageSettings)}
         generatedMessage={generatedMessage}
+        generatedSubject={generatedSubject}
         isGenerating={isGenerating}
         settings={messageSettings}
         onSettingsChange={setMessageSettings}
