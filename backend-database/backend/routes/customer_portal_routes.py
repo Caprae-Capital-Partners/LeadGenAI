@@ -322,7 +322,7 @@ def redirect_to_stripe_portal():
         # Create portal session
         portal_session = stripe.billing_portal.Session.create(
             customer=customer.id,
-            return_url='https://app.saasquatchleads.com/subscription',
+            return_url='https://sandboxdev.saasquatchleads.com/subscription',
         )
 
         # Sync customer data before redirect
